@@ -1,6 +1,6 @@
 # Current plan
 
-**Status (2026-05-24)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track B2 transport (T1–T3)**, **Track D**, and **PR-A** doc authority repair on `master` (plan close `c20fc1e5`; PR-A merge `cd364b84`). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
+**Status (2026-05-28)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track B2 transport (T1–T3)**, **Track D**, **D+**, **FOT PR-1/2**, and **roadmap drift tombstones** on `master` (`64d90603` PR #90). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
 
 **Runtime (code authority):**
 
@@ -90,13 +90,19 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 **ACTIVE (2026-05-28):** v0.1 **next track selection** — pick one new spec before implementation: GA / macro unpause (PR-B) / capacity C-GATE. No code until spec + `current_plan` row exists.
 
+**Tombstoned plans (do not execute checklists):** [`2026-05-25-reconstruction-field-cell-capacity-contract.md`](../../docs/superpowers/plans/2026-05-25-reconstruction-field-cell-capacity-contract.md) (`OBSOLETE` — use [`2026-05-26-reconstruction-complete-map-dto.md`](../../docs/superpowers/plans/2026-05-26-reconstruction-complete-map-dto.md) for complete-map SoT); [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md) (`PAUSED / DO NOT EXECUTE` — macro unpause requires new spec + ACTIVE row). Evidence: PR [#90](https://github.com/tigers2020/Shapez2Factory/pull/90) (`64d90603`).
+
 **BLOCKED (macro PR-B follow-up):** Macro-only 4×4 / narrow-corridor fixtures admit **≤2** catalog `normal_candidates` under `OUTSIDE_MINEABLE`; MacroBundleT3 needs **≥3** non-overlapping children → `macro_normal_count=0`. Unskip macro tests only after a dedicated **macro child-pool fixture** spec (do not weaken FOT guards). Macro track remains **PAUSE** per 2026-05-24 unless explicitly unpaused.
+
+**CLOSED (2026-05-28):** Roadmap drift cleanup — tombstone stale executable plans — PR [#90](https://github.com/tigers2020/Shapez2Factory/pull/90) squash-merged to `master` (`64d90603`). Removed `recon.cells` capacity checklist and macro PR-A→H execution checklist; preserved complete-map + macro PAUSE contracts.
 
 **CLOSED (2026-05-28):** RTTP FOT PR-2 — outward rim / void attach / platform probe fallback — PR [#89](https://github.com/tigers2020/Shapez2Factory/pull/89) squash-merged to `master` (`75c5ad08`). Normal RTTP runtime `OUTWARD_FROM_RIM`; macro-only runtime stays `OUTSIDE_MINEABLE` until PR-B. Spec: [`2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md`](../../docs/superpowers/specs/2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md) · plan: [`2026-05-28-rttp-fot-pr2-outward-rim-void-probe.md`](../../docs/superpowers/plans/2026-05-28-rttp-fot-pr2-outward-rim-void-probe.md).
 
 **CLOSED (2026-05-28):** RTTP FOT outside mineable PR-1 — PR [#88](https://github.com/tigers2020/Shapez2Factory/pull/88) squash-merged to `master` (`ebde4c2c`). `OUTSIDE_MINEABLE` default on generator + pipeline; commit/validation FOT defense. Plan: [`2026-05-28-rttp-fot-outside-mineable-pr1.md`](../../docs/superpowers/plans/2026-05-28-rttp-fot-outside-mineable-pr1.md). Macro PR-B fixture skips deferred.
 
 **CLOSED (implementation scope):** Sequence 1A·1B domain DTO + reconstruction adapter — covered by `tests/unit/asteroid_lab/test_optimization_input_adapter.py`, `test_optimization_input_coord_frame.py`; plan [`documents/ai/plans/asteroid_lab_optimization_sequence_1a_1b.md`](plans/asteroid_lab_optimization_sequence_1a_1b.md) is historical scope only.
+
+**CLOSED (2026-05-27):** RTTP FOT cross-commit hotfix (PR1.5) — `committed_fixed_output_transport_cells` across incremental commit — on `master` (`04bf7b4f`). Spec: [`docs/superpowers/specs/2026-05-27-rttp-commit-fot-cross-commit-hotfix.md`](../../docs/superpowers/specs/2026-05-27-rttp-commit-fot-cross-commit-hotfix.md) · plan: [`docs/superpowers/plans/2026-05-27-rttp-commit-fot-cross-commit-hotfix.md`](../../docs/superpowers/plans/2026-05-27-rttp-commit-fot-cross-commit-hotfix.md).
 
 **CLOSED (2026-05-25):** ReconstructionCompleteMap terrain SoT + RTTP placement replay overlay (PR-1) — PR [#83](https://github.com/tigers2020/Shapez2Factory/pull/83) squash-merged to `master` (`7d07394b`). Lab replay: bundle footprints; `asteroid_fluid_field` → `Layout_FluidMiner`. Spec: [`docs/superpowers/specs/2026-05-26-rttp-confirmed-placement-footprint-design.md`](../../docs/superpowers/specs/2026-05-26-rttp-confirmed-placement-footprint-design.md) · plan: [`docs/superpowers/plans/2026-05-25-rttp-confirmed-placement-footprint.md`](../../docs/superpowers/plans/2026-05-25-rttp-confirmed-placement-footprint.md). PR-1b route tile synthesis · PR-2 island materializer **deferred**.
 
@@ -110,7 +116,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
-- **CLOSED (2026-05-23):** RTTP v1 MacroBundleT3 **PR-A..J** on `master` — plan: [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md)
+- **CLOSED (2026-05-23):** RTTP v1 MacroBundleT3 **PR-A..J** on `master` — historical plan tombstoned PR #90: [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md) (**PAUSED / DO NOT EXECUTE**; runtime macro code remains)
 - **CLOSED (2026-05-23):** PR-K web `run-solver` POST → `run_solver_runtime_for_project(config=...)` (`macro_only_mode`, `rttp_record_replay`; invalid JSON → 400).
 - **CLOSED (2026-05-23):** PR-L Lab UI macro-only checkbox + `fetch` body (`5b06d705`); OPS trial: checkbox + macro commit on real slug.
 - **CLOSED (2026-05-23):** GitHub Actions `rttp-lab-macro-smoke` on `master` push/PR.

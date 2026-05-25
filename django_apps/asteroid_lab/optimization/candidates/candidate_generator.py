@@ -19,14 +19,23 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
     FixedOutputTransportPolicy,
     RejectedBundleCandidate,
+    RouteProbeStartPolicy,
+)
+from django_apps.asteroid_lab.optimization.candidates.transport_attach_surface import (
+    outward_dirs,
+    transport_attach_surface_cells,
 )
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import (
+    RouteCellDomain,
     build_route_domain_from_skeleton,
 )
 from django_apps.asteroid_lab.optimization.routing.route_goals import probe_goal_coords
 from django_apps.asteroid_lab.optimization.routing.route_probe import probe_route
+from django_apps.asteroid_lab.optimization.routing.route_probe_start import (
+    resolve_route_probe_start,
+)
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 
 
@@ -86,6 +95,8 @@ def _validate_geometry(
     *,
     fot_abs: Coord,
     policy: FixedOutputTransportPolicy,
+    skeleton: RttpSkeleton,
+    domain: RouteCellDomain,
 ) -> CandidateRejectReason | None:
     if spec.extractor_offset != (0, 0):
         return CandidateRejectReason.GEOMETRY_INVALID
@@ -94,14 +105,30 @@ def _validate_geometry(
     if not occupied.issubset(inp.mineable_cells):
         return CandidateRejectReason.GEOMETRY_INVALID
 
+    stub_abs = _translate_offset(anchor, spec.output_stub_offset)
     if fot_abs in occupied:
         return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_IN_OCCUPIED
     if fot_abs in inp.blocked_incompatible_transport_cells:
         return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_KIND_BLOCKED
     if _policy_requires_outside_mineable(policy) and fot_abs in inp.mineable_cells:
         return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_INSIDE_MINEABLE
-    if output_stub in occupied:
+    if policy is FixedOutputTransportPolicy.OUTWARD_FROM_RIM and anchor in inp.rim_cells:
+        dirs = outward_dirs(
+            anchor,
+            spec.output_dir,
+            inp=inp,
+            skeleton=skeleton,
+            domain=domain,
+        )
+        if spec.output_dir not in dirs:
+            return CandidateRejectReason.OUTPUT_DIR_NOT_OUTWARD_FROM_RIM
+        attach = transport_attach_surface_cells(inp, skeleton)
+        if fot_abs not in attach:
+            return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_NOT_ON_ATTACH_SURFACE
+    if stub_abs in occupied:
         return CandidateRejectReason.ROUTE_PROBE_START_IN_OCCUPIED
+    if output_stub != stub_abs:
+        return CandidateRejectReason.GEOMETRY_INVALID
 
     unit = cardinal_unit_vector(CardinalDirection(spec.output_dir))
     axis_local = (
@@ -134,6 +161,7 @@ def generate_candidates(
     fixed_output_transport_policy: FixedOutputTransportPolicy = (
         FixedOutputTransportPolicy.OUTSIDE_MINEABLE
     ),
+    route_probe_start_policy: RouteProbeStartPolicy = (RouteProbeStartPolicy.OUTPUT_STUB_ONLY),
     max_candidates: int | None = None,
     max_expansions: int = 500,
 ) -> CandidateGenerationResult:
@@ -169,6 +197,8 @@ def generate_candidates(
                 output_stub,
                 fot_abs=fot_abs,
                 policy=fixed_output_transport_policy,
+                skeleton=skeleton,
+                domain=domain,
             )
             if geometry_reason is not None:
                 rejected.append(
@@ -182,9 +212,27 @@ def generate_candidates(
                 )
                 continue
 
+            start = resolve_route_probe_start(
+                anchor_coord=anchor,
+                output_stub=output_stub,
+                domain=domain,
+                policy=route_probe_start_policy,
+            )
+            if start is None:
+                rejected.append(
+                    RejectedBundleCandidate(
+                        candidate_id=candidate_id,
+                        anchor_coord=anchor,
+                        pattern_id=spec.pattern_id,
+                        rejection_reason=CandidateRejectReason.ROUTE_PROBE_START_BLOCKED,
+                        route_probe_cost=None,
+                    )
+                )
+                continue
+
             probe = probe_route(
                 domain,
-                output_stub,
+                start,
                 goals,
                 max_expansions=max_expansions,
             )
@@ -212,6 +260,7 @@ def generate_candidates(
                 route_probe_cost=probe.cost,
                 reachable=True,
                 catalog_placement_ref=ref,
+                route_probe_start=start,
             )
             signature = _dedupe_signature(
                 occupied,

@@ -28,6 +28,7 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
     ExtractorPlacementPolicy,
     FixedOutputTransportPolicy,
+    RouteProbeStartPolicy,
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
     generate_candidates,
@@ -366,6 +367,7 @@ def _run_v01_rttp_pipeline(
     sink: RttpReplaySink,
     config: RttpPipelineConfig,
     fixed_output_transport_policy: FixedOutputTransportPolicy,
+    route_probe_start_policy: RouteProbeStartPolicy,
 ) -> PipelineResult:
     steps: list[dict[str, Any]] = []
     field_kind_by_coord = _pipeline_field_kind_by_coord(config)
@@ -394,6 +396,7 @@ def _run_v01_rttp_pipeline(
         skeleton,
         policy=policy,
         fixed_output_transport_policy=fixed_output_transport_policy,
+        route_probe_start_policy=route_probe_start_policy,
     )
     candidates_payload = build_candidates_replay_payload(
         generation,
@@ -465,6 +468,7 @@ def _run_v01_rttp_pipeline(
         inp,
         skeleton,
         domain=domain,
+        route_probe_start_policy=route_probe_start_policy,
     )
     _append_deferred_retry_shadow_step(
         steps,
@@ -573,6 +577,7 @@ def _run_macro_rttp_pipeline(
     sink: RttpReplaySink,
     config: RttpPipelineConfig,
     fixed_output_transport_policy: FixedOutputTransportPolicy,
+    route_probe_start_policy: RouteProbeStartPolicy,
 ) -> PipelineResult:
     steps: list[dict[str, Any]] = []
     field_kind_by_coord = _pipeline_field_kind_by_coord(config)
@@ -602,6 +607,7 @@ def _run_macro_rttp_pipeline(
         skeleton,
         policy=policy,
         fixed_output_transport_policy=fixed_output_transport_policy,
+        route_probe_start_policy=route_probe_start_policy,
     )
     macro_generation = compile_macros(
         generation.normal_candidates,
@@ -771,6 +777,7 @@ def run_rttp_pipeline(
     replay_sink: RttpReplaySink | None = None,
     pipeline_config: RttpPipelineConfig | None = None,
     fixed_output_transport_policy: FixedOutputTransportPolicy | None = None,
+    route_probe_start_policy: RouteProbeStartPolicy | None = None,
 ) -> PipelineResult:
     """Wire skeleton → candidates → select → commit → (LNS if needed) → validate."""
 
@@ -785,6 +792,15 @@ def run_rttp_pipeline(
         if fixed_output_transport_policy is not None
         else FixedOutputTransportPolicy.OUTSIDE_MINEABLE
     )
+    resolved_route_probe_start_policy = (
+        route_probe_start_policy
+        if route_probe_start_policy is not None
+        else (
+            RouteProbeStartPolicy.PLATFORM_FALLBACK_WHEN_STUB_BLOCKED
+            if resolved_fot_policy is FixedOutputTransportPolicy.OUTWARD_FROM_RIM
+            else RouteProbeStartPolicy.OUTPUT_STUB_ONLY
+        )
+    )
     sink = resolve_replay_sink(replay_sink)
     if resolved_config.macro_only_mode:
         return _run_macro_rttp_pipeline(
@@ -793,6 +809,7 @@ def run_rttp_pipeline(
             sink=sink,
             config=resolved_config,
             fixed_output_transport_policy=resolved_fot_policy,
+            route_probe_start_policy=resolved_route_probe_start_policy,
         )
     return _run_v01_rttp_pipeline(
         inp,
@@ -800,6 +817,7 @@ def run_rttp_pipeline(
         sink=sink,
         config=resolved_config,
         fixed_output_transport_policy=resolved_fot_policy,
+        route_probe_start_policy=resolved_route_probe_start_policy,
     )
 
 

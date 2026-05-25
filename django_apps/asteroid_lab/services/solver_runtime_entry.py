@@ -556,12 +556,18 @@ def _run_rttp_solver_for_map_input(
         ),
         complete_map,
     )
+    # PR-2 OUTWARD_FROM_RIM applies to normal RTTP; macro-only stays PR-1 until PR-B alignment.
+    fot_policy = (
+        FixedOutputTransportPolicy.OUTSIDE_MINEABLE
+        if pipeline_config.macro_only_mode
+        else FixedOutputTransportPolicy.OUTWARD_FROM_RIM
+    )
     pipeline_result = run_rttp_pipeline(
         opt_inp,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
         replay_sink=replay_sink,
         pipeline_config=pipeline_config,
-        fixed_output_transport_policy=FixedOutputTransportPolicy.OUTSIDE_MINEABLE,
+        fixed_output_transport_policy=fot_policy,
     )
 
     persist_reconstructed_asteroid_map(

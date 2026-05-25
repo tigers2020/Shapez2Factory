@@ -6,7 +6,10 @@ import inspect
 from dataclasses import dataclass
 from enum import StrEnum
 
-from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
+from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
+    BundleCandidate,
+    RouteProbeStartPolicy,
+)
 from django_apps.asteroid_lab.optimization.candidates.placement_cells import (
     fixed_output_transport_cell,
 )
@@ -18,6 +21,9 @@ from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import (
 )
 from django_apps.asteroid_lab.optimization.routing.route_goals import probe_goal_coords
 from django_apps.asteroid_lab.optimization.routing.route_probe import probe_route
+from django_apps.asteroid_lab.optimization.routing.route_probe_start import (
+    resolve_route_probe_start,
+)
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import PlacementGenome
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 
@@ -126,6 +132,7 @@ def _attempt_commit_one(
     committed_occupied: frozenset[Coord],
     committed_route_cells: frozenset[Coord],
     committed_fixed_output_transport_cells: frozenset[Coord],
+    route_probe_start_policy: RouteProbeStartPolicy,
     max_expansions: int | None = None,
 ) -> CommitAttemptOutcome:
     if candidate.transport_kind is not inp.transport_kind:
@@ -184,9 +191,23 @@ def _attempt_commit_one(
         committed_occupied=committed_occupied,
         committed_route_cells=committed_route_cells,
     )
+    probe_start = resolve_route_probe_start(
+        anchor_coord=candidate.anchor_coord,
+        output_stub=candidate.output_stub,
+        domain=current_domain,
+        policy=route_probe_start_policy,
+    )
+    if probe_start is None:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.REPROBE_FAILED,
+            ),
+        )
     probe = probe_route(
         current_domain,
-        candidate.output_stub,
+        probe_start,
         goals,
         max_expansions=resolved_expansions,
     )
@@ -233,6 +254,7 @@ def incremental_commit(
     skeleton: RttpSkeleton,
     *,
     domain: CommitDomainState,
+    route_probe_start_policy: RouteProbeStartPolicy = (RouteProbeStartPolicy.OUTPUT_STUB_ONLY),
 ) -> CommitResult:
     """Commit candidates in genome order; re-probe latest domain before each confirm."""
 
@@ -264,6 +286,7 @@ def incremental_commit(
             committed_occupied=committed_occupied,
             committed_route_cells=committed_route_cells,
             committed_fixed_output_transport_cells=committed_fixed_output_transport_cells,
+            route_probe_start_policy=route_probe_start_policy,
         )
         if not outcome.committed:
             if outcome.conflict is not None:

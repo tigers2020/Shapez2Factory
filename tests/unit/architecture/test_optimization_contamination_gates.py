@@ -19,6 +19,7 @@ _ALLOWLIST_EXTRA: frozenset[str] = frozenset(
         "pipeline.py",
         "replay_sink.py",
         "candidates/candidate_generator.py",
+        "candidates/transport_attach_surface.py",
         "validation/catalog_layout_validation.py",
     }
 )

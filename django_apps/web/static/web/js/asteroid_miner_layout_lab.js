@@ -293,11 +293,8 @@
   function runCapacityFailed(run) {
     if (!run || typeof run !== "object") return false;
     if (run.run_success === true) return false;
-    if (
-      run.throughput_target &&
-      typeof run.throughput_target === "object" &&
-      run.throughput_budget_satisfied === false
-    ) {
+    // Top-level null when no throughput target (see _throughput_budget_satisfied_top_level).
+    if (run.throughput_budget_satisfied === false) {
       return true;
     }
     if (run.throughput_budget_satisfied === true) return false;

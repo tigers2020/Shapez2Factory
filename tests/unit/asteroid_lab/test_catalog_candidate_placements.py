@@ -47,7 +47,7 @@ def test_build_specs_four_rotations_deterministic() -> None:
         CardinalDirection.W,
     ]
     assert all(s.pattern_id.startswith("cat_") for s in specs)
-    assert all(s.throughput_factor == 8 for s in specs)
+    assert all(s.throughput_factor == 4 for s in specs)
 
 
 def test_build_specs_fluid_transport_uses_fluid_miner_not_shape_slice() -> None:

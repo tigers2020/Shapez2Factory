@@ -14,7 +14,7 @@
 
 **Must NOT modify:** route probe core, `game_data` importers, `exhaustive_generator.py` production imports, Phase 1 `miner_placement_topology` rules (unless fixing unrelated bugs).
 
-**Implementation status (2026-05-27):** Core commit/validation/selection/deferred/macro paths and `test_rttp_commit_fot_conflict.py` may already be landed locally. Use this plan as **verification + gap closure** (selection tests, runtime doc footnote, Lab acceptance). Do not skip failing steps if files differ from spec.
+**Implementation status (2026-05-27):** Landed on branch; **PR [#85](https://github.com/tigers2020/Shapez2Factory/pull/85)**. Narrow FOT gate green. Phase 1 topology unstaged locally (out of PR #85 diff).
 
 ---
 

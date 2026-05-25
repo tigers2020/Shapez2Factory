@@ -108,6 +108,8 @@ def throughput_factor_for_footprint(cell_count: int) -> int:
 |------------------------|-------------------|---------------------|
 | 1 | 0 | 4 |
 | 2 | 1 | 8 |
+
+**Footnote (2026-05-27):** Equipment placement MUST NOT use footprint cell count for throughput or occupied authority. Use [`2026-05-27-rttp-miner-output-transport-topology-design.md`](2026-05-27-rttp-miner-output-transport-topology-design.md) (`throughput_factor_for_extension_count`, `miner_placement_topology`).
 | 3 | 2 | 12 |
 | 4+ | 3 (cap) | 16 |
 

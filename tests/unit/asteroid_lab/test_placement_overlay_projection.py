@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from django_apps.asteroid_lab.contracts.catalog_placement import (
     CardinalDirection,
     CatalogPlacementRef,
@@ -160,6 +162,26 @@ def test_route_rows_keep_legacy_kind_route_committed_path() -> None:
     assert route_rows[0]["cell_kind"] == "space_belt"
     assert route_rows[0]["transport_kind"] == "shape_belt"
     assert route_rows[0]["transport"] == "shape_belt"
+
+
+@pytest.mark.parametrize(
+    "pattern_id",
+    ["lin_e_len0", "lin_n_len0", "lin_w_len0"],
+)
+def test_overlay_fixed_output_transport_not_extension(pattern_id: str) -> None:
+    cand = _candidate(pattern_id=pattern_id)
+    fot_coord = _translate(cand.anchor_coord, cand.pattern.fixed_output_transport_offset)
+    rows = build_candidate_placement_overlay_rows((cand,))
+    fot_rows = [
+        r
+        for r in rows
+        if (int(r["x"]), int(r["y"])) == fot_coord
+    ]
+    assert len(fot_rows) == 1
+    assert "fixed_output_transport" in fot_rows[0]["overlay_semantic_kind"]
+    assert fot_rows[0]["cell_kind"] in ("space_belt", "space_pipe")
+    assert fot_rows[0]["transport_kind"] in ("shape_belt", "fluid_pipe")
+    assert "extension" not in fot_rows[0]["overlay_semantic_kind"]
 
 
 def test_confirmed_includes_extension_overlay_cells() -> None:

@@ -46,14 +46,14 @@ def test_committed_projection_audit_reports_source_kind() -> None:
         footprint=footprint,
         connectors=connectors,
     )
-    pat = build_pattern_library()[0]
+    pat = next(p for p in build_pattern_library() if p.pattern_id == "lin_e_len0")
     ref = CatalogPlacementRef("bv:shape_miner", (5, 7), CardinalDirection.E)
     cand = BundleCandidate(
         candidate_id="c1",
         anchor_coord=(5, 7),
         pattern=pat,
-        occupied_cells=frozenset({(5, 7), (6, 7)}),
-        output_stub=(9, 7),
+        occupied_cells=frozenset({(5, 7)}),
+        output_stub=(7, 7),
         output_dir="E",
         transport_kind=TransportKind.SHAPE_BELT,
         throughput_factor=4,

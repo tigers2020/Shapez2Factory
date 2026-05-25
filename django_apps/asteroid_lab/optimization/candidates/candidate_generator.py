@@ -5,8 +5,12 @@ from __future__ import annotations
 from django_apps.asteroid_lab.adapters.catalog_candidate_placements import (
     build_catalog_placement_specs,
 )
+from django_apps.asteroid_lab.adapters.catalog_geometry_transform import cardinal_unit_vector
 from django_apps.asteroid_lab.contracts.catalog_candidate import CatalogPlacementSpec
-from django_apps.asteroid_lab.contracts.catalog_placement import CatalogPlacementRef
+from django_apps.asteroid_lab.contracts.catalog_placement import (
+    CardinalDirection,
+    CatalogPlacementRef,
+)
 from django_apps.asteroid_lab.optimization.candidates.bundle_pattern import BundlePattern
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
@@ -45,15 +49,12 @@ def _translate_offset(anchor: Coord, offset: Coord) -> Coord:
 
 
 def _bundle_pattern_from_spec(spec: CatalogPlacementSpec) -> BundlePattern:
-    sorted_cells = sorted(spec.occupied_offsets)
-    extractor = sorted_cells[0]
-    extensions = tuple(cell for cell in sorted_cells if cell != extractor)
     return BundlePattern(
         pattern_id=spec.pattern_id,
-        extension_count=min(3, max(0, len(sorted_cells) - 1)),
+        extension_count=len(spec.extension_offsets),
         occupied_offsets=spec.occupied_offsets,
-        extractor_offset=extractor,
-        extension_offsets=extensions,
+        extractor_offset=spec.extractor_offset,
+        extension_offsets=spec.extension_offsets,
         output_dir=spec.output_dir,
         fixed_output_transport_offset=spec.fixed_output_transport_offset,
         output_stub_offset=spec.output_stub_offset,
@@ -71,15 +72,33 @@ def _project_spec(anchor: Coord, spec: CatalogPlacementSpec) -> tuple[frozenset[
 def _validate_geometry(
     inp: OptimizationInput,
     spec: CatalogPlacementSpec,
+    anchor: Coord,
     occupied: frozenset[Coord],
     output_stub: Coord,
 ) -> CandidateRejectReason | None:
+    if spec.extractor_offset != (0, 0):
+        return CandidateRejectReason.GEOMETRY_INVALID
     if len(occupied) != len(spec.occupied_offsets):
         return CandidateRejectReason.OVERLAP
     if not occupied.issubset(inp.mineable_cells):
         return CandidateRejectReason.GEOMETRY_INVALID
-    if output_stub in occupied:
+
+    fot_abs = _translate_offset(anchor, spec.fixed_output_transport_offset)
+    stub_abs = _translate_offset(anchor, spec.output_stub_offset)
+    if fot_abs in occupied:
+        return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_IN_OCCUPIED
+    if stub_abs in occupied:
+        return CandidateRejectReason.ROUTE_PROBE_START_IN_OCCUPIED
+    if output_stub != stub_abs:
         return CandidateRejectReason.GEOMETRY_INVALID
+
+    unit = cardinal_unit_vector(CardinalDirection(spec.output_dir))
+    axis_local = (
+        spec.extractor_offset[0] + unit[0],
+        spec.extractor_offset[1] + unit[1],
+    )
+    if axis_local in spec.extension_offsets:
+        return CandidateRejectReason.EXTENSION_ON_OUTPUT_AXIS
     return None
 
 
@@ -127,7 +146,7 @@ def generate_candidates(
             candidate_id = _make_candidate_id(anchor, spec.pattern_id, inp.transport_kind.value)
             ref = CatalogPlacementRef(spec.canonical_id, anchor, spec.rotation)
 
-            geometry_reason = _validate_geometry(inp, spec, occupied, output_stub)
+            geometry_reason = _validate_geometry(inp, spec, anchor, occupied, output_stub)
             if geometry_reason is not None:
                 rejected.append(
                     RejectedBundleCandidate(

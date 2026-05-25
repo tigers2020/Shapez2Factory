@@ -1053,3 +1053,30 @@ class LocalizedMessageAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
         return text[:60] + "…" if len(text) > 60 else text
 
     message_preview.short_description = "Text"
+
+
+@admin.register(m.MiningExtractionRule)
+class MiningExtractionRuleAdmin(admin.ModelAdmin):
+    list_display = (
+        "resource_kind",
+        "transport_kind",
+        "mini_unit_output_per_min",
+        "output_unit",
+        "max_extension_count",
+        "source_kind",
+        "is_active",
+    )
+    list_filter = ("resource_kind", "source_kind", "is_active")
+    search_fields = ("resource_kind", "transport_kind", "source_note")
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_view_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return bool(request.user.is_active and request.user.is_staff)

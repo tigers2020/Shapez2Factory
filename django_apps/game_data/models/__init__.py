@@ -28,6 +28,7 @@ from django_apps.game_data.models.l10n import (
     LazyLocalizedTextRef,
     LocalizedMessage,
 )
+from django_apps.game_data.models.mining import MiningExtractionRule
 from django_apps.game_data.models.references import GameDataReference
 from django_apps.game_data.models.reflection import ClrTypeRegistryEntry
 from django_apps.game_data.models.research import (
@@ -100,6 +101,7 @@ __all__ = [
     "LazyLocalizedTextRef",
     "LocalizationExportStatus",
     "LocalizedMessage",
+    "MiningExtractionRule",
     "ResearchGlobalConfig",
     "ResearchMechanic",
     "ResearchMilestone",

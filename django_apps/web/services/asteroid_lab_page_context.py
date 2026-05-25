@@ -171,7 +171,9 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
     if project_id is None:
         return ctx
 
-    ctx["runs"] = solver_runs_for_lab_project(int(project_id))
+    runs = solver_runs_for_lab_project(int(project_id))
+    ctx["runs"] = runs
+    ctx["initial_lab_run"] = runs[0] if runs else None
 
     track = get_latest_lab_replay_track_for_project(int(project_id))
     frames_json, track_metrics = build_lab_replay_frames_for_project(int(project_id))

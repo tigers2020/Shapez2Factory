@@ -72,6 +72,71 @@ def test_lab_run_summary_capacity_fields_partial() -> None:
     assert row["placed"] == 6
 
 
+def test_lab_run_summary_nested_capacity_from_solver_summary() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=99,
+        status="completed",
+        solver_summary={
+            "validation_passed": True,
+            "confirmed_count": 1,
+            "reconstruction_observability": {
+                "cell_count": 10,
+                "display_cell_count": 120,
+                "mineable_cell_count": 40,
+                "confirmed_cell_count": 8,
+                "shape_confirmed_cell_count": 8,
+                "fluid_confirmed_cell_count": 0,
+                "primary_resource_kind": "shape",
+                "ambiguous_cell_count": 1,
+                "external_void_cell_count": 1,
+                "quality_tier": "CONFIDENT_RECONSTRUCTION",
+                "confidence_score": "0.9400",
+            },
+            "reconstruction_capacity": {
+                "capacity_basis": "terrain_upper_bound",
+                "primary_resource_kind": "shape",
+                "by_resource": {
+                    "shape": {
+                        "max_throughput_per_min": "3840.0000",
+                        "output_unit": "shapes_per_min",
+                        "capacity_upper_bound_platform_count": 8,
+                        "source_kind": "CANON_MANUAL",
+                    },
+                    "fluid": {
+                        "max_throughput_per_min": "0.0000",
+                        "output_unit": "L_per_min",
+                        "capacity_upper_bound_platform_count": 0,
+                        "source_kind": "CANON_MANUAL",
+                    },
+                },
+            },
+        },
+    )
+    assert row["capacity"]["shape_max_throughput_per_min"] == "3840.0000"
+    assert row["capacity"]["fluid_max_throughput_per_min"] == "0.0000"
+    assert row["capacity"]["platform_upper_bound"] == 8
+    assert row["capacity"]["primary_resource_kind"] == "shape"
+    assert row["capacity"]["fluid_platform_count"] == 0
+    assert row["reconstruction"]["display_cell_count"] == 120
+    assert row["reconstruction"]["shape_confirmed_cell_count"] == 8
+    assert row["reconstruction"]["fluid_confirmed_cell_count"] == 0
+    assert row["reconstruction"]["confirmed_cell_count"] == 8
+    assert row["reconstruction"]["quality_tier_short"] == "HIGH"
+    assert row["rttp"]["confirmed_count"] == 1
+    assert row["rttp"]["actual_output_status"] == "pending_pr_2b"
+
+
+def test_lab_run_summary_legacy_missing_capacity_sections() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=1,
+        status="failed",
+        solver_summary={"validation_passed": False, "confirmed_count": 0},
+    )
+    assert row["capacity"]["shape_max_throughput_per_min"] == "—"
+    assert row["reconstruction"]["cell_count"] == "—"
+    assert row["rttp"]["confirmed_count"] == 0
+
+
 def test_lab_run_summary_placed_and_first_issue_detail() -> None:
     detail = {
         "issue_code": "extractor_not_connected",

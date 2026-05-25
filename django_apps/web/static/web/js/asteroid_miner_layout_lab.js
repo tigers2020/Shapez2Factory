@@ -1626,101 +1626,293 @@
       return run.status != null ? String(run.status) : "—";
     }
 
-    function setRunDetail(run) {
-      const dash = "—";
-      const detailIds = [
-        "lab-detail-status",
-        "lab-detail-score",
-        "lab-detail-miners",
-        "lab-detail-extension-cap",
-        "lab-detail-placed",
-        "lab-detail-issue-coord",
-        "lab-detail-issue-candidate",
-        "lab-detail-issue-reservation",
-        "lab-detail-issue-message",
-        "lab-detail-cost",
-        "lab-detail-belts",
-        "lab-detail-pipes",
-        "lab-detail-saturation",
-        "lab-detail-first-issue",
-      ];
-      if (!run) {
-        for (const id of detailIds) {
-          const el = document.getElementById(id);
-          if (el) el.textContent = dash;
-        }
-        const title = document.getElementById("lab-detail-run-id");
-        if (title) title.textContent = dash;
+    function labUiDash() {
+      return "—";
+    }
+
+    function formatCompactNumber(value) {
+      const dash = labUiDash();
+      if (value == null || value === "" || value === dash) return dash;
+      const n = Number.parseFloat(String(value));
+      if (!Number.isFinite(n)) return String(value);
+      return Math.round(n).toLocaleString();
+    }
+
+    function formatOutputUnitShort(unit) {
+      const dash = labUiDash();
+      if (unit == null || unit === "" || unit === dash) return "";
+      const u = String(unit);
+      if (u === "shapes_per_min") return "shapes/min";
+      if (u === "L_per_min") return "L/min";
+      return u.replace(/_/g, "/");
+    }
+
+    function formatThroughputDetail(value, unit) {
+      const dash = labUiDash();
+      const num = formatCompactNumber(value);
+      if (num === dash) return dash;
+      const shortUnit = formatOutputUnitShort(unit);
+      return shortUnit ? num + " " + shortUnit : num;
+    }
+
+    function buildRunListSubtitle(run) {
+      const dash = labUiDash();
+      if (!run || typeof run !== "object") return dash;
+      const cap = run.capacity && typeof run.capacity === "object" ? run.capacity : {};
+      const rec =
+        run.reconstruction && typeof run.reconstruction === "object" ? run.reconstruction : {};
+      const rttp = run.rttp && typeof run.rttp === "object" ? run.rttp : {};
+      const primaryKind =
+        cap.primary_resource_kind != null && cap.primary_resource_kind !== dash
+          ? String(cap.primary_resource_kind)
+          : "shape";
+      const theor =
+        primaryKind === "fluid"
+          ? formatCompactNumber(cap.fluid_max_throughput_per_min)
+          : formatCompactNumber(cap.shape_max_throughput_per_min);
+      const committed = rttp.confirmed_count != null ? String(rttp.confirmed_count) : dash;
+      const tier = rec.quality_tier_short != null ? String(rec.quality_tier_short) : dash;
+      const theorPart =
+        theor !== dash ? theor + "/min " + (typeof shapezUiT === "function" ? shapezUiT("theor.") : "theor.") : dash;
+      const committedPart =
+        committed !== dash
+          ? committed + " " + (typeof shapezUiT === "function" ? shapezUiT("committed") : "committed")
+          : dash;
+      return theorPart + " | " + committedPart + " | " + (tier !== dash ? tier : dash);
+    }
+
+    function updateLabStatCards(run) {
+      const dash = labUiDash();
+      const set = function (id, text) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text != null ? String(text) : dash;
+      };
+      if (!run || typeof run !== "object") {
+        set("lab-card-theoretical-max-value", dash);
+        set("lab-card-resource-capacity-value", dash);
+        set("lab-card-footprint-value", dash);
+        set("lab-card-reconstruction-quality-value", dash);
+        set("lab-card-rttp-committed-value", dash);
+        set("lab-card-rttp-committed-sub", dash);
         return;
       }
-      const ext =
-        run.extension_cap != null && run.extension_cap !== ""
-          ? String(run.extension_cap)
-          : dash;
+      const cap = run.capacity && typeof run.capacity === "object" ? run.capacity : {};
+      const rec =
+        run.reconstruction && typeof run.reconstruction === "object" ? run.reconstruction : {};
+      const rttp = run.rttp && typeof run.rttp === "object" ? run.rttp : {};
+      const primary =
+        cap.primary_resource_kind != null && cap.primary_resource_kind !== dash
+          ? String(cap.primary_resource_kind)
+          : rec.primary_resource_kind != null && rec.primary_resource_kind !== dash
+            ? String(rec.primary_resource_kind)
+            : "shape";
+      const headline =
+        primary === "fluid"
+          ? formatCompactNumber(cap.fluid_max_throughput_per_min)
+          : formatCompactNumber(cap.reconstruction_max_throughput_per_min);
+      set("lab-card-theoretical-max-value", headline);
+      const primaryLabel =
+        primary === "fluid"
+          ? typeof shapezUiT === "function"
+            ? shapezUiT("terrain upper bound (fluid)")
+            : "terrain upper bound (fluid)"
+          : typeof shapezUiT === "function"
+            ? shapezUiT("terrain upper bound (shape)")
+            : "terrain upper bound (shape)";
+      set("lab-card-theoretical-max-sub", primaryLabel);
+      const shapeN = formatCompactNumber(cap.shape_max_throughput_per_min);
+      const fluidN = formatCompactNumber(cap.fluid_max_throughput_per_min);
+      const shapePlatforms = cap.shape_platform_count;
+      const fluidPlatforms = cap.fluid_platform_count;
+      const shapeLabel = typeof shapezUiT === "function" ? shapezUiT("Shape") : "Shape";
+      const fluidLabel = typeof shapezUiT === "function" ? shapezUiT("Fluid") : "Fluid";
+      const resourceLines = [];
+      if (shapeN !== dash) {
+        resourceLines.push(
+          shapeLabel + " " + shapeN + " (" + String(shapePlatforms != null ? shapePlatforms : 0) + ")",
+        );
+      }
+      if (fluidPlatforms === 0 || fluidPlatforms === "0") {
+        resourceLines.push(fluidLabel + " 0");
+      } else if (fluidN !== dash) {
+        resourceLines.push(fluidLabel + " " + fluidN + " (" + String(fluidPlatforms) + ")");
+      }
+      set("lab-card-resource-capacity-value", resourceLines.length ? resourceLines.join(" · ") : dash);
+      const confirmed = rec.confirmed_cell_count;
+      const displayCells = rec.display_cell_count;
+      set(
+        "lab-card-footprint-value",
+        confirmed !== dash && displayCells !== dash && confirmed != null && displayCells != null
+          ? String(confirmed) + " / " + String(displayCells)
+          : dash,
+      );
+      const tierShort = rec.quality_tier_short;
+      const conf = rec.confidence_score;
+      set(
+        "lab-card-reconstruction-quality-value",
+        tierShort != null && tierShort !== dash
+          ? String(tierShort) + " · " + (conf != null ? String(conf) : dash)
+          : dash,
+      );
+      const count = rttp.confirmed_count;
+      const placementLabel =
+        typeof shapezUiT === "function" ? shapezUiT("placement(s)") : "placement(s)";
+      set(
+        "lab-card-rttp-committed-value",
+        count != null && count !== dash ? String(count) + " " + placementLabel : dash,
+      );
+      set(
+        "lab-card-rttp-committed-sub",
+        rttp.actual_output_status === "pending_pr_2b"
+          ? typeof shapezUiT === "function"
+            ? shapezUiT("actual output pending")
+            : "actual output pending"
+          : dash,
+      );
+    }
+
+    function updateLabDetailPanels(run) {
+      const dash = labUiDash();
+      const set = function (id, text) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text != null ? String(text) : dash;
+      };
+      if (!run || typeof run !== "object") {
+        [
+          "lab-detail-rec-quality",
+          "lab-detail-rec-confidence",
+          "lab-detail-rec-primary",
+          "lab-detail-rec-display-cells",
+          "lab-detail-rec-mineable",
+          "lab-detail-rec-shape",
+          "lab-detail-rec-fluid",
+          "lab-detail-rec-confirmed",
+          "lab-detail-rec-ambiguous",
+          "lab-detail-rec-void",
+          "lab-detail-cap-shape",
+          "lab-detail-cap-fluid",
+          "lab-detail-cap-platform",
+          "lab-detail-cap-source",
+          "lab-detail-cap-basis",
+          "lab-detail-rttp-confirmed",
+          "lab-detail-rttp-validation",
+          "lab-detail-rttp-candidates",
+          "lab-detail-rttp-commit-order",
+          "lab-detail-rttp-output",
+          "lab-detail-first-issue",
+          "lab-detail-issue-coord",
+          "lab-detail-issue-candidate",
+          "lab-detail-issue-reservation",
+          "lab-detail-issue-message",
+        ].forEach(function (id) {
+          set(id, dash);
+        });
+        return;
+      }
+      const rec =
+        run.reconstruction && typeof run.reconstruction === "object" ? run.reconstruction : {};
+      const cap = run.capacity && typeof run.capacity === "object" ? run.capacity : {};
+      const rttp = run.rttp && typeof run.rttp === "object" ? run.rttp : {};
+      set("lab-detail-rec-quality", rec.quality_tier);
+      set("lab-detail-rec-confidence", rec.confidence_score);
+      set("lab-detail-rec-primary", rec.primary_resource_kind);
+      set("lab-detail-rec-display-cells", rec.display_cell_count);
+      set("lab-detail-rec-mineable", rec.mineable_cell_count);
+      set("lab-detail-rec-shape", rec.shape_confirmed_cell_count);
+      set("lab-detail-rec-fluid", rec.fluid_confirmed_cell_count);
+      set("lab-detail-rec-confirmed", rec.confirmed_cell_count);
+      set("lab-detail-rec-ambiguous", rec.ambiguous_cell_count);
+      set("lab-detail-rec-void", rec.external_void_cell_count);
+      set(
+        "lab-detail-cap-shape",
+        formatThroughputDetail(cap.shape_max_throughput_per_min, cap.shape_output_unit),
+      );
+      set(
+        "lab-detail-cap-fluid",
+        formatThroughputDetail(cap.fluid_max_throughput_per_min, cap.fluid_output_unit),
+      );
+      set(
+        "lab-detail-cap-platform",
+        (cap.shape_platform_count != null ? "shape " + cap.shape_platform_count : "") +
+          (cap.fluid_platform_count != null
+            ? " · fluid " + cap.fluid_platform_count
+            : ""),
+      );
+      set("lab-detail-cap-source", cap.extraction_rule_source);
+      set("lab-detail-cap-basis", cap.capacity_basis);
+      set("lab-detail-rttp-confirmed", rttp.confirmed_count);
+      set(
+        "lab-detail-rttp-validation",
+        rttp.validation_passed === true ? "passed" : rttp.validation_passed === false ? "failed" : dash,
+      );
+      set("lab-detail-rttp-candidates", rttp.candidate_count);
+      set("lab-detail-rttp-commit-order", rttp.commit_order_preview);
+      set(
+        "lab-detail-rttp-output",
+        rttp.actual_output_status === "pending_pr_2b"
+          ? typeof shapezUiT === "function"
+            ? shapezUiT("actual output pending")
+            : "actual output pending"
+          : rttp.actual_committed_output_per_min != null
+            ? String(rttp.actual_committed_output_per_min)
+            : dash,
+      );
       const firstIssue =
         run.first_issue_code != null && run.first_issue_code !== ""
           ? String(run.first_issue_code)
           : Array.isArray(run.issue_codes) && run.issue_codes.length
             ? String(run.issue_codes[0])
             : dash;
-      const map = [
-        ["lab-detail-status", runDetailStatusLabel(run)],
-        ["lab-detail-score", run.score != null ? run.score : dash],
-        ["lab-detail-miners", run.miners != null ? run.miners : dash],
-        ["lab-detail-extension-cap", ext],
-        ["lab-detail-placed", run.placed != null ? run.placed : dash],
-        ["lab-detail-cost", run.cost != null ? run.cost : dash],
-        ["lab-detail-belts", run.belts != null ? run.belts : dash],
-        ["lab-detail-pipes", run.pipes != null ? run.pipes : dash],
-        [
-          "lab-detail-saturation",
-          run.saturation != null && run.saturation !== "" && run.saturation !== dash
-            ? String(run.saturation) + "%"
-            : dash,
-        ],
-        ["lab-detail-first-issue", firstIssue],
-      ];
+      set("lab-detail-first-issue", firstIssue);
       const detail = run.first_issue_detail;
       if (detail && typeof detail === "object") {
-        const coord =
+        set(
+          "lab-detail-issue-coord",
           detail.coord != null && Array.isArray(detail.coord)
             ? "[" + detail.coord.join(", ") + "]"
-            : dash;
-        map.push(
-          ["lab-detail-issue-coord", coord],
-          [
-            "lab-detail-issue-candidate",
-            detail.candidate_id != null && detail.candidate_id !== ""
-              ? String(detail.candidate_id)
-              : dash,
-          ],
-          [
-            "lab-detail-issue-reservation",
-            detail.route_reservation_id != null && detail.route_reservation_id !== ""
-              ? String(detail.route_reservation_id)
-              : dash,
-          ],
-          [
-            "lab-detail-issue-message",
-            detail.message != null && detail.message !== "" ? String(detail.message) : dash,
-          ],
+            : dash,
+        );
+        set(
+          "lab-detail-issue-candidate",
+          detail.candidate_id != null && detail.candidate_id !== "" ? String(detail.candidate_id) : dash,
+        );
+        set(
+          "lab-detail-issue-reservation",
+          detail.route_reservation_id != null && detail.route_reservation_id !== ""
+            ? String(detail.route_reservation_id)
+            : dash,
+        );
+        set(
+          "lab-detail-issue-message",
+          detail.message != null && detail.message !== "" ? String(detail.message) : dash,
         );
       } else {
-        map.push(
-          ["lab-detail-issue-coord", dash],
-          ["lab-detail-issue-candidate", dash],
-          ["lab-detail-issue-reservation", dash],
-          ["lab-detail-issue-message", dash],
-        );
+        set("lab-detail-issue-coord", dash);
+        set("lab-detail-issue-candidate", dash);
+        set("lab-detail-issue-reservation", dash);
+        set("lab-detail-issue-message", dash);
       }
-      for (const [id, val] of map) {
-        const n = document.getElementById(id);
-        if (n) n.textContent = String(val);
+    }
+
+    function setRunDetail(run) {
+      const dash = labUiDash();
+      if (!run) {
+        const title = document.getElementById("lab-detail-run-id");
+        if (title) title.textContent = dash;
+        const statusEl = document.getElementById("lab-detail-status");
+        if (statusEl) statusEl.textContent = dash;
+        updateLabStatCards(null);
+        updateLabDetailPanels(null);
+        return;
       }
+      const statusEl = document.getElementById("lab-detail-status");
+      if (statusEl) statusEl.textContent = runDetailStatusLabel(run);
       const title = document.getElementById("lab-detail-run-id");
       if (title) {
         title.textContent = run.id != null ? "Run #" + String(run.id) : dash;
       }
+      updateLabStatCards(run);
+      updateLabDetailPanels(run);
     }
 
     function evolutionRunButtonClasses(run, selected) {
@@ -1766,21 +1958,15 @@
         btn.type = "button";
         btn.setAttribute("data-lab-run-id", rid);
         btn.className = evolutionRunButtonClasses(run, selected === rid);
-        const scoreLabel = failed
+        const headlineLabel = failed
           ? "validation failed"
           : partial
             ? "capacity failed (" +
-              String(run.placed != null ? run.placed : run.score) +
+              String(run.rttp && run.rttp.confirmed_count != null ? run.rttp.confirmed_count : "—") +
               "/" +
               String(run.target_miner_bundle_count) +
               ")"
-            : run.score != null
-              ? String(run.score)
-              : "—";
-        const sat =
-          run.saturation != null && run.saturation !== "" && run.saturation !== "—"
-            ? String(run.saturation) + "%"
-            : "—";
+            : "Run #" + rid;
         btn.innerHTML =
           '<div class="flex items-center justify-between gap-2">' +
           '<div class="font-medium">Run #' +
@@ -1789,19 +1975,11 @@
           '<div class="text-sm ' +
           (failed ? "text-rose-300" : partial ? "text-amber-300" : "text-cyan-300") +
           '">' +
-          scoreLabel +
+          headlineLabel +
           "</div>" +
           "</div>" +
-          '<div class="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-400">' +
-          "<div>" +
-          (run.miners != null ? run.miners : "—") +
-          " miners</div>" +
-          "<div>" +
-          (run.placed != null ? run.placed : "—") +
-          " placed</div>" +
-          "<div>" +
-          sat +
-          " sat.</div>" +
+          '<div class="mt-2 text-xs text-slate-400 lab-run-list-subtitle">' +
+          buildRunListSubtitle(run) +
           "</div>";
         if (run.first_issue_code) {
           const issue = document.createElement("p");

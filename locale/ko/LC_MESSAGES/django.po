@@ -528,6 +528,114 @@ msgid ""
 "load, and bottleneck checks in a single planning surface."
 msgstr "목표 도형 하나를 잡고 분해·분당 입력·채굴 부하·병목까지 한 화면에서 따라가 봅니다."
 
+msgid "Reconstruction Summary"
+msgstr "복원 요약"
+
+msgid "Quality tier"
+msgstr "품질 등급"
+
+msgid "Confidence"
+msgstr "신뢰도"
+
+msgid "Cells"
+msgstr "셀"
+
+msgid "Confirmed mineable"
+msgstr "확정 채굴 가능"
+
+msgid "Ambiguous"
+msgstr "모호"
+
+msgid "External void"
+msgstr "외부 void"
+
+msgid "Capacity Summary"
+msgstr "용량 요약"
+
+msgid "Theoretical max (shape)"
+msgstr "이론 최대치 (shape)"
+
+msgid "Theoretical max (fluid)"
+msgstr "이론 최대치 (fluid)"
+
+msgid "Platform upper bound"
+msgstr "플랫폼 상한"
+
+msgid "Rule source"
+msgstr "규칙 출처"
+
+msgid "Capacity basis"
+msgstr "용량 기준"
+
+msgid "Committed = route-confirmed solver result"
+msgstr "실제 확정 = 외부 trunk 검증된 solver 결과"
+
+msgid "RTTP Result"
+msgstr "RTTP 결과"
+
+msgid "Confirmed placements"
+msgstr "확정 배치"
+
+msgid "Validation"
+msgstr "검증"
+
+msgid "Candidate count"
+msgstr "후보 수"
+
+msgid "Commit order"
+msgstr "커밋 순서"
+
+msgid "Actual output"
+msgstr "실제 출력"
+
+msgid "First issue"
+msgstr "First issue"
+
+msgid "Issue coord"
+msgstr "Issue coord"
+
+msgid "Candidate id"
+msgstr "Candidate id"
+
+msgid "Reservation id"
+msgstr "Reservation id"
+
+msgid "Issue message"
+msgstr "Issue message"
+
+msgid "Theoretical max = reconstructed terrain upper bound"
+msgstr "이론 최대치 = 복원된 소행성 지형 기준 상한"
+
+msgid "Theoretical Max"
+msgstr "이론 최대치"
+
+msgid "terrain upper bound (shape)"
+msgstr "지형 상한 (shape)"
+
+msgid "Resource Capacity"
+msgstr "자원 용량"
+
+msgid "from reconstructed terrain"
+msgstr "복원 지형 기준"
+
+msgid "Mineable Footprint"
+msgstr "채굴 가능 지형"
+
+msgid "confirmed cells"
+msgstr "확정 셀"
+
+msgid "Reconstruction Quality"
+msgstr "복원 품질"
+
+msgid "quality / confidence"
+msgstr "품질 / 신뢰도"
+
+msgid "RTTP Committed"
+msgstr "RTTP 확정"
+
+msgid "actual output pending"
+msgstr "실제 출력 대기 (PR-2b)"
+
 msgid "Language"
 msgstr "언어"
 

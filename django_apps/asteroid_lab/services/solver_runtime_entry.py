@@ -70,6 +70,10 @@ from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     persist_reconstructed_asteroid_map,
     run_reconstruction_for_map_input,
 )
+from django_apps.asteroid_lab.services.reconstruction_capacity_summary import (
+    build_reconstruction_capacity_envelope,
+    build_reconstruction_observability,
+)
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY,
     SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
@@ -476,6 +480,11 @@ def _run_rttp_solver_for_map_input(
         reconstruction_step=reconstruction_step_from_result(recon),
         catalog_slice_step=catalog_slice_step_from_slice(catalog_slice),
         catalog_error_issue_codes=catalog_error_issue_codes,
+        reconstruction_capacity=build_reconstruction_capacity_envelope(recon=recon),
+        reconstruction_observability=build_reconstruction_observability(
+            recon=recon,
+            cleanup=cleanup,
+        ),
     )
     _persist_solver_run_outcome(
         run_id,

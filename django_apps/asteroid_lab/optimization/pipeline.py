@@ -91,6 +91,9 @@ from django_apps.asteroid_lab.optimization.validation.catalog_layout_validation 
 )
 from django_apps.asteroid_lab.optimization.validation.final_validation import validate_macro_layout
 from django_apps.asteroid_lab.replay import event_types as et
+from django_apps.asteroid_lab.services.committed_throughput_summary import (
+    collect_committed_throughput_factors,
+)
 from django_apps.asteroid_lab.services.dto import SnapshotEventDTO
 
 
@@ -101,6 +104,7 @@ class PipelineResult:
     normal_count: int
     validation_passed: bool
     algorithm_steps: tuple[dict[str, Any], ...] = ()
+    committed_throughput_factors: tuple[int, ...] = ()
 
 
 def _record_replay(
@@ -458,12 +462,17 @@ def _run_v01_rttp_pipeline(
         mode=catalog_mode,
     )
 
+    throughput_factors = collect_committed_throughput_factors(
+        committed_ids=commit_result.committed_ids,
+        candidates_by_id=candidates_by_id,
+    )
     return PipelineResult(
         genome=genome,
         commit_result=commit_result,
         normal_count=len(generation.normal_candidates),
         validation_passed=validation_passed,
         algorithm_steps=tuple(steps),
+        committed_throughput_factors=throughput_factors,
     )
 
 
@@ -630,12 +639,17 @@ def _run_macro_rttp_pipeline(
         mode=catalog_mode,
     )
 
+    throughput_factors = collect_committed_throughput_factors(
+        committed_ids=commit_result.committed_ids,
+        candidates_by_id=candidates_by_id,
+    )
     return PipelineResult(
         genome=genome,
         commit_result=commit_result,
         normal_count=len(generation.normal_candidates),
         validation_passed=validation_passed,
         algorithm_steps=tuple(steps),
+        committed_throughput_factors=throughput_factors,
     )
 
 

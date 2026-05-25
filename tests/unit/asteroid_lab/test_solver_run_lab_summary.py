@@ -126,6 +126,20 @@ def test_lab_run_summary_nested_capacity_from_solver_summary() -> None:
     assert row["rttp"]["actual_output_status"] == "pending_pr_2b"
 
 
+def test_lab_run_summary_actual_output_status_available() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=42,
+        status="completed",
+        solver_summary={
+            "validation_passed": True,
+            "confirmed_count": 2,
+            "actual_committed_output_per_min": "480.0000",
+        },
+    )
+    assert row["rttp"]["actual_output_status"] == "available"
+    assert row["rttp"]["actual_committed_output_per_min"] == "480.0000"
+
+
 def test_lab_run_summary_legacy_missing_capacity_sections() -> None:
     row = lab_run_summary_from_solver_summary(
         run_id=1,

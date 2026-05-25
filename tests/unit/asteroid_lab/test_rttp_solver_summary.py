@@ -83,6 +83,18 @@ def test_build_rttp_solver_summary_includes_reconstruction_capacity_when_provide
     assert summary["reconstruction_observability"] == obs
 
 
+def test_build_rttp_solver_summary_includes_actual_committed_when_provided() -> None:
+    summary = build_rttp_solver_summary(
+        pipeline_ok=True,
+        committed_count=2,
+        normal_count=2,
+        commit_order=("a", "b"),
+        algorithm_steps=(),
+        actual_committed_output_per_min="720.0000",
+    )
+    assert summary["actual_committed_output_per_min"] == "720.0000"
+
+
 def test_build_rttp_solver_summary_omits_reconstruction_keys_when_none() -> None:
     summary = build_rttp_solver_summary(
         pipeline_ok=True,
@@ -93,6 +105,7 @@ def test_build_rttp_solver_summary_omits_reconstruction_keys_when_none() -> None
     )
     assert "reconstruction_capacity" not in summary
     assert "reconstruction_observability" not in summary
+    assert "actual_committed_output_per_min" not in summary
 
 
 def test_build_rttp_solver_summary_includes_ordered_algorithm_steps() -> None:

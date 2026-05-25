@@ -7,9 +7,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[3]
-TEMPLATE = (
-    REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
-)
+TEMPLATE = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
 STAT_PARTIAL = (
     REPO / "django_apps" / "web" / "templates" / "web" / "partials" / "lab_stat_cards.html"
 )

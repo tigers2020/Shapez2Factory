@@ -1761,13 +1761,20 @@
         "lab-card-rttp-committed-value",
         count != null && count !== dash ? String(count) + " " + placementLabel : dash,
       );
+      const actualRate =
+        rttp.actual_output_status === "available" && rttp.actual_committed_output_per_min != null
+          ? formatCompactNumber(rttp.actual_committed_output_per_min)
+          : dash;
+      const perMinLabel = typeof shapezUiT === "function" ? shapezUiT("/min") : "/min";
       set(
         "lab-card-rttp-committed-sub",
         rttp.actual_output_status === "pending_pr_2b"
           ? typeof shapezUiT === "function"
             ? shapezUiT("actual output pending")
             : "actual output pending"
-          : dash,
+          : actualRate !== dash
+            ? actualRate + perMinLabel
+            : dash,
       );
     }
 

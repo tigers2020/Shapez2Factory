@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from django_apps.asteroid_lab.optimization.candidates.bundle_pattern import BundlePattern
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
 from django_apps.asteroid_lab.optimization.candidates.pattern_library import (
     build_pattern_library,

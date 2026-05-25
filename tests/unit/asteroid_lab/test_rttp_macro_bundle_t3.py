@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
     CommitConflict,
@@ -205,19 +205,9 @@ def test_macro_genome_rejects_singleton_slot_injection() -> None:
         raise AssertionError("expected singleton injection guard to raise")
 
 
-@pytest.mark.skip(
-    reason="Macro 4×4 child pool: no committable macro under OUTSIDE_MINEABLE reprobe (PR-B follow-up)"
-)
+@pytest.mark.skip(reason="PR-B: macro 4x4 lacks OUTSIDE_MINEABLE committable children")
 def test_macro_commit_all_or_nothing_success() -> None:
     """RTTP-G13: successful macro commits all three child ids."""
-
-    from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
-        ExtractorPlacementPolicy,
-        FixedOutputTransportPolicy,
-    )
-    from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
-        generate_candidates,
-    )
 
     fixture = build_macro_triple_greenfield_fixture()
     child_pool = fixture.valid_triple
@@ -253,13 +243,6 @@ def test_macro_commit_reprobe_failure_rolls_back() -> None:
 
     from unittest.mock import patch
 
-    from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
-        ExtractorPlacementPolicy,
-        FixedOutputTransportPolicy,
-    )
-    from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
-        generate_candidates,
-    )
     from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
         CommitResult,
         incremental_commit,

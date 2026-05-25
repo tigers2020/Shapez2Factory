@@ -42,9 +42,7 @@ def _catalog_slice(
     ),
     connectors: tuple[BuildingConnectorSnapshot, ...] | None = None,
 ) -> BuildingCatalogSlice:
-    resolved_connectors = (
-        _default_miner_connectors() if connectors is None else connectors
-    )
+    resolved_connectors = _default_miner_connectors() if connectors is None else connectors
     return BuildingCatalogSlice(
         slice_version=SLICE_VERSION,
         transport_registry=(TransportRegistryEntry("space_belt", "belt", canonical_id),),

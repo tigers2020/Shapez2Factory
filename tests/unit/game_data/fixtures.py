@@ -11,6 +11,7 @@ import pytest
 from django.core.management import call_command
 
 from django_apps.game_data.models import ImportBatch
+from django_apps.game_data.models.mining import MiningExtractionRule
 from tests.unit.game_data._dump_expectations import (
     PINNED_BATCH_NAME,
     PINNED_IMPORT_BATCH_PK,
@@ -29,12 +30,26 @@ def _require_game_data_dump(path: Path) -> None:
     pytest.skip(f"Missing pinned game_data dump: {path}")
 
 
+_FLUSH_SKIP_TABLES = frozenset(
+    {
+        MiningExtractionRule._meta.db_table,
+    }
+)
+
+
 def _flush_committed_game_data(django_db_blocker: Any) -> None:
-    """Delete all game_data app rows (module teardown / pre-loaddata). Never global flush."""
+    """Delete imported game_data rows (module teardown / pre-loaddata). Never global flush.
+
+    CANON_MANUAL tables (e.g. MiningExtractionRule) are preserved — seeded by migration, not loaddata.
+    """
     from django.apps import apps
     from django.db import connection
 
-    tables = [model._meta.db_table for model in apps.get_app_config("game_data").get_models()]
+    tables = [
+        model._meta.db_table
+        for model in apps.get_app_config("game_data").get_models()
+        if model._meta.db_table not in _FLUSH_SKIP_TABLES
+    ]
     with django_db_blocker.unblock():
         with connection.cursor() as cursor:
             if connection.vendor == "sqlite":

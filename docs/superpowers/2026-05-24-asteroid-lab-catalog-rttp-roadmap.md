@@ -61,7 +61,8 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | — (D+ PR-1..PR-3 closed) | — |
+| **A** | Mining extraction PR-1 (L1b model) — in flight; **PR-2a** reconstruction max throughput UI queued after PR-1 | — |
+| **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination | — |
 | **Decontamination** | **PR-E** dead-code deletion | PR-D ✅ [`08320666`](https://github.com/tigers2020/Shapez2Factory/commit/08320666) PR #70 · PR-B ✅ `e56ff048` |
 | **Parallel** | None (paused) | — |

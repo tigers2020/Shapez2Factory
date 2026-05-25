@@ -88,7 +88,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**IN FLIGHT (2026-05-25):** PR-2c throughput target % (10–80) + Lab budget UI — PR [#80](https://github.com/tigers2020/Shapez2Factory/pull/80) rebased onto `master` after **PR #79 MERGED** (`58214a01`). Spec: [`docs/superpowers/specs/2026-05-24-throughput-target-percent-pr2c-design.md`](../../docs/superpowers/specs/2026-05-24-throughput-target-percent-pr2c-design.md).
+**CLOSED (2026-05-25):** PR-2c throughput target % (10–80) + Lab budget UI — merged to `master` locally (`36c36bbf`); PR [#80](https://github.com/tigers2020/Shapez2Factory/pull/80). Spec: [`docs/superpowers/specs/2026-05-24-throughput-target-percent-pr2c-design.md`](../../docs/superpowers/specs/2026-05-24-throughput-target-percent-pr2c-design.md).
 
 **CLOSED (2026-05-25):** PR-2a+2b reconstruction max + actual committed throughput — PR [#79](https://github.com/tigers2020/Shapez2Factory/pull/79) squash-merged to `master` (`58214a01`).
 

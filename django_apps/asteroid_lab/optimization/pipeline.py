@@ -783,7 +783,7 @@ def run_rttp_pipeline(
     resolved_fot_policy = (
         fixed_output_transport_policy
         if fixed_output_transport_policy is not None
-        else FixedOutputTransportPolicy.ALLOW
+        else FixedOutputTransportPolicy.OUTSIDE_MINEABLE
     )
     sink = resolve_replay_sink(replay_sink)
     if resolved_config.macro_only_mode:

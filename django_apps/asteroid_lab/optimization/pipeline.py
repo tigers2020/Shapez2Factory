@@ -27,6 +27,7 @@ from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRet
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
     ExtractorPlacementPolicy,
+    FixedOutputTransportPolicy,
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
     generate_candidates,
@@ -364,6 +365,7 @@ def _run_v01_rttp_pipeline(
     policy: ExtractorPlacementPolicy,
     sink: RttpReplaySink,
     config: RttpPipelineConfig,
+    fixed_output_transport_policy: FixedOutputTransportPolicy,
 ) -> PipelineResult:
     steps: list[dict[str, Any]] = []
     field_kind_by_coord = _pipeline_field_kind_by_coord(config)
@@ -387,7 +389,12 @@ def _run_v01_rttp_pipeline(
         passed=True,
     )
 
-    generation = generate_candidates(inp, skeleton, policy=policy)
+    generation = generate_candidates(
+        inp,
+        skeleton,
+        policy=policy,
+        fixed_output_transport_policy=fixed_output_transport_policy,
+    )
     candidates_payload = build_candidates_replay_payload(
         generation,
         field_kind_by_coord=field_kind_by_coord,
@@ -565,6 +572,7 @@ def _run_macro_rttp_pipeline(
     policy: ExtractorPlacementPolicy,
     sink: RttpReplaySink,
     config: RttpPipelineConfig,
+    fixed_output_transport_policy: FixedOutputTransportPolicy,
 ) -> PipelineResult:
     steps: list[dict[str, Any]] = []
     field_kind_by_coord = _pipeline_field_kind_by_coord(config)
@@ -589,7 +597,12 @@ def _run_macro_rttp_pipeline(
         passed=True,
     )
 
-    generation = generate_candidates(inp, skeleton, policy=policy)
+    generation = generate_candidates(
+        inp,
+        skeleton,
+        policy=policy,
+        fixed_output_transport_policy=fixed_output_transport_policy,
+    )
     macro_generation = compile_macros(
         generation.normal_candidates,
         skeleton,
@@ -757,6 +770,7 @@ def run_rttp_pipeline(
     policy: ExtractorPlacementPolicy = ExtractorPlacementPolicy.INTERIOR_AND_RIM,
     replay_sink: RttpReplaySink | None = None,
     pipeline_config: RttpPipelineConfig | None = None,
+    fixed_output_transport_policy: FixedOutputTransportPolicy | None = None,
 ) -> PipelineResult:
     """Wire skeleton → candidates → select → commit → (LNS if needed) → validate."""
 
@@ -766,6 +780,11 @@ def run_rttp_pipeline(
 
     reset_projection_compat_instrumentation()
     resolved_config = pipeline_config or RttpPipelineConfig()
+    resolved_fot_policy = (
+        fixed_output_transport_policy
+        if fixed_output_transport_policy is not None
+        else FixedOutputTransportPolicy.ALLOW
+    )
     sink = resolve_replay_sink(replay_sink)
     if resolved_config.macro_only_mode:
         return _run_macro_rttp_pipeline(
@@ -773,8 +792,15 @@ def run_rttp_pipeline(
             policy=policy,
             sink=sink,
             config=resolved_config,
+            fixed_output_transport_policy=resolved_fot_policy,
         )
-    return _run_v01_rttp_pipeline(inp, policy=policy, sink=sink, config=resolved_config)
+    return _run_v01_rttp_pipeline(
+        inp,
+        policy=policy,
+        sink=sink,
+        config=resolved_config,
+        fixed_output_transport_policy=resolved_fot_policy,
+    )
 
 
 __all__ = ["PipelineResult", "run_rttp_pipeline"]

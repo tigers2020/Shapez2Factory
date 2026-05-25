@@ -49,6 +49,22 @@ def test_specs_never_use_internal_variant_canonical_id(
         assert spec.source_kind is ProjectionSourceKind.GAME_DATA_CANON
 
 
+def test_two_cell_shape_miner_spec_occupies_extractor_only(
+    catalog_slice_with_shape_miner,
+) -> None:
+    from django_apps.asteroid_lab.contracts.catalog_placement import CardinalDirection
+
+    specs = list_equipment_placement_specs(
+        catalog_slice_with_shape_miner,
+        transport_kind=TransportKind.SHAPE_BELT,
+    )
+    east = [s for s in specs if s.rotation is CardinalDirection.E][0]
+    assert (1, 0) not in east.occupied_offsets
+    assert east.throughput_factor == 4
+    assert east.extension_offsets == ()
+    assert east.fixed_output_transport_offset == (1, 0)
+
+
 def test_canon_manual_when_allowlisted_layout_missing_from_slice() -> None:
     sl = _slice_with_variant(
         canonical_id="bv:internal",

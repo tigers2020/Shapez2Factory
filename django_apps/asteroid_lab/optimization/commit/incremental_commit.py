@@ -34,6 +34,7 @@ class CommitConflictReason(StrEnum):
     OCCUPIED_CELL_CONFLICT = "occupied_cell_conflict"
     # Cross-commit FOT reservation (INV-COMMIT-FOT-01/02); not CandidateRejectReason.
     FIXED_OUTPUT_TRANSPORT_CONFLICT = "fixed_output_transport_conflict"
+    FIXED_OUTPUT_TRANSPORT_INSIDE_MINEABLE = "fixed_output_transport_inside_mineable"
     TRANSPORT_KIND_CONFLICT = "transport_kind_conflict"
     HARD_PROTECTED_CONFLICT = "hard_protected_conflict"
     CANDIDATE_NOT_FOUND = "candidate_not_found"
@@ -166,6 +167,14 @@ def _attempt_commit_one(
             conflict=CommitConflict(
                 candidate_id=candidate.candidate_id,
                 reason=CommitConflictReason.FIXED_OUTPUT_TRANSPORT_CONFLICT,
+            ),
+        )
+    if fot_cell in inp.mineable_cells:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.FIXED_OUTPUT_TRANSPORT_INSIDE_MINEABLE,
             ),
         )
     resolved_expansions = _COMMIT_PROBE_MAX_EXPANSIONS if max_expansions is None else max_expansions

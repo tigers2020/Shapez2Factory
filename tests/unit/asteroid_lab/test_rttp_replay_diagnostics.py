@@ -154,6 +154,23 @@ def test_rttp_pipeline_start_greenfield_overlay_stays_in_visible_domain(
         assert (cell["x"], cell["y"]) in visible
 
 
+def test_replay_marks_rejected_candidate_fot_inside_mineable() -> None:
+    rejected = (
+        RejectedBundleCandidate(
+            candidate_id="5,5:cat_x:shape_belt",
+            anchor_coord=(5, 5),
+            pattern_id="cat_test",
+            rejection_reason=CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_INSIDE_MINEABLE,
+            route_probe_cost=None,
+        ),
+    )
+    payload = build_candidates_replay_payload(
+        CandidateGenerationResult(normal_candidates=(), rejected_candidates=rejected),
+    )
+    cell = next(c for c in payload.cell_overlay_json["cells"] if c.get("x") == 5)
+    assert cell.get("rejection_reason") == "fixed_output_transport_inside_mineable"
+
+
 def test_candidates_payload_summarizes_counts() -> None:
     gen = CandidateGenerationResult(
         normal_candidates=(),

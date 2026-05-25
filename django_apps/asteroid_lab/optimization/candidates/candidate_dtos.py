@@ -16,10 +16,24 @@ class ExtractorPlacementPolicy(StrEnum):
     INTERIOR_AND_RIM = "interior_and_rim"
 
 
+class FixedOutputTransportPolicy(StrEnum):
+    ALLOW = "allow"
+    PENALIZE_FIELD_USAGE = "penalize_field_usage"
+    OUTSIDE_MINEABLE = "outside_mineable"
+    OUTWARD_FROM_RIM = "outward_from_rim"
+
+
 class CandidateRejectReason(StrEnum):
     NOT_REACHABLE = "not_reachable"
     GEOMETRY_INVALID = "geometry_invalid"
     OVERLAP = "overlap"
+    FIXED_OUTPUT_TRANSPORT_IN_OCCUPIED = "fixed_output_transport_in_occupied"
+    FIXED_OUTPUT_TRANSPORT_INSIDE_MINEABLE = "fixed_output_transport_inside_mineable"
+    FIXED_OUTPUT_TRANSPORT_KIND_BLOCKED = "fixed_output_transport_kind_blocked"
+    OUTPUT_DIR_NOT_OUTWARD_FROM_RIM = "output_dir_not_outward_from_rim"
+    FIXED_OUTPUT_TRANSPORT_NOT_IN_ROUTE_DOMAIN = "fixed_output_transport_not_in_route_domain"
+    ROUTE_PROBE_START_IN_OCCUPIED = "route_probe_start_in_occupied"
+    EXTENSION_ON_OUTPUT_AXIS = "extension_on_output_axis"
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,5 +71,6 @@ __all__ = [
     "CandidateGenerationResult",
     "CandidateRejectReason",
     "ExtractorPlacementPolicy",
+    "FixedOutputTransportPolicy",
     "RejectedBundleCandidate",
 ]

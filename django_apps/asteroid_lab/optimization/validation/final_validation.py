@@ -32,6 +32,8 @@ def validate_final_layout(
         if overlap:
             return False
         fot_cell = fixed_output_transport_cell(candidate)
+        if fot_cell in inp.mineable_cells:
+            return False
         if fot_cell in occupied_seen or candidate.occupied_cells & frozenset(fot_seen):
             return False
         occupied_seen.update(candidate.occupied_cells)

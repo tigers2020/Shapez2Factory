@@ -142,6 +142,7 @@ def build_candidates_replay_payload(
                 "y": int(rej.anchor_coord[1]),
                 "kind": "candidate.rejected",
                 "transport": "",
+                "rejection_reason": rej.rejection_reason.value,
             }
         )
     if macro_normal:

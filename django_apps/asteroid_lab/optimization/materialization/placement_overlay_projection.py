@@ -213,6 +213,7 @@ def _rows_for_candidate(
     placement_transport_kind: TransportKind,
     extractor_semantic: str,
     extension_semantic: str,
+    fixed_output_transport_semantic: str,
     stub_semantic: str,
     commit_state: str | None,
 ) -> list[dict[str, Any]]:
@@ -235,6 +236,19 @@ def _rows_for_candidate(
             transport_kind="none",
             overlay_semantic_kind=extractor_semantic,
             rotation=rotation,
+            candidate_id=candidate.candidate_id,
+            commit_state=commit_state,
+        )
+    )
+    rows.append(
+        _base_row(
+            at(pattern.fixed_output_transport_offset),
+            kind=fixed_output_transport_semantic,
+            cell_kind=belt_ck,
+            tile_type=belt_tt,
+            transport_kind=belt_tk,
+            overlay_semantic_kind=fixed_output_transport_semantic,
+            rotation=_OUTPUT_DIR_TO_ROTATION.get(candidate.output_dir, 0),
             candidate_id=candidate.candidate_id,
             commit_state=commit_state,
         )
@@ -335,6 +349,7 @@ def build_candidate_placement_overlay_rows(
                 placement_transport_kind=placement_transport,
                 extractor_semantic="placement.candidate_extractor",
                 extension_semantic="placement.candidate_extension",
+                fixed_output_transport_semantic="placement.candidate_fixed_output_transport",
                 stub_semantic="placement.candidate_output_stub",
                 commit_state=None,
             )
@@ -363,6 +378,7 @@ def build_selected_placement_overlay_rows(
                 placement_transport_kind=placement_transport,
                 extractor_semantic="placement.selected_extractor",
                 extension_semantic="placement.selected_extension",
+                fixed_output_transport_semantic="placement.selected_fixed_output_transport",
                 stub_semantic="placement.selected_output_stub",
                 commit_state=None,
             )
@@ -394,6 +410,7 @@ def build_confirmed_placement_overlay_rows(
             placement_transport_kind=transport,
             extractor_semantic="placement.confirmed_extractor",
             extension_semantic="placement.confirmed_extension",
+            fixed_output_transport_semantic="placement.confirmed_fixed_output_transport",
             stub_semantic="placement.confirmed_output_stub",
             commit_state="confirmed",
         )
@@ -404,6 +421,11 @@ def build_confirmed_placement_overlay_rows(
         ext_count += len(candidate.pattern.extension_offsets)
         placement_rows.extend(bundle_rows)
         route_coords -= candidate.occupied_cells
+        fot_coord = (
+            candidate.anchor_coord[0] + candidate.pattern.fixed_output_transport_offset[0],
+            candidate.anchor_coord[1] + candidate.pattern.fixed_output_transport_offset[1],
+        )
+        route_coords.discard(fot_coord)
         route_coords.discard(candidate.output_stub)
 
     route_rows = _route_rows(frozenset(route_coords), transport_kind=transport)

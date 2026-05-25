@@ -73,7 +73,9 @@ def test_lab_replay_description_has_fixed_scroll_viewport() -> None:
     idx = template.index('id="lab-replay-description"')
     chunk = template[idx : idx + 280]
     assert "overflow-y-auto" in chunk
-    assert "h-64" in chunk
+    assert "max-h-48" in chunk
+    footer_idx = template.index('id="lab-map-footer"')
+    assert footer_idx < idx
 
 
 def test_throughput_target_slider_in_extractor_constraints_not_header() -> None:

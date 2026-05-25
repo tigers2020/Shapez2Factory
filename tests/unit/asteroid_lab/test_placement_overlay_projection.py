@@ -11,12 +11,33 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import Bund
 from django_apps.asteroid_lab.optimization.candidates.pattern_library import build_pattern_library
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 from django_apps.asteroid_lab.optimization.materialization.placement_overlay_projection import (
+    _route_rows,
     build_candidate_placement_overlay_rows,
     build_confirmed_placement_overlay_rows,
     build_selected_placement_overlay_rows,
+    field_kind_map_from_entries,
     merge_overlay_rows_by_priority,
     resolve_placement_transport_kind,
 )
+from django_apps.asteroid_lab.reconstruction.complete_map import mineable_field_kind_by_coord
+from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from tests.support.reconstruction_complete_map_fixtures import minimal_complete_map_from_cells
+
+
+def _field_cell(x: int, y: int, *, cell_kind: str) -> DecodedCellDTO:
+    return DecodedCellDTO(
+        x=x,
+        y=y,
+        layer=None,
+        rotation=0,
+        tile_type="",
+        cell_kind=cell_kind,
+        transport_kind="none",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={},
+    )
 
 
 def _pattern(pattern_id: str) -> BundlePattern:
@@ -158,6 +179,53 @@ def test_resolve_placement_transport_kind_prefers_fluid_field_at_anchor() -> Non
         {(2, -10): "asteroid_fluid_field"},
     )
     assert resolved is TransportKind.FLUID_PIPE
+
+
+def test_route_l_shape_corner_uses_turn_tile_pr1b() -> None:
+    coords = frozenset({(0, 0), (1, 0), (1, 1)})
+    rows = _route_rows(coords, transport_kind=TransportKind.SHAPE_BELT)
+    by_xy = {(r["x"], r["y"]): r for r in rows}
+    assert by_xy[(1, 0)]["tile_type"] in ("SpaceBelt_RightTurn", "SpaceBelt_LeftTurn")
+    assert by_xy[(0, 0)]["tile_type"] == "SpaceBelt_Forward"
+    assert by_xy[(1, 1)]["tile_type"] == "SpaceBelt_Forward"
+
+
+def test_route_straight_segment_forward_rotation_pr1b() -> None:
+    coords = frozenset({(2, 0), (3, 0), (4, 0)})
+    rows = _route_rows(coords, transport_kind=TransportKind.SHAPE_BELT)
+    by_xy = {(r["x"], r["y"]): r for r in rows}
+    for row in rows:
+        assert row["tile_type"] == "SpaceBelt_Forward"
+    assert by_xy[(3, 0)]["rotation"] == 0
+
+
+def test_complete_map_field_kinds_map_to_fluid_miner_overlay() -> None:
+    """Post-merge smoke: complete_map SoT → field_kind map → fluid miner tile."""
+
+    cells = (
+        _field_cell(2, -10, cell_kind="asteroid_fluid_field"),
+        _field_cell(3, -10, cell_kind="asteroid_shape_field"),
+    )
+    complete_map = minimal_complete_map_from_cells(*cells)
+    field_map = mineable_field_kind_by_coord(complete_map)
+    entries = tuple((x, y, k) for (x, y), k in sorted(field_map.items()))
+    wired = field_kind_map_from_entries(entries)
+    fluid_cand = _candidate(anchor=(2, -10))
+    rows, _diag = build_confirmed_placement_overlay_rows(
+        committed_ids=(fluid_cand.candidate_id,),
+        candidates_by_id={fluid_cand.candidate_id: fluid_cand},
+        reserved_route_cells=frozenset(),
+        field_kind_by_coord=wired,
+    )
+    assert any(r.get("cell_kind") == "fluid_miner" for r in rows)
+    shape_cand = _candidate(anchor=(3, -10))
+    rows_shape, _ = build_confirmed_placement_overlay_rows(
+        committed_ids=(shape_cand.candidate_id,),
+        candidates_by_id={shape_cand.candidate_id: shape_cand},
+        reserved_route_cells=frozenset(),
+        field_kind_by_coord=wired,
+    )
+    assert any(r.get("cell_kind") == "shape_miner" for r in rows_shape)
 
 
 def test_confirmed_overlay_uses_fluid_miner_on_fluid_field() -> None:

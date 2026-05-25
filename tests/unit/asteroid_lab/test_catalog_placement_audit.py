@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.adapters.catalog_placement_audit import audit_catalog_placements
+from django_apps.asteroid_lab.adapters.catalog_placement_audit import (
+    audit_catalog_placements,
+    catalog_placement_audit_metrics,
+)
+from django_apps.asteroid_lab.catalog.projection_compat_metrics import (
+    committed_projection_audit_metrics,
+)
 from django_apps.asteroid_lab.contracts.building_catalog_slice import (
     SLICE_VERSION,
     BuildingCatalogSlice,
@@ -110,6 +116,30 @@ def test_audit_not_in_slice_when_canonical_id_unknown() -> None:
     audit = audit_catalog_placements(("c1",), {"c1": cand}, sl)
     assert audit.not_in_slice_count == 1
     assert CatalogPlacementIssueCode.CATALOG_VARIANT_NOT_IN_SLICE.value in audit.issue_codes
+
+
+def test_audit_metrics_include_temporary_compat_count() -> None:
+    from tests.support.catalog_test_fixtures import build_minimal_test_catalog_slice
+
+    sl = build_minimal_test_catalog_slice()
+    audit = audit_catalog_placements((), {}, sl)
+    metrics = catalog_placement_audit_metrics(
+        audit,
+        catalog_slice_hash="h1",
+        catalog_slice_version="v1",
+    )
+    metrics.update(
+        committed_projection_audit_metrics(
+            sl,
+            transport_kind=TransportKind.SHAPE_BELT,
+            committed_ids=(),
+            candidates_by_id={},
+            include_route_instrumentation=False,
+        )
+    )
+    assert "temporary_compat_count" in metrics
+    assert "projection_source_kind_counts" in metrics
+    assert "committed_projection_audit" in metrics
 
 
 def test_audit_transform_error_on_empty_footprint_in_slice() -> None:

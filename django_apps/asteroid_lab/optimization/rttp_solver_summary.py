@@ -9,7 +9,11 @@ from typing import Any
 from django_apps.asteroid_lab.adapters.catalog_footprint_policy import (
     summarize_footprint_catalog,
 )
+from django_apps.asteroid_lab.catalog.projection_compat_metrics import (
+    equipment_projection_metrics,
+)
 from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCatalogSlice
+from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 from django_apps.asteroid_lab.reconstruction.confidence import QUALITY_TIER_CONFIDENT
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.replay import event_types as et
@@ -83,10 +87,15 @@ def reconstruction_step_from_result(recon: ReconstructionResult) -> dict[str, An
     )
 
 
-def catalog_slice_step_from_slice(catalog_slice: BuildingCatalogSlice) -> dict[str, Any]:
+def catalog_slice_step_from_slice(
+    catalog_slice: BuildingCatalogSlice,
+    *,
+    transport_kind: TransportKind = TransportKind.SHAPE_BELT,
+) -> dict[str, Any]:
     """Output-only catalog geometry metrics (Track D)."""
 
     metrics = summarize_footprint_catalog(catalog_slice)
+    metrics.update(equipment_projection_metrics(catalog_slice, transport_kind=transport_kind))
     return algorithm_step_summary_to_json(
         {
             "step_id": RttpAlgorithmStepId.RTTP_CATALOG_SLICE.value,

@@ -27,8 +27,10 @@ def build_minimal_test_catalog_slice(
     return BuildingCatalogSlice(
         slice_version=SLICE_VERSION,
         transport_registry=(TransportRegistryEntry("space_belt", "belt", canonical_id),),
-        variants=(VariantIdentity(canonical_id, "miner"),),
-        variant_geometries=(VariantGeometryCatalog(canonical_id, "miner", footprint, connectors),),
+        variants=(VariantIdentity(canonical_id, "Layout_ShapeMiner"),),
+        variant_geometries=(
+            VariantGeometryCatalog(canonical_id, "Layout_ShapeMiner", footprint, connectors),
+        ),
     )
 
 

@@ -115,6 +115,26 @@ def test_resolve_cell_without_catalog_returns_none_for_unknown() -> None:
     assert resolve_cell_transport_kind("space_belt", catalog_slice=None) is None
 
 
+def test_placement_transport_canonical_ids_excludes_internal_variant() -> None:
+    from django_apps.asteroid_lab.catalog.asteroid_transport_projection import (
+        placement_transport_canonical_ids,
+    )
+    from tests.unit.asteroid_lab.test_catalog_placement_validation import _slice_with_variant
+
+    sl = _slice_with_variant(
+        canonical_id="bv:internal",
+        internal_name="BeltDefaultForwardInternalVariant",
+    )
+    sl = BuildingCatalogSlice(
+        SLICE_VERSION,
+        (TransportRegistryEntry("ForwardBelt", "belt", "bv:internal"),),
+        sl.variants,
+        sl.variant_geometries,
+    )
+    allowed = placement_transport_canonical_ids(sl, TransportKind.SHAPE_BELT)
+    assert "bv:internal" not in allowed
+
+
 def test_canonical_ids_for_transport_kind_filters_by_category() -> None:
     sl = BuildingCatalogSlice(
         SLICE_VERSION,

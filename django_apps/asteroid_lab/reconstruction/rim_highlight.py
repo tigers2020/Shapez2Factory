@@ -98,7 +98,9 @@ def _normalize_edge(a: Coord, b: Coord) -> tuple[Coord, Coord]:
     return (a, b) if a <= b else (b, a)
 
 
-def _trace_outline_loops(segments: list[tuple[Coord, Coord]]) -> tuple[tuple[tuple[int, int], ...], ...]:
+def _trace_outline_loops(
+    segments: list[tuple[Coord, Coord]],
+) -> tuple[tuple[tuple[int, int], ...], ...]:
     if not segments:
         return ()
 
@@ -120,9 +122,7 @@ def _trace_outline_loops(segments: list[tuple[Coord, Coord]]) -> tuple[tuple[tup
         used.add(edge)
         cur = start_b
         while cur != start_a:
-            next_candidates = [
-                nxt for nxt in adj[cur] if _normalize_edge(cur, nxt) not in used
-            ]
+            next_candidates = [nxt for nxt in adj[cur] if _normalize_edge(cur, nxt) not in used]
             if not next_candidates:
                 path = []
                 break

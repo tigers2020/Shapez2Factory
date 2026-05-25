@@ -39,7 +39,13 @@ def _frame(
 def test_reconstruction_phase_attaches_highlight() -> None:
     field_kind = next(iter(ASTEROID_FIELD_KINDS))
     cells = [{"x": 0, "y": 0, "kind": field_kind}]
-    frames = [_frame(lab_phase="reconstruction", event_type="reconstruction.started", full_cells=cells)]
+    frames = [
+        _frame(
+            lab_phase="reconstruction",
+            event_type="reconstruction.started",
+            full_cells=cells,
+        )
+    ]
     out, frozen = enrich_lab_timeline_frames_with_terrain_rim(frames)
     assert METRICS_KEY in out[0]["metrics"]
     assert frozen is None

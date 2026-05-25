@@ -100,8 +100,19 @@ def build_reconstruction_complete_map(
     )
 
 
+def mineable_field_kind_by_coord(complete_map: ReconstructionCompleteMap) -> dict[Coord, str]:
+    """Island-local coord → ``asteroid_shape_field`` | ``asteroid_fluid_field``."""
+
+    return {
+        (cell.x, cell.y): cell.cell_kind
+        for cell in complete_map.cells
+        if cell.cell_kind in ASTEROID_FIELD_KINDS
+    }
+
+
 __all__ = [
     "ReconstructionCompleteMap",
     "build_reconstruction_complete_map",
+    "mineable_field_kind_by_coord",
     "overlay_field_cell_count",
 ]

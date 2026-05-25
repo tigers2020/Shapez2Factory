@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -56,6 +56,10 @@ from django_apps.asteroid_lab.optimization.rttp_solver_summary import (
 )
 from django_apps.asteroid_lab.optimization.validation.catalog_layout_validation import (
     catalog_error_issue_codes_from_algorithm_steps,
+)
+from django_apps.asteroid_lab.reconstruction.complete_map import (
+    ReconstructionCompleteMap,
+    mineable_field_kind_by_coord,
 )
 from django_apps.asteroid_lab.services.committed_throughput_summary import (
     build_actual_committed_output_per_min_from_factors,
@@ -257,6 +261,19 @@ def _rttp_pipeline_config_from_run_config(
         target_throughput_per_min=target_throughput_per_min,
         max_placement_goal_count=resolved_max_goal,
     )
+
+
+def _pipeline_config_with_field_kinds(
+    config: RttpPipelineConfig,
+    complete_map: ReconstructionCompleteMap,
+) -> RttpPipelineConfig:
+    entries = tuple(
+        (int(x), int(y), kind)
+        for (x, y), kind in sorted(mineable_field_kind_by_coord(complete_map).items())
+    )
+    if not entries:
+        return config
+    return replace(config, mineable_field_kind_by_coord=entries)
 
 
 def _validate_catalog_slice_for_run(
@@ -530,10 +547,13 @@ def _run_rttp_solver_for_map_input(
         reconstruction_max=primary_reconstruction_max_per_min(capacity_env),
         percent=throughput_percent,
     )
-    pipeline_config = _rttp_pipeline_config_from_run_config(
-        run_config,
-        target_throughput_per_min=target_throughput,
-        max_placement_goal_count=max_placement_goal,
+    pipeline_config = _pipeline_config_with_field_kinds(
+        _rttp_pipeline_config_from_run_config(
+            run_config,
+            target_throughput_per_min=target_throughput,
+            max_placement_goal_count=max_placement_goal,
+        ),
+        complete_map,
     )
     pipeline_result = run_rttp_pipeline(
         opt_inp,

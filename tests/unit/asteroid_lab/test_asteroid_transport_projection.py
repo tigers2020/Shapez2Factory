@@ -34,9 +34,7 @@ def test_placement_transport_canonical_ids_excludes_internal_belt() -> None:
     )
     sl = BuildingCatalogSlice(
         slice_version=sl.slice_version,
-        transport_registry=(
-            TransportRegistryEntry("ForwardBelt", "belt", "bv:internal"),
-        ),
+        transport_registry=(TransportRegistryEntry("ForwardBelt", "belt", "bv:internal"),),
         variants=sl.variants,
         variant_geometries=sl.variant_geometries,
     )

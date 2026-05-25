@@ -131,12 +131,8 @@ def _flow_dirs_by_coord(
     flow: dict[Coord, tuple[int | None, int | None]] = {}
     for chain in _route_chains(route_cells):
         for index, coord in enumerate(chain):
-            incoming = (
-                _dir_between(chain[index - 1], coord) if index > 0 else None
-            )
-            outgoing = (
-                _dir_between(coord, chain[index + 1]) if index + 1 < len(chain) else None
-            )
+            incoming = _dir_between(chain[index - 1], coord) if index > 0 else None
+            outgoing = _dir_between(coord, chain[index + 1]) if index + 1 < len(chain) else None
             flow[coord] = (incoming, outgoing)
     for coord in route_cells:
         flow.setdefault(coord, (None, None))

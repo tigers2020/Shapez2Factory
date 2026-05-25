@@ -20,9 +20,7 @@ from tests.unit.asteroid_lab.test_catalog_placement_validation import _slice_wit
 @pytest.fixture
 def catalog_slice_with_shape_miner() -> object:
     footprint = (BuildingFootprintCell(0, 0, 0), BuildingFootprintCell(1, 0, 1))
-    connectors = (
-        BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),
-    )
+    connectors = (BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),)
     return _slice_with_variant(
         canonical_id="bv:shape_miner",
         internal_name="Layout_ShapeMiner",

@@ -95,9 +95,7 @@ def catalog_slice_step_from_slice(
     """Output-only catalog geometry metrics (Track D)."""
 
     metrics = summarize_footprint_catalog(catalog_slice)
-    metrics.update(
-        equipment_projection_metrics(catalog_slice, transport_kind=transport_kind)
-    )
+    metrics.update(equipment_projection_metrics(catalog_slice, transport_kind=transport_kind))
     return algorithm_step_summary_to_json(
         {
             "step_id": RttpAlgorithmStepId.RTTP_CATALOG_SLICE.value,

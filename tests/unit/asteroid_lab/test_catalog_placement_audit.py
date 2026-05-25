@@ -123,7 +123,11 @@ def test_audit_metrics_include_temporary_compat_count() -> None:
 
     sl = build_minimal_test_catalog_slice()
     audit = audit_catalog_placements((), {}, sl)
-    metrics = catalog_placement_audit_metrics(audit, catalog_slice_hash="h1", catalog_slice_version="v1")
+    metrics = catalog_placement_audit_metrics(
+        audit,
+        catalog_slice_hash="h1",
+        catalog_slice_version="v1",
+    )
     metrics.update(
         committed_projection_audit_metrics(
             sl,

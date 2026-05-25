@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
+from django_apps.asteroid_lab.optimization.candidates.placement_cells import (
+    fixed_output_transport_cell,
+)
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.macros.macro_dtos import MacroBundleCandidate
@@ -14,12 +17,13 @@ def validate_final_layout(
     candidates_by_id: dict[str, BundleCandidate],
     inp: OptimizationInput,
 ) -> bool:
-    """Assert-only checks: disjoint occupied footprints; committed routes reserved."""
+    """Assert-only checks (no repair): disjoint occupied; routes reserved; INV-VALIDATION-FOT-01."""
 
     if not committed_ids:
         return False
 
     occupied_seen: set[tuple[int, int]] = set()
+    fot_seen: set[tuple[int, int]] = set()
     for candidate_id in committed_ids:
         candidate = candidates_by_id.get(candidate_id)
         if candidate is None:
@@ -27,7 +31,11 @@ def validate_final_layout(
         overlap = candidate.occupied_cells & frozenset(occupied_seen)
         if overlap:
             return False
+        fot_cell = fixed_output_transport_cell(candidate)
+        if fot_cell in occupied_seen or candidate.occupied_cells & frozenset(fot_seen):
+            return False
         occupied_seen.update(candidate.occupied_cells)
+        fot_seen.add(fot_cell)
 
         if candidate.output_stub not in reserved_route_cells and reserved_route_cells:
             return False

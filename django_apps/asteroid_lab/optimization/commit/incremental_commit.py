@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
+from django_apps.asteroid_lab.optimization.candidates.placement_cells import (
+    fixed_output_transport_cell,
+)
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import (
@@ -29,6 +32,8 @@ class CommitConflictReason(StrEnum):
     OVERLAP = "overlap"
     ROUTE_CELL_CONFLICT = "route_cell_conflict"
     OCCUPIED_CELL_CONFLICT = "occupied_cell_conflict"
+    # Cross-commit FOT reservation (INV-COMMIT-FOT-01/02); not CandidateRejectReason.
+    FIXED_OUTPUT_TRANSPORT_CONFLICT = "fixed_output_transport_conflict"
     TRANSPORT_KIND_CONFLICT = "transport_kind_conflict"
     HARD_PROTECTED_CONFLICT = "hard_protected_conflict"
     CANDIDATE_NOT_FOUND = "candidate_not_found"
@@ -49,6 +54,7 @@ class CommitDomainState:
     version: int
     committed_route_cells: frozenset[Coord]
     committed_occupied: frozenset[Coord]
+    committed_fixed_output_transport_cells: frozenset[Coord]
     trunk_mask_cells: frozenset[Coord]
 
 
@@ -79,6 +85,7 @@ def initial_commit_domain(
         version=0,
         committed_route_cells=frozenset(),
         committed_occupied=frozenset(),
+        committed_fixed_output_transport_cells=frozenset(),
         trunk_mask_cells=frozenset(skeleton.trunk_mask_cells),
     )
 
@@ -117,6 +124,7 @@ def _attempt_commit_one(
     goals: frozenset[Coord],
     committed_occupied: frozenset[Coord],
     committed_route_cells: frozenset[Coord],
+    committed_fixed_output_transport_cells: frozenset[Coord],
     max_expansions: int | None = None,
 ) -> CommitAttemptOutcome:
     if candidate.transport_kind is not inp.transport_kind:
@@ -141,6 +149,23 @@ def _attempt_commit_one(
             conflict=CommitConflict(
                 candidate_id=candidate.candidate_id,
                 reason=CommitConflictReason.INLET_ON_SHARED_TRANSPORT,
+            ),
+        )
+    fot_cell = fixed_output_transport_cell(candidate)
+    if candidate.occupied_cells & committed_fixed_output_transport_cells:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.FIXED_OUTPUT_TRANSPORT_CONFLICT,
+            ),
+        )
+    if fot_cell in committed_occupied:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.FIXED_OUTPUT_TRANSPORT_CONFLICT,
             ),
         )
     resolved_expansions = _COMMIT_PROBE_MAX_EXPANSIONS if max_expansions is None else max_expansions
@@ -207,6 +232,7 @@ def incremental_commit(
     conflicts: list[CommitConflict] = []
     committed_occupied = domain.committed_occupied
     committed_route_cells = domain.committed_route_cells
+    committed_fixed_output_transport_cells = domain.committed_fixed_output_transport_cells
     trunk_mask_cells = domain.trunk_mask_cells
     domain_version = domain.version
 
@@ -228,6 +254,7 @@ def incremental_commit(
             goals=goals,
             committed_occupied=committed_occupied,
             committed_route_cells=committed_route_cells,
+            committed_fixed_output_transport_cells=committed_fixed_output_transport_cells,
         )
         if not outcome.committed:
             if outcome.conflict is not None:
@@ -237,6 +264,9 @@ def incremental_commit(
         route_cells = outcome.route_cells
         committed_ids.append(candidate_id)
         committed_occupied = frozenset(committed_occupied | candidate.occupied_cells)
+        committed_fixed_output_transport_cells = frozenset(
+            committed_fixed_output_transport_cells | {fixed_output_transport_cell(candidate)}
+        )
         committed_route_cells = frozenset(committed_route_cells | route_cells)
         trunk_mask_cells = frozenset(trunk_mask_cells | route_cells)
         domain_version += 1

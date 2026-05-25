@@ -179,6 +179,7 @@ class CommitConflictReason(StrEnum):
     OCCUPIED_CELL_CONFLICT = "occupied_cell_conflict"
     ROUTE_CELL_CONFLICT = "route_cell_conflict"
     TRANSPORT_KIND_CONFLICT = "transport_kind_conflict"
+    FIXED_OUTPUT_TRANSPORT_CONFLICT = "fixed_output_transport_conflict"  # PR1.5 cross-commit FOT
     HARD_BLOCKED_CONFLICT = "hard_blocked_conflict"
     HARD_PROTECTED_CONFLICT = "hard_protected_conflict"
     TRUNK_DEADLOCK = "trunk_deadlock"
@@ -186,6 +187,8 @@ class CommitConflictReason(StrEnum):
 ```
 
 Doc·test code strings stay identical to member names.
+
+**PR1.5 (cross-commit FOT):** `FIXED_OUTPUT_TRANSPORT_CONFLICT` — later `occupied_cells` ∩ prior `committed_fixed_output_transport_cells`, or later FOT ∈ prior `committed_occupied`. Distinct from candidate-generation `FIXED_OUTPUT_TRANSPORT_IN_OCCUPIED`. `CommitDomainState` adds **`committed_fixed_output_transport_cells`** (append-only field; **not** merged into `committed_route_cells` / `reserved_route_cells`).
 
 ## Rollback
 
@@ -208,6 +211,8 @@ Do not touch other confirmed candidates.
 [ ] each domain_cell_transitions element consistent with RouteClass contract (empty tuple may mean “no route_class change”)
 [ ] RecoveryBudget exceed prevents infinite thrashing
 [ ] path crossing `blocked_cells` is `HARD_BLOCKED_CONFLICT`; protected corridor **policy violation** is `HARD_PROTECTED_CONFLICT` (no semantic confusion)
+[ ] PR1.5: confirmed extractor FOT cells reserved in `committed_fixed_output_transport_cells`; no later extractor on peer FOT
+[ ] PR1.5: FOT reservation ≠ route reservation (do not add FOT to `reserved_route_cells`)
 ```
 
 ## Tests

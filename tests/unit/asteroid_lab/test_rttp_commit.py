@@ -13,6 +13,9 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
     generate_candidates,
 )
+from django_apps.asteroid_lab.optimization.candidates.placement_cells import (
+    fixed_output_transport_cell,
+)
 from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
     CommitConflictReason,
     incremental_commit,
@@ -45,9 +48,14 @@ def _pick_committable_candidates(
     )
     chosen: list[BundleCandidate] = []
     occupied: set[tuple[int, int]] = set()
+    fot_reserved: set[tuple[int, int]] = set()
     domain = initial_commit_domain(skeleton, inp)
     for candidate in generation.normal_candidates:
         if candidate.occupied_cells & frozenset(occupied):
+            continue
+        if candidate.occupied_cells & frozenset(fot_reserved):
+            continue
+        if fixed_output_transport_cell(candidate) in occupied:
             continue
         trial = incremental_commit(
             PlacementGenome(commit_order=(candidate.candidate_id,)),
@@ -60,6 +68,7 @@ def _pick_committable_candidates(
             continue
         chosen.append(candidate)
         occupied.update(candidate.occupied_cells)
+        fot_reserved.add(fixed_output_transport_cell(candidate))
         if len(chosen) >= count:
             break
     return tuple(chosen)

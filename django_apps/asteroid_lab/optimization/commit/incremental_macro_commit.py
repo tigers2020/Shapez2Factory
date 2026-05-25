@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
+from django_apps.asteroid_lab.optimization.candidates.placement_cells import (
+    fixed_output_transport_cell,
+)
 from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
     CommitConflict,
     CommitConflictReason,
@@ -37,6 +40,10 @@ def _domain_after_single_commit(
     inp: OptimizationInput,
 ) -> CommitDomainState:
     committed_occupied = frozenset(domain.committed_occupied | candidate.occupied_cells)
+    committed_fixed_output_transport_cells = frozenset(
+        domain.committed_fixed_output_transport_cells
+        | {fixed_output_transport_cell(candidate)}
+    )
     committed_route_cells = result.reserved_route_cells
     return CommitDomainState(
         domain=_rebuild_domain(
@@ -48,6 +55,7 @@ def _domain_after_single_commit(
         version=result.domain_version,
         committed_route_cells=committed_route_cells,
         committed_occupied=committed_occupied,
+        committed_fixed_output_transport_cells=committed_fixed_output_transport_cells,
         trunk_mask_cells=frozenset(domain.trunk_mask_cells | committed_route_cells),
     )
 

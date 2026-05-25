@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.optimization.candidates.placement_cells import (
+    fixed_output_transport_cell,
+)
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import (
     OptimizationInput,
@@ -11,6 +14,7 @@ from django_apps.asteroid_lab.optimization.macros.macro_dtos import MacroBundleC
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import (
     PlacementGenome,
     SelectionConfig,
+    _fot_conflict,
     _inlet_fragility,
     _rim_port_alignment,
 )
@@ -132,6 +136,22 @@ def _macro_overlaps(macro_row: MacroBundleCandidate, occupied: frozenset[Coord])
     return bool(macro_row.macro.combined_occupied_cells & occupied)
 
 
+def _macro_fot_conflict(
+    macro_row: MacroBundleCandidate,
+    *,
+    committed_occupied: frozenset[Coord],
+    committed_fixed_output_transport_cells: frozenset[Coord],
+) -> bool:
+    return any(
+        _fot_conflict(
+            child,
+            committed_occupied=committed_occupied,
+            committed_fixed_output_transport_cells=committed_fixed_output_transport_cells,
+        )
+        for child in macro_row.macro.children
+    )
+
+
 def select_macro_genome(
     macro_normal: tuple[MacroBundleCandidate, ...],
     skeleton: RttpSkeleton,
@@ -148,6 +168,7 @@ def select_macro_genome(
     pool = list(dedupe_macros(macro_normal))
     commit_order: list[str] = []
     committed_occupied: set[Coord] = set()
+    committed_fixed_output_transport_cells: set[Coord] = set()
     committed_route_cells: set[Coord] = set()
     resolved_goal = (
         max(0, goal_count) if goal_count is not None else max(0, skeleton.capacity_goals)
@@ -184,11 +205,19 @@ def select_macro_genome(
         committed_occupied.update(best.macro.combined_occupied_cells)
         for child in best.macro.children:
             committed_route_cells.add(child.output_stub)
+            committed_fixed_output_transport_cells.add(fixed_output_transport_cell(child))
+        committed_fot = frozenset(committed_fixed_output_transport_cells)
+        committed_occ = frozenset(committed_occupied)
         pool = [
             row
             for row in pool
             if row.macro_id != best.macro_id
-            and not _macro_overlaps(row, frozenset(committed_occupied))
+            and not _macro_overlaps(row, committed_occ)
+            and not _macro_fot_conflict(
+                row,
+                committed_occupied=committed_occ,
+                committed_fixed_output_transport_cells=committed_fot,
+            )
         ]
 
     genome = PlacementGenome(commit_order=tuple(commit_order))

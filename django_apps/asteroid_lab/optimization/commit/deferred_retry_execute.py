@@ -8,6 +8,9 @@ from collections.abc import Mapping, Sequence
 from django_apps.asteroid_lab.contracts.deferred_retry_execute import DeferredRetryExecuteResult
 from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
+from django_apps.asteroid_lab.optimization.candidates.placement_cells import (
+    fixed_output_transport_cell,
+)
 from django_apps.asteroid_lab.optimization.commit.deferred_retry_shadow import (
     _eligible_conflicts,
 )
@@ -63,14 +66,18 @@ def _apply_confirmed(
     candidate: BundleCandidate,
     route_cells: frozenset,
     committed_occupied: frozenset,
+    committed_fixed_output_transport_cells: frozenset,
     committed_route_cells: frozenset,
     trunk_mask_cells: frozenset,
     domain_version: int,
-) -> tuple[frozenset, frozenset, frozenset, int]:
+) -> tuple[frozenset, frozenset, frozenset, frozenset, int]:
     new_occupied = frozenset(committed_occupied | candidate.occupied_cells)
+    new_fot = frozenset(
+        committed_fixed_output_transport_cells | {fixed_output_transport_cell(candidate)}
+    )
     new_route_cells = frozenset(committed_route_cells | route_cells)
     new_trunk = frozenset(trunk_mask_cells | route_cells)
-    return new_occupied, new_route_cells, new_trunk, domain_version + 1
+    return new_occupied, new_fot, new_route_cells, new_trunk, domain_version + 1
 
 
 def _state_after_primary(
@@ -78,18 +85,21 @@ def _state_after_primary(
     primary_commit_result: CommitResult,
     commit_order: Sequence[str],
     candidates_by_id: Mapping[str, BundleCandidate],
-) -> tuple[frozenset, frozenset, int]:
+) -> tuple[frozenset, frozenset, frozenset, int]:
     """Rebuild commit-time state from primary ``CommitResult`` (no re-probe)."""
 
     primary_committed = frozenset(primary_commit_result.committed_ids)
     occupied: set[object] = set()
+    fot: set[object] = set()
     for candidate_id in commit_order:
         if candidate_id not in primary_committed:
             continue
         candidate = candidates_by_id[candidate_id]
         occupied.update(candidate.occupied_cells)
+        fot.add(fixed_output_transport_cell(candidate))
     return (
         frozenset(occupied),
+        frozenset(fot),
         primary_commit_result.reserved_route_cells,
         primary_commit_result.domain_version,
     )
@@ -145,7 +155,12 @@ def run_bounded_deferred_retry(
         )
 
     goals = probe_goal_coords(inp, skeleton)
-    committed_occupied, committed_route_cells, domain_version = _state_after_primary(
+    (
+        committed_occupied,
+        committed_fixed_output_transport_cells,
+        committed_route_cells,
+        domain_version,
+    ) = _state_after_primary(
         primary_commit_result=primary_commit_result,
         commit_order=commit_order,
         candidates_by_id=candidates_by_id,
@@ -164,14 +179,22 @@ def run_bounded_deferred_retry(
             goals=goals,
             committed_occupied=committed_occupied,
             committed_route_cells=committed_route_cells,
+            committed_fixed_output_transport_cells=committed_fixed_output_transport_cells,
             max_expansions=config.route_probe_max_expansions,
         )
         if outcome.committed:
             recovered.append(candidate_id)
-            committed_occupied, committed_route_cells, _, domain_version = _apply_confirmed(
+            (
+                committed_occupied,
+                committed_fixed_output_transport_cells,
+                committed_route_cells,
+                _,
+                domain_version,
+            ) = _apply_confirmed(
                 candidate=candidate,
                 route_cells=outcome.route_cells,
                 committed_occupied=committed_occupied,
+                committed_fixed_output_transport_cells=committed_fixed_output_transport_cells,
                 committed_route_cells=committed_route_cells,
                 trunk_mask_cells=frozenset(),
                 domain_version=domain_version,

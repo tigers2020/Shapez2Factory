@@ -9,6 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
+from django_apps.asteroid_lab.optimization.candidates.placement_cells import (
+    fixed_output_transport_cell,
+)
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.selection.equivalence import dedupe_candidates
@@ -123,6 +126,18 @@ def _overlaps(candidate: BundleCandidate, occupied: frozenset[Coord]) -> bool:
     return bool(candidate.occupied_cells & occupied)
 
 
+def _fot_conflict(
+    candidate: BundleCandidate,
+    *,
+    committed_occupied: frozenset[Coord],
+    committed_fixed_output_transport_cells: frozenset[Coord],
+) -> bool:
+    fot_cell = fixed_output_transport_cell(candidate)
+    if candidate.occupied_cells & committed_fixed_output_transport_cells:
+        return True
+    return fot_cell in committed_occupied
+
+
 def select_genome(
     normal_candidates: tuple[BundleCandidate, ...],
     skeleton: RttpSkeleton,
@@ -137,6 +152,7 @@ def select_genome(
     pool = list(dedupe_candidates(normal_candidates))
     commit_order: list[str] = []
     committed_occupied: set[Coord] = set()
+    committed_fixed_output_transport_cells: set[Coord] = set()
     committed_route_cells: set[Coord] = set()
     resolved_goal = (
         max(0, goal_count) if goal_count is not None else max(0, skeleton.capacity_goals)
@@ -171,12 +187,20 @@ def select_genome(
         )
         commit_order.append(best.candidate_id)
         committed_occupied.update(best.occupied_cells)
+        committed_fixed_output_transport_cells.add(fixed_output_transport_cell(best))
         committed_route_cells.add(best.output_stub)
+        committed_fot = frozenset(committed_fixed_output_transport_cells)
+        committed_occ = frozenset(committed_occupied)
         pool = [
             candidate
             for candidate in pool
             if candidate.candidate_id != best.candidate_id
-            and not _overlaps(candidate, frozenset(committed_occupied))
+            and not _overlaps(candidate, committed_occ)
+            and not _fot_conflict(
+                candidate,
+                committed_occupied=committed_occ,
+                committed_fixed_output_transport_cells=committed_fot,
+            )
         ]
 
     return PlacementGenome(commit_order=tuple(commit_order))

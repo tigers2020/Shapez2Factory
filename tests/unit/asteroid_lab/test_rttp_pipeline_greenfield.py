@@ -6,12 +6,21 @@ v0.2 replay on/off parity: ``test_rttp_replay_on_off_parity`` in ``test_rttp_rep
 
 from __future__ import annotations
 
+import pytest
+
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
 )
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
 from django_apps.asteroid_lab.optimization.rttp_solver_summary import RttpAlgorithmStepId
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
 
 
 def test_greenfield_pipeline_deterministic_commits_n_bundles(
@@ -32,6 +41,9 @@ def test_greenfield_pipeline_deterministic_commits_n_bundles(
     assert first == second
     assert first.commit_result.committed_ids == second.commit_result.committed_ids
     assert first.genome.commit_order == second.genome.commit_order
+    assert first.actual_committed_output_per_min is not None
+    assert first.actual_committed_output_per_min.endswith("0000")
+    assert first.actual_committed_output_per_min == second.actual_committed_output_per_min
 
 
 def test_pipeline_includes_deferred_retry_shadow_step_after_primary_commit(

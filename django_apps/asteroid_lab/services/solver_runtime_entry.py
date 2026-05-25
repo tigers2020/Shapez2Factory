@@ -485,6 +485,7 @@ def _run_rttp_solver_for_map_input(
             recon=recon,
             cleanup=cleanup,
         ),
+        actual_committed_output_per_min=pipeline_result.actual_committed_output_per_min,
     )
     _persist_solver_run_outcome(
         run_id,

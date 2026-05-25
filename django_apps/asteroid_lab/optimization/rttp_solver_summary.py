@@ -135,6 +135,7 @@ def build_rttp_solver_summary(
     catalog_error_issue_codes: tuple[str, ...] = (),
     reconstruction_capacity: Mapping[str, Any] | None = None,
     reconstruction_observability: Mapping[str, Any] | None = None,
+    actual_committed_output_per_min: str | None = None,
 ) -> dict[str, Any]:
     """Aggregate RTTP scalars and per-step summaries for ``SolverRun.config_json``."""
 
@@ -180,6 +181,8 @@ def build_rttp_solver_summary(
         summary["reconstruction_capacity"] = dict(reconstruction_capacity)
     if reconstruction_observability is not None:
         summary["reconstruction_observability"] = dict(reconstruction_observability)
+    if actual_committed_output_per_min is not None:
+        summary["actual_committed_output_per_min"] = actual_committed_output_per_min
     return summary
 
 

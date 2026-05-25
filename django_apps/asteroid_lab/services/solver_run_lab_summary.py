@@ -109,11 +109,15 @@ def _section_rttp(solver_summary: dict[str, Any]) -> dict[str, Any]:
     else:
         preview = f"{order[0]} (+{len(order) - 1})"
     actual = solver_summary.get("actual_committed_output_per_min")
+    if actual is not None:
+        output_status = "available"
+    else:
+        output_status = "pending_pr_2b"
     return {
         "confirmed_count": solver_summary.get("confirmed_count", _PLACEHOLDER),
         "validation_passed": bool(solver_summary.get("validation_passed")),
         "actual_committed_output_per_min": actual,
-        "actual_output_status": "available" if actual is not None else "pending_pr_2b",
+        "actual_output_status": output_status,
         "candidate_count": solver_summary.get("normal_candidate_count", _PLACEHOLDER),
         "commit_order_preview": preview,
     }

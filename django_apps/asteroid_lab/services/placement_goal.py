@@ -80,9 +80,7 @@ def _best_bundle_throughput(
     transport_kind: TransportKind,
 ) -> Decimal:
     factors = tuple(
-        int(candidate.throughput_factor)
-        for candidate in normal_candidates
-        if candidate.reachable
+        int(candidate.throughput_factor) for candidate in normal_candidates if candidate.reachable
     )
     return best_bundle_output_per_min_from_factors(
         throughput_factors=factors,

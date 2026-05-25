@@ -23,7 +23,6 @@ from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
 from django_apps.asteroid_lab.reconstruction.complete_map import (
     build_reconstruction_complete_map,
 )
-from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from tests.support.reconstruction_complete_map_fixtures import (
     minimal_cleanup_and_recon_from_cells,

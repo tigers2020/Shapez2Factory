@@ -46,6 +46,8 @@ def test_pipeline_includes_observe_only_catalog_placement_validation_step(
     audit_row = audit_rows[0]
     assert audit_row["passed"] is True
     assert audit_row["metrics"]["catalog_validation_mode"] == "observe_only"
+    assert "temporary_compat_count" in audit_row["metrics"]
+    assert "committed_projection_audit" in audit_row["metrics"]
     commit_rows = [
         row
         for row in result.algorithm_steps

@@ -267,6 +267,10 @@ def _append_catalog_placement_audit_step(
 ) -> None:
     """Record catalog placement audit/validation in algorithm_steps (output-only)."""
 
+    from django_apps.asteroid_lab.catalog.projection_compat_metrics import (
+        committed_projection_audit_metrics,
+    )
+
     catalog_slice = inp.catalog_slice
     slice_hash = catalog_slice_hash(catalog_slice) if catalog_slice is not None else None
     slice_version = catalog_slice.slice_version if catalog_slice is not None else None
@@ -282,6 +286,15 @@ def _append_catalog_placement_audit_step(
         audit,
         catalog_slice_hash=slice_hash,
         catalog_slice_version=slice_version,
+    )
+    metrics.update(
+        committed_projection_audit_metrics(
+            catalog_slice,
+            transport_kind=inp.transport_kind,
+            committed_ids=committed_ids,
+            candidates_by_id=candidates_by_id,
+            include_route_instrumentation=True,
+        )
     )
     metrics["catalog_validation_mode"] = mode
     if catalog_result is not None:
@@ -747,6 +760,11 @@ def run_rttp_pipeline(
 ) -> PipelineResult:
     """Wire skeleton → candidates → select → commit → (LNS if needed) → validate."""
 
+    from django_apps.asteroid_lab.catalog.projection_compat_metrics import (
+        reset_projection_compat_instrumentation,
+    )
+
+    reset_projection_compat_instrumentation()
     resolved_config = pipeline_config or RttpPipelineConfig()
     sink = resolve_replay_sink(replay_sink)
     if resolved_config.macro_only_mode:

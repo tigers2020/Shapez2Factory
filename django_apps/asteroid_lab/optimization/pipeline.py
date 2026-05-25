@@ -516,8 +516,7 @@ def _run_v01_rttp_pipeline(
                 placement_diag.placement_route_overlap_warning_count
             ),
             "placement_route_overlap_warning_coords": [
-                [int(x), int(y)]
-                for x, y in placement_diag.placement_route_overlap_warning_coords
+                [int(x), int(y)] for x, y in placement_diag.placement_route_overlap_warning_coords
             ],
         },
         cell_overlay_json=commit_payload.cell_overlay_json,

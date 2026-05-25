@@ -12,9 +12,7 @@ _FORBIDDEN_FILES = (
     Path("django_apps/asteroid_lab/optimization/selection/macro_greedy_regret.py"),
 )
 
-_ALLOWED_IMPORTER = Path(
-    "django_apps/asteroid_lab/optimization/rttp_replay_diagnostics.py"
-)
+_ALLOWED_IMPORTER = Path("django_apps/asteroid_lab/optimization/rttp_replay_diagnostics.py")
 
 
 def test_core_modules_do_not_import_placement_overlay_projection() -> None:

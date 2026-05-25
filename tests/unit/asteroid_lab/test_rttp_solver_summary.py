@@ -67,6 +67,34 @@ def _minimal_valid_copy() -> str:
     return f"SHAPEZ2-4-{b64}"
 
 
+def test_build_rttp_solver_summary_includes_reconstruction_capacity_when_provided() -> None:
+    cap = {"capacity_basis": "terrain_upper_bound", "by_resource": {"shape": {}}}
+    obs = {"cell_count": 10, "confirmed_cell_count": 8}
+    summary = build_rttp_solver_summary(
+        pipeline_ok=True,
+        committed_count=1,
+        normal_count=1,
+        commit_order=("a",),
+        algorithm_steps=(),
+        reconstruction_capacity=cap,
+        reconstruction_observability=obs,
+    )
+    assert summary["reconstruction_capacity"] == cap
+    assert summary["reconstruction_observability"] == obs
+
+
+def test_build_rttp_solver_summary_omits_reconstruction_keys_when_none() -> None:
+    summary = build_rttp_solver_summary(
+        pipeline_ok=True,
+        committed_count=0,
+        normal_count=0,
+        commit_order=(),
+        algorithm_steps=(),
+    )
+    assert "reconstruction_capacity" not in summary
+    assert "reconstruction_observability" not in summary
+
+
 def test_build_rttp_solver_summary_includes_ordered_algorithm_steps() -> None:
     steps = (
         {

@@ -263,85 +263,7 @@
       </section>
 
       <section class="space-y-5">
-        {% if runs %}
-        {% with r=runs.0 %}
-          <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-              <div class="p-4">
-                <div class="text-xs uppercase tracking-wide text-slate-500">Best score</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">{{ r.score }}</div>
-                <div class="mt-1 text-xs text-slate-400">fitness weighted</div>
-              </div>
-            </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-              <div class="p-4">
-                <div class="text-xs uppercase tracking-wide text-slate-500">Extractors</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">{{ r.miners }}</div>
-                <div class="mt-1 text-xs text-slate-400">{{ r.placed }} placed</div>
-              </div>
-            </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-              <div class="p-4">
-                <div class="text-xs uppercase tracking-wide text-slate-500">Extensions</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">{{ r.extension_cap|default:"—" }}</div>
-                <div class="mt-1 text-xs text-slate-400">per extractor</div>
-              </div>
-            </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-              <div class="p-4">
-                <div class="text-xs uppercase tracking-wide text-slate-500">Belt groups</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">{{ r.belts }}.0</div>
-                <div class="mt-1 text-xs text-slate-400">5 miners each</div>
-              </div>
-            </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-              <div class="p-4">
-                <div class="text-xs uppercase tracking-wide text-slate-500">Fluid groups</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">{{ r.pipes }}.0</div>
-                <div class="mt-1 text-xs text-slate-400">4 miners each</div>
-              </div>
-            </div>
-          </div>
-        {% endwith %}
-        {% else %}
-          <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-              <div class="p-4">
-                <div class="text-xs uppercase tracking-wide text-slate-500">Best score</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">—</div>
-                <div class="mt-1 text-xs text-slate-400">—</div>
-              </div>
-            </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-              <div class="p-4">
-                <div class="text-xs uppercase tracking-wide text-slate-500">Extractors</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">—</div>
-                <div class="mt-1 text-xs text-slate-400">—</div>
-              </div>
-            </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-              <div class="p-4">
-                <div class="text-xs uppercase tracking-wide text-slate-500">Extensions</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">—</div>
-                <div class="mt-1 text-xs text-slate-400">—</div>
-              </div>
-            </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-              <div class="p-4">
-                <div class="text-xs uppercase tracking-wide text-slate-500">Belt groups</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">—</div>
-                <div class="mt-1 text-xs text-slate-400">—</div>
-              </div>
-            </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-              <div class="p-4">
-                <div class="text-xs uppercase tracking-wide text-slate-500">Fluid groups</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">—</div>
-                <div class="mt-1 text-xs text-slate-400">—</div>
-              </div>
-            </div>
-          </div>
-        {% endif %}
+        {% include "web/partials/lab_stat_cards.html" %}
 
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
           <div class="p-4">
@@ -480,15 +402,11 @@
                 >
                   <div class="flex items-center justify-between">
                     <div class="font-medium">Run #{{ r.id }}</div>
-                    <div class="text-sm {% if r.status == 'failed' %}text-rose-300{% else %}text-cyan-300{% endif %}">
-                      {% if r.status == 'failed' %}validation failed{% else %}{{ r.score }}{% endif %}
+                    <div class="text-sm {% if r.status == 'failed' %}text-rose-300{% else %}text-cyan-300{% endif %} lab-run-list-headline">
+                      {% if r.status == 'failed' %}validation failed{% else %}Run #{{ r.id }}{% endif %}
                     </div>
                   </div>
-                  <div class="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-400">
-                    <div>{{ r.miners }} miners</div>
-                    <div>{{ r.placed }} placed</div>
-                    <div>{{ r.saturation }}{% if r.saturation != "—" %}%{% endif %} sat.</div>
-                  </div>
+                  <div class="mt-2 text-xs text-slate-400 lab-run-list-subtitle" data-lab-run-subtitle-id="{{ r.id }}">—</div>
                   {% if r.first_issue_code %}
                     <p class="mt-2 truncate text-xs text-rose-300/90" title="{{ r.first_issue_code }}">{{ r.first_issue_code }}</p>
                   {% endif %}
@@ -500,81 +418,28 @@
           </div>
         </div>
 
-        {% if runs %}
-        {% with r=runs.0 %}
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-            <div class="p-4">
-              <div class="flex items-center gap-2">
-                <svg class="h-4 w-4 text-cyan-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="16" y="16" width="6" height="6" rx="1"/>
-                  <rect x="2" y="16" width="6" height="6" rx="1"/>
-                  <rect x="9" y="2" width="6" height="6" rx="1"/>
-                  <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/>
-                </svg>
-                <h2 class="font-semibold">Selected Run Detail</h2>
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
+          <div class="p-4">
+            <div class="flex items-center gap-2">
+              <svg class="h-4 w-4 text-cyan-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="16" y="16" width="6" height="6" rx="1"/>
+                <rect x="2" y="16" width="6" height="6" rx="1"/>
+                <rect x="9" y="2" width="6" height="6" rx="1"/>
+                <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/>
+              </svg>
+              <h2 class="font-semibold">Selected Run Detail</h2>
+            </div>
+            <div class="mt-4 rounded-xl bg-slate-900 p-4">
+              <div id="lab-detail-run-id" class="text-sm font-medium">
+                {% if initial_lab_run %}Run #{{ initial_lab_run.id }}{% else %}—{% endif %}
               </div>
-              <div class="mt-4 rounded-xl bg-slate-900 p-4">
-                <div id="lab-detail-run-id" class="text-sm font-medium">Run #{{ r.id }}</div>
-                <div class="mt-3 space-y-2 text-sm text-slate-400">
-                  <div class="flex justify-between"><span>Status</span><span id="lab-detail-status" class="text-slate-100">{% if r.status == 'failed' %}validation failed{% else %}completed{% endif %}</span></div>
-                  <div class="flex justify-between"><span>Fitness</span><span id="lab-detail-score" class="text-slate-100">{{ r.score }}</span></div>
-                  <div class="flex justify-between"><span>Extractor bundles</span><span id="lab-detail-miners" class="text-slate-100">{{ r.miners }}</span></div>
-                  <div class="flex justify-between"><span>Extension cap</span><span id="lab-detail-extension-cap" class="text-slate-100">{{ r.extension_cap|default:"—" }}</span></div>
-                  <div class="flex justify-between"><span>Placed</span><span id="lab-detail-placed" class="text-slate-100">{{ r.placed }}</span></div>
-                  <div class="flex justify-between"><span>Transport cost</span><span id="lab-detail-cost" class="text-slate-100">{{ r.cost }}</span></div>
-                  <div class="flex justify-between"><span>Belt-equivalent groups</span><span id="lab-detail-belts" class="text-slate-100">{{ r.belts }}</span></div>
-                  <div class="flex justify-between"><span>Pipe-equivalent groups</span><span id="lab-detail-pipes" class="text-slate-100">{{ r.pipes }}</span></div>
-                  <div class="flex justify-between"><span>Estimated saturation</span><span id="lab-detail-saturation" class="text-slate-100">{{ r.saturation }}{% if r.saturation != "—" %}%{% endif %}</span></div>
-                  <div class="flex justify-between"><span>First issue</span><span id="lab-detail-first-issue" class="text-slate-100">{{ r.first_issue_code|default:"—" }}</span></div>
-                  <div class="flex justify-between"><span>Issue coord</span><span id="lab-detail-issue-coord" class="text-slate-100">{% if r.first_issue_detail and r.first_issue_detail.coord %}{{ r.first_issue_detail.coord }}{% else %}—{% endif %}</span></div>
-                  <div class="flex justify-between"><span>Candidate id</span><span id="lab-detail-issue-candidate" class="text-slate-100">{% if r.first_issue_detail %}{{ r.first_issue_detail.candidate_id|default:"—" }}{% else %}—{% endif %}</span></div>
-                  <div class="flex justify-between"><span>Reservation id</span><span id="lab-detail-issue-reservation" class="text-slate-100">{% if r.first_issue_detail %}{{ r.first_issue_detail.route_reservation_id|default:"—" }}{% else %}—{% endif %}</span></div>
-                  <div class="flex justify-between"><span>Issue message</span><span id="lab-detail-issue-message" class="text-slate-100">{% if r.first_issue_detail %}{{ r.first_issue_detail.message|default:"—" }}{% else %}—{% endif %}</span></div>
-                </div>
-              </div>
-              <div class="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-3 text-sm text-slate-500">
-                —
+              <div class="mt-3 space-y-2 text-sm text-slate-400">
+                <div class="flex justify-between"><span>Status</span><span id="lab-detail-status" class="text-slate-100">—</span></div>
               </div>
             </div>
+            {% include "web/partials/lab_run_detail_panels.html" %}
           </div>
-        {% endwith %}
-        {% else %}
-          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-            <div class="p-4">
-              <div class="flex items-center gap-2">
-                <svg class="h-4 w-4 text-cyan-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="16" y="16" width="6" height="6" rx="1"/>
-                  <rect x="2" y="16" width="6" height="6" rx="1"/>
-                  <rect x="9" y="2" width="6" height="6" rx="1"/>
-                  <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/>
-                </svg>
-                <h2 class="font-semibold">Selected Run Detail</h2>
-              </div>
-              <div class="mt-4 rounded-xl bg-slate-900 p-4">
-                <div id="lab-detail-run-id" class="text-sm font-medium">—</div>
-                <div class="mt-3 space-y-2 text-sm text-slate-400">
-                  <div class="flex justify-between"><span>Status</span><span id="lab-detail-status" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Fitness</span><span id="lab-detail-score" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Extractor bundles</span><span id="lab-detail-miners" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Extension cap</span><span id="lab-detail-extension-cap" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Placed</span><span id="lab-detail-placed" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Transport cost</span><span id="lab-detail-cost" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Belt-equivalent groups</span><span id="lab-detail-belts" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Pipe-equivalent groups</span><span id="lab-detail-pipes" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Estimated saturation</span><span id="lab-detail-saturation" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>First issue</span><span id="lab-detail-first-issue" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Issue coord</span><span id="lab-detail-issue-coord" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Candidate id</span><span id="lab-detail-issue-candidate" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Reservation id</span><span id="lab-detail-issue-reservation" class="text-slate-100">—</span></div>
-                  <div class="flex justify-between"><span>Issue message</span><span id="lab-detail-issue-message" class="text-slate-100">—</span></div>
-                </div>
-              </div>
-              <div class="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-3 text-sm text-slate-500">
-                —
-              </div>
-            </div>
-          </div>
-        {% endif %}
+        </div>
       </section>
     </main>
   </div>

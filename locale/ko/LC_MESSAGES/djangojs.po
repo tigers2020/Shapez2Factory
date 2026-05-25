@@ -18,6 +18,9 @@ msgstr "shape_code·역할·연산을 바꿨다면 적용해 그래프를 다시
 msgid "Apply"
 msgstr "적용"
 
+msgid "Belt"
+msgstr "벨트"
+
 msgid "Cancel"
 msgstr "취소"
 
@@ -67,6 +70,9 @@ msgstr "노드 편집"
 
 msgid "Empty source material"
 msgstr "빈 소스 재료"
+
+msgid "Fluid"
+msgstr "유체"
 
 msgid "Intermediate"
 msgstr "중간"
@@ -179,6 +185,12 @@ msgstr "이 연산은 레시피 그래프 엔진의 재계산 목록에 없습�
 msgid "Validation issues in the last result — check the footer message."
 msgstr "직전 결과에 검증 이슈가 있습니다. 아래 안내를 확인하세요."
 
+msgid "actual output pending"
+msgstr "실제 출력 대기 (PR-2b)"
+
+msgid "committed"
+msgstr "확정"
+
 msgid "crystal_color (one letter, optional)"
 msgstr "crystal_color (한 글자·선택)"
 
@@ -187,6 +199,12 @@ msgstr "노드"
 
 msgid "paint_color (single char)"
 msgstr "paint_color (한 글자)"
+
+msgid "placement(s)"
+msgstr "배치"
+
+msgid "theor."
+msgstr "이론"
 
 msgid "{n} nodes selected."
 msgstr "{n}개 노드 선택됨."

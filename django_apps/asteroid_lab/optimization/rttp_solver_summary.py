@@ -133,6 +133,8 @@ def build_rttp_solver_summary(
     reconstruction_step: Mapping[str, Any] | None = None,
     catalog_slice_step: Mapping[str, Any] | None = None,
     catalog_error_issue_codes: tuple[str, ...] = (),
+    reconstruction_capacity: Mapping[str, Any] | None = None,
+    reconstruction_observability: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Aggregate RTTP scalars and per-step summaries for ``SolverRun.config_json``."""
 
@@ -174,6 +176,10 @@ def build_rttp_solver_summary(
     )
     if macro_hud is not None:
         summary["macro_commit_summary"] = macro_hud
+    if reconstruction_capacity is not None:
+        summary["reconstruction_capacity"] = dict(reconstruction_capacity)
+    if reconstruction_observability is not None:
+        summary["reconstruction_observability"] = dict(reconstruction_observability)
     return summary
 
 

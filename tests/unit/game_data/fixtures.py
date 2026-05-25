@@ -40,7 +40,8 @@ _FLUSH_SKIP_TABLES = frozenset(
 def _flush_committed_game_data(django_db_blocker: Any) -> None:
     """Delete imported game_data rows (module teardown / pre-loaddata). Never global flush.
 
-    CANON_MANUAL tables (e.g. MiningExtractionRule) are preserved — seeded by migration, not loaddata.
+    CANON_MANUAL tables (e.g. MiningExtractionRule) are preserved — seeded by migration,
+    not loaddata.
     """
     from django.apps import apps
     from django.db import connection

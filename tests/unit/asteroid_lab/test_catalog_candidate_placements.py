@@ -26,8 +26,10 @@ def _slice_with_output() -> BuildingCatalogSlice:
     return BuildingCatalogSlice(
         slice_version=SLICE_VERSION,
         transport_registry=(TransportRegistryEntry("space_belt", "belt", "bv:1"),),
-        variants=(VariantIdentity("bv:1", "miner"),),
-        variant_geometries=(VariantGeometryCatalog("bv:1", "miner", footprint, connectors),),
+        variants=(VariantIdentity("bv:1", "Layout_ShapeMiner"),),
+        variant_geometries=(
+            VariantGeometryCatalog("bv:1", "Layout_ShapeMiner", footprint, connectors),
+        ),
     )
 
 
@@ -48,7 +50,23 @@ def test_build_specs_four_rotations_deterministic() -> None:
     assert all(s.throughput_factor == 8 for s in specs)
 
 
-def test_build_specs_empty_when_transport_mismatch() -> None:
+def test_build_specs_fluid_transport_uses_fluid_miner_not_shape_slice() -> None:
     sl = _slice_with_output()
     specs = build_catalog_placement_specs(sl, transport_kind=TransportKind.FLUID_PIPE)
-    assert specs == ()
+    assert len(specs) == 4
+    assert all("FluidMiner" in s.canonical_id for s in specs)
+    assert all("InternalVariant" not in s.canonical_id for s in specs)
+
+
+def test_build_catalog_placement_specs_excludes_internal_belt_variant() -> None:
+    from tests.unit.asteroid_lab.test_catalog_placement_validation import _slice_with_variant
+
+    sl = _slice_with_variant(
+        canonical_id="bv:internal",
+        internal_name="BeltDefaultForwardInternalVariant",
+    )
+    specs = build_catalog_placement_specs(sl, transport_kind=TransportKind.SHAPE_BELT)
+    assert specs
+    assert all("InternalVariant" not in s.canonical_id for s in specs)
+    assert all("InternalVariant" not in s.pattern_id for s in specs)
+    assert all(s.canonical_id.startswith(("bv:", "canon_manual:")) for s in specs)

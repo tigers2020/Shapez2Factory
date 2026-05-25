@@ -18,6 +18,7 @@ from django_apps.asteroid_lab.contracts.catalog_placement import (
 )
 from django_apps.asteroid_lab.contracts.catalog_validation import ValidationSeverity
 from django_apps.asteroid_lab.contracts.game_data_snapshot import (
+    BuildingConnectorSnapshot,
     BuildingFootprintCell,
     TransportRegistryEntry,
 )
@@ -46,6 +47,33 @@ def _catalog_slice(
                 internal_name="miner_a",
                 footprint_cells=footprint,
                 connectors=(),
+            ),
+        ),
+    )
+
+
+def _slice_with_variant(
+    *,
+    canonical_id: str = "bv:1",
+    internal_name: str = "miner_a",
+    footprint: tuple[BuildingFootprintCell, ...] = (
+        BuildingFootprintCell(0, 0, 0),
+        BuildingFootprintCell(1, 0, 1),
+    ),
+    connectors: tuple[BuildingConnectorSnapshot, ...] = (),
+) -> BuildingCatalogSlice:
+    """Catalog slice whose sole variant uses the given ``internal_name`` (test helper)."""
+
+    return BuildingCatalogSlice(
+        slice_version=SLICE_VERSION,
+        transport_registry=(TransportRegistryEntry("space_belt", "belt", canonical_id),),
+        variants=(VariantIdentity(canonical_id, internal_name),),
+        variant_geometries=(
+            VariantGeometryCatalog(
+                canonical_id=canonical_id,
+                internal_name=internal_name,
+                footprint_cells=footprint,
+                connectors=connectors,
             ),
         ),
     )

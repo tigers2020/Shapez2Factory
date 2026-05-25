@@ -10,10 +10,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from django_apps.asteroid_lab.catalog.asteroid_transport_projection import resolve_route_tile
 from django_apps.asteroid_lab.contracts.catalog_placement import CardinalDirection
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
+from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4
 
 _FLUID_FIELD_KIND = "asteroid_fluid_field"
 _SHAPE_FIELD_KIND = "asteroid_shape_field"
@@ -64,6 +66,81 @@ def _transport_channel(transport_kind: TransportKind) -> tuple[str, str, str]:
     if transport_kind is TransportKind.FLUID_PIPE:
         return ("space_pipe", "SpacePipe_Forward", "fluid_pipe")
     return ("space_belt", "SpaceBelt_Forward", "shape_belt")
+
+
+_DELTA_TO_DIR: dict[Coord, int] = {
+    (1, 0): 0,
+    (0, 1): 1,
+    (-1, 0): 2,
+    (0, -1): 3,
+}
+
+
+def _dir_between(from_coord: Coord, to_coord: Coord) -> int | None:
+    dx = int(to_coord[0]) - int(from_coord[0])
+    dy = int(to_coord[1]) - int(from_coord[1])
+    if abs(dx) + abs(dy) != 1:
+        return None
+    return _DELTA_TO_DIR.get((dx, dy))
+
+
+def _route_degree(coord: Coord, route_cells: frozenset[Coord]) -> int:
+    return sum(1 for nb in neighbors4(coord) if nb in route_cells)
+
+
+def _walk_route_chain(route_cells: frozenset[Coord], start: Coord) -> tuple[Coord, ...]:
+    chain = [start]
+    prev: Coord | None = None
+    current = start
+    visited = {start}
+    while True:
+        next_candidates = [
+            nb
+            for nb in neighbors4(current)
+            if nb in route_cells and nb != prev and nb not in visited
+        ]
+        if not next_candidates:
+            break
+        nxt = next_candidates[0]
+        chain.append(nxt)
+        visited.add(nxt)
+        prev, current = current, nxt
+    return tuple(chain)
+
+
+def _route_chains(route_cells: frozenset[Coord]) -> tuple[tuple[Coord, ...], ...]:
+    remaining = set(route_cells)
+    chains: list[tuple[Coord, ...]] = []
+    while remaining:
+        endpoints = [c for c in remaining if _route_degree(c, route_cells) == 1]
+        start = (
+            min(endpoints, key=lambda c: (c[1], c[0]))
+            if endpoints
+            else min(remaining, key=lambda c: (c[1], c[0]))
+        )
+        chain = _walk_route_chain(route_cells, start)
+        for coord in chain:
+            remaining.discard(coord)
+        chains.append(chain)
+    return tuple(chains)
+
+
+def _flow_dirs_by_coord(
+    route_cells: frozenset[Coord],
+) -> dict[Coord, tuple[int | None, int | None]]:
+    flow: dict[Coord, tuple[int | None, int | None]] = {}
+    for chain in _route_chains(route_cells):
+        for index, coord in enumerate(chain):
+            incoming = (
+                _dir_between(chain[index - 1], coord) if index > 0 else None
+            )
+            outgoing = (
+                _dir_between(coord, chain[index + 1]) if index + 1 < len(chain) else None
+            )
+            flow[coord] = (incoming, outgoing)
+    for coord in route_cells:
+        flow.setdefault(coord, (None, None))
+    return flow
 
 
 def field_kind_map_from_entries(
@@ -202,20 +279,31 @@ def _route_rows(
     transport_kind: TransportKind,
     candidate_id: str = "",
 ) -> list[dict[str, Any]]:
-    belt_ck, belt_tt, belt_tk = _transport_channel(transport_kind)
-    return [
-        _base_row(
-            coord,
-            kind="route.committed_path",
-            cell_kind=belt_ck,
-            tile_type=belt_tt,
-            transport_kind=belt_tk,
-            overlay_semantic_kind="route.committed_path",
-            rotation=0,
-            candidate_id=candidate_id,
+    belt_ck, _default_tt, belt_tk = _transport_channel(transport_kind)
+    flow_dirs = _flow_dirs_by_coord(coords)
+    rows: list[dict[str, Any]] = []
+    for coord in sorted(coords, key=lambda c: (c[1], c[0])):
+        incoming, outgoing = flow_dirs.get(coord, (None, None))
+        projected = resolve_route_tile(
+            transport_kind=transport_kind,
+            incoming_dir=incoming,
+            outgoing_dir=outgoing,
         )
-        for coord in sorted(coords, key=lambda c: (c[1], c[0]))
-    ]
+        tile_type = projected.layout_t
+        rotation = projected.display_rotation_q
+        rows.append(
+            _base_row(
+                coord,
+                kind="route.committed_path",
+                cell_kind=belt_ck,
+                tile_type=tile_type,
+                transport_kind=belt_tk,
+                overlay_semantic_kind="route.committed_path",
+                rotation=rotation,
+                candidate_id=candidate_id,
+            )
+        )
+    return rows
 
 
 def merge_overlay_rows_by_priority(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:

@@ -28,7 +28,7 @@ def _optimization_input_from_fixture_line(line_index: int) -> OptimizationInput:
     snap = decode_shapez_copy_string(required_copy)
     cleanup = deconstruct_snapshot(snap)
     recon = run_topology_reconstruction(cleanup)
-    inp = optimization_input_from_reconstruction(recon)
+    inp = optimization_input_from_reconstruction(recon, cleanup=cleanup)
     if inp.catalog_slice is None:
         inp = replace(inp, catalog_slice=build_minimal_test_catalog_slice())
     return inp

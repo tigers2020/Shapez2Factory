@@ -66,6 +66,16 @@ def test_primary_max_from_envelope() -> None:
     assert primary_reconstruction_max_per_min(env) == Decimal("68160.0000")
 
 
+def test_target_scales_with_reconstruction_max_field_based_cap() -> None:
+    """PR-2c: target = reconstruction_max × percent/100 (intentional when field cap rises)."""
+    recon_max = Decimal("75360")
+    target = compute_target_throughput_per_min(
+        reconstruction_max=recon_max,
+        percent=10,
+    )
+    assert target == Decimal("7536")
+
+
 def test_utilization_ratios() -> None:
     target_u, actual_u = throughput_utilization_ratios(
         actual=Decimal("3040"),

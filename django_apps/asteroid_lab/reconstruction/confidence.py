@@ -1,9 +1,16 @@
-"""Reconstruction confidence / ambiguity (production acceptance; fixtures calibrate only)."""
+"""Reconstruction confidence / ambiguity (production acceptance; fixtures calibrate only).
+
+``ReconstructionResult.confirmed_cells`` equals all asteroid field cells (solver SoT).
+Mask-derived subsets are diagnostic-only in ``summary_json``.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from django_apps.asteroid_lab.cleanup.result import CleanupResult
 
 from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
     acceptance_topology_from_reconstruction,
@@ -166,6 +173,7 @@ def apply_confidence_to_result(
     *,
     wall_coords: Iterable[Coord],
     interior_patch_coords: Iterable[Coord],
+    cleanup: CleanupResult | None = None,
 ) -> ReconstructionResult:
     """Attach confidence fields and summary metrics to a reconstruction result."""
 
@@ -194,12 +202,22 @@ def apply_confidence_to_result(
         hard_evidence=frozenset(hard),
     )
 
-    try:
-        external_void = acceptance_topology_from_reconstruction(
-            result, coord_frame=coord_frame
-        ).external_void_cells
-    except ValueError:
-        external_void = frozenset()
+    if cleanup is not None:
+        from django_apps.asteroid_lab.reconstruction.complete_map import (
+            build_reconstruction_complete_map,
+        )
+
+        complete = build_reconstruction_complete_map(cleanup=cleanup, recon=result)
+        field_cells = complete.field_cells
+        external_void = complete.external_void_cells
+    else:
+        field_cells = frozenset(mineable)
+        try:
+            external_void = acceptance_topology_from_reconstruction(
+                result, coord_frame=coord_frame
+            ).external_void_cells
+        except ValueError:
+            external_void = frozenset()
 
     provisional = ReconstructionResult(
         cells=result.cells,
@@ -240,8 +258,8 @@ def apply_confidence_to_result(
         summary_json=summary,
         outer_rim_coords=result.outer_rim_coords,
         coord_frame=coord_frame,
-        confirmed_cells=confirmed,
-        ambiguous_cells=ambiguous,
+        confirmed_cells=field_cells,
+        ambiguous_cells=frozenset(),
         external_void_cells=external_void,
         confidence_score=float(metrics["confidence_score"]),
         confidence_by_cell=tuple(sorted(by_cell.items())),

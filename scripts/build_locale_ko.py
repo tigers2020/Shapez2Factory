@@ -369,6 +369,7 @@ KO: dict[str, str] = {
     # Asteroid Lab PR-2a — reconstruction capacity UI
     "Theoretical Max": "이론 최대치",
     "Resource Capacity": "자원 용량",
+    "Asteroid field footprint": "소행성 필드 지형",
     "Mineable Footprint": "채굴 가능 지형",
     "Reconstruction Quality": "복원 품질",
     "RTTP Committed": "RTTP 확정",
@@ -380,6 +381,9 @@ KO: dict[str, str] = {
     "Fluid": "Fluid",
     "Primary resource": "주 자원",
     "Map cells (display)": "맵 셀 (표시)",
+    "Asteroid field cells": "소행성 필드 셀",
+    "Shape field cells": "Shape 필드 셀",
+    "Fluid field cells": "Fluid 필드 셀",
     "Mineable cells": "채굴 가능 셀",
     "Shape confirmed": "Shape 확정",
     "Fluid confirmed": "Fluid 확정",

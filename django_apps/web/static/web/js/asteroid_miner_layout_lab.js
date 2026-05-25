@@ -1771,12 +1771,17 @@
         resourceLines.push(fluidLabel + " " + fluidN + " (" + String(fluidPlatforms) + ")");
       }
       set("lab-card-resource-capacity-value", resourceLines.length ? resourceLines.join(" · ") : dash);
-      const confirmed = rec.confirmed_cell_count;
+      const fieldCells =
+        rec.asteroid_field_cell_count != null
+          ? rec.asteroid_field_cell_count
+          : rec.confirmed_cell_count != null
+            ? rec.confirmed_cell_count
+            : rec.mineable_cell_count;
       const displayCells = rec.display_cell_count;
       set(
         "lab-card-footprint-value",
-        confirmed !== dash && displayCells !== dash && confirmed != null && displayCells != null
-          ? String(confirmed) + " / " + String(displayCells)
+        fieldCells !== dash && displayCells !== dash && fieldCells != null && displayCells != null
+          ? String(fieldCells) + " / " + String(displayCells)
           : dash,
       );
       const tierShort = rec.quality_tier_short;
@@ -1884,10 +1889,9 @@
           "lab-detail-rec-confidence",
           "lab-detail-rec-primary",
           "lab-detail-rec-display-cells",
-          "lab-detail-rec-mineable",
-          "lab-detail-rec-shape",
-          "lab-detail-rec-fluid",
-          "lab-detail-rec-confirmed",
+          "lab-detail-rec-field-total",
+          "lab-detail-rec-shape-field",
+          "lab-detail-rec-fluid-field",
           "lab-detail-rec-ambiguous",
           "lab-detail-rec-void",
           "lab-detail-cap-shape",
@@ -1927,10 +1931,26 @@
       set("lab-detail-rec-confidence", rec.confidence_score);
       set("lab-detail-rec-primary", rec.primary_resource_kind);
       set("lab-detail-rec-display-cells", rec.display_cell_count);
-      set("lab-detail-rec-mineable", rec.mineable_cell_count);
-      set("lab-detail-rec-shape", rec.shape_confirmed_cell_count);
-      set("lab-detail-rec-fluid", rec.fluid_confirmed_cell_count);
-      set("lab-detail-rec-confirmed", rec.confirmed_cell_count);
+      set(
+        "lab-detail-rec-field-total",
+        rec.asteroid_field_cell_count != null
+          ? rec.asteroid_field_cell_count
+          : rec.confirmed_cell_count != null
+            ? rec.confirmed_cell_count
+            : rec.mineable_cell_count,
+      );
+      set(
+        "lab-detail-rec-shape-field",
+        rec.shape_field_cell_count != null
+          ? rec.shape_field_cell_count
+          : rec.shape_confirmed_cell_count,
+      );
+      set(
+        "lab-detail-rec-fluid-field",
+        rec.fluid_field_cell_count != null
+          ? rec.fluid_field_cell_count
+          : rec.fluid_confirmed_cell_count,
+      );
       set("lab-detail-rec-ambiguous", rec.ambiguous_cell_count);
       set("lab-detail-rec-void", rec.external_void_cell_count);
       set(

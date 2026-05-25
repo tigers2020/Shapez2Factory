@@ -20,8 +20,14 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_reconstruction,
 )
+from django_apps.asteroid_lab.reconstruction.complete_map import (
+    build_reconstruction_complete_map,
+)
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from tests.support.reconstruction_complete_map_fixtures import (
+    minimal_cleanup_and_recon_from_cells,
+)
 
 
 def _field_cell(x: int, y: int) -> DecodedCellDTO:
@@ -94,6 +100,18 @@ def _assert_coord_pair(value: object, path: str) -> None:
     assert isinstance(value[0], int) and isinstance(value[1], int)
 
 
+def _optimization_input_from_cells(
+    *cells: DecodedCellDTO,
+    catalog_slice: BuildingCatalogSlice | None = None,
+) -> object:
+    cleanup, recon = minimal_cleanup_and_recon_from_cells(*cells)
+    return optimization_input_from_reconstruction(
+        recon,
+        cleanup=cleanup,
+        catalog_slice=catalog_slice,
+    )
+
+
 def _assert_optimization_input_raw_coords(inp) -> None:
     for coord in inp.mineable_cells:
         _assert_coord_pair(coord, "mineable_cells")
@@ -114,7 +132,7 @@ def _assert_optimization_input_raw_coords(inp) -> None:
 def test_mixed_existing_transport_partitions_for_shape_run() -> None:
     cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
     cells = cells + (_belt_cell(4, 5), _pipe_cell(4, 6))
-    inp = optimization_input_from_reconstruction(ReconstructionResult(cells=cells))
+    inp = _optimization_input_from_cells(*cells)
 
     assert inp.transport_kind is TransportKind.SHAPE_BELT
     assert len(inp.existing_transport_cells) == 2
@@ -125,7 +143,7 @@ def test_mixed_existing_transport_partitions_for_shape_run() -> None:
 def test_optimization_input_adapter_existing_trunk_uses_raw_coords() -> None:
     cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
     cells = cells + (_belt_cell(4, 5),)
-    inp = optimization_input_from_reconstruction(ReconstructionResult(cells=cells))
+    inp = _optimization_input_from_cells(*cells)
 
     _assert_optimization_input_raw_coords(inp)
     assert inp.mineable_cells
@@ -135,9 +153,17 @@ def test_optimization_input_adapter_existing_trunk_uses_raw_coords() -> None:
     assert inp.existing_trunk_cells == frozenset({(4, 5)})
 
 
+def test_optimization_input_mineable_equals_complete_map_field_cells() -> None:
+    cells = tuple(_field_cell(x, y) for x in range(5, 7) for y in range(5, 7))
+    cleanup, recon = minimal_cleanup_and_recon_from_cells(*cells)
+    complete = build_reconstruction_complete_map(cleanup=cleanup, recon=recon)
+    inp = optimization_input_from_reconstruction(recon, cleanup=cleanup)
+    assert inp.mineable_cells == complete.field_cells
+
+
 def test_optimization_input_adapter_greenfield_has_external_margin_goal() -> None:
     cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
-    inp = optimization_input_from_reconstruction(ReconstructionResult(cells=cells))
+    inp = _optimization_input_from_cells(*cells)
     assert inp.existing_transport_cells == frozenset()
     assert inp.existing_trunk_cells == frozenset()
     assert len(inp.route_goals) >= 1
@@ -153,16 +179,13 @@ def test_greenfield_default_transport_uses_catalog_slice_t1() -> None:
         (),
         (),
     )
-    inp = optimization_input_from_reconstruction(
-        ReconstructionResult(cells=cells),
-        catalog_slice=catalog_slice,
-    )
+    inp = _optimization_input_from_cells(*cells, catalog_slice=catalog_slice)
     assert inp.transport_kind is TransportKind.SHAPE_BELT
 
 
 def test_greenfield_without_catalog_slice_uses_legacy_heuristic() -> None:
     cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
-    inp = optimization_input_from_reconstruction(ReconstructionResult(cells=cells))
+    inp = _optimization_input_from_cells(*cells)
     assert inp.transport_kind is TransportKind.SHAPE_BELT
 
 
@@ -175,10 +198,7 @@ def test_existing_transport_resolves_registry_key_via_catalog_slice() -> None:
         (),
         (),
     )
-    inp = optimization_input_from_reconstruction(
-        ReconstructionResult(cells=cells),
-        catalog_slice=catalog_slice,
-    )
+    inp = _optimization_input_from_cells(*cells, catalog_slice=catalog_slice)
     assert inp.existing_transport_cells == frozenset(
         {ExistingTransportCell(coord=(4, 5), transport_kind=TransportKind.FLUID_PIPE)}
     )
@@ -189,10 +209,7 @@ def test_unresolved_transport_cell_fails_when_catalog_slice_present() -> None:
     cells = cells + (_pipe_cell_registry_key(4, 5),)
     catalog_slice = BuildingCatalogSlice(SLICE_VERSION, (), (), ())
     with pytest.raises(CatalogTransportUnresolvedError) as exc_info:
-        optimization_input_from_reconstruction(
-            ReconstructionResult(cells=cells),
-            catalog_slice=catalog_slice,
-        )
+        _optimization_input_from_cells(*cells, catalog_slice=catalog_slice)
     message = str(exc_info.value)
     assert "(4, 5)" in message
     assert "space_pipe" in message
@@ -215,10 +232,7 @@ def test_domain_enum_transport_kind_precedence_over_registry() -> None:
         (),
         (),
     )
-    inp = optimization_input_from_reconstruction(
-        ReconstructionResult(cells=cells),
-        catalog_slice=catalog_slice,
-    )
+    inp = _optimization_input_from_cells(*cells, catalog_slice=catalog_slice)
     assert inp.existing_transport_cells == frozenset(
         {ExistingTransportCell(coord=(4, 5), transport_kind=TransportKind.SHAPE_BELT)}
     )

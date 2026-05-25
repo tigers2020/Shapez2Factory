@@ -20,9 +20,11 @@ from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_reconstruction,
 )
 from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
-from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from tests.support.catalog_test_fixtures import build_minimal_test_catalog_slice
+from tests.support.reconstruction_complete_map_fixtures import (
+    minimal_cleanup_and_recon_from_cells,
+)
 
 
 def _field_cell(sx: int, sy: int) -> DecodedCellDTO:
@@ -57,16 +59,11 @@ def _belt_cell(sx: int, sy: int) -> DecodedCellDTO:
     )
 
 
-def _existing_trunk_reconstruction_result() -> ReconstructionResult:
-    """4횞4 mineable block with one west-rim belt cell as existing trunk."""
-
+def _existing_trunk_optimization_input() -> OptimizationInput:
     cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
     cells = cells + (_belt_cell(4, 5),)
-    return ReconstructionResult(cells=cells)
-
-
-def _existing_trunk_optimization_input() -> OptimizationInput:
-    inp = optimization_input_from_reconstruction(_existing_trunk_reconstruction_result())
+    cleanup, recon = minimal_cleanup_and_recon_from_cells(*cells)
+    inp = optimization_input_from_reconstruction(recon, cleanup=cleanup)
     if inp.catalog_slice is None:
         inp = replace(inp, catalog_slice=build_minimal_test_catalog_slice())
     return inp

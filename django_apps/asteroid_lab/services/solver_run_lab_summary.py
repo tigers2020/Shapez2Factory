@@ -25,14 +25,20 @@ def _quality_tier_short(tier: str) -> str:
     return _QUALITY_TIER_SHORT.get(tier, tier)
 
 
+def _obs_field_count(obs: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key in obs:
+            return obs[key]
+    return _PLACEHOLDER
+
+
 def _section_reconstruction(obs: dict[str, Any] | None) -> dict[str, Any]:
     keys = (
         "cell_count",
         "display_cell_count",
-        "mineable_cell_count",
-        "confirmed_cell_count",
-        "shape_confirmed_cell_count",
-        "fluid_confirmed_cell_count",
+        "asteroid_field_cell_count",
+        "shape_field_cell_count",
+        "fluid_field_cell_count",
         "primary_resource_kind",
         "ambiguous_cell_count",
         "external_void_cell_count",
@@ -46,10 +52,22 @@ def _section_reconstruction(obs: dict[str, Any] | None) -> dict[str, Any]:
     return {
         "cell_count": obs.get("cell_count", _PLACEHOLDER),
         "display_cell_count": obs.get("display_cell_count", _PLACEHOLDER),
-        "mineable_cell_count": obs.get("mineable_cell_count", _PLACEHOLDER),
-        "confirmed_cell_count": obs.get("confirmed_cell_count", _PLACEHOLDER),
-        "shape_confirmed_cell_count": obs.get("shape_confirmed_cell_count", _PLACEHOLDER),
-        "fluid_confirmed_cell_count": obs.get("fluid_confirmed_cell_count", _PLACEHOLDER),
+        "asteroid_field_cell_count": _obs_field_count(
+            obs,
+            "asteroid_field_cell_count",
+            "confirmed_cell_count",
+            "mineable_cell_count",
+        ),
+        "shape_field_cell_count": _obs_field_count(
+            obs,
+            "shape_field_cell_count",
+            "shape_confirmed_cell_count",
+        ),
+        "fluid_field_cell_count": _obs_field_count(
+            obs,
+            "fluid_field_cell_count",
+            "fluid_confirmed_cell_count",
+        ),
         "primary_resource_kind": obs.get("primary_resource_kind", _PLACEHOLDER),
         "ambiguous_cell_count": obs.get("ambiguous_cell_count", _PLACEHOLDER),
         "external_void_cell_count": obs.get("external_void_cell_count", _PLACEHOLDER),

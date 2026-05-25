@@ -7,6 +7,7 @@ from django_apps.asteroid_lab.adapters.catalog_transport_policy import (
     resolve_default_asteroid_transport_kind,
     transport_kind_lookup_from_slice,
 )
+from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCatalogSlice
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import (
@@ -16,8 +17,8 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     RouteGoalKind,
     TransportKind,
 )
-from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
-    acceptance_topology_from_reconstruction,
+from django_apps.asteroid_lab.reconstruction.complete_map import (
+    build_reconstruction_complete_map,
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
@@ -154,15 +155,16 @@ def _external_margin_route_goals(
 def optimization_input_from_reconstruction(
     result: ReconstructionResult,
     *,
+    cleanup: CleanupResult,
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW,
     catalog_slice: BuildingCatalogSlice | None = None,
 ) -> OptimizationInput:
-    """Map reconstruction topology to ``OptimizationInput`` using raw island ``x/y``."""
+    """Map reconstruction-complete terrain to ``OptimizationInput`` (island-local ``x/y``)."""
 
-    topo = acceptance_topology_from_reconstruction(result, coord_frame=coord_frame)
-    by_coord = _cells_by_coord(result.cells)
-    mineable = topo.mineable_cells
-    external_void = topo.external_void_cells
+    complete_map = build_reconstruction_complete_map(cleanup=cleanup, recon=result)
+    by_coord = _cells_by_coord(complete_map.cells)
+    mineable = complete_map.field_cells
+    external_void = complete_map.external_void_cells
     rim = _rim_cells(mineable)
     inner = mineable - rim
     existing_transport = _existing_transport(by_coord, catalog_slice=catalog_slice)

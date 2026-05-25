@@ -70,10 +70,10 @@ Show once above top cards (compact) and at top of Detail section C.
 
 ```text
 max_throughput_per_min(resource) =
-    capacity_upper_bound_platform_count * max_output_per_miner(rule)
+    capacity_upper_bound_platform_count * output_per_min(rule, 4)
 ```
 
-**v0 platform count (shape and fluid):** `len(recon.confirmed_cells)` — same upper-bound heuristic for both resources until a fluid-specific mineable heuristic exists. Document in UI copy that this is **not** route-feasible placement.
+**v0 platform count — SUPERSEDED (2026-05-25):** See [`2026-05-25-reconstruction-field-cell-capacity-contract-design.md`](2026-05-25-reconstruction-field-cell-capacity-contract-design.md). Platform count = **asteroid field cell count** (shape/fluid `cell_kind` only); ×4 per cell; `confirmed_cells` mask not used for cap/placement/mineable SoT.
 
 ---
 

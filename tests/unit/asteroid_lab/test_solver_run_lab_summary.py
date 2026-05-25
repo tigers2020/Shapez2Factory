@@ -97,7 +97,7 @@ def test_lab_run_summary_nested_capacity_from_solver_summary() -> None:
                 "primary_resource_kind": "shape",
                 "by_resource": {
                     "shape": {
-                        "max_throughput_per_min": "3840.0000",
+                        "max_throughput_per_min": "960.0000",
                         "output_unit": "shapes_per_min",
                         "capacity_upper_bound_platform_count": 8,
                         "source_kind": "CANON_MANUAL",
@@ -112,15 +112,15 @@ def test_lab_run_summary_nested_capacity_from_solver_summary() -> None:
             },
         },
     )
-    assert row["capacity"]["shape_max_throughput_per_min"] == "3840.0000"
+    assert row["capacity"]["shape_max_throughput_per_min"] == "960.0000"
     assert row["capacity"]["fluid_max_throughput_per_min"] == "0.0000"
     assert row["capacity"]["platform_upper_bound"] == 8
     assert row["capacity"]["primary_resource_kind"] == "shape"
     assert row["capacity"]["fluid_platform_count"] == 0
     assert row["reconstruction"]["display_cell_count"] == 120
-    assert row["reconstruction"]["shape_confirmed_cell_count"] == 8
-    assert row["reconstruction"]["fluid_confirmed_cell_count"] == 0
-    assert row["reconstruction"]["confirmed_cell_count"] == 8
+    assert row["reconstruction"]["asteroid_field_cell_count"] == 8
+    assert row["reconstruction"]["shape_field_cell_count"] == 8
+    assert row["reconstruction"]["fluid_field_cell_count"] == 0
     assert row["reconstruction"]["quality_tier_short"] == "HIGH"
     assert row["rttp"]["confirmed_count"] == 1
     assert row["rttp"]["actual_output_status"] == "pending_pr_2b"

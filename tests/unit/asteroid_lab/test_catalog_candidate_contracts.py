@@ -31,6 +31,7 @@ def test_catalog_placement_spec_frozen() -> None:
         rotation=CardinalDirection.E,
         pattern_id="cat_bv_1_E",
         occupied_offsets=frozenset({(0, 0)}),
+        fixed_output_transport_offset=(0, 0),
         output_stub_offset=(1, 0),
         output_dir="E",
         throughput_factor=4,

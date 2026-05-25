@@ -17,7 +17,7 @@ def validate_final_layout(
     candidates_by_id: dict[str, BundleCandidate],
     inp: OptimizationInput,
 ) -> bool:
-    """Assert-only checks (no repair): disjoint occupied; routes reserved; INV-VALIDATION-FOT-01."""
+    """Assert-only checks (read-only): disjoint occupied; routes reserved; INV-VALIDATION-FOT-01."""
 
     if not committed_ids:
         return False

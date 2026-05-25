@@ -1,6 +1,6 @@
 # Asteroid Lab — Optimization Sequence 1A·1B scope
 
-**Status:** `ACTIVE` (fixed implementation scope)  
+**Status:** `CLOSED` (implemented on `master`; tests: `test_optimization_input_adapter.py`, `test_optimization_input_coord_frame.py`)  
 **Reference docs:** [`documents/Algorithm/asteroid_lab_10_development_sequence.md`](../../Algorithm/asteroid_lab_10_development_sequence.md) Sequence 1A·1B, [`asteroid_lab_01_optimization_input.md`](../../Algorithm/asteroid_lab_01_optimization_input.md)
 
 ## Approved scope

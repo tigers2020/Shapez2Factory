@@ -95,9 +95,7 @@ def test_fixture_line2_lab_region_overlay_when_n_miner_committed() -> None:
     n_at_lab = tuple(
         cid
         for cid in committed
-        if (c := by_id.get(cid)) is not None
-        and c.anchor_coord == (-1, -9)
-        and c.output_dir == "N"
+        if (c := by_id.get(cid)) is not None and c.anchor_coord == (-1, -9) and c.output_dir == "N"
     )
     if not n_at_lab:
         return
@@ -111,8 +109,9 @@ def test_fixture_line2_lab_region_overlay_when_n_miner_committed() -> None:
     fot_coord = (-1, -10)
     fot_rows = [r for r in rows if (int(r["x"]), int(r["y"])) == fot_coord]
     assert fot_rows, f"expected overlay at {fot_coord}"
-    assert any("fixed_output_transport" in str(r.get("overlay_semantic_kind", "")) for r in fot_rows)
+    assert any(
+        "fixed_output_transport" in str(r.get("overlay_semantic_kind", "")) for r in fot_rows
+    )
     assert not any(
-        str(r.get("overlay_semantic_kind", "")) == "placement.confirmed_extractor"
-        for r in fot_rows
+        str(r.get("overlay_semantic_kind", "")) == "placement.confirmed_extractor" for r in fot_rows
     )

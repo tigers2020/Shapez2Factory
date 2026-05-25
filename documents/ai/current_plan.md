@@ -88,7 +88,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**ACTIVE (2026-05-28):** RTTP FOT PR-2 — outward rim / void attach / platform probe fallback on fresh `master` after PR-1. Spec: [`2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md`](../../docs/superpowers/specs/2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md). Stash: `stash@{0}` (`wip: rttp fot pr2 outward rim void probe`) — pop only on `feat/rttp-fot-pr2-outward-rim-void-probe` after post-merge smoke.
+**CLOSED (2026-05-28):** RTTP FOT PR-2 — outward rim / void attach / platform probe fallback — PR [#89](https://github.com/tigers2020/Shapez2Factory/pull/89) squash-merged to `master` (`75c5ad08`). Normal RTTP runtime `OUTWARD_FROM_RIM`; macro-only runtime stays `OUTSIDE_MINEABLE` until PR-B. Spec: [`2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md`](../../docs/superpowers/specs/2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md) · plan: [`2026-05-28-rttp-fot-pr2-outward-rim-void-probe.md`](../../docs/superpowers/plans/2026-05-28-rttp-fot-pr2-outward-rim-void-probe.md).
 
 **CLOSED (2026-05-28):** RTTP FOT outside mineable PR-1 — PR [#88](https://github.com/tigers2020/Shapez2Factory/pull/88) squash-merged to `master` (`ebde4c2c`). `OUTSIDE_MINEABLE` default on generator + pipeline; commit/validation FOT defense. Plan: [`2026-05-28-rttp-fot-outside-mineable-pr1.md`](../../docs/superpowers/plans/2026-05-28-rttp-fot-outside-mineable-pr1.md). Macro PR-B fixture skips deferred.
 

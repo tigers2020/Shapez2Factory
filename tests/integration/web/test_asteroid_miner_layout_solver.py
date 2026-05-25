@@ -48,6 +48,10 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     controls_idx = content.index('id="lab-timeline-controls"')
     scrub_idx = content.index('id="lab-timeline-scrub"', controls_idx)
     assert scrub_idx > controls_idx
+    g_grid_early = content.index('id="lab-replay-grid"')
+    phase_idx = content.index('id="lab-replay-phase"')
+    assert controls_idx < g_grid_early
+    assert phase_idx > g_grid_early
     assert "lab-cell-overlay-matrix-data" in content
     assert 'id="lab-ui-initial-state"' in content
     assert "G-042" not in content
@@ -61,6 +65,12 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     g_grid = content.index('id="lab-replay-grid"', g_stage)
     g_overlay = content.index('id="lab-optimization-overlay-layer"', g_stage)
     assert g_grid < g_overlay
+    map_footer = content.index('id="lab-map-footer"')
+    stat_card = content.index('id="lab-card-theoretical-max"')
+    replay_timeline = content.index("Replay Timeline")
+    assert map_footer > g_grid
+    assert stat_card > map_footer
+    assert stat_card > replay_timeline
 
 
 def test_asteroid_miner_layout_ignores_code_query_string() -> None:

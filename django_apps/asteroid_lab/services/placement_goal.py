@@ -12,7 +12,7 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import Bund
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 from django_apps.asteroid_lab.optimization.selection.equivalence import dedupe_candidates
 from django_apps.asteroid_lab.services.committed_throughput_summary import (
-    resource_kind_for_transport,
+    best_bundle_output_per_min_from_factors,
 )
 from django_apps.asteroid_lab.services.reconstruction_capacity_summary import decimal_str
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
@@ -79,16 +79,15 @@ def _best_bundle_throughput(
     normal_candidates: Sequence[BundleCandidate],
     transport_kind: TransportKind,
 ) -> Decimal:
-    from django_apps.game_data.services.mining_extraction_rules import (
-        get_active_rule,
-        output_per_min,
+    factors = tuple(
+        int(candidate.throughput_factor)
+        for candidate in normal_candidates
+        if candidate.reachable
     )
-
-    reachable = [candidate for candidate in normal_candidates if candidate.reachable]
-    if not reachable:
-        return Decimal(0)
-    rule = get_active_rule(resource_kind_for_transport(transport_kind))
-    return max(output_per_min(rule, candidate.throughput_factor) for candidate in reachable)
+    return best_bundle_output_per_min_from_factors(
+        throughput_factors=factors,
+        transport_kind=transport_kind,
+    )
 
 
 def _bundles_needed_for_target(*, target: Decimal, best_bundle: Decimal) -> int:

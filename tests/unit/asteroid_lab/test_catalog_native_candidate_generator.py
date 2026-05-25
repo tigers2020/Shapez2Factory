@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from django_apps.asteroid_lab.adapters.catalog_geometry_transform import (
-    expected_footprint_coords,
+from django_apps.asteroid_lab.adapters.catalog_candidate_placements import (
+    build_catalog_placement_specs,
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
@@ -43,7 +43,7 @@ def test_generate_candidates_slice_none_returns_empty_normal(
     assert result.rejected_candidates == ()
 
 
-def test_normal_occupied_matches_catalog_footprint(
+def test_normal_occupied_matches_catalog_placement_spec(
     greenfield_with_catalog: OptimizationInput,
 ) -> None:
     inp = greenfield_with_catalog
@@ -51,13 +51,41 @@ def test_normal_occupied_matches_catalog_footprint(
     result = generate_candidates(inp, skeleton, policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM)
     sl = inp.catalog_slice
     assert sl is not None
+    specs = build_catalog_placement_specs(sl, transport_kind=inp.transport_kind)
     for cand in result.normal_candidates:
         ref = cand.catalog_placement_ref
         assert ref is not None
-        geom = next(g for g in sl.variant_geometries if g.canonical_id == ref.canonical_id)
-        expected = expected_footprint_coords(
-            geom.footprint_cells,
-            anchor_coord=ref.anchor_coord,
-            rotation=ref.rotation,
+        spec = next(
+            s
+            for s in specs
+            if s.canonical_id == ref.canonical_id and s.rotation == ref.rotation
+        )
+        expected = frozenset(
+            (ref.anchor_coord[0] + off[0], ref.anchor_coord[1] + off[1])
+            for off in spec.occupied_offsets
         )
         assert cand.occupied_cells == expected
+        assert cand.pattern.extension_offsets == ()
+        fot = (
+            ref.anchor_coord[0] + cand.pattern.fixed_output_transport_offset[0],
+            ref.anchor_coord[1] + cand.pattern.fixed_output_transport_offset[1],
+        )
+        assert fot not in cand.occupied_cells
+
+
+def test_normal_candidate_has_empty_extensions_and_fot_not_occupied(
+    greenfield_with_catalog: OptimizationInput,
+) -> None:
+    inp = greenfield_with_catalog
+    skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
+    result = generate_candidates(inp, skeleton, policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM)
+    assert result.normal_candidates
+    cand = result.normal_candidates[0]
+    anchor = cand.anchor_coord
+    fot = (
+        anchor[0] + cand.pattern.fixed_output_transport_offset[0],
+        anchor[1] + cand.pattern.fixed_output_transport_offset[1],
+    )
+    assert cand.pattern.extension_offsets == ()
+    assert fot not in cand.occupied_cells
+    assert cand.throughput_factor == 4

@@ -57,8 +57,11 @@ class ProjectedEquipmentSpec:
     canonical_id: str
     pattern_id: str
     rotation: CardinalDirection
-    occupied_offsets: tuple[Coord, ...]
+    extractor_offset: Coord
+    extension_offsets: tuple[Coord, ...]
+    fixed_output_transport_offset: Coord
     output_stub_offset: Coord
+    occupied_offsets: tuple[Coord, ...]
     output_dir: CardinalDirection
     throughput_factor: int
     source_kind: ProjectionSourceKind

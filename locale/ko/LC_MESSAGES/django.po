@@ -549,17 +549,14 @@ msgstr "주 자원"
 msgid "Map cells (display)"
 msgstr "맵 셀 (표시)"
 
-msgid "Mineable cells"
-msgstr "채굴 가능 셀"
+msgid "Asteroid field cells"
+msgstr "소행성 필드 셀"
 
-msgid "Shape confirmed"
-msgstr "Shape 확정"
+msgid "Shape field cells"
+msgstr "Shape 필드 셀"
 
-msgid "Fluid confirmed"
-msgstr "Fluid 확정"
-
-msgid "Confirmed total"
-msgstr "확정 합계"
+msgid "Fluid field cells"
+msgstr "Fluid 필드 셀"
 
 msgid "Ambiguous"
 msgstr "모호"
@@ -633,8 +630,15 @@ msgstr "Reservation id"
 msgid "Issue message"
 msgstr "Issue message"
 
-msgid "Theoretical max = reconstructed terrain upper bound"
-msgstr "이론 최대치 = 복원된 소행성 지형 기준 상한"
+msgid ""
+"Theoretical field capacity: all reconstructed asteroid field cells × base "
+"extractor unit (×4)"
+msgstr ""
+"Theoretical field capacity: all reconstructed asteroid field cells × base "
+"extractor unit (×4)"
+
+msgid "Committed throughput: route-confirmed extractor bundles only"
+msgstr "Committed throughput: route-confirmed extractor bundles only"
 
 msgid "Theoretical Max"
 msgstr "이론 최대치"
@@ -648,11 +652,11 @@ msgstr "자원 용량"
 msgid "from reconstructed terrain"
 msgstr "복원 지형 기준"
 
-msgid "Mineable Footprint"
-msgstr "채굴 가능 지형"
+msgid "Asteroid field footprint"
+msgstr "소행성 필드 지형"
 
-msgid "confirmed / map cells"
-msgstr "확정 / 맵 셀"
+msgid "field cells / map cells"
+msgstr "field cells / map cells"
 
 msgid "Reconstruction Quality"
 msgstr "복원 품질"

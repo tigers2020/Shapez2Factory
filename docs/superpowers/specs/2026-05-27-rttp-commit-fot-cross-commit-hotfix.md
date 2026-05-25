@@ -1,7 +1,7 @@
 # RTTP Commit — Cross-Commit Fixed Output Transport Reservation (Hotfix / PR1.5)
 
-**Status:** Approved — spec patch / implementation plan authority (PR1.5)  
-**Branch:** `feat/rttp-miner-output-transport-topology-pr1` (or follow-up)  
+**Status:** Implemented — **PR [#85](https://github.com/tigers2020/Shapez2Factory/pull/85)** (2026-05-27)  
+**Branch:** `feat/rttp-miner-output-transport-topology-pr1` — PR1.5 commit `04bf7b4f`; Phase 1 topology WIP remains unstaged locally  
 **Work classification:** contract change · regression fix (Commit Path B)  
 **Related:** [`2026-05-27-rttp-miner-output-transport-topology-design.md`](2026-05-27-rttp-miner-output-transport-topology-design.md) (Phase 1 per-candidate INV-R) · [`../plans/2026-05-27-rttp-commit-fot-cross-commit-hotfix.md`](../plans/2026-05-27-rttp-commit-fot-cross-commit-hotfix.md) (implementation plan) · [`documents/Algorithm/asteroid_lab_07_incremental_commit.md`](../../../documents/Algorithm/asteroid_lab_07_incremental_commit.md)
 

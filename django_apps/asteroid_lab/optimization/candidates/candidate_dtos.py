@@ -20,6 +20,9 @@ class CandidateRejectReason(StrEnum):
     NOT_REACHABLE = "not_reachable"
     GEOMETRY_INVALID = "geometry_invalid"
     OVERLAP = "overlap"
+    FIXED_OUTPUT_TRANSPORT_IN_OCCUPIED = "fixed_output_transport_in_occupied"
+    ROUTE_PROBE_START_IN_OCCUPIED = "route_probe_start_in_occupied"
+    EXTENSION_ON_OUTPUT_AXIS = "extension_on_output_axis"
 
 
 @dataclass(frozen=True, slots=True)

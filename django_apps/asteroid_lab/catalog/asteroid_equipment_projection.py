@@ -4,16 +4,12 @@ from __future__ import annotations
 
 from typing import Final
 
-from django_apps.asteroid_lab.adapters.catalog_geometry_transform import (
-    CatalogTransformError,
-    expected_footprint_coords,
-)
-from django_apps.asteroid_lab.adapters.catalog_output_attachment import (
-    attachment_for_variant_rotation,
-)
 from django_apps.asteroid_lab.catalog.island_extractor_defaults import (
     ISLAND_EXTRACTOR_DEFAULTS,
     IslandExtractorCarrierKind,
+)
+from django_apps.asteroid_lab.catalog.miner_placement_topology import (
+    normalize_miner_placement_topology,
 )
 from django_apps.asteroid_lab.catalog.projection_source import (
     ProjectedEquipmentSpec,
@@ -24,10 +20,7 @@ from django_apps.asteroid_lab.contracts.building_catalog_slice import (
     BuildingCatalogSlice,
     VariantGeometryCatalog,
 )
-from django_apps.asteroid_lab.contracts.catalog_candidate import (
-    catalog_pattern_id,
-    throughput_factor_for_footprint,
-)
+from django_apps.asteroid_lab.contracts.catalog_candidate import catalog_pattern_id
 from django_apps.asteroid_lab.contracts.catalog_placement import CardinalDirection
 from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     BuildingConnectorSnapshot,
@@ -90,19 +83,10 @@ def _specs_from_geometry(
         return []
     if is_factory_internal_variant(geometry.internal_name):
         return []
-    throughput = throughput_factor_for_footprint(len(geometry.footprint_cells))
     specs: list[ProjectedEquipmentSpec] = []
     for rotation in _CARDINAL_ORDER:
-        try:
-            occupied = expected_footprint_coords(
-                geometry.footprint_cells,
-                anchor_coord=(0, 0),
-                rotation=rotation,
-            )
-        except CatalogTransformError:
-            continue
-        attachment = attachment_for_variant_rotation(geometry, rotation)
-        if attachment is None:
+        topo = normalize_miner_placement_topology(geometry, rotation)
+        if topo is None:
             continue
         pattern_id = catalog_pattern_id(geometry.canonical_id, rotation)
         specs.append(
@@ -111,10 +95,13 @@ def _specs_from_geometry(
                 canonical_id=geometry.canonical_id,
                 pattern_id=pattern_id,
                 rotation=rotation,
-                occupied_offsets=occupied,
-                output_stub_offset=attachment.output_stub_offset,
-                output_dir=CardinalDirection(attachment.output_dir),
-                throughput_factor=throughput,
+                extractor_offset=topo.extractor_offset,
+                extension_offsets=topo.extension_offsets,
+                fixed_output_transport_offset=topo.fixed_output_transport_offset,
+                output_stub_offset=topo.output_stub_offset,
+                occupied_offsets=tuple(sorted(topo.occupied_offsets)),
+                output_dir=CardinalDirection(topo.output_dir),
+                throughput_factor=topo.throughput_factor,
                 source_kind=source_kind,
                 source_detail=source_detail,
             )

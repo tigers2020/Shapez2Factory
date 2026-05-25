@@ -25,9 +25,11 @@ class CatalogPlacementSpec:
     canonical_id: str
     rotation: CardinalDirection
     pattern_id: str
-    occupied_offsets: frozenset[Coord]
+    extractor_offset: Coord
+    extension_offsets: tuple[Coord, ...]
     fixed_output_transport_offset: Coord
     output_stub_offset: Coord
+    occupied_offsets: frozenset[Coord]
     output_dir: str
     throughput_factor: int
     topology_kind: str = "catalog"

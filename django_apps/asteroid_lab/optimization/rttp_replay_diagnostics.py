@@ -5,6 +5,7 @@ Pure functions only — no replay reads, no solver branching.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,6 +19,13 @@ from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 from django_apps.asteroid_lab.optimization.macros.macro_compiler import MacroGenerationResult
 from django_apps.asteroid_lab.optimization.macros.macro_dtos import MacroBundleCandidate
+from django_apps.asteroid_lab.optimization.materialization.placement_overlay_projection import (
+    PlacementOverlayDiagnostics,
+    build_candidate_placement_overlay_rows,
+    build_confirmed_placement_overlay_rows,
+    build_selected_placement_overlay_rows,
+    field_kind_map_from_entries,
+)
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import PlacementGenome
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4
@@ -116,18 +124,17 @@ def build_candidates_replay_payload(
     macro_generation: MacroGenerationResult | None = None,
     macro_normal: tuple[MacroBundleCandidate, ...] | None = None,
     skeleton: RttpSkeleton | None = None,
+    field_kind_by_coord: Mapping[Coord, str] | None = None,
 ) -> RttpReplayPayload:
     normal = generation.normal_candidates
     rejected = generation.rejected_candidates
     cells: list[dict[str, Any]] = []
-    for candidate in normal:
-        cells.extend(
-            overlay_cells_from_coords(
-                candidate.occupied_cells,
-                kind="candidate.bundle",
-                transport=_transport_wire(candidate.transport_kind),
-            )
+    cells.extend(
+        build_candidate_placement_overlay_rows(
+            normal,
+            field_kind_by_coord=field_kind_by_coord,
         )
+    )
     for rej in rejected:
         cells.append(
             {
@@ -178,20 +185,18 @@ def build_candidates_replay_payload(
 def build_selection_replay_payload(
     genome: PlacementGenome,
     normal_candidates: tuple[BundleCandidate, ...],
+    *,
+    field_kind_by_coord: Mapping[Coord, str] | None = None,
 ) -> RttpReplayPayload:
     by_id = {c.candidate_id: c for c in normal_candidates}
     cells: list[dict[str, Any]] = []
-    for cid in genome.commit_order:
-        candidate = by_id.get(cid)
-        if candidate is None:
-            continue
-        cells.extend(
-            overlay_cells_from_coords(
-                candidate.occupied_cells,
-                kind="genome.selected",
-                transport=_transport_wire(candidate.transport_kind),
-            )
-        )
+    cells.extend(
+        build_selected_placement_overlay_rows(
+            genome.commit_order,
+            by_id,
+            field_kind_by_coord=field_kind_by_coord,
+        ),
+    )
     order_text = ", ".join(genome.commit_order)
     description = "\n".join(
         [
@@ -209,12 +214,21 @@ def build_commit_replay_payload(
     validation_passed: bool,
     normal_count: int,
     commit_order: tuple[str, ...],
-) -> RttpReplayPayload:
-    route_cells = overlay_cells_from_coords(
-        commit_result.reserved_route_cells,
-        kind="route.committed_path",
+    candidates_by_id: dict[str, BundleCandidate],
+    field_kind_by_coord: Mapping[Coord, str] | None = None,
+) -> tuple[RttpReplayPayload, PlacementOverlayDiagnostics]:
+    placement_cells, diag = build_confirmed_placement_overlay_rows(
+        committed_ids=commit_result.committed_ids,
+        candidates_by_id=candidates_by_id,
+        reserved_route_cells=commit_result.reserved_route_cells,
+        field_kind_by_coord=field_kind_by_coord,
     )
     conflict_lines = [f"- {c.candidate_id}: {c.reason.value}" for c in commit_result.conflicts[:8]]
+    overlap_note = ""
+    if diag.placement_route_overlap_warning_count:
+        overlap_note = (
+            f"placement_route_overlap_warnings: {diag.placement_route_overlap_warning_count}"
+        )
     description = "\n".join(
         [
             "RTTP commit domain snapshot.",
@@ -224,10 +238,19 @@ def build_commit_replay_payload(
             f"conflict_count: {len(commit_result.conflicts)}",
             f"normal_count: {normal_count}",
             f"domain_version: {commit_result.domain_version}",
+            f"visible_miner_cell_count: {diag.visible_miner_cell_count}",
+            f"visible_extension_cell_count: {diag.visible_extension_cell_count}",
+            *([overlap_note] if overlap_note else []),
             *(["blocked_by:"] + conflict_lines if conflict_lines else []),
         ]
     )
-    return RttpReplayPayload(description=description, cell_overlay_json=_cell_overlay(route_cells))
+    return (
+        RttpReplayPayload(
+            description=description,
+            cell_overlay_json=_cell_overlay(placement_cells),
+        ),
+        diag,
+    )
 
 
 def build_macro_selection_replay_payload(
@@ -299,6 +322,7 @@ def build_macro_commit_replay_payload(
 
 
 __all__ = [
+    "PlacementOverlayDiagnostics",
     "RttpReplayPayload",
     "build_candidates_replay_payload",
     "build_commit_replay_payload",
@@ -307,6 +331,7 @@ __all__ = [
     "build_pipeline_start_replay_payload",
     "build_selection_replay_payload",
     "coords_in_route_visible_domain",
+    "field_kind_map_from_entries",
     "overlay_cells_from_coords",
     "skeleton_lift_platform_coords",
     "skeleton_route_visible_domain",

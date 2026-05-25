@@ -48,6 +48,7 @@ from django_apps.asteroid_lab.optimization.commit.incremental_macro_commit impor
     incremental_commit_macro,
 )
 from django_apps.asteroid_lab.optimization.commit.local_lns import run_local_lns
+from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import (
     OptimizationInput,
     RttpPipelineConfig,
@@ -73,6 +74,7 @@ from django_apps.asteroid_lab.optimization.rttp_replay_diagnostics import (
     build_macro_selection_replay_payload,
     build_pipeline_start_replay_payload,
     build_selection_replay_payload,
+    field_kind_map_from_entries,
 )
 from django_apps.asteroid_lab.optimization.rttp_solver_summary import (
     RttpAlgorithmStepId,
@@ -328,6 +330,12 @@ def _transport_mismatch_metrics(inp: OptimizationInput) -> dict[str, int | dict[
     )
 
 
+def _pipeline_field_kind_by_coord(config: RttpPipelineConfig) -> dict[Coord, str] | None:
+    if not config.mineable_field_kind_by_coord:
+        return None
+    return field_kind_map_from_entries(config.mineable_field_kind_by_coord)
+
+
 def _macro_commit_as_bundle_result(macro_commit: MacroCommitResult) -> CommitResult:
     return CommitResult(
         committed_ids=macro_commit.committed_child_ids,
@@ -345,6 +353,7 @@ def _run_v01_rttp_pipeline(
     config: RttpPipelineConfig,
 ) -> PipelineResult:
     steps: list[dict[str, Any]] = []
+    field_kind_by_coord = _pipeline_field_kind_by_coord(config)
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
     transport_mismatch_metrics = _transport_mismatch_metrics(inp)
     start_payload = build_pipeline_start_replay_payload(skeleton)
@@ -366,7 +375,10 @@ def _run_v01_rttp_pipeline(
     )
 
     generation = generate_candidates(inp, skeleton, policy=policy)
-    candidates_payload = build_candidates_replay_payload(generation)
+    candidates_payload = build_candidates_replay_payload(
+        generation,
+        field_kind_by_coord=field_kind_by_coord,
+    )
     normal_count = len(generation.normal_candidates)
     _record_pipeline_step(
         sink,
@@ -397,7 +409,11 @@ def _run_v01_rttp_pipeline(
         inp,
         goal_count=selection_goal,
     )
-    selection_payload = build_selection_replay_payload(genome, generation.normal_candidates)
+    selection_payload = build_selection_replay_payload(
+        genome,
+        generation.normal_candidates,
+        field_kind_by_coord=field_kind_by_coord,
+    )
     selection_metrics: dict[str, Any] = {
         "commit_order": list(genome.commit_order),
         "selected_count": len(genome.commit_order),
@@ -471,11 +487,13 @@ def _run_v01_rttp_pipeline(
         catalog_mode=catalog_mode,
     )
 
-    commit_payload = build_commit_replay_payload(
+    commit_payload, placement_diag = build_commit_replay_payload(
         commit_result,
         validation_passed=validation_passed,
         normal_count=len(generation.normal_candidates),
         commit_order=tuple(genome.commit_order),
+        candidates_by_id=candidates_by_id,
+        field_kind_by_coord=field_kind_by_coord,
     )
     _record_pipeline_step(
         sink,
@@ -492,6 +510,15 @@ def _run_v01_rttp_pipeline(
             "validation_passed": validation_passed,
             "conflict_count": len(commit_result.conflicts),
             "normal_count": len(generation.normal_candidates),
+            "visible_miner_cell_count": placement_diag.visible_miner_cell_count,
+            "visible_extension_cell_count": placement_diag.visible_extension_cell_count,
+            "placement_route_overlap_warning_count": (
+                placement_diag.placement_route_overlap_warning_count
+            ),
+            "placement_route_overlap_warning_coords": [
+                [int(x), int(y)]
+                for x, y in placement_diag.placement_route_overlap_warning_coords
+            ],
         },
         cell_overlay_json=commit_payload.cell_overlay_json,
         passed=validation_passed,
@@ -528,6 +555,7 @@ def _run_macro_rttp_pipeline(
     config: RttpPipelineConfig,
 ) -> PipelineResult:
     steps: list[dict[str, Any]] = []
+    field_kind_by_coord = _pipeline_field_kind_by_coord(config)
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
     transport_mismatch_metrics = _transport_mismatch_metrics(inp)
     start_payload = build_pipeline_start_replay_payload(skeleton)
@@ -562,6 +590,7 @@ def _run_macro_rttp_pipeline(
         macro_generation=macro_generation,
         macro_normal=macro_normal,
         skeleton=skeleton,
+        field_kind_by_coord=field_kind_by_coord,
     )
     macro_normal_count = len(macro_normal)
     _record_pipeline_step(

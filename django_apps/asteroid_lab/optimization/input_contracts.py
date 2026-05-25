@@ -88,6 +88,8 @@ class RttpPipelineConfig:
     )
     target_throughput_per_min: Decimal | None = None
     max_placement_goal_count: int = 32
+    # (x, y, cell_kind) for per-anchor miner sprite (fluid vs shape field)
+    mineable_field_kind_by_coord: tuple[tuple[int, int, str], ...] = ()
 
 
 __all__ = [

@@ -31,16 +31,19 @@ def test_lab_js_maps_throughput_target_shortfall_to_gettext_msgid() -> None:
 
 
 def test_lab_footprint_subtitle_documents_field_cells() -> None:
-    text = (
-        TEMPLATE.read_text(encoding="utf-8")
-        + STAT_PARTIAL.read_text(encoding="utf-8")
-    )
+    text = TEMPLATE.read_text(encoding="utf-8") + STAT_PARTIAL.read_text(encoding="utf-8")
     assert "field cells / map cells" in text
 
 
 def test_lab_detail_panel_uses_asteroid_field_terminology() -> None:
     detail = (
-        REPO / "django_apps" / "web" / "templates" / "web" / "partials" / "lab_run_detail_panels.html"
+        REPO
+        / "django_apps"
+        / "web"
+        / "templates"
+        / "web"
+        / "partials"
+        / "lab_run_detail_panels.html"
     ).read_text(encoding="utf-8")
     assert "Asteroid field cells" in detail
     assert "lab-detail-rec-field-total" in detail

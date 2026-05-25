@@ -6,9 +6,7 @@ from django_apps.asteroid_lab.reconstruction.complete_map import (
     build_reconstruction_complete_map,
 )
 from django_apps.asteroid_lab.reconstruction.confidence import apply_confidence_to_result
-from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from tests.support.reconstruction_complete_map_fixtures import (
     minimal_cleanup_and_recon_from_cells,
 )

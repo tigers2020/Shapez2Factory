@@ -18,6 +18,7 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     TransportKind,
 )
 from django_apps.asteroid_lab.reconstruction.complete_map import (
+    ReconstructionCompleteMap,
     build_reconstruction_complete_map,
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
@@ -158,10 +159,16 @@ def optimization_input_from_reconstruction(
     cleanup: CleanupResult,
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW,
     catalog_slice: BuildingCatalogSlice | None = None,
+    complete_map: ReconstructionCompleteMap | None = None,
 ) -> OptimizationInput:
     """Map reconstruction-complete terrain to ``OptimizationInput`` (island-local ``x/y``)."""
 
-    complete_map = build_reconstruction_complete_map(cleanup=cleanup, recon=result)
+    if complete_map is None:
+        complete_map = build_reconstruction_complete_map(
+            cleanup=cleanup,
+            recon=result,
+            coord_frame=coord_frame,
+        )
     by_coord = _cells_by_coord(complete_map.cells)
     mineable = complete_map.field_cells
     external_void = complete_map.external_void_cells

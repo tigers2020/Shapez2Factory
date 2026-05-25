@@ -38,9 +38,16 @@ def _field_cells_from_decoded_cells(
     return frozenset(out)
 
 
-def _count_by_resource(cells: Sequence[DecodedCellDTO]) -> dict[str, int]:
+def _count_by_resource(
+    cells: Sequence[DecodedCellDTO],
+    field_cells: frozenset[Coord],
+) -> dict[str, int]:
+    by_coord = {(cell.x, cell.y): cell for cell in cells}
     counts = {"shape": 0, "fluid": 0}
-    for cell in cells:
+    for xy in field_cells:
+        cell = by_coord.get(xy)
+        if cell is None:
+            continue
         if cell.cell_kind == _SHAPE_FIELD:
             counts["shape"] += 1
         elif cell.cell_kind == _FLUID_FIELD:
@@ -51,9 +58,7 @@ def _count_by_resource(cells: Sequence[DecodedCellDTO]) -> dict[str, int]:
 def overlay_field_cell_count(recon: ReconstructionResult) -> int:
     """Overlay-only count for contract tests (not terrain SoT)."""
 
-    return len(
-        _field_cells_from_decoded_cells(recon.cells, coord_frame=recon.coord_frame)
-    )
+    return len(_field_cells_from_decoded_cells(recon.cells, coord_frame=recon.coord_frame))
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,13 +77,14 @@ def build_reconstruction_complete_map(
     *,
     cleanup: CleanupResult,
     recon: ReconstructionResult,
+    coord_frame: CoordFrame | None = None,
 ) -> ReconstructionCompleteMap:
     """Sole entry point for reconstruction-complete terrain SoT."""
 
     cells = merged_display_cells_from_reconstruction(cleanup, recon)
-    frame = recon.coord_frame
+    frame = coord_frame if coord_frame is not None else recon.coord_frame
     field_cells = _field_cells_from_decoded_cells(cells, coord_frame=frame)
-    by_resource = _count_by_resource(cells)
+    by_resource = _count_by_resource(cells, field_cells)
     topo = acceptance_topology_from_decoded_cells(
         cells,
         field_cells=field_cells,

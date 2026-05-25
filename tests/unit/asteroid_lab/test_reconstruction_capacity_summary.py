@@ -69,14 +69,6 @@ def test_decimal_str_four_places() -> None:
 def test_shape_capacity_uses_complete_map_field_cells_not_mask() -> None:
     cells = tuple(_cell(i, 0) for i in range(3))
     complete = minimal_complete_map_from_cells(*cells)
-    recon = ReconstructionResult(
-        cells=cells,
-        confirmed_cells=frozenset({(0, 0)}),
-        ambiguous_cells=frozenset({(1, 0), (2, 0)}),
-        external_void_cells=frozenset(),
-        confidence_score=0.5,
-        quality_tier="PARTIAL",
-    )
     rule = get_active_rule("shape")
     per_cell = output_per_min(rule, 4)
     row = build_reconstruction_capacity_summary(

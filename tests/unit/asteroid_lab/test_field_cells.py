@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
     acceptance_topology_from_complete_map,
 )
@@ -13,7 +14,6 @@ from django_apps.asteroid_lab.reconstruction.field_cells import (
     asteroid_field_cells_from_complete_map,
     count_asteroid_field_cells_by_resource,
 )
-from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.reconstruction.topology_contract import (

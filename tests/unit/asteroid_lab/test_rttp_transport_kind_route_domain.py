@@ -8,7 +8,6 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
 )
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     mismatched_existing_transport_metrics,
-    optimization_input_from_reconstruction,
     partition_existing_transport,
 )
 from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import (

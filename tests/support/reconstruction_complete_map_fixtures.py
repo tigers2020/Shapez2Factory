@@ -25,7 +25,7 @@ def minimal_complete_map_from_cells(
 
     cell_tuple = tuple(cells)
     field_cells = _field_cells_from_decoded_cells(cell_tuple, coord_frame=coord_frame)
-    by_resource = _count_by_resource(cell_tuple)
+    by_resource = _count_by_resource(cell_tuple, field_cells)
     topo = acceptance_topology_from_decoded_cells(
         cell_tuple,
         field_cells=field_cells,

@@ -451,13 +451,19 @@ def _run_rttp_solver_for_map_input(
         build_reconstruction_complete_map,
     )
 
-    complete_map = build_reconstruction_complete_map(cleanup=cleanup, recon=recon)
+    opt_coord_frame = lab_solver_optimization_coord_frame(run_config)
+    complete_map = build_reconstruction_complete_map(
+        cleanup=cleanup,
+        recon=recon,
+        coord_frame=opt_coord_frame,
+    )
     try:
         opt_inp = optimization_input_from_reconstruction(
             recon,
             cleanup=cleanup,
-            coord_frame=lab_solver_optimization_coord_frame(run_config),
+            coord_frame=opt_coord_frame,
             catalog_slice=catalog_slice,
+            complete_map=complete_map,
         )
     except CatalogTransportUnresolvedError as exc:
         return _failure_result(

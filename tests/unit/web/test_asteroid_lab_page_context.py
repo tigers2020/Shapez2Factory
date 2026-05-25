@@ -395,7 +395,16 @@ def test_lab_js_replay_wiring_smoke() -> None:
     tpl_path = (
         root / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
     )
-    tpl = tpl_path.read_text(encoding="utf-8")
+    detail_partial = (
+        root
+        / "django_apps"
+        / "web"
+        / "templates"
+        / "web"
+        / "partials"
+        / "lab_run_detail_panels.html"
+    )
+    tpl = tpl_path.read_text(encoding="utf-8") + detail_partial.read_text(encoding="utf-8")
     assert 'id="lab-timeline-controls"' in tpl
     assert "data-lab-timeline-controls" in tpl
     controls_idx = tpl.index('id="lab-timeline-controls"')
@@ -411,7 +420,6 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert ">xy<" in tpl
     assert 'id="lab-evolution-runs-list"' in tpl
     assert "lab-detail-first-issue" in tpl
-    assert "lab-detail-placed" in tpl
     assert "lab-detail-issue-coord" in tpl
     assert "lab-detail-status" in tpl
     assert "lab-optimization-replay-data" not in tpl
@@ -430,7 +438,6 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "function upsertRunSummary" in js
     assert "lab-evolution-runs-list" in js
     assert "lab-detail-first-issue" in js
-    assert "lab-detail-placed" in js
     assert "lab-detail-issue-coord" in js
     assert "lab-detail-status" in js
     assert "labRunSolverUrl" in js

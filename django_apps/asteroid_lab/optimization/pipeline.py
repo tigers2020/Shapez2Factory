@@ -92,7 +92,7 @@ from django_apps.asteroid_lab.optimization.validation.catalog_layout_validation 
 from django_apps.asteroid_lab.optimization.validation.final_validation import validate_macro_layout
 from django_apps.asteroid_lab.replay import event_types as et
 from django_apps.asteroid_lab.services.committed_throughput_summary import (
-    build_actual_committed_output_per_min,
+    collect_committed_throughput_factors,
 )
 from django_apps.asteroid_lab.services.dto import SnapshotEventDTO
 
@@ -104,7 +104,7 @@ class PipelineResult:
     normal_count: int
     validation_passed: bool
     algorithm_steps: tuple[dict[str, Any], ...] = ()
-    actual_committed_output_per_min: str | None = None
+    committed_throughput_factors: tuple[int, ...] = ()
 
 
 def _record_replay(
@@ -462,10 +462,9 @@ def _run_v01_rttp_pipeline(
         mode=catalog_mode,
     )
 
-    actual_rate = build_actual_committed_output_per_min(
+    throughput_factors = collect_committed_throughput_factors(
         committed_ids=commit_result.committed_ids,
         candidates_by_id=candidates_by_id,
-        transport_kind=inp.transport_kind,
     )
     return PipelineResult(
         genome=genome,
@@ -473,7 +472,7 @@ def _run_v01_rttp_pipeline(
         normal_count=len(generation.normal_candidates),
         validation_passed=validation_passed,
         algorithm_steps=tuple(steps),
-        actual_committed_output_per_min=actual_rate,
+        committed_throughput_factors=throughput_factors,
     )
 
 
@@ -640,10 +639,9 @@ def _run_macro_rttp_pipeline(
         mode=catalog_mode,
     )
 
-    actual_rate = build_actual_committed_output_per_min(
+    throughput_factors = collect_committed_throughput_factors(
         committed_ids=commit_result.committed_ids,
         candidates_by_id=candidates_by_id,
-        transport_kind=inp.transport_kind,
     )
     return PipelineResult(
         genome=genome,
@@ -651,7 +649,7 @@ def _run_macro_rttp_pipeline(
         normal_count=len(generation.normal_candidates),
         validation_passed=validation_passed,
         algorithm_steps=tuple(steps),
-        actual_committed_output_per_min=actual_rate,
+        committed_throughput_factors=throughput_factors,
     )
 
 

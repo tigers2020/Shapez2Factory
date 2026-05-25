@@ -41,9 +41,8 @@ def test_greenfield_pipeline_deterministic_commits_n_bundles(
     assert first == second
     assert first.commit_result.committed_ids == second.commit_result.committed_ids
     assert first.genome.commit_order == second.genome.commit_order
-    assert first.actual_committed_output_per_min is not None
-    assert first.actual_committed_output_per_min.endswith("0000")
-    assert first.actual_committed_output_per_min == second.actual_committed_output_per_min
+    assert len(first.committed_throughput_factors) >= 1
+    assert first.committed_throughput_factors == second.committed_throughput_factors
 
 
 def test_pipeline_includes_deferred_retry_shadow_step_after_primary_commit(

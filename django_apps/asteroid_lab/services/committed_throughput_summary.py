@@ -13,7 +13,6 @@ from decimal import Decimal
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 from django_apps.asteroid_lab.services.reconstruction_capacity_summary import decimal_str
-from django_apps.game_data.services.mining_extraction_rules import get_active_rule, output_per_min
 
 
 def resource_kind_for_transport(transport_kind: TransportKind) -> str:
@@ -25,6 +24,39 @@ def resource_kind_for_transport(transport_kind: TransportKind) -> str:
     raise ValueError(msg)
 
 
+def collect_committed_throughput_factors(
+    *,
+    committed_ids: tuple[str, ...],
+    candidates_by_id: Mapping[str, BundleCandidate],
+) -> tuple[int, ...]:
+    """Throughput factors from committed candidates only (no DB; safe inside pipeline)."""
+
+    return tuple(
+        int(candidates_by_id[cid].throughput_factor)
+        for cid in committed_ids
+        if cid in candidates_by_id
+    )
+
+
+def build_actual_committed_output_per_min_from_factors(
+    *,
+    throughput_factors: tuple[int, ...],
+    transport_kind: TransportKind,
+) -> str:
+    """Sum per-minute output; requires active MiningExtractionRule (call from runtime entry)."""
+
+    from django_apps.game_data.services.mining_extraction_rules import (
+        get_active_rule,
+        output_per_min,
+    )
+
+    rule = get_active_rule(resource_kind_for_transport(transport_kind))
+    total = Decimal(0)
+    for factor in throughput_factors:
+        total += output_per_min(rule, factor)
+    return decimal_str(total)
+
+
 def build_actual_committed_output_per_min(
     *,
     committed_ids: tuple[str, ...],
@@ -33,17 +65,19 @@ def build_actual_committed_output_per_min(
 ) -> str:
     """Sum per-minute output for route-confirmed committed bundle candidates."""
 
-    rule = get_active_rule(resource_kind_for_transport(transport_kind))
-    total = Decimal(0)
-    for cid in committed_ids:
-        candidate = candidates_by_id.get(cid)
-        if candidate is None:
-            continue
-        total += output_per_min(rule, int(candidate.throughput_factor))
-    return decimal_str(total)
+    factors = collect_committed_throughput_factors(
+        committed_ids=committed_ids,
+        candidates_by_id=candidates_by_id,
+    )
+    return build_actual_committed_output_per_min_from_factors(
+        throughput_factors=factors,
+        transport_kind=transport_kind,
+    )
 
 
 __all__ = [
     "build_actual_committed_output_per_min",
+    "build_actual_committed_output_per_min_from_factors",
+    "collect_committed_throughput_factors",
     "resource_kind_for_transport",
 ]

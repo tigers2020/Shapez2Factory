@@ -34,8 +34,11 @@ from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
 )
-from django_apps.asteroid_lab.optimization.input_contracts import RttpPipelineConfig
-from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
+from django_apps.asteroid_lab.optimization.input_contracts import (
+    RttpPipelineConfig,
+    TransportKind,
+)
+from django_apps.asteroid_lab.optimization.pipeline import PipelineResult, run_rttp_pipeline
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_reconstruction,
 )
@@ -52,6 +55,9 @@ from django_apps.asteroid_lab.optimization.rttp_solver_summary import (
 )
 from django_apps.asteroid_lab.optimization.validation.catalog_layout_validation import (
     catalog_error_issue_codes_from_algorithm_steps,
+)
+from django_apps.asteroid_lab.services.committed_throughput_summary import (
+    build_actual_committed_output_per_min_from_factors,
 )
 from django_apps.asteroid_lab.services.experiment_service import (
     create_or_replace_solver_run,
@@ -92,6 +98,17 @@ from django_apps.asteroid_lab.snapshots.coord_proof_policy import (
 SOLVER_NOT_AVAILABLE_MESSAGE = (
     "Solver runtime entry is not wired to RTTP yet; reconstruction is still available."
 )
+
+
+def _actual_committed_output_per_min_from_pipeline(
+    *,
+    pipeline_result: PipelineResult,
+    transport_kind: TransportKind,
+) -> str:
+    return build_actual_committed_output_per_min_from_factors(
+        throughput_factors=pipeline_result.committed_throughput_factors,
+        transport_kind=transport_kind,
+    )
 
 
 class SolverRuntimeEntryErrorCode(StrEnum):
@@ -485,7 +502,10 @@ def _run_rttp_solver_for_map_input(
             recon=recon,
             cleanup=cleanup,
         ),
-        actual_committed_output_per_min=pipeline_result.actual_committed_output_per_min,
+        actual_committed_output_per_min=_actual_committed_output_per_min_from_pipeline(
+            pipeline_result=pipeline_result,
+            transport_kind=opt_inp.transport_kind,
+        ),
     )
     _persist_solver_run_outcome(
         run_id,

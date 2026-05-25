@@ -8,6 +8,9 @@ from django_apps.asteroid_lab.adapters.catalog_geometry_transform import (
     CatalogTransformError,
     expected_footprint_coords,
 )
+from django_apps.asteroid_lab.catalog.asteroid_equipment_projection import (
+    CANON_MANUAL_CANONICAL_ID_PREFIX,
+)
 from django_apps.asteroid_lab.contracts.building_catalog_slice import (
     BuildingCatalogSlice,
     VariantGeometryCatalog,
@@ -66,6 +69,9 @@ def classify_committed_catalog_placements(
             continue
         geometry = _variant_geometry(ref.canonical_id, catalog_slice)
         if geometry is None:
+            if ref.canonical_id.startswith(CANON_MANUAL_CANONICAL_ID_PREFIX):
+                # Phase A: equipment projection manual provenance until DB Layout_* parity.
+                continue
             rows.append(
                 CatalogPlacementIssueRow(
                     candidate_id=candidate_id,

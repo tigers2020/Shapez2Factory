@@ -35,6 +35,8 @@ from django_apps.asteroid_lab.contracts.game_data_snapshot import (
 )
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 
+CANON_MANUAL_CANONICAL_ID_PREFIX: Final[str] = "canon_manual:"
+
 ASTEROID_EQUIPMENT_LAYOUT_ALLOWLIST: Final[frozenset[str]] = frozenset(
     {
         "Layout_ShapeMiner",
@@ -65,7 +67,7 @@ _MANUAL_CONNECTORS: Final[tuple[BuildingConnectorSnapshot, ...]] = (
 
 _MANUAL_GEOMETRY_BY_LAYOUT: Final[dict[str, VariantGeometryCatalog]] = {
     layout: VariantGeometryCatalog(
-        canonical_id=f"canon_manual:{layout}",
+        canonical_id=f"{CANON_MANUAL_CANONICAL_ID_PREFIX}{layout}",
         internal_name=layout,
         footprint_cells=_MANUAL_FOOTPRINT,
         connectors=_MANUAL_CONNECTORS,
@@ -187,5 +189,6 @@ def list_equipment_placement_specs(
 
 __all__ = [
     "ASTEROID_EQUIPMENT_LAYOUT_ALLOWLIST",
+    "CANON_MANUAL_CANONICAL_ID_PREFIX",
     "list_equipment_placement_specs",
 ]

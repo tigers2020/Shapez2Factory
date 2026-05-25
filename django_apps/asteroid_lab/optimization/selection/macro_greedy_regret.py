@@ -139,6 +139,7 @@ def select_macro_genome(
     *,
     pipeline_config: RttpPipelineConfig | None = None,
     selection_config: SelectionConfig | None = None,
+    goal_count: int | None = None,
 ) -> PlacementGenome:
     """Greedy-regret on macro pool; ``commit_order`` lists ``macro_id`` only."""
 
@@ -148,9 +149,11 @@ def select_macro_genome(
     commit_order: list[str] = []
     committed_occupied: set[Coord] = set()
     committed_route_cells: set[Coord] = set()
-    goal_count = max(0, skeleton.capacity_goals)
+    resolved_goal = (
+        max(0, goal_count) if goal_count is not None else max(0, skeleton.capacity_goals)
+    )
 
-    while pool and len(commit_order) < goal_count:
+    while pool and len(commit_order) < resolved_goal:
         base_scores = {
             row.macro_id: _base_macro_score(
                 row,

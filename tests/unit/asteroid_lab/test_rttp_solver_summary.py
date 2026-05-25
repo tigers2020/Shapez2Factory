@@ -104,7 +104,26 @@ def test_throughput_budget_satisfied_not_pipeline_ok_alias() -> None:
     )
     assert summary["validation_passed"] is True
     assert summary["throughput_budget_satisfied"] is False
+    assert summary["capacity_satisfied"] is False
     assert "throughput_target_shortfall" in summary["issue_codes"]
+
+
+def test_capacity_satisfied_false_when_validation_ok_budget_fail() -> None:
+    summary = build_rttp_solver_summary(
+        pipeline_ok=True,
+        committed_count=1,
+        normal_count=127,
+        commit_order=("a",),
+        algorithm_steps=(),
+        throughput_budget_fields={
+            "throughput_budget_satisfied": False,
+            "target_throughput_per_min": "1536.0000",
+            "actual_committed_output_per_min": "120.0000",
+        },
+    )
+    assert summary["validation_passed"] is True
+    assert summary["capacity_satisfied"] is False
+    assert summary["throughput_budget_satisfied"] is False
 
 
 def test_build_rttp_solver_summary_includes_actual_committed_when_provided() -> None:

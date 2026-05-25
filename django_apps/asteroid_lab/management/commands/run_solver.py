@@ -9,7 +9,9 @@ from typing import Any
 from django.core.management.base import BaseCommand, CommandError
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.services.placement_goal import parse_max_placement_goal_count
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY,
     SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
@@ -73,6 +75,12 @@ class Command(BaseCommand):  # type: ignore[misc]
             default=None,
             help="Throughput target as percent of reconstruction max (10-80).",
         )
+        parser.add_argument(
+            "--max-placement-goal-count",
+            type=int,
+            default=None,
+            help="Max bundles greedy-regret may select (1-128, default 32).",
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
         slug = str(options["slug"]).strip()
@@ -116,6 +124,19 @@ class Command(BaseCommand):  # type: ignore[misc]
                         {
                             SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY: options[
                                 "throughput_target_percent"
+                            ]
+                        }
+                    )
+                )
+            except ValueError as exc:
+                raise CommandError(str(exc)) from exc
+        if options["max_placement_goal_count"] is not None:
+            try:
+                config[SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY] = (
+                    parse_max_placement_goal_count(
+                        {
+                            SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY: options[
+                                "max_placement_goal_count"
                             ]
                         }
                     )

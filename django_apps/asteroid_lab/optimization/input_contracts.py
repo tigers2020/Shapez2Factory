@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 from enum import StrEnum
 
 from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCatalogSlice
@@ -85,6 +86,8 @@ class RttpPipelineConfig:
     deferred_retry_shadow: DeferredRetryShadowConfig = field(
         default_factory=DeferredRetryShadowConfig
     )
+    target_throughput_per_min: Decimal | None = None
+    max_placement_goal_count: int = 32
 
 
 __all__ = [

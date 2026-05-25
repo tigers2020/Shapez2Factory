@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
@@ -72,6 +73,10 @@ from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
+from django_apps.asteroid_lab.services.placement_goal import (
+    attribute_throughput_shortfall,
+    parse_max_placement_goal_count,
+)
 from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     persist_reconstructed_asteroid_map,
     run_reconstruction_for_map_input,
@@ -82,6 +87,7 @@ from django_apps.asteroid_lab.services.reconstruction_capacity_summary import (
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY,
+    SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY,
     SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY,
@@ -94,7 +100,9 @@ from django_apps.asteroid_lab.services.solver_run_lab_summary import (
 )
 from django_apps.asteroid_lab.services.throughput_target import (
     build_throughput_budget_summary,
+    compute_target_throughput_per_min,
     parse_throughput_target_percent,
+    primary_reconstruction_max_per_min,
 )
 from django_apps.asteroid_lab.snapshots.coord_proof_policy import (
     lab_solver_optimization_coord_frame,
@@ -128,6 +136,7 @@ class SolverRuntimeEntryErrorCode(StrEnum):
     CATALOG_SLICE_HASH_MISMATCH = "catalog_slice_hash_mismatch"
     CATALOG_TRANSPORT_UNRESOLVED = "catalog_transport_unresolved"
     INVALID_THROUGHPUT_TARGET_PERCENT = "invalid_throughput_target_percent"
+    INVALID_MAX_PLACEMENT_GOAL_COUNT = "invalid_max_placement_goal_count"
     RTTP_VALIDATION_FAILED = "rttp_validation_failed"
 
 
@@ -224,17 +233,29 @@ def _deferred_retry_shadow_config_from_run_config(
     )
 
 
-def _rttp_pipeline_config_from_run_config(config: dict[str, Any]) -> RttpPipelineConfig:
-    """Map ``SolverRun.config_json`` RTTP keys to ``RttpPipelineConfig`` (PR-I)."""
+def _rttp_pipeline_config_from_run_config(
+    config: dict[str, Any],
+    *,
+    target_throughput_per_min: Decimal | None = None,
+    max_placement_goal_count: int | None = None,
+) -> RttpPipelineConfig:
+    """Map ``SolverRun.config_json`` RTTP keys to ``RttpPipelineConfig`` (PR-I + PR-2d)."""
 
     macro_only = bool(config.get(SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY, False))
     max_raw = config.get(SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY, 64)
     max_macro = int(max_raw) if max_raw is not None else 64
     shadow = _deferred_retry_shadow_config_from_run_config(config)
+    resolved_max_goal = (
+        max_placement_goal_count
+        if max_placement_goal_count is not None
+        else parse_max_placement_goal_count(config)
+    )
     return RttpPipelineConfig(
         macro_only_mode=macro_only,
         max_macro_candidates=max_macro,
         deferred_retry_shadow=shadow,
+        target_throughput_per_min=target_throughput_per_min,
+        max_placement_goal_count=resolved_max_goal,
     )
 
 
@@ -447,7 +468,16 @@ def _run_rttp_solver_for_map_input(
             error_code=SolverRuntimeEntryErrorCode.INVALID_THROUGHPUT_TARGET_PERCENT,
             message=str(exc),
         )
+    try:
+        max_placement_goal = parse_max_placement_goal_count(run_config)
+    except ValueError as exc:
+        return _failure_result(
+            int(project_id),
+            error_code=SolverRuntimeEntryErrorCode.INVALID_MAX_PLACEMENT_GOAL_COUNT,
+            message=str(exc),
+        )
     run_config[SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY] = throughput_percent
+    run_config[SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY] = max_placement_goal
 
     if replace_existing_run:
         run_dto = create_or_replace_solver_run(
@@ -483,7 +513,16 @@ def _run_rttp_solver_for_map_input(
             title="RTTP optimization replay",
         )
         replay_sink = DbRttpReplaySink(int(rttp_track.track_id))
-    pipeline_config = _rttp_pipeline_config_from_run_config(run_config)
+    capacity_env = build_reconstruction_capacity_envelope(recon=recon)
+    target_throughput = compute_target_throughput_per_min(
+        reconstruction_max=primary_reconstruction_max_per_min(capacity_env),
+        percent=throughput_percent,
+    )
+    pipeline_config = _rttp_pipeline_config_from_run_config(
+        run_config,
+        target_throughput_per_min=target_throughput,
+        max_placement_goal_count=max_placement_goal,
+    )
     pipeline_result = run_rttp_pipeline(
         opt_inp,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
@@ -503,7 +542,6 @@ def _run_rttp_solver_for_map_input(
     catalog_error_issue_codes = catalog_error_issue_codes_from_algorithm_steps(
         pipeline_result.algorithm_steps
     )
-    capacity_env = build_reconstruction_capacity_envelope(recon=recon)
     actual_str = _actual_committed_output_per_min_from_pipeline(
         pipeline_result=pipeline_result,
         transport_kind=opt_inp.transport_kind,
@@ -515,6 +553,27 @@ def _run_rttp_solver_for_map_input(
             throughput_target_percent=throughput_percent,
             actual_committed_output_per_min=actual_str,
         )
+    throughput_goal_payload: dict[str, Any] | None = None
+    shortfall_reason: str | None = None
+    placement_plan = pipeline_result.placement_goal_plan
+    if placement_plan is not None:
+        throughput_goal_payload = placement_plan.to_summary_dict()
+        throughput_goal_payload["selected_count"] = len(pipeline_result.genome.commit_order)
+        throughput_goal_payload["committed_count"] = len(committed)
+    if budget_fields is not None and placement_plan is not None:
+        reason = attribute_throughput_shortfall(
+            plan=placement_plan,
+            selected_count=len(pipeline_result.genome.commit_order),
+            committed_count=len(committed),
+            conflict_count=len(pipeline_result.commit_result.conflicts),
+            budget_satisfied=bool(budget_fields["throughput_budget_satisfied"]),
+            actual=Decimal(str(budget_fields["actual_committed_output_per_min"])),
+            target=Decimal(str(budget_fields["target_throughput_per_min"])),
+            normal_count=pipeline_result.normal_count,
+        )
+        shortfall_reason = reason.value
+        if throughput_goal_payload is not None:
+            throughput_goal_payload["throughput_shortfall_reason"] = shortfall_reason
     summary = build_rttp_solver_summary(
         pipeline_ok=pipeline_result.validation_passed,
         committed_count=len(committed),
@@ -532,6 +591,8 @@ def _run_rttp_solver_for_map_input(
         ),
         actual_committed_output_per_min=actual_str,
         throughput_budget_fields=budget_fields,
+        throughput_goal=throughput_goal_payload,
+        throughput_shortfall_reason=shortfall_reason,
     )
     _persist_solver_run_outcome(
         run_id,

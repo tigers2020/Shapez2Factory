@@ -70,3 +70,17 @@ def test_run_solver_rejects_percent_above_80(client: Client) -> None:
     )
     assert response.status_code == 400
     assert response.json()["error"] == "invalid_throughput_target_percent"
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_run_solver_rejects_max_placement_goal_zero(client: Client) -> None:
+    proj = m.AsteroidProject.objects.create(name="GoalZero", slug="goal-zero")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": proj.slug})
+    response = client.post(
+        url,
+        data=json.dumps({"max_placement_goal_count": 0}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_max_placement_goal_count"

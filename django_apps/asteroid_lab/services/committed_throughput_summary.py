@@ -7,7 +7,7 @@ Macro parent IDs are not summed when absent from ``candidates_by_id``.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
@@ -36,6 +36,24 @@ def collect_committed_throughput_factors(
         for cid in committed_ids
         if cid in candidates_by_id
     )
+
+
+def best_bundle_output_per_min_from_factors(
+    *,
+    throughput_factors: Sequence[int],
+    transport_kind: TransportKind,
+) -> Decimal:
+    """Max per-bundle output/min for placement goal sizing (PR-2d)."""
+
+    if not throughput_factors:
+        return Decimal(0)
+    from django_apps.game_data.services.mining_extraction_rules import (
+        get_active_rule,
+        output_per_min,
+    )
+
+    rule = get_active_rule(resource_kind_for_transport(transport_kind))
+    return max(output_per_min(rule, int(factor)) for factor in throughput_factors)
 
 
 def build_actual_committed_output_per_min_from_factors(
@@ -76,6 +94,7 @@ def build_actual_committed_output_per_min(
 
 
 __all__ = [
+    "best_bundle_output_per_min_from_factors",
     "build_actual_committed_output_per_min",
     "build_actual_committed_output_per_min_from_factors",
     "collect_committed_throughput_factors",

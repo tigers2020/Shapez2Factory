@@ -233,6 +233,7 @@ def lab_run_summary_from_solver_summary(
         "capacity": _section_capacity(solver_summary.get("reconstruction_capacity")),
         "rttp": _section_rttp(solver_summary),
         "throughput_target": _section_throughput_target(solver_summary),
+        "throughput_goal": dict(solver_summary.get("throughput_goal") or {}),
     }
     if isinstance(macro_commit_summary, dict) and macro_commit_summary:
         row["macro_commit_summary"] = dict(macro_commit_summary)

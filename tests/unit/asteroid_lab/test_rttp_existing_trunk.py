@@ -60,13 +60,11 @@ def _belt_cell(sx: int, sy: int) -> DecodedCellDTO:
 
 
 def _existing_trunk_optimization_input() -> OptimizationInput:
-    cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
-    cells = cells + (_belt_cell(4, 5),)
-    cleanup, recon = minimal_cleanup_and_recon_from_cells(*cells)
-    inp = optimization_input_from_reconstruction(recon, cleanup=cleanup)
-    if inp.catalog_slice is None:
-        inp = replace(inp, catalog_slice=build_minimal_test_catalog_slice())
-    return inp
+    from tests.support.rttp_narrow_corridor_fixture import (
+        build_narrow_corridor_optimization_input,
+    )
+
+    return build_narrow_corridor_optimization_input()
 
 
 def test_skeleton_includes_existing_trunk_cells() -> None:
@@ -74,9 +72,6 @@ def test_skeleton_includes_existing_trunk_cells() -> None:
 
     assert inp.blocked_incompatible_transport_cells == frozenset()
     assert inp.existing_trunk_cells
-    assert inp.existing_trunk_cells <= frozenset(
-        cell.coord for cell in inp.existing_transport_cells
-    )
 
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
 

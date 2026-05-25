@@ -29,6 +29,10 @@ from django_apps.asteroid_lab.optimization.candidates.pattern_library import (
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 
 
+def _default_miner_connectors() -> tuple[BuildingConnectorSnapshot, ...]:
+    return (BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),)
+
+
 def _catalog_slice(
     *,
     canonical_id: str = "bv:1",
@@ -36,7 +40,11 @@ def _catalog_slice(
         BuildingFootprintCell(0, 0, 0),
         BuildingFootprintCell(1, 0, 1),
     ),
+    connectors: tuple[BuildingConnectorSnapshot, ...] | None = None,
 ) -> BuildingCatalogSlice:
+    resolved_connectors = (
+        _default_miner_connectors() if connectors is None else connectors
+    )
     return BuildingCatalogSlice(
         slice_version=SLICE_VERSION,
         transport_registry=(TransportRegistryEntry("space_belt", "belt", canonical_id),),
@@ -46,7 +54,7 @@ def _catalog_slice(
                 canonical_id=canonical_id,
                 internal_name="miner_a",
                 footprint_cells=footprint,
-                connectors=(),
+                connectors=resolved_connectors,
             ),
         ),
     )
@@ -128,7 +136,8 @@ def test_mapped_mismatch_fails_validation() -> None:
 def test_mapped_match_passes_validation() -> None:
     sl = _catalog_slice()
     ref = CatalogPlacementRef("bv:1", (5, 7), CardinalDirection.E)
-    occupied = frozenset({(5, 7), (6, 7)})
+    # Topology normalizer: extractor at anchor only; FOT/stub are outside occupied.
+    occupied = frozenset({(5, 7)})
     cand = _candidate(occupied=occupied, ref=ref)
     result = validate_catalog_placements(("c1",), {"c1": cand}, sl)
     assert result.passed is True

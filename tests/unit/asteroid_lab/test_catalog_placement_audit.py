@@ -21,6 +21,7 @@ from django_apps.asteroid_lab.contracts.catalog_placement import (
     CatalogPlacementRef,
 )
 from django_apps.asteroid_lab.contracts.game_data_snapshot import (
+    BuildingConnectorSnapshot,
     BuildingFootprintCell,
     TransportRegistryEntry,
 )
@@ -31,6 +32,10 @@ from django_apps.asteroid_lab.optimization.candidates.pattern_library import (
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 
 
+def _default_miner_connectors() -> tuple[BuildingConnectorSnapshot, ...]:
+    return (BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),)
+
+
 def _catalog_slice(
     *,
     canonical_id: str = "bv:1",
@@ -38,7 +43,11 @@ def _catalog_slice(
         BuildingFootprintCell(0, 0, 0),
         BuildingFootprintCell(1, 0, 1),
     ),
+    connectors: tuple[BuildingConnectorSnapshot, ...] | None = None,
 ) -> BuildingCatalogSlice:
+    resolved_connectors = (
+        _default_miner_connectors() if connectors is None else connectors
+    )
     return BuildingCatalogSlice(
         slice_version=SLICE_VERSION,
         transport_registry=(TransportRegistryEntry("space_belt", "belt", canonical_id),),
@@ -48,7 +57,7 @@ def _catalog_slice(
                 canonical_id=canonical_id,
                 internal_name="miner_a",
                 footprint_cells=footprint,
-                connectors=(),
+                connectors=resolved_connectors,
             ),
         ),
     )
@@ -93,7 +102,7 @@ def test_audit_unmapped_when_ref_missing() -> None:
 def test_audit_matched_when_footprint_aligns() -> None:
     sl = _catalog_slice()
     ref = CatalogPlacementRef("bv:1", (5, 7), CardinalDirection.E)
-    occupied = frozenset({(5, 7), (6, 7)})
+    occupied = frozenset({(5, 7)})
     cand = _candidate(occupied=occupied, ref=ref)
     audit = audit_catalog_placements(("c1",), {"c1": cand}, sl)
     assert audit.matched_candidate_count == 1
@@ -142,10 +151,10 @@ def test_audit_metrics_include_temporary_compat_count() -> None:
     assert "committed_projection_audit" in metrics
 
 
-def test_audit_transform_error_on_empty_footprint_in_slice() -> None:
+def test_audit_topology_failed_on_empty_footprint_in_slice() -> None:
     sl = _catalog_slice(footprint=())
     ref = CatalogPlacementRef("bv:1", (5, 7), CardinalDirection.E)
     cand = _candidate(occupied=frozenset({(5, 7)}), ref=ref)
     audit = audit_catalog_placements(("c1",), {"c1": cand}, sl)
-    assert audit.transform_error_count == 1
-    assert CatalogPlacementIssueCode.CATALOG_ANCHOR_TRANSFORM_ERROR.value in audit.issue_codes
+    assert audit.mismatch_candidate_count == 1
+    assert CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value in audit.issue_codes

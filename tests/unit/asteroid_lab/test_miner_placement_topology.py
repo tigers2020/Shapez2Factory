@@ -8,8 +8,8 @@ from django_apps.asteroid_lab.adapters.catalog_geometry_transform import cardina
 from django_apps.asteroid_lab.catalog.miner_placement_topology import (
     normalize_miner_placement_topology,
 )
-from django_apps.asteroid_lab.contracts.catalog_placement import CardinalDirection
 from django_apps.asteroid_lab.contracts.building_catalog_slice import VariantGeometryCatalog
+from django_apps.asteroid_lab.contracts.catalog_placement import CardinalDirection
 from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     BuildingConnectorSnapshot,
     BuildingFootprintCell,
@@ -21,9 +21,7 @@ def _geometry_two_cell_east_output() -> VariantGeometryCatalog:
         BuildingFootprintCell(0, 0, 0),
         BuildingFootprintCell(1, 0, 1),
     )
-    connectors = (
-        BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),
-    )
+    connectors = (BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),)
     return VariantGeometryCatalog(
         canonical_id="bv:test_miner",
         internal_name="Layout_ShapeMiner",
@@ -88,16 +86,11 @@ def test_ambiguous_extractor_candidates_returns_none() -> None:
         BuildingFootprintCell(0, 0, 0),
         BuildingFootprintCell(2, 0, 1),
     )
-    connectors = (
-        BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),
-    )
+    connectors = (BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),)
     geometry = VariantGeometryCatalog(
         canonical_id="bv:ambiguous",
         internal_name="Layout_ShapeMiner",
         footprint_cells=footprint,
         connectors=connectors,
     )
-    assert (
-        normalize_miner_placement_topology(geometry, rotation=CardinalDirection.E)
-        is None
-    )
+    assert normalize_miner_placement_topology(geometry, rotation=CardinalDirection.E) is None

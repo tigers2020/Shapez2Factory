@@ -189,11 +189,7 @@ def test_overlay_fixed_output_transport_not_extension(pattern_id: str) -> None:
     cand = _candidate(pattern_id=pattern_id)
     fot_coord = _translate(cand.anchor_coord, cand.pattern.fixed_output_transport_offset)
     rows = build_candidate_placement_overlay_rows((cand,))
-    fot_rows = [
-        r
-        for r in rows
-        if (int(r["x"]), int(r["y"])) == fot_coord
-    ]
+    fot_rows = [r for r in rows if (int(r["x"]), int(r["y"])) == fot_coord]
     assert len(fot_rows) == 1
     assert "fixed_output_transport" in fot_rows[0]["overlay_semantic_kind"]
     assert fot_rows[0]["cell_kind"] in ("space_belt", "space_pipe")

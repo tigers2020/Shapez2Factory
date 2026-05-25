@@ -131,9 +131,7 @@ def generate_candidates(
     skeleton: RttpSkeleton,
     *,
     policy: ExtractorPlacementPolicy = ExtractorPlacementPolicy.INTERIOR_AND_RIM,
-    fixed_output_transport_policy: FixedOutputTransportPolicy = (
-        FixedOutputTransportPolicy.ALLOW
-    ),
+    fixed_output_transport_policy: FixedOutputTransportPolicy = (FixedOutputTransportPolicy.ALLOW),
     max_candidates: int | None = None,
     max_expansions: int = 500,
 ) -> CandidateGenerationResult:

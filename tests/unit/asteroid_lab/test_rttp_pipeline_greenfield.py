@@ -10,14 +10,12 @@ import pytest
 
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
-)
-from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     FixedOutputTransportPolicy,
 )
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
-from tests.support.rttp_narrow_corridor_fixture import build_narrow_corridor_optimization_input
 from django_apps.asteroid_lab.optimization.rttp_solver_summary import RttpAlgorithmStepId
+from tests.support.rttp_narrow_corridor_fixture import build_narrow_corridor_optimization_input
 
 pytestmark = pytest.mark.django_db
 

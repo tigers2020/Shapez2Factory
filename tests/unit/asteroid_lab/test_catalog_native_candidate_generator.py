@@ -68,9 +68,7 @@ def test_normal_occupied_matches_catalog_placement_spec(
         ref = cand.catalog_placement_ref
         assert ref is not None
         spec = next(
-            s
-            for s in specs
-            if s.canonical_id == ref.canonical_id and s.rotation == ref.rotation
+            s for s in specs if s.canonical_id == ref.canonical_id and s.rotation == ref.rotation
         )
         expected = frozenset(
             (ref.anchor_coord[0] + off[0], ref.anchor_coord[1] + off[1])

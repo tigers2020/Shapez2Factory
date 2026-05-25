@@ -13,12 +13,14 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
+    SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY,
 )
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
     SolverRuntimeEntryErrorCode,
     entry_result_to_json_dict,
     run_solver_runtime_for_project,
 )
+from django_apps.asteroid_lab.services.throughput_target import parse_throughput_target_percent
 from django_apps.game_data.snapshots.errors import SnapshotBuildError
 from django_apps.web.services.asteroid_game_data_snapshot import (
     build_asteroid_game_data_snapshot_with_provenance,
@@ -65,6 +67,12 @@ class Command(BaseCommand):  # type: ignore[misc]
                 "observe_only=false (PR-4 normative ops entrypoint)."
             ),
         )
+        parser.add_argument(
+            "--throughput-target-percent",
+            type=int,
+            default=None,
+            help="Throughput target as percent of reconstruction max (10-80).",
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
         slug = str(options["slug"]).strip()
@@ -101,6 +109,19 @@ class Command(BaseCommand):  # type: ignore[misc]
                 "enabled": True,
                 "observe_only": False,
             }
+        if options["throughput_target_percent"] is not None:
+            try:
+                config[SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY] = (
+                    parse_throughput_target_percent(
+                        {
+                            SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY: options[
+                                "throughput_target_percent"
+                            ]
+                        }
+                    )
+                )
+            except ValueError as exc:
+                raise CommandError(str(exc)) from exc
 
         run_key = options.get("run_key")
         result = run_solver_runtime_for_project(

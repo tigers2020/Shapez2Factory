@@ -87,9 +87,14 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
+    SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY,
 )
 from django_apps.asteroid_lab.services.solver_run_lab_summary import (
     lab_run_summary_from_solver_summary,
+)
+from django_apps.asteroid_lab.services.throughput_target import (
+    build_throughput_budget_summary,
+    parse_throughput_target_percent,
 )
 from django_apps.asteroid_lab.snapshots.coord_proof_policy import (
     lab_solver_optimization_coord_frame,
@@ -122,6 +127,7 @@ class SolverRuntimeEntryErrorCode(StrEnum):
     CATALOG_SLICE_REQUIRED = "catalog_slice_required"
     CATALOG_SLICE_HASH_MISMATCH = "catalog_slice_hash_mismatch"
     CATALOG_TRANSPORT_UNRESOLVED = "catalog_transport_unresolved"
+    INVALID_THROUGHPUT_TARGET_PERCENT = "invalid_throughput_target_percent"
     RTTP_VALIDATION_FAILED = "rttp_validation_failed"
 
 
@@ -433,6 +439,16 @@ def _run_rttp_solver_for_map_input(
             message=str(exc),
         )
 
+    try:
+        throughput_percent = parse_throughput_target_percent(run_config)
+    except ValueError as exc:
+        return _failure_result(
+            int(project_id),
+            error_code=SolverRuntimeEntryErrorCode.INVALID_THROUGHPUT_TARGET_PERCENT,
+            message=str(exc),
+        )
+    run_config[SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY] = throughput_percent
+
     if replace_existing_run:
         run_dto = create_or_replace_solver_run(
             int(project_id),
@@ -487,6 +503,18 @@ def _run_rttp_solver_for_map_input(
     catalog_error_issue_codes = catalog_error_issue_codes_from_algorithm_steps(
         pipeline_result.algorithm_steps
     )
+    capacity_env = build_reconstruction_capacity_envelope(recon=recon)
+    actual_str = _actual_committed_output_per_min_from_pipeline(
+        pipeline_result=pipeline_result,
+        transport_kind=opt_inp.transport_kind,
+    )
+    budget_fields = None
+    if actual_str is not None:
+        budget_fields = build_throughput_budget_summary(
+            reconstruction_capacity=capacity_env,
+            throughput_target_percent=throughput_percent,
+            actual_committed_output_per_min=actual_str,
+        )
     summary = build_rttp_solver_summary(
         pipeline_ok=pipeline_result.validation_passed,
         committed_count=len(committed),
@@ -497,15 +525,13 @@ def _run_rttp_solver_for_map_input(
         reconstruction_step=reconstruction_step_from_result(recon),
         catalog_slice_step=catalog_slice_step_from_slice(catalog_slice),
         catalog_error_issue_codes=catalog_error_issue_codes,
-        reconstruction_capacity=build_reconstruction_capacity_envelope(recon=recon),
+        reconstruction_capacity=capacity_env,
         reconstruction_observability=build_reconstruction_observability(
             recon=recon,
             cleanup=cleanup,
         ),
-        actual_committed_output_per_min=_actual_committed_output_per_min_from_pipeline(
-            pipeline_result=pipeline_result,
-            transport_kind=opt_inp.transport_kind,
-        ),
+        actual_committed_output_per_min=actual_str,
+        throughput_budget_fields=budget_fields,
     )
     _persist_solver_run_outcome(
         run_id,

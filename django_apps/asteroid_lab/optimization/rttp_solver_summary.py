@@ -15,6 +15,8 @@ from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.replay import event_types as et
 
 RTTP_ALGORITHM_LABEL = "rttp_v0.1"
+# Must match services.throughput_target.THROUGHPUT_TARGET_SHORTFALL_ISSUE_CODE
+THROUGHPUT_TARGET_SHORTFALL_ISSUE_CODE = "throughput_target_shortfall"
 
 
 class RttpAlgorithmStepId(StrEnum):
@@ -136,6 +138,7 @@ def build_rttp_solver_summary(
     reconstruction_capacity: Mapping[str, Any] | None = None,
     reconstruction_observability: Mapping[str, Any] | None = None,
     actual_committed_output_per_min: str | None = None,
+    throughput_budget_fields: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Aggregate RTTP scalars and per-step summaries for ``SolverRun.config_json``."""
 
@@ -183,6 +186,15 @@ def build_rttp_solver_summary(
         summary["reconstruction_observability"] = dict(reconstruction_observability)
     if actual_committed_output_per_min is not None:
         summary["actual_committed_output_per_min"] = actual_committed_output_per_min
+    if throughput_budget_fields is not None:
+        fields = dict(throughput_budget_fields)
+        summary.update(fields)
+        summary["throughput_budget_satisfied"] = bool(fields["throughput_budget_satisfied"])
+        if not fields["throughput_budget_satisfied"]:
+            codes = list(summary["issue_codes"])
+            if THROUGHPUT_TARGET_SHORTFALL_ISSUE_CODE not in codes:
+                codes.append(THROUGHPUT_TARGET_SHORTFALL_ISSUE_CODE)
+            summary["issue_codes"] = codes
     return summary
 
 

@@ -192,6 +192,12 @@ msgid ""
 msgstr ""
 "{{ provider_name }} 계정으로 {{ site_name }}에 로그인합니다. 마지막으로 아래 항목만 채워 주세요."
 
+msgid "Target throughput"
+msgstr "목표 처리량"
+
+msgid "% of theoretical max"
+msgstr "이론 최대치 대비 %"
+
 msgid "shapez2 planner"
 msgstr "shapez2 planner"
 
@@ -537,11 +543,23 @@ msgstr "품질 등급"
 msgid "Confidence"
 msgstr "신뢰도"
 
-msgid "Cells"
-msgstr "셀"
+msgid "Primary resource"
+msgstr "주 자원"
 
-msgid "Confirmed mineable"
-msgstr "확정 채굴 가능"
+msgid "Map cells (display)"
+msgstr "맵 셀 (표시)"
+
+msgid "Mineable cells"
+msgstr "채굴 가능 셀"
+
+msgid "Shape confirmed"
+msgstr "Shape 확정"
+
+msgid "Fluid confirmed"
+msgstr "Fluid 확정"
+
+msgid "Confirmed total"
+msgstr "확정 합계"
 
 msgid "Ambiguous"
 msgstr "모호"
@@ -588,6 +606,18 @@ msgstr "커밋 순서"
 msgid "Actual output"
 msgstr "실제 출력"
 
+msgid "Target percent"
+msgstr "목표 비율"
+
+msgid "Utilization"
+msgstr "활용률"
+
+msgid "Budget status"
+msgstr "예산 상태"
+
+msgid "Throughput shortfall"
+msgstr "처리량 부족"
+
 msgid "First issue"
 msgstr "First issue"
 
@@ -609,8 +639,8 @@ msgstr "이론 최대치 = 복원된 소행성 지형 기준 상한"
 msgid "Theoretical Max"
 msgstr "이론 최대치"
 
-msgid "terrain upper bound (shape)"
-msgstr "지형 상한 (shape)"
+msgid "terrain upper bound"
+msgstr "지형 상한"
 
 msgid "Resource Capacity"
 msgstr "자원 용량"
@@ -621,8 +651,8 @@ msgstr "복원 지형 기준"
 msgid "Mineable Footprint"
 msgstr "채굴 가능 지형"
 
-msgid "confirmed cells"
-msgstr "확정 셀"
+msgid "confirmed / map cells"
+msgstr "확정 / 맵 셀"
 
 msgid "Reconstruction Quality"
 msgstr "복원 품질"

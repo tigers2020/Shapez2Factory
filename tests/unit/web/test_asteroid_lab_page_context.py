@@ -446,7 +446,7 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert 'method: "POST"' in js
     assert "dataset.labRunSolverUrl" in js
     run_btn_idx = js.index("runSolverBtn")
-    run_handler = js[run_btn_idx : run_btn_idx + 2500]
+    run_handler = js[run_btn_idx : run_btn_idx + 4500]
     assert "macro_only_mode" in run_handler
     assert "lab-macro-only-mode" in run_handler
     assert "setPlaying(true)" not in run_handler

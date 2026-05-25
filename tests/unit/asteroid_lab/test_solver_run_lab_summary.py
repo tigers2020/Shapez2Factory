@@ -62,7 +62,7 @@ def test_lab_run_summary_capacity_fields_partial() -> None:
     assert row["capacity_satisfied"] is False
     assert row["run_success"] is False
     assert row["placement_capacity_satisfied"] is False
-    assert row["throughput_budget_satisfied"] is True
+    assert row["throughput_budget_satisfied"] is None
     assert row["target_miner_bundle_count"] == 84
     assert row["target_placement_count"] == 84
     assert row["target_throughput"] == 84
@@ -124,6 +124,43 @@ def test_lab_run_summary_nested_capacity_from_solver_summary() -> None:
     assert row["reconstruction"]["quality_tier_short"] == "HIGH"
     assert row["rttp"]["confirmed_count"] == 1
     assert row["rttp"]["actual_output_status"] == "pending_pr_2b"
+
+
+def test_lab_run_summary_throughput_target_section() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=77,
+        status="completed",
+        solver_summary={
+            "validation_passed": True,
+            "confirmed_count": 2,
+            "actual_committed_output_per_min": "2400.0000",
+            "throughput_target_percent": 60,
+            "target_throughput_per_min": "2880.0000",
+            "reconstruction_max_throughput_per_min": "4800.0000",
+            "throughput_budget_satisfied": False,
+            "throughput_shortfall_per_min": "480.0000",
+            "target_utilization_ratio": "0.6000",
+            "actual_utilization_ratio": "0.5000",
+            "throughput_target_status": "shortfall",
+        },
+    )
+    assert row["throughput_target"]["budget_status"] == "shortfall"
+    assert row["throughput_target"]["throughput_target_percent"] == 60
+    assert row["throughput_budget_satisfied"] is False
+
+
+def test_lab_run_summary_throughput_budget_unknown_without_actual() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=78,
+        status="failed",
+        solver_summary={
+            "validation_passed": False,
+            "throughput_budget_satisfied": False,
+            "throughput_target_percent": 80,
+        },
+    )
+    assert row["throughput_budget_satisfied"] is None
+    assert row["throughput_target"]["budget_status"] == "—"
 
 
 def test_lab_run_summary_actual_output_status_available() -> None:
@@ -241,7 +278,7 @@ def test_lab_run_summary_from_orm_partial_status() -> None:
     assert row["status"] == "partial"
     assert row["capacity_satisfied"] is False
     assert row["placement_capacity_satisfied"] is False
-    assert row["throughput_budget_satisfied"] is True
+    assert row["throughput_budget_satisfied"] is None
     assert row["placed"] == 6
     assert row["capacity_deficit_count"] == 78
     assert row["throughput_deficit_count"] == 0

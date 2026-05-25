@@ -83,6 +83,30 @@ def test_build_rttp_solver_summary_includes_reconstruction_capacity_when_provide
     assert summary["reconstruction_observability"] == obs
 
 
+def test_throughput_budget_satisfied_not_pipeline_ok_alias() -> None:
+    summary = build_rttp_solver_summary(
+        pipeline_ok=True,
+        committed_count=1,
+        normal_count=1,
+        commit_order=("a",),
+        algorithm_steps=(),
+        throughput_budget_fields={
+            "throughput_budget_satisfied": False,
+            "throughput_target_percent": 60,
+            "target_throughput_per_min": "2880.0000",
+            "actual_committed_output_per_min": "2400.0000",
+            "throughput_shortfall_per_min": "480.0000",
+            "reconstruction_max_throughput_per_min": "4800.0000",
+            "target_utilization_ratio": "0.6000",
+            "actual_utilization_ratio": "0.5000",
+            "throughput_target_status": "shortfall",
+        },
+    )
+    assert summary["validation_passed"] is True
+    assert summary["throughput_budget_satisfied"] is False
+    assert "throughput_target_shortfall" in summary["issue_codes"]
+
+
 def test_build_rttp_solver_summary_includes_actual_committed_when_provided() -> None:
     summary = build_rttp_solver_summary(
         pipeline_ok=True,

@@ -1,5 +1,5 @@
 ﻿{% extends "web/base.html" %}
-{% load static %}
+{% load i18n static %}
 
 {% block title %}shapez2 planner | Asteroid Mining Lab{% endblock %}
 
@@ -211,6 +211,28 @@
               {% empty %}
                 <p class="text-sm text-slate-500">No data</p>
               {% endfor %}
+            </div>
+            <div class="mt-4 border-t border-slate-800 pt-4">
+              <label for="lab-throughput-target-percent" class="text-xs font-medium text-slate-400">
+                {% trans "Target throughput" %}
+              </label>
+              <div class="mt-2 flex items-center gap-3">
+                <input
+                  type="range"
+                  id="lab-throughput-target-percent"
+                  class="flex-1 accent-cyan-500"
+                  min="10"
+                  max="80"
+                  step="10"
+                  value="80"
+                />
+                <span
+                  id="lab-throughput-target-percent-label"
+                  class="w-10 text-right text-sm font-semibold text-slate-100"
+                  >80%</span
+                >
+              </div>
+              <p class="mt-1 text-xs text-slate-500">{% trans "% of theoretical max" %}</p>
             </div>
             <div class="mt-3 rounded-xl border border-slate-800 bg-slate-900 p-3 text-xs text-slate-500">
               —

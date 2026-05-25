@@ -8,6 +8,9 @@ msgstr ""
 msgid "(read-only)"
 msgstr "(읽기 전용)"
 
+msgid "/min"
+msgstr "/분"
+
 msgid "1 · {id}"
 msgstr "1개 · {id}"
 
@@ -137,6 +140,9 @@ msgstr "출력"
 msgid "Output node"
 msgstr "출력 노드"
 
+msgid "RTTP validation failed"
+msgstr "RTTP 검증 실패"
+
 msgid "Run Dry-run or Save for server validation."
 msgstr "드라이런이나 저장으로 서버 검증을 돌리세요."
 
@@ -163,6 +169,12 @@ msgstr "노드를 고르면 속성이 보입니다."
 msgid "Select a node."
 msgstr "노드를 선택해 주세요."
 
+msgid "Shape"
+msgstr "Shape"
+
+msgid "Short by"
+msgstr "부족"
+
 msgid "Source"
 msgstr "소스"
 
@@ -171,6 +183,15 @@ msgstr "소스 노드"
 
 msgid "Source · role {role}"
 msgstr "소스 · 역할 {role}"
+
+msgid "Target"
+msgstr "목표"
+
+msgid "Target satisfied"
+msgstr "목표 달성"
+
+msgid "Target throughput"
+msgstr "목표 처리량"
 
 msgid ""
 "The canvas has no nodes. Click or drag sources and operations from the left "
@@ -188,6 +209,9 @@ msgstr "직전 결과에 검증 이슈가 있습니다. 아래 안내를 확인�
 msgid "actual output pending"
 msgstr "실제 출력 대기 (PR-2b)"
 
+msgid "actual output unavailable"
+msgstr "실제 출력 없음"
+
 msgid "committed"
 msgstr "확정"
 
@@ -203,8 +227,17 @@ msgstr "paint_color (한 글자)"
 msgid "placement(s)"
 msgstr "배치"
 
+msgid "terrain upper bound (fluid)"
+msgstr "지형 상한 (fluid)"
+
+msgid "terrain upper bound (shape)"
+msgstr "지형 상한 (shape)"
+
 msgid "theor."
 msgstr "이론"
+
+msgid "throughput target shortfall"
+msgstr "목표 처리량 미달"
 
 msgid "{n} nodes selected."
 msgstr "{n}개 노드 선택됨."

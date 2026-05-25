@@ -1630,6 +1630,33 @@
       return "—";
     }
 
+    /** Map persisted issue_code enum values to gettext msgids (never show raw snake_case). */
+    function formatLabIssueCodeLabel(code, run) {
+      if (code == null || code === "") {
+        return labUiDash();
+      }
+      const key = String(code);
+      const tt =
+        run && run.throughput_target && typeof run.throughput_target === "object"
+          ? run.throughput_target
+          : null;
+      if (key === "throughput_target_shortfall" && tt) {
+        const dash = labUiDash();
+        const shortfall = tt.throughput_shortfall_per_min;
+        if (shortfall != null && shortfall !== dash) {
+          const perMinLabel = typeof shapezUiT === "function" ? shapezUiT("/min") : "/min";
+          const shortLabel = typeof shapezUiT === "function" ? shapezUiT("Short by") : "Short by";
+          return shortLabel + " " + formatCompactNumber(shortfall) + perMinLabel;
+        }
+      }
+      const msgidByCode = {
+        throughput_target_shortfall: "throughput target shortfall",
+        rttp_validation_failed: "RTTP validation failed",
+      };
+      const msgid = msgidByCode[key] || key;
+      return typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
+    }
+
     function formatCompactNumber(value) {
       const dash = labUiDash();
       if (value == null || value === "" || value === dash) return dash;
@@ -1754,28 +1781,89 @@
           ? String(tierShort) + " · " + (conf != null ? String(conf) : dash)
           : dash,
       );
+      const tt =
+        run.throughput_target && typeof run.throughput_target === "object"
+          ? run.throughput_target
+          : {};
       const count = rttp.confirmed_count;
       const placementLabel =
         typeof shapezUiT === "function" ? shapezUiT("placement(s)") : "placement(s)";
-      set(
-        "lab-card-rttp-committed-value",
-        count != null && count !== dash ? String(count) + " " + placementLabel : dash,
-      );
-      const actualRate =
-        rttp.actual_output_status === "available" && rttp.actual_committed_output_per_min != null
-          ? formatCompactNumber(rttp.actual_committed_output_per_min)
-          : dash;
       const perMinLabel = typeof shapezUiT === "function" ? shapezUiT("/min") : "/min";
-      set(
-        "lab-card-rttp-committed-sub",
-        rttp.actual_output_status === "pending_pr_2b"
-          ? typeof shapezUiT === "function"
+      const actualAvailable =
+        rttp.actual_output_status === "available" && rttp.actual_committed_output_per_min != null;
+      const actualRate = actualAvailable
+        ? formatCompactNumber(rttp.actual_committed_output_per_min)
+        : dash;
+      const budgetStatus =
+        tt.budget_status != null && tt.budget_status !== dash ? String(tt.budget_status) : "";
+      const hasBudgetChip = budgetStatus === "satisfied" || budgetStatus === "shortfall";
+      if (actualAvailable) {
+        set("lab-card-rttp-committed-value", actualRate + perMinLabel);
+      } else {
+        set(
+          "lab-card-rttp-committed-value",
+          count != null && count !== dash ? String(count) + " " + placementLabel : dash,
+        );
+      }
+      if (hasBudgetChip) {
+        const pct =
+          tt.throughput_target_percent != null && tt.throughput_target_percent !== dash
+            ? String(tt.throughput_target_percent)
+            : dash;
+        const targetTp =
+          tt.target_throughput_per_min != null && tt.target_throughput_per_min !== dash
+            ? formatCompactNumber(tt.target_throughput_per_min)
+            : dash;
+        const targetLabel =
+          typeof shapezUiT === "function" ? shapezUiT("Target") : "Target";
+        const subLine =
+          targetLabel +
+          " " +
+          pct +
+          "% · " +
+          actualRate +
+          " / " +
+          targetTp +
+          perMinLabel;
+        set("lab-card-rttp-committed-sub", subLine);
+      } else if (rttp.actual_output_status === "pending_pr_2b") {
+        set(
+          "lab-card-rttp-committed-sub",
+          typeof shapezUiT === "function"
             ? shapezUiT("actual output pending")
-            : "actual output pending"
-          : actualRate !== dash
-            ? actualRate + perMinLabel
-            : dash,
-      );
+            : "actual output pending",
+        );
+      } else if (actualAvailable) {
+        set("lab-card-rttp-committed-sub", actualRate + perMinLabel);
+      } else {
+        const unavailableLabel =
+          typeof shapezUiT === "function"
+            ? shapezUiT("actual output unavailable")
+            : "actual output unavailable";
+        set("lab-card-rttp-committed-sub", unavailableLabel);
+      }
+      const chipEl = document.getElementById("lab-card-rttp-committed-chip");
+      if (chipEl) {
+        if (budgetStatus === "satisfied") {
+          chipEl.textContent =
+            typeof shapezUiT === "function" ? shapezUiT("Target satisfied") : "Target satisfied";
+          chipEl.className = "mt-1 text-xs font-medium text-emerald-400";
+          chipEl.classList.remove("hidden");
+        } else if (budgetStatus === "shortfall") {
+          const shortfall =
+            tt.throughput_shortfall_per_min != null && tt.throughput_shortfall_per_min !== dash
+              ? formatCompactNumber(tt.throughput_shortfall_per_min)
+              : dash;
+          const shortLabel =
+            typeof shapezUiT === "function" ? shapezUiT("Short by") : "Short by";
+          chipEl.textContent = shortLabel + " " + shortfall + perMinLabel;
+          chipEl.className = "mt-1 text-xs font-medium text-amber-400";
+          chipEl.classList.remove("hidden");
+        } else {
+          chipEl.textContent = "";
+          chipEl.classList.add("hidden");
+        }
+      }
     }
 
     function updateLabDetailPanels(run) {
@@ -1806,6 +1894,11 @@
           "lab-detail-rttp-candidates",
           "lab-detail-rttp-commit-order",
           "lab-detail-rttp-output",
+          "lab-detail-tt-percent",
+          "lab-detail-tt-target",
+          "lab-detail-tt-utilization",
+          "lab-detail-tt-budget",
+          "lab-detail-tt-shortfall",
           "lab-detail-first-issue",
           "lab-detail-issue-coord",
           "lab-detail-issue-candidate",
@@ -1820,6 +1913,10 @@
         run.reconstruction && typeof run.reconstruction === "object" ? run.reconstruction : {};
       const cap = run.capacity && typeof run.capacity === "object" ? run.capacity : {};
       const rttp = run.rttp && typeof run.rttp === "object" ? run.rttp : {};
+      const tt =
+        run.throughput_target && typeof run.throughput_target === "object"
+          ? run.throughput_target
+          : {};
       set("lab-detail-rec-quality", rec.quality_tier);
       set("lab-detail-rec-confidence", rec.confidence_score);
       set("lab-detail-rec-primary", rec.primary_resource_kind);
@@ -1864,13 +1961,61 @@
             ? String(rttp.actual_committed_output_per_min)
             : dash,
       );
-      const firstIssue =
+      const pctVal =
+        tt.throughput_target_percent != null && tt.throughput_target_percent !== dash
+          ? String(tt.throughput_target_percent) + "%"
+          : dash;
+      set("lab-detail-tt-percent", pctVal);
+      set(
+        "lab-detail-tt-target",
+        tt.target_throughput_per_min != null && tt.target_throughput_per_min !== dash
+          ? String(tt.target_throughput_per_min)
+          : dash,
+      );
+      const actualUtil =
+        tt.actual_utilization_ratio != null && tt.actual_utilization_ratio !== dash
+          ? tt.actual_utilization_ratio
+          : dash;
+      const maxTp =
+        tt.reconstruction_max_throughput_per_min != null &&
+        tt.reconstruction_max_throughput_per_min !== dash
+          ? tt.reconstruction_max_throughput_per_min
+          : cap.reconstruction_max_throughput_per_min;
+      const actualOut =
+        tt.actual_committed_output_per_min != null && tt.actual_committed_output_per_min !== dash
+          ? tt.actual_committed_output_per_min
+          : rttp.actual_committed_output_per_min;
+      if (actualOut != null && actualOut !== dash && maxTp != null && maxTp !== dash) {
+        set(
+          "lab-detail-tt-utilization",
+          String(actualOut) + " / " + String(maxTp) + " (" + String(actualUtil) + ")",
+        );
+      } else {
+        set("lab-detail-tt-utilization", dash);
+      }
+      const budgetStatus =
+        tt.budget_status != null && tt.budget_status !== dash ? String(tt.budget_status) : dash;
+      set("lab-detail-tt-budget", budgetStatus);
+      if (budgetStatus === "shortfall") {
+        set(
+          "lab-detail-tt-shortfall",
+          tt.throughput_shortfall_per_min != null && tt.throughput_shortfall_per_min !== dash
+            ? String(tt.throughput_shortfall_per_min)
+            : dash,
+        );
+      } else {
+        set("lab-detail-tt-shortfall", dash);
+      }
+      const firstIssueRaw =
         run.first_issue_code != null && run.first_issue_code !== ""
           ? String(run.first_issue_code)
           : Array.isArray(run.issue_codes) && run.issue_codes.length
             ? String(run.issue_codes[0])
-            : dash;
-      set("lab-detail-first-issue", firstIssue);
+            : "";
+      set(
+        "lab-detail-first-issue",
+        firstIssueRaw !== "" ? formatLabIssueCodeLabel(firstIssueRaw, run) : dash,
+      );
       const detail = run.first_issue_detail;
       if (detail && typeof detail === "object") {
         set(
@@ -1991,8 +2136,9 @@
         if (run.first_issue_code) {
           const issue = document.createElement("p");
           issue.className = "mt-2 truncate text-xs text-rose-300/90";
-          issue.title = String(run.first_issue_code);
-          issue.textContent = String(run.first_issue_code);
+          const issueLabel = formatLabIssueCodeLabel(run.first_issue_code, run);
+          issue.title = issueLabel;
+          issue.textContent = issueLabel;
           btn.appendChild(issue);
         }
         btn.addEventListener("click", function () {
@@ -2623,12 +2769,21 @@
         credentials: "same-origin",
         headers: runSolverHeaders,
       };
+      const percentEl = document.getElementById("lab-throughput-target-percent");
+      const postBody = {};
+      if (percentEl) {
+        const parsed = parseInt(String(percentEl.value), 10);
+        if (!Number.isNaN(parsed)) {
+          postBody.throughput_target_percent = parsed;
+        }
+      }
       if (macroOnlyMode) {
+        postBody.macro_only_mode = true;
+        postBody.rttp_record_replay = true;
+      }
+      if (Object.keys(postBody).length > 0) {
         runSolverHeaders["Content-Type"] = "application/json";
-        runSolverInit.body = JSON.stringify({
-          macro_only_mode: true,
-          rttp_record_replay: true,
-        });
+        runSolverInit.body = JSON.stringify(postBody);
       }
       fetch(runUrl, runSolverInit)
         .then(function (res) {
@@ -2682,6 +2837,17 @@
           runSolverBtn.disabled = false;
         });
     });
+
+    const throughputSlider = document.getElementById("lab-throughput-target-percent");
+    const throughputSliderLabel = document.getElementById("lab-throughput-target-percent-label");
+    function syncThroughputTargetLabel() {
+      if (!throughputSlider || !throughputSliderLabel) {
+        return;
+      }
+      throughputSliderLabel.textContent = String(throughputSlider.value) + "%";
+    }
+    throughputSlider?.addEventListener("input", syncThroughputTargetLabel);
+    syncThroughputTargetLabel();
 
     function labReplayFrameOrmId(fr) {
       if (!fr || typeof fr !== "object") {

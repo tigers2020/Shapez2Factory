@@ -88,6 +88,8 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
+**IN FLIGHT (2026-05-25):** PR-2c throughput target % (10–80) + real `throughput_budget_satisfied` + Lab slider/cards — branch `feat/asteroid-lab-throughput-target-percent-pr2c` (stacked on PR #79 / PR-2b). Spec: [`docs/superpowers/specs/2026-05-24-throughput-target-percent-pr2c-design.md`](../../docs/superpowers/specs/2026-05-24-throughput-target-percent-pr2c-design.md).
+
 **Priority:** **v0.1 next track selection** (GA / macro unpause / capacity — new spec each). **Commit survivability arc CLOSED** (v0.1 deferred retry scope). **Deferred commit retry slice 1–4 CLOSED** on `master`. **PR-4 ops smoke CLOSED** (`64473a87`, PR #76). **PR-3 bounded execution CLOSED** (`d3de9645`, PR #75). **PR-2 policy wiring CLOSED** (`a5cfca87`, PR #73). **PR-1 shadow observe-only CLOSED** (`1e021f20`, PR #72). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)

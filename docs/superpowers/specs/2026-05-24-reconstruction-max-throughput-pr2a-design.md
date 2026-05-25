@@ -298,8 +298,8 @@ Locale-aware **number** grouping optional v0; units and labels must be translate
 |----|----------|
 | PR-1 | `MiningExtractionRule`, seed, helpers, admin |
 | **PR-2a** | Capacity builder + observability snapshot + nested Lab DTO + localized UI (B) |
-| PR-2b | `actual_committed_output_per_min`; card 5 subtitle → ratio |
-| PR-2c | Real `throughput_budget_satisfied`; demote `pipeline_ok` aliases |
+| PR-2b | `actual_committed_output_per_min`; card 5 subtitle → committed rate |
+| PR-2c | User `throughput_target_percent` 10–80; `target_throughput_per_min`; real `throughput_budget_satisfied` — [`2026-05-24-throughput-target-percent-pr2c-design.md`](2026-05-24-throughput-target-percent-pr2c-design.md) |
 
 ---
 

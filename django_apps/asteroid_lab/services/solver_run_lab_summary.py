@@ -100,6 +100,58 @@ def _section_capacity(cap: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _section_throughput_target(summary: dict[str, Any]) -> dict[str, Any]:
+    keys = (
+        "reconstruction_max_throughput_per_min",
+        "throughput_target_percent",
+        "target_throughput_per_min",
+        "actual_committed_output_per_min",
+        "throughput_budget_satisfied",
+        "throughput_shortfall_per_min",
+        "target_utilization_ratio",
+        "actual_utilization_ratio",
+        "budget_status",
+        "throughput_target_status",
+    )
+    actual = summary.get("actual_committed_output_per_min")
+    target = summary.get("target_throughput_per_min")
+    percent = summary.get("throughput_target_percent")
+    if actual is None or target is None or percent is None:
+        return dict.fromkeys(keys, _PLACEHOLDER)
+    satisfied = summary.get("throughput_budget_satisfied")
+    if satisfied is True:
+        budget_status = "satisfied"
+    elif satisfied is False:
+        budget_status = "shortfall"
+    else:
+        budget_status = _PLACEHOLDER
+    return {
+        "reconstruction_max_throughput_per_min": summary.get(
+            "reconstruction_max_throughput_per_min",
+            _PLACEHOLDER,
+        ),
+        "throughput_target_percent": percent,
+        "target_throughput_per_min": target,
+        "actual_committed_output_per_min": actual,
+        "throughput_budget_satisfied": satisfied if satisfied is not None else _PLACEHOLDER,
+        "throughput_shortfall_per_min": summary.get("throughput_shortfall_per_min", _PLACEHOLDER),
+        "target_utilization_ratio": summary.get("target_utilization_ratio", _PLACEHOLDER),
+        "actual_utilization_ratio": summary.get("actual_utilization_ratio", _PLACEHOLDER),
+        "budget_status": budget_status,
+        "throughput_target_status": summary.get("throughput_target_status", budget_status),
+    }
+
+
+def _throughput_budget_satisfied_top_level(summary: dict[str, Any]) -> bool | None:
+    if summary.get("actual_committed_output_per_min") is None:
+        return None
+    if "throughput_target_percent" not in summary:
+        return None
+    if "throughput_budget_satisfied" not in summary:
+        return None
+    return bool(summary["throughput_budget_satisfied"])
+
+
 def _section_rttp(solver_summary: dict[str, Any]) -> dict[str, Any]:
     order = list(solver_summary.get("commit_order") or [])
     if not order:
@@ -137,7 +189,7 @@ def lab_run_summary_from_solver_summary(
     capacity_satisfied = bool(solver_summary.get("capacity_satisfied"))
     run_success = bool(solver_summary.get("run_success"))
     placement_capacity_satisfied = bool(solver_summary.get("placement_capacity_satisfied"))
-    throughput_budget_satisfied = bool(solver_summary.get("throughput_budget_satisfied"))
+    throughput_budget_satisfied = _throughput_budget_satisfied_top_level(solver_summary)
     confirmed = solver_summary.get("confirmed_count", _PLACEHOLDER)
     target = solver_summary.get("target_miner_bundle_count", _PLACEHOLDER)
     target_placement = solver_summary.get("target_placement_count", target)
@@ -180,6 +232,7 @@ def lab_run_summary_from_solver_summary(
         ),
         "capacity": _section_capacity(solver_summary.get("reconstruction_capacity")),
         "rttp": _section_rttp(solver_summary),
+        "throughput_target": _section_throughput_target(solver_summary),
     }
     if isinstance(macro_commit_summary, dict) and macro_commit_summary:
         row["macro_commit_summary"] = dict(macro_commit_summary)

@@ -15,6 +15,7 @@ class BundlePattern:
     extractor_offset: Coord
     extension_offsets: tuple[Coord, ...]
     output_dir: str
+    fixed_output_transport_offset: Coord
     output_stub_offset: Coord
     throughput_factor: int
     topology_kind: str

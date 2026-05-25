@@ -47,7 +47,7 @@ def _translate_offset(anchor: Coord, offset: Coord) -> Coord:
 def _bundle_pattern_from_spec(spec: CatalogPlacementSpec) -> BundlePattern:
     sorted_cells = sorted(spec.occupied_offsets)
     extractor = sorted_cells[0]
-    extensions = tuple(c for c in sorted_cells if c != extractor)
+    extensions = tuple(cell for cell in sorted_cells if cell != extractor)
     return BundlePattern(
         pattern_id=spec.pattern_id,
         extension_count=min(3, max(0, len(sorted_cells) - 1)),
@@ -55,6 +55,7 @@ def _bundle_pattern_from_spec(spec: CatalogPlacementSpec) -> BundlePattern:
         extractor_offset=extractor,
         extension_offsets=extensions,
         output_dir=spec.output_dir,
+        fixed_output_transport_offset=spec.fixed_output_transport_offset,
         output_stub_offset=spec.output_stub_offset,
         throughput_factor=spec.throughput_factor,
         topology_kind=spec.topology_kind,

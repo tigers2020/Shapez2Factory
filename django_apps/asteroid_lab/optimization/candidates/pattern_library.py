@@ -53,9 +53,14 @@ def _canonical_linear_east(extension_count: int) -> BundlePattern:
     extractor = (0, 0)
     extension_offsets = _linear_chain_offsets_east(extension_count)
     occupied = frozenset((extractor, *extension_offsets))
-    last = extension_offsets[-1] if extension_offsets else extractor
-    stub = (last[0] + 1, last[1])
-    if stub in occupied:
+    fixed_output_transport_offset = (1, 0)
+    if extension_count == 0:
+        occupied = frozenset({extractor})
+        output_stub_offset = (2, 0)
+    else:
+        last = extension_offsets[-1]
+        output_stub_offset = (last[0] + 1, last[1])
+    if output_stub_offset in occupied:
         raise AssertionError("output_stub must not overlap occupied_offsets")
     return BundlePattern(
         pattern_id=_pattern_id("E", extension_count),
@@ -64,7 +69,8 @@ def _canonical_linear_east(extension_count: int) -> BundlePattern:
         extractor_offset=extractor,
         extension_offsets=extension_offsets,
         output_dir="E",
-        output_stub_offset=stub,
+        fixed_output_transport_offset=fixed_output_transport_offset,
+        output_stub_offset=output_stub_offset,
         throughput_factor=_throughput_factor(extension_count),
         topology_kind="linear",
     )
@@ -84,6 +90,7 @@ def _rotate_pattern(pattern: BundlePattern, direction: str) -> BundlePattern:
         _rotate_point(direction, offset) for offset in pattern.extension_offsets
     )
     stub = _rotate_point(direction, pattern.output_stub_offset)
+    fot = _rotate_point(direction, pattern.fixed_output_transport_offset)
     occupied = frozenset(_rotate_point(direction, offset) for offset in pattern.occupied_offsets)
     if stub in occupied:
         raise AssertionError("rotated output_stub must not overlap occupied_offsets")
@@ -94,6 +101,7 @@ def _rotate_pattern(pattern: BundlePattern, direction: str) -> BundlePattern:
         extractor_offset=pattern.extractor_offset,
         extension_offsets=extension_offsets,
         output_dir=direction,
+        fixed_output_transport_offset=fot,
         output_stub_offset=stub,
         throughput_factor=pattern.throughput_factor,
         topology_kind=pattern.topology_kind,

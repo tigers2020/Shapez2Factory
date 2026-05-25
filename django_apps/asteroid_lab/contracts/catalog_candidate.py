@@ -26,6 +26,7 @@ class CatalogPlacementSpec:
     rotation: CardinalDirection
     pattern_id: str
     occupied_offsets: frozenset[Coord]
+    fixed_output_transport_offset: Coord
     output_stub_offset: Coord
     output_dir: str
     throughput_factor: int

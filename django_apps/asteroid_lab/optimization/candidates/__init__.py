@@ -7,6 +7,7 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
     FixedOutputTransportPolicy,
     RejectedBundleCandidate,
+    RouteProbeStartPolicy,
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
     generate_candidates,
@@ -24,6 +25,7 @@ __all__ = [
     "ExtractorPlacementPolicy",
     "FixedOutputTransportPolicy",
     "RejectedBundleCandidate",
+    "RouteProbeStartPolicy",
     "build_pattern_library",
     "generate_candidates",
 ]

@@ -561,7 +561,7 @@ def _run_rttp_solver_for_map_input(
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
         replay_sink=replay_sink,
         pipeline_config=pipeline_config,
-        fixed_output_transport_policy=FixedOutputTransportPolicy.OUTSIDE_MINEABLE,
+        fixed_output_transport_policy=FixedOutputTransportPolicy.OUTWARD_FROM_RIM,
     )
 
     persist_reconstructed_asteroid_map(

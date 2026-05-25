@@ -19,7 +19,7 @@ class RouteProbeResult:
     expanded_nodes: int
 
 
-def _initial_phase(domain: RouteCellDomain, start: Coord) -> str | None:
+def initial_phase(domain: RouteCellDomain, start: Coord) -> str | None:
     if any(edge.platform_coord == start for edge in domain.lift_edges):
         return "platform"
     if start in domain.traversable_cells:
@@ -54,7 +54,7 @@ def probe_route(
             expanded_nodes=0,
         )
 
-    phase = _initial_phase(domain, start)
+    phase = initial_phase(domain, start)
     if phase is None or start in domain.blocked_cells:
         return RouteProbeResult(
             reachable=False,
@@ -130,4 +130,4 @@ def probe_route(
     )
 
 
-__all__ = ["RouteProbeResult", "probe_route"]
+__all__ = ["RouteProbeResult", "initial_phase", "probe_route"]

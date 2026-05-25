@@ -340,6 +340,10 @@
                     <div class="text-slate-500">Frame</div>
                     <div class="font-semibold text-slate-100"><span id="lab-frame-display">{% if total_frames %}{{ initial_frame|add:1 }} / {{ total_frames }}{% else %}0 / 0{% endif %}</span></div>
                   </div>
+                  <label class="ml-2 flex items-center gap-2 border-l border-slate-700 pl-3 text-xs text-slate-400">
+                    <input type="checkbox" id="lab-terrain-rim-highlight-toggle" checked />
+                    Rim highlight
+                  </label>
                 </div>
                 <label class="sr-only" for="lab-timeline-scrub">Replay frame</label>
                 <input

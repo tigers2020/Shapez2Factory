@@ -51,6 +51,23 @@ def test_lab_detail_panel_uses_asteroid_field_terminology() -> None:
     assert "Confirmed total" not in detail
 
 
+def test_lab_terrain_rim_highlight_toggle_and_css_contract() -> None:
+    template = TEMPLATE.read_text(encoding="utf-8")
+    js = (
+        REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
+    css = (REPO / "assets" / "css" / "input.css").read_text(encoding="utf-8")
+    assert 'id="lab-terrain-rim-highlight-toggle"' in template
+    assert "Rim highlight" in template
+    assert "terrain_rim_highlight" in js
+    assert "frozen_terrain_rim_highlight" in js
+    assert "applyTerrainRimHighlight" in js
+    assert "outer_outline_loops" in js
+    assert "lab-terrain-rim-outline-path" in css
+    assert "lab-terrain-rim-outline-svg" in css
+    assert "lab-terrain-rim-highlight" in js
+
+
 def test_lab_replay_description_has_fixed_scroll_viewport() -> None:
     template = TEMPLATE.read_text(encoding="utf-8")
     idx = template.index('id="lab-replay-description"')

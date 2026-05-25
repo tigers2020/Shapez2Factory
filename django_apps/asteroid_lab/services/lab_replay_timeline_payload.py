@@ -28,6 +28,9 @@ from django_apps.asteroid_lab.services.lab_rttp_snapshot_compose import (
     interleave_rttp_snapshot_frames,
     load_rttp_compose_rows_for_project,
 )
+from django_apps.asteroid_lab.services.lab_timeline_rim_enrichment import (
+    enrich_lab_timeline_frames_with_terrain_rim,
+)
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
 )
@@ -235,8 +238,11 @@ def build_lab_replay_frames_for_project(
     serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
     rttp_rows = load_rttp_compose_rows_for_project(int(project_id))
     serialized = interleave_rttp_snapshot_frames(serialized, rttp_rows)
+    serialized, frozen_rim_wire = enrich_lab_timeline_frames_with_terrain_rim(serialized)
     diagnostic = _lab_replay_diagnostic_reason(int(project_id), composed_count=len(serialized))
     metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
+    if frozen_rim_wire is not None:
+        metrics["frozen_terrain_rim_highlight"] = frozen_rim_wire
     return serialized, metrics
 
 

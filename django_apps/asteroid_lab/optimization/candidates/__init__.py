@@ -5,6 +5,7 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     CandidateGenerationResult,
     CandidateRejectReason,
     ExtractorPlacementPolicy,
+    FixedOutputTransportPolicy,
     RejectedBundleCandidate,
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
@@ -21,6 +22,7 @@ __all__ = [
     "CandidateGenerationResult",
     "CandidateRejectReason",
     "ExtractorPlacementPolicy",
+    "FixedOutputTransportPolicy",
     "RejectedBundleCandidate",
     "build_pattern_library",
     "generate_candidates",

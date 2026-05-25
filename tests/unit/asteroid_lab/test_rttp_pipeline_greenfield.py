@@ -10,10 +10,12 @@ import pytest
 
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
+    FixedOutputTransportPolicy,
 )
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
 from django_apps.asteroid_lab.optimization.rttp_solver_summary import RttpAlgorithmStepId
+from tests.support.rttp_narrow_corridor_fixture import build_narrow_corridor_optimization_input
 
 pytestmark = pytest.mark.django_db
 
@@ -23,16 +25,19 @@ def _require_game_data_import_batch(imported_game_data_batch_module: object) -> 
     return imported_game_data_batch_module
 
 
-def test_greenfield_pipeline_deterministic_commits_n_bundles(
-    greenfield_optimization_input: OptimizationInput,
-) -> None:
+def test_greenfield_pipeline_deterministic_commits_n_bundles() -> None:
+    """PR-1: use narrow corridor — 4×4 greenfield has no OUTSIDE_MINEABLE commit survivors."""
+
+    inp = build_narrow_corridor_optimization_input()
     first = run_rttp_pipeline(
-        greenfield_optimization_input,
+        inp,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
+        fixed_output_transport_policy=FixedOutputTransportPolicy.OUTSIDE_MINEABLE,
     )
     second = run_rttp_pipeline(
-        greenfield_optimization_input,
+        inp,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
+        fixed_output_transport_policy=FixedOutputTransportPolicy.OUTSIDE_MINEABLE,
     )
 
     assert first.normal_count >= 1

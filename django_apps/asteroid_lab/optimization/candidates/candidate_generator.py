@@ -17,6 +17,7 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     CandidateGenerationResult,
     CandidateRejectReason,
     ExtractorPlacementPolicy,
+    FixedOutputTransportPolicy,
     RejectedBundleCandidate,
 )
 from django_apps.asteroid_lab.optimization.coords import Coord
@@ -69,12 +70,22 @@ def _project_spec(anchor: Coord, spec: CatalogPlacementSpec) -> tuple[frozenset[
     return occupied, output_stub
 
 
+def _policy_requires_outside_mineable(policy: FixedOutputTransportPolicy) -> bool:
+    return policy in (
+        FixedOutputTransportPolicy.OUTSIDE_MINEABLE,
+        FixedOutputTransportPolicy.OUTWARD_FROM_RIM,
+    )
+
+
 def _validate_geometry(
     inp: OptimizationInput,
     spec: CatalogPlacementSpec,
     anchor: Coord,
     occupied: frozenset[Coord],
     output_stub: Coord,
+    *,
+    fot_abs: Coord,
+    policy: FixedOutputTransportPolicy,
 ) -> CandidateRejectReason | None:
     if spec.extractor_offset != (0, 0):
         return CandidateRejectReason.GEOMETRY_INVALID
@@ -83,14 +94,14 @@ def _validate_geometry(
     if not occupied.issubset(inp.mineable_cells):
         return CandidateRejectReason.GEOMETRY_INVALID
 
-    fot_abs = _translate_offset(anchor, spec.fixed_output_transport_offset)
-    stub_abs = _translate_offset(anchor, spec.output_stub_offset)
     if fot_abs in occupied:
         return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_IN_OCCUPIED
-    if stub_abs in occupied:
+    if fot_abs in inp.blocked_incompatible_transport_cells:
+        return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_KIND_BLOCKED
+    if _policy_requires_outside_mineable(policy) and fot_abs in inp.mineable_cells:
+        return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_INSIDE_MINEABLE
+    if output_stub in occupied:
         return CandidateRejectReason.ROUTE_PROBE_START_IN_OCCUPIED
-    if output_stub != stub_abs:
-        return CandidateRejectReason.GEOMETRY_INVALID
 
     unit = cardinal_unit_vector(CardinalDirection(spec.output_dir))
     axis_local = (
@@ -120,6 +131,9 @@ def generate_candidates(
     skeleton: RttpSkeleton,
     *,
     policy: ExtractorPlacementPolicy = ExtractorPlacementPolicy.INTERIOR_AND_RIM,
+    fixed_output_transport_policy: FixedOutputTransportPolicy = (
+        FixedOutputTransportPolicy.OUTSIDE_MINEABLE
+    ),
     max_candidates: int | None = None,
     max_expansions: int = 500,
 ) -> CandidateGenerationResult:
@@ -146,7 +160,16 @@ def generate_candidates(
             candidate_id = _make_candidate_id(anchor, spec.pattern_id, inp.transport_kind.value)
             ref = CatalogPlacementRef(spec.canonical_id, anchor, spec.rotation)
 
-            geometry_reason = _validate_geometry(inp, spec, anchor, occupied, output_stub)
+            fot_abs = _translate_offset(anchor, spec.fixed_output_transport_offset)
+            geometry_reason = _validate_geometry(
+                inp,
+                spec,
+                anchor,
+                occupied,
+                output_stub,
+                fot_abs=fot_abs,
+                policy=fixed_output_transport_policy,
+            )
             if geometry_reason is not None:
                 rejected.append(
                     RejectedBundleCandidate(

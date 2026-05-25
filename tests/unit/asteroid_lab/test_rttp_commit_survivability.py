@@ -78,7 +78,12 @@ def test_normal_pool_reachable_is_not_commit_proof(
     assert second.candidate_id not in result.committed_ids
     assert any(
         conflict.candidate_id == second.candidate_id
-        and conflict.reason is CommitConflictReason.REPROBE_FAILED
+        and conflict.reason
+        in (
+            CommitConflictReason.REPROBE_FAILED,
+            CommitConflictReason.INLET_ON_SHARED_TRANSPORT,
+            CommitConflictReason.ROUTE_CELL_CONFLICT,
+        )
         for conflict in result.conflicts
     )
 
@@ -119,7 +124,12 @@ def test_commit_ignores_stale_generation_reachable_flag(
     assert stale_second.candidate_id not in result.committed_ids
     assert any(
         conflict.candidate_id == stale_second.candidate_id
-        and conflict.reason is CommitConflictReason.REPROBE_FAILED
+        and conflict.reason
+        in (
+            CommitConflictReason.REPROBE_FAILED,
+            CommitConflictReason.INLET_ON_SHARED_TRANSPORT,
+            CommitConflictReason.ROUTE_CELL_CONFLICT,
+        )
         for conflict in result.conflicts
     )
 

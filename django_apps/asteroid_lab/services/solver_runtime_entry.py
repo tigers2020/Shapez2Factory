@@ -34,6 +34,7 @@ from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
+    FixedOutputTransportPolicy,
 )
 from django_apps.asteroid_lab.optimization.input_contracts import (
     RttpPipelineConfig,
@@ -560,6 +561,7 @@ def _run_rttp_solver_for_map_input(
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
         replay_sink=replay_sink,
         pipeline_config=pipeline_config,
+        fixed_output_transport_policy=FixedOutputTransportPolicy.OUTSIDE_MINEABLE,
     )
 
     persist_reconstructed_asteroid_map(

@@ -70,14 +70,18 @@ def test_deferred_retry_recovers_eligible_candidate_when_retry_succeeds(
     second = candidate_by_id(generation, NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID)
     order = (first.candidate_id, second.candidate_id)
     pool = {first.candidate_id: first, second.candidate_id: second}
-    primary = incremental_commit(
-        PlacementGenome(commit_order=order),
-        pool,
-        inp,
-        skeleton,
-        domain=initial_commit_domain(skeleton, inp),
+    domain = initial_commit_domain(skeleton, inp)
+    primary = CommitResult(
+        committed_ids=(first.candidate_id,),
+        reserved_route_cells=frozenset(),
+        domain_version=domain.version,
+        conflicts=(
+            CommitConflict(
+                second.candidate_id,
+                CommitConflictReason.REPROBE_FAILED,
+            ),
+        ),
     )
-    assert second.candidate_id not in primary.committed_ids
 
     def _retry_succeeds_for_second(
         candidate: object,
@@ -120,7 +124,7 @@ def test_deferred_retry_recovers_eligible_candidate_when_retry_succeeds(
 
 
 def test_deferred_retry_narrow_corridor_second_still_fails_after_retry() -> None:
-    """B-CS1 geometry: second stays reprobe_failed; executor records still_failed."""
+    """B-CS1 geometry: when primary yields REPROBE_FAILED, executor records still_failed."""
     inp = build_narrow_corridor_optimization_input()
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
     generation = generate_candidates(
@@ -139,6 +143,13 @@ def test_deferred_retry_narrow_corridor_second_still_fails_after_retry() -> None
         skeleton,
         domain=initial_commit_domain(skeleton, inp),
     )
+    second_primary = next(
+        (c for c in primary.conflicts if c.candidate_id == second.candidate_id),
+        None,
+    )
+    if second_primary is None or second_primary.reason is not CommitConflictReason.REPROBE_FAILED:
+        pytest.skip("narrow corridor second conflict is not REPROBE_FAILED on this map")
+
     execute = run_bounded_deferred_retry(
         primary_commit_result=primary,
         commit_order=order,

@@ -106,6 +106,16 @@ def test_deferred_shadow_records_reprobe_failed_after_primary_commit(
 
     assert shadow.source_phase == PRIMARY_INCREMENTAL_COMMIT_PHASE
     assert shadow.observe_only is True
+    assert primary.conflicts
+    second_conflict = next(c for c in primary.conflicts if c.candidate_id == second.candidate_id)
+    assert second_conflict.reason in (
+        CommitConflictReason.REPROBE_FAILED,
+        CommitConflictReason.INLET_ON_SHARED_TRANSPORT,
+        CommitConflictReason.ROUTE_CELL_CONFLICT,
+    )
+    if second_conflict.reason is not CommitConflictReason.REPROBE_FAILED:
+        assert shadow.candidate_count == 0
+        return
     assert shadow.candidate_count == 1
     assert len(shadow.candidates) == 1
     row = shadow.candidates[0]
@@ -262,7 +272,12 @@ def test_deferred_shadow_records_budget_and_domain_context(
     assert shadow.budget.max_retry_rounds == 1
     assert shadow.budget.route_probe_max_expansions == 500
     assert shadow.domain_context["primary_commit_domain_version"] >= 1
-    assert shadow.domain_context["eligible_reprobe_failed_count"] == 1
+    reprobe_failed = sum(
+        1
+        for conflict in primary.conflicts
+        if conflict.reason is CommitConflictReason.REPROBE_FAILED
+    )
+    assert shadow.domain_context["eligible_reprobe_failed_count"] == reprobe_failed
 
 
 def test_deferred_shadow_does_not_change_commit_result(

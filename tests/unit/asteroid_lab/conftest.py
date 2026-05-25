@@ -148,22 +148,14 @@ def _external_margin_goals(
 def greenfield_optimization_input(
     catalog_slice_minimal: BuildingCatalogSlice,
 ) -> OptimizationInput:
-    """Minimal greenfield map: 4×4 mineable block (16 cells), empty trunk/protected."""
+    """Committable greenfield under OUTSIDE_MINEABLE (narrow-corridor topology)."""
 
-    mineable = frozenset((x, y) for x in range(5, 9) for y in range(5, 9))
-    rim = _perimeter_cells(mineable)
-    inner = mineable - rim
-    external_void = _external_void_ring(mineable)
-    return OptimizationInput(
-        mineable_cells=mineable,
-        rim_cells=rim,
-        inner_cells=inner,
-        external_void_cells=external_void,
-        protected_corridor_cells=frozenset(),
-        existing_trunk_cells=frozenset(),
-        transport_kind=TransportKind.SHAPE_BELT,
-        route_goals=_external_margin_goals(rim, external_void),
-        existing_transport_cells=frozenset(),
+    from tests.support.rttp_narrow_corridor_fixture import (
+        build_narrow_corridor_optimization_input,
+    )
+
+    return replace(
+        build_narrow_corridor_optimization_input(),
         catalog_slice=catalog_slice_minimal,
     )
 

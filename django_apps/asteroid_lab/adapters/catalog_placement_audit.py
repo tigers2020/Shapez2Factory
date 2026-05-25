@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from django_apps.asteroid_lab.adapters.catalog_geometry_transform import (
-    CatalogTransformError,
-    expected_footprint_coords,
-)
 from django_apps.asteroid_lab.catalog.asteroid_equipment_projection import (
     CANON_MANUAL_CANONICAL_ID_PREFIX,
+)
+from django_apps.asteroid_lab.catalog.miner_placement_topology import (
+    normalize_miner_placement_topology,
 )
 from django_apps.asteroid_lab.contracts.building_catalog_slice import (
     BuildingCatalogSlice,
@@ -81,22 +80,24 @@ def classify_committed_catalog_placements(
                 )
             )
             continue
-        try:
-            expected = expected_footprint_coords(
-                geometry.footprint_cells,
-                anchor_coord=ref.anchor_coord,
-                rotation=ref.rotation,
-            )
-        except CatalogTransformError:
+        topology = normalize_miner_placement_topology(geometry, ref.rotation)
+        if topology is None:
             rows.append(
                 CatalogPlacementIssueRow(
                     candidate_id=candidate_id,
-                    issue_code=CatalogPlacementIssueCode.CATALOG_ANCHOR_TRANSFORM_ERROR,
+                    issue_code=CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH,
                     had_ref=True,
-                    message="transform error",
+                    message="miner topology normalization failed",
                 )
             )
             continue
+        expected = frozenset(
+            (
+                ref.anchor_coord[0] + offset[0],
+                ref.anchor_coord[1] + offset[1],
+            )
+            for offset in topology.occupied_offsets
+        )
         if expected == candidate.occupied_cells:
             continue
         rows.append(

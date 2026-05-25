@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from django_apps.asteroid_lab.optimization.candidates.bundle_pattern import BundlePattern
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
-from django_apps.asteroid_lab.optimization.candidates.pattern_library import build_pattern_library
+from django_apps.asteroid_lab.optimization.candidates.pattern_library import (
+    build_pattern_library,
+)
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import (
     OptimizationInput,
@@ -64,7 +67,7 @@ def _external_margin_goals(
 
 
 def build_macro_triple_greenfield_input() -> OptimizationInput:
-    """Minimal 4×4 mineable block (same geometry as unit-test greenfield)."""
+    """Minimal 4×4 mineable block for macro compiler geometry (synthetic triple anchors)."""
 
     mineable = frozenset((x, y) for x in range(5, 9) for y in range(5, 9))
     rim = _perimeter_cells(mineable)
@@ -84,22 +87,36 @@ def build_macro_triple_greenfield_input() -> OptimizationInput:
     )
 
 
+def _pattern_len0(direction: str) -> BundlePattern:
+    letter = {"N": "n", "E": "e", "S": "s", "W": "w"}[direction]
+    pattern_id = f"lin_{letter}_len0"
+    for pattern in build_pattern_library():
+        if pattern.pattern_id == pattern_id:
+            return pattern
+    msg = f"pattern not found: {pattern_id}"
+    raise AssertionError(msg)
+
+
 def _bundle(
     candidate_id: str,
     anchor: Coord,
     *,
+    direction: str = "E",
     occupied: frozenset[Coord] | None = None,
 ) -> BundleCandidate:
-    pattern = build_pattern_library()[0]
-    anchor_occupied = occupied or frozenset({anchor, (anchor[0] + 1, anchor[1])})
-    output_stub = (anchor[0] + 2, anchor[1])
+    pattern = _pattern_len0(direction)
+    anchor_occupied = occupied or frozenset({anchor})
+    output_stub = (
+        anchor[0] + pattern.output_stub_offset[0],
+        anchor[1] + pattern.output_stub_offset[1],
+    )
     return BundleCandidate(
         candidate_id=candidate_id,
         anchor_coord=anchor,
         pattern=pattern,
         occupied_cells=anchor_occupied,
         output_stub=output_stub,
-        output_dir="E",
+        output_dir=direction,
         transport_kind=TransportKind.SHAPE_BELT,
         throughput_factor=pattern.throughput_factor,
         route_probe_cost=1,
@@ -115,9 +132,9 @@ def build_valid_macro_triple_candidates() -> tuple[
     """Three non-overlapping rim anchors on the west edge."""
 
     return (
-        _bundle("5,5:lin_e_len0:shape_belt", (5, 5), occupied=frozenset({(5, 5)})),
-        _bundle("5,7:lin_e_len0:shape_belt", (5, 7), occupied=frozenset({(5, 7)})),
-        _bundle("8,5:lin_e_len0:shape_belt", (8, 5), occupied=frozenset({(8, 5)})),
+        _bundle("5,5:lin_w_len0:shape_belt", (5, 5), direction="W"),
+        _bundle("5,7:lin_w_len0:shape_belt", (5, 7), direction="W"),
+        _bundle("5,8:lin_w_len0:shape_belt", (5, 8), direction="W"),
     )
 
 

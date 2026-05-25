@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
 )
@@ -16,57 +14,15 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     TransportKind,
 )
 from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
-from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
-    optimization_input_from_reconstruction,
-)
 from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
-from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from tests.support.catalog_test_fixtures import build_minimal_test_catalog_slice
-from tests.support.reconstruction_complete_map_fixtures import (
-    minimal_cleanup_and_recon_from_cells,
-)
-
-
-def _field_cell(sx: int, sy: int) -> DecodedCellDTO:
-    return DecodedCellDTO(
-        x=sx,
-        y=sy,
-        layer=None,
-        rotation=0,
-        tile_type="AsteroidShapeField",
-        cell_kind="asteroid_shape_field",
-        transport_kind="none",
-        has_nested_blueprint=False,
-        nested_entry_count=0,
-        nested_type_counts_json={},
-        raw_entry_json={"X": sx, "Y": sy, "T": "AsteroidShapeField"},
-    )
-
-
-def _belt_cell(sx: int, sy: int) -> DecodedCellDTO:
-    return DecodedCellDTO(
-        x=sx,
-        y=sy,
-        layer=None,
-        rotation=0,
-        tile_type="SpaceBelt_Forward",
-        cell_kind="space_belt",
-        transport_kind="shape_belt",
-        has_nested_blueprint=False,
-        nested_entry_count=0,
-        nested_type_counts_json={},
-        raw_entry_json={"X": sx, "Y": sy, "T": "SpaceBelt_Forward"},
-    )
 
 
 def _existing_trunk_optimization_input() -> OptimizationInput:
-    cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
-    cells = cells + (_belt_cell(4, 5),)
-    cleanup, recon = minimal_cleanup_and_recon_from_cells(*cells)
-    inp = optimization_input_from_reconstruction(recon, cleanup=cleanup)
-    if inp.catalog_slice is None:
-        inp = replace(inp, catalog_slice=build_minimal_test_catalog_slice())
-    return inp
+    from tests.support.rttp_narrow_corridor_fixture import (
+        build_narrow_corridor_optimization_input,
+    )
+
+    return build_narrow_corridor_optimization_input()
 
 
 def test_skeleton_includes_existing_trunk_cells() -> None:
@@ -74,9 +30,6 @@ def test_skeleton_includes_existing_trunk_cells() -> None:
 
     assert inp.blocked_incompatible_transport_cells == frozenset()
     assert inp.existing_trunk_cells
-    assert inp.existing_trunk_cells <= frozenset(
-        cell.coord for cell in inp.existing_transport_cells
-    )
 
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
 

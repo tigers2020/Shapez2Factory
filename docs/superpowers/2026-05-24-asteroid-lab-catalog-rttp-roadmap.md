@@ -1,8 +1,8 @@
 # Asteroid Lab — RTTP & Catalog Roadmap
 
-**As of:** 2026-05-24  
-**Branch:** `master` @ [`3208f67e`](https://github.com/tigers2020/Shapez2Factory/commit/3208f67e)  
-**Governance:** [`2026-05-24-rttp-roadmap-governance-design.md`](specs/2026-05-24-rttp-roadmap-governance-design.md)  
+**As of:** 2026-05-28  
+**Branch:** `master` @ [`64d90603`](https://github.com/tigers2020/Shapez2Factory/commit/64d90603)  
+**Governance:** [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md) § Authority precedence · [`documents/index/document_inventory.md`](../../documents/index/document_inventory.md) § Asteroid Lab authority by topic  
 **Queue authority:** [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md)
 
 Living **dual-axis** progress board. Commit links mark `master` merges. **Not algorithm input.**
@@ -39,7 +39,7 @@ RTTP is a **route-feasible placement optimizer**, not a “place many miners” 
 | 7 | Evolutionary Search | `asteroid_lab_05` | 🟡 **greedy-regret** only ([`2026-05-22-rttp-hybrid-c`](specs/2026-05-22-rttp-hybrid-c-layout-design.md)); full GA deferred |
 | 8 | Incremental Commit | `asteroid_lab_07` | ✅ `test_rttp_commit.py` (`test_commit_reprobes_latest_domain`) |
 | 9 | Reservation / Trunk | commit + trunk merge | ✅ `test_rttp_existing_trunk.py` |
-| 10 | Validation | `asteroid_lab_08` · ADR-003 | 🟡 read-only core; catalog footprint D+ in flight |
+| 10 | Validation | `asteroid_lab_08` · ADR-003 | ✅ read-only core; catalog footprint D+ PR-1..PR-3 closed |
 | 11 | Replay / UI | `asteroid_lab_09` · 3B-S | ✅ output-only; no replay-as-input |
 
 **Catalog arc** (Axis A below) feeds steps **3–4** and future step **10** footprint checks; it does **not** replace steps **5–9**.
@@ -61,11 +61,11 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | Mining extraction PR-1 (L1b model) — CLOSED; **PR-2a** reconstruction max UI — CLOSED (#78); **PR-2b** actual committed throughput — CLOSED; **PR-2c** throughput target % + budget UI — CLOSED; **PR-2d** throughput-aware placement goals — in flight | — |
+| **A** | v0.1 **next track selection** only (GA / macro unpause / capacity C-GATE — new spec each). Throughput PR-2a..2d **CLOSED** (#78–#81). | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
-| **B** | Standing gates: reconstruction narrow + PR-B optimization contamination | — |
-| **Decontamination** | **PR-E** dead-code deletion | PR-D ✅ [`08320666`](https://github.com/tigers2020/Shapez2Factory/commit/08320666) PR #70 · PR-B ✅ `e56ff048` |
-| **Parallel** | None (paused) | — |
+| **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
+| **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
+| **Parallel** | None (paused) | macro child-pool fixture spec before unpause |
 
 ### Decontamination — PR-B (optimization import canon) — master CLOSED
 
@@ -97,6 +97,23 @@ Parallel — MacroBundle T3
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
 **Open next:** v0.1 **next track selection** (GA / macro unpause / capacity C-GATE — each needs new spec + board section). Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
+
+### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
+
+| Item | Status | Evidence |
+|------|--------|----------|
+| STALE capacity plan → `OBSOLETE / DO NOT EXECUTE` | ✅ | [`64d90603`](https://github.com/tigers2020/Shapez2Factory/commit/64d90603) PR [#90](https://github.com/tigers2020/Shapez2Factory/pull/90) |
+| Macro v1 plan → `PAUSED / DO NOT EXECUTE` | ✅ | same |
+| Replacement for capacity C-GATE | — | [`2026-05-26-reconstruction-complete-map-dto.md`](plans/2026-05-26-reconstruction-complete-map-dto.md) + fresh spec before ACTIVE row |
+
+### Post-2026-05-24 — Axis B addenda (merged on `master`)
+
+| Slice | Status | PR / commit |
+|-------|--------|-------------|
+| FOT outside mineable PR-1 | ✅ | [#88](https://github.com/tigers2020/Shapez2Factory/pull/88) [`ebde4c2c`](https://github.com/tigers2020/Shapez2Factory/commit/ebde4c2c) |
+| FOT outward rim / void probe PR-2 | ✅ | [#89](https://github.com/tigers2020/Shapez2Factory/pull/89) [`75c5ad08`](https://github.com/tigers2020/Shapez2Factory/commit/75c5ad08) |
+| FOT cross-commit hotfix (PR1.5) | ✅ | [`04bf7b4f`](https://github.com/tigers2020/Shapez2Factory/commit/04bf7b4f) |
+| Reconstruction complete-map + replay footprint | ✅ | [#83](https://github.com/tigers2020/Shapez2Factory/pull/83) [`7d07394b`](https://github.com/tigers2020/Shapez2Factory/commit/7d07394b) |
 
 ### Deferred commit retry — PR-1 shadow (observe-only) — master CLOSED
 
@@ -188,6 +205,7 @@ Parallel — MacroBundle T3
 | CI macro smoke + CLI | ✅ | [`c8b5dc76`](https://github.com/tigers2020/Shapez2Factory/commit/c8b5dc76) · [`82c86ca3`](https://github.com/tigers2020/Shapez2Factory/commit/82c86ca3) |
 | Real-map macro E2E | ✅ | [`3c9fae42`](https://github.com/tigers2020/Shapez2Factory/commit/3c9fae42) |
 | Pause declared | ⏸ | [`0178435e`](https://github.com/tigers2020/Shapez2Factory/commit/0178435e) |
+| v1 implementation plan tombstoned | ⏸ | PR [#90](https://github.com/tigers2020/Shapez2Factory/pull/90) — [`2026-05-23-rttp-v1-macrobundle-t3.md`](plans/2026-05-23-rttp-v1-macrobundle-t3.md) **PAUSED / DO NOT EXECUTE** |
 
 ---
 
@@ -335,7 +353,7 @@ powershell -File scripts/test_optimization_contamination.ps1
 | Order | Document |
 |-------|----------|
 | 1 | **This roadmap** — dual-axis commits + 11-step index |
-| 2 | [`2026-05-24-rttp-roadmap-governance-design.md`](specs/2026-05-24-rttp-roadmap-governance-design.md) — rules + closure definition |
+| 2 | [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md) § Authority precedence — queue + closure rules |
 | 3 | [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md) — active queue |
 | 4 | Topic specs / plans under `docs/superpowers/` |
 | 5 | [`documents/Algorithm/asteroid_lab_*.md`](../../documents/Algorithm/) — phase contracts |

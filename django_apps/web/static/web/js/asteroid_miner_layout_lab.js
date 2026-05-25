@@ -942,6 +942,124 @@
     applyEquipmentBundleGroupVisualsFromOverlay(cellOverlayJsonFromFrame(frame), domCells, resolveCellIndex);
   }
 
+  const LAB_TERRAIN_RIM_STORAGE_KEY = "lab-terrain-rim-highlight";
+
+  function isTerrainRimHighlightEnabled() {
+    const toggle = document.getElementById("lab-terrain-rim-highlight-toggle");
+    if (toggle && !toggle.checked) {
+      return false;
+    }
+    try {
+      const stored = window.localStorage.getItem(LAB_TERRAIN_RIM_STORAGE_KEY);
+      if (stored === "0") {
+        return false;
+      }
+    } catch (_err) {
+      return true;
+    }
+    return true;
+  }
+
+  function persistTerrainRimHighlightEnabled(enabled) {
+    try {
+      window.localStorage.setItem(LAB_TERRAIN_RIM_STORAGE_KEY, enabled ? "1" : "0");
+    } catch (_err) {
+      /* ignore */
+    }
+  }
+
+  function resolveTerrainRimHighlightWire(frame, trackMetrics) {
+    if (!frame || typeof frame !== "object") {
+      return null;
+    }
+    const fm =
+      frame.metrics && typeof frame.metrics === "object"
+        ? frame.metrics.terrain_rim_highlight
+        : null;
+    if (fm && typeof fm === "object") {
+      return fm;
+    }
+    const tm = trackMetrics && typeof trackMetrics === "object" ? trackMetrics : {};
+    const frozen = tm.frozen_terrain_rim_highlight;
+    if (frozen && typeof frozen === "object") {
+      return frozen;
+    }
+    return null;
+  }
+
+  function cornerToStagePx(cx, cy, layout, cellPx, gapPx) {
+    const d = visualCol(cx);
+    if (d == null || !layout) return null;
+    const yi = Number(cy);
+    if (!Number.isFinite(yi)) return null;
+    const col = d - layout.minD;
+    const row = yi - layout.minR;
+    const step = cellPx + gapPx;
+    return { x: col * step, y: row * step };
+  }
+
+  function clearTerrainRimOutlineSvg() {
+    const layer = document.getElementById("lab-optimization-overlay-layer");
+    if (layer) {
+      layer.textContent = "";
+    }
+  }
+
+  function applyTerrainRimOutlineSvg(wire, layout, cellPx, gapPx) {
+    clearTerrainRimOutlineSvg();
+    if (!wire || typeof wire !== "object" || !layout) {
+      return;
+    }
+    const loops = wire.outer_outline_loops;
+    if (!Array.isArray(loops) || loops.length === 0) {
+      return;
+    }
+    const layer = document.getElementById("lab-optimization-overlay-layer");
+    if (!layer) {
+      return;
+    }
+    let pathData = "";
+    for (let li = 0; li < loops.length; li++) {
+      const loop = loops[li];
+      if (!Array.isArray(loop) || loop.length < 2) {
+        continue;
+      }
+      let segment = "";
+      for (let pi = 0; pi < loop.length; pi++) {
+        const pt = loop[pi];
+        if (!Array.isArray(pt) || pt.length < 2) {
+          continue;
+        }
+        const px = cornerToStagePx(Number(pt[0]), Number(pt[1]), layout, cellPx, gapPx);
+        if (!px) {
+          continue;
+        }
+        segment += (pi === 0 ? "M " : " L ") + String(px.x) + " " + String(px.y);
+      }
+      if (segment) {
+        pathData += segment + " Z ";
+      }
+    }
+    if (!pathData) {
+      return;
+    }
+    const svgNs = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNs, "svg");
+    svg.setAttribute("class", "lab-terrain-rim-outline-svg");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("aria-hidden", "true");
+    const pathEl = document.createElementNS(svgNs, "path");
+    pathEl.setAttribute("class", "lab-terrain-rim-outline-path");
+    pathEl.setAttribute("d", pathData.trim());
+    svg.appendChild(pathEl);
+    layer.appendChild(svg);
+  }
+
+  function applyTerrainRimHighlight(wire, layout, cellPx, gapPx) {
+    applyTerrainRimOutlineSvg(wire, layout, cellPx, gapPx);
+  }
+
   function renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex) {
     if (!Array.isArray(cells)) return;
     const targets = [];
@@ -1034,7 +1152,7 @@
     return parts.length ? parts.join(" · ") : "optimization milestone";
   }
 
-  function renderFullMapReplayFrame(frame, baseClasses, domCells, resolveCellIndex) {
+  function renderFullMapReplayFrame(frame, baseClasses, domCells, resolveCellIndex, trackMetrics, rimDrawCtx) {
     const fm = fullMapCellsFromFrame(frame);
     if (!fm.length) return false;
     renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
@@ -1048,10 +1166,31 @@
     }
     renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
     applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
+    if (isTerrainRimHighlightEnabled() && rimDrawCtx && rimDrawCtx.layout) {
+      const rimWire = resolveTerrainRimHighlightWire(frame, trackMetrics);
+      if (rimWire) {
+        applyTerrainRimHighlight(
+          rimWire,
+          rimDrawCtx.layout,
+          rimDrawCtx.cellPx,
+          rimDrawCtx.gapPx,
+        );
+      }
+    } else {
+      clearTerrainRimOutlineSvg();
+    }
     return true;
   }
 
-  function renderReplayFrame(frame, baseClasses, domCells, resolveCellIndex, allFrames) {
+  function renderReplayFrame(
+    frame,
+    baseClasses,
+    domCells,
+    resolveCellIndex,
+    allFrames,
+    trackMetrics,
+    rimDrawCtx,
+  ) {
     if (!frame || typeof frame !== "object") {
       resetGridBase(domCells, baseClasses);
       return;
@@ -1059,9 +1198,17 @@
     const fm = fullMapCellsFromFrame(frame);
     if (fm.length) {
       resetGridBase(domCells, baseClasses);
-      renderFullMapReplayFrame(frame, baseClasses, domCells, resolveCellIndex);
+      renderFullMapReplayFrame(
+        frame,
+        baseClasses,
+        domCells,
+        resolveCellIndex,
+        trackMetrics,
+        rimDrawCtx,
+      );
       return;
     }
+    clearTerrainRimOutlineSvg();
     const ov = frame.cell_overlay_json;
     if (ov && typeof ov === "object") {
       resetGridBase(domCells, baseClasses);
@@ -1510,12 +1657,36 @@
       return replayFrames[replayArrayIndex] || null;
     }
 
+    function buildRimDrawCtx() {
+      if (!replayLayout) {
+        return null;
+      }
+      const sizing = labBaseCellAndGapPx();
+      if (!sizing) {
+        return null;
+      }
+      return {
+        layout: replayLayout,
+        cellPx: sizing.cellPx,
+        gapPx: sizing.gapPx,
+      };
+    }
+
     function applyFrame() {
+      const rimDrawCtx = buildRimDrawCtx();
       if (hasServerReplay) {
         if (replayArrayIndex < 0) replayArrayIndex = 0;
         if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
         const fr = getCurrentReplayFrame();
-        renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex, replayFrames);
+        renderReplayFrame(
+          fr,
+          baseClasses,
+          domCells,
+          resolveCellIndex,
+          replayFrames,
+          replayTrackMetrics,
+          rimDrawCtx,
+        );
         updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl, replayArrayIndex);
         updateReplayTruncationHud(fr, replayTrackMetrics);
         const cycle = document.getElementById("lab-computation-cycle");
@@ -2303,6 +2474,24 @@
       });
       scrubEl.addEventListener("input", function () {
         setTimelineIndex(scrubEl.value, { pause: true });
+      });
+    }
+
+    const rimToggleEl = document.getElementById("lab-terrain-rim-highlight-toggle");
+    if (rimToggleEl) {
+      try {
+        const storedRim = window.localStorage.getItem(LAB_TERRAIN_RIM_STORAGE_KEY);
+        if (storedRim === "0") {
+          rimToggleEl.checked = false;
+        } else if (storedRim === "1") {
+          rimToggleEl.checked = true;
+        }
+      } catch (_rimErr) {
+        /* ignore */
+      }
+      rimToggleEl.addEventListener("change", function () {
+        persistTerrainRimHighlightEnabled(rimToggleEl.checked);
+        applyFrame();
       });
     }
 
@@ -3340,7 +3529,15 @@
     window.AsteroidLabReplay = {
       getCurrentReplayFrame: getCurrentReplayFrame,
       renderReplayFrame: function (fr) {
-        renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex, replayFrames);
+        renderReplayFrame(
+          fr,
+          baseClasses,
+          domCells,
+          resolveCellIndex,
+          replayFrames,
+          replayTrackMetrics,
+          buildRimDrawCtx(),
+        );
       },
       renderCellOverlay: function (ov) {
         resetGridBase(domCells, baseClasses);

@@ -137,5 +137,5 @@ def test_narrow_corridor_pipeline_deterministic(
     )
 
     assert first == second
-    assert len(first.commit_result.committed_ids) >= 1
+    assert first.validation_passed
     assert len(first.commit_result.committed_ids) >= 1

@@ -94,17 +94,14 @@ def _validate_geometry(
     if not occupied.issubset(inp.mineable_cells):
         return CandidateRejectReason.GEOMETRY_INVALID
 
-    stub_abs = _translate_offset(anchor, spec.output_stub_offset)
     if fot_abs in occupied:
         return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_IN_OCCUPIED
     if fot_abs in inp.blocked_incompatible_transport_cells:
         return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_KIND_BLOCKED
     if _policy_requires_outside_mineable(policy) and fot_abs in inp.mineable_cells:
         return CandidateRejectReason.FIXED_OUTPUT_TRANSPORT_INSIDE_MINEABLE
-    if stub_abs in occupied:
+    if output_stub in occupied:
         return CandidateRejectReason.ROUTE_PROBE_START_IN_OCCUPIED
-    if output_stub != stub_abs:
-        return CandidateRejectReason.GEOMETRY_INVALID
 
     unit = cardinal_unit_vector(CardinalDirection(spec.output_dir))
     axis_local = (

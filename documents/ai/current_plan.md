@@ -88,7 +88,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**ACTIVE (2026-05-28):** RTTP FOT — PR-1 workspace done (`OUTSIDE_MINEABLE`, pipeline). **PR-2 approved:** outward rim + `transport_attach_surface_cells` (derived from `external_void ∪ ring_cells`, no new flag) + `resolve_route_probe_start` (platform fallback when stub ∈ void). Spec: [`docs/superpowers/specs/2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md`](../../docs/superpowers/specs/2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md). Plan: [`2026-05-28-rttp-fot-pr2-outward-rim-void-probe.md`](../../docs/superpowers/plans/2026-05-28-rttp-fot-pr2-outward-rim-void-probe.md) (implementation next).
+**ACTIVE (2026-05-28):** RTTP FOT PR-1 — PR [#88](https://github.com/tigers2020/Shapez2Factory/pull/88) merge with `master` (topology #87). PR-2 spec ready after PR-1 merge: [`2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md`](../../docs/superpowers/specs/2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md).
 
 **CLOSED (2026-05-25):** ReconstructionCompleteMap terrain SoT + RTTP placement replay overlay (PR-1) — PR [#83](https://github.com/tigers2020/Shapez2Factory/pull/83) squash-merged to `master` (`7d07394b`). Lab replay: bundle footprints; `asteroid_fluid_field` → `Layout_FluidMiner`. Spec: [`docs/superpowers/specs/2026-05-26-rttp-confirmed-placement-footprint-design.md`](../../docs/superpowers/specs/2026-05-26-rttp-confirmed-placement-footprint-design.md) · plan: [`docs/superpowers/plans/2026-05-25-rttp-confirmed-placement-footprint.md`](../../docs/superpowers/plans/2026-05-25-rttp-confirmed-placement-footprint.md). PR-1b route tile synthesis · PR-2 island materializer **deferred**.
 

@@ -141,11 +141,13 @@ Equipment (extractor + extensions) rows use the same bundle rotation as `catalog
 
 ### `overlay_semantic_kind` by frame (caller-assigned)
 
-| Frame | Extractor | Extension | Output stub | Route |
-|-------|-----------|-----------|-------------|-------|
-| Candidate preview | `placement.candidate_extractor` | `placement.candidate_extension` | `placement.candidate_output_stub` | (existing probe kinds unchanged) |
-| Genome selected | `placement.selected_extractor` | `placement.selected_extension` | `placement.selected_output_stub` | — |
-| Commit success | `placement.confirmed_extractor` | `placement.confirmed_extension` | `placement.confirmed_output_stub` | `route.committed_path` |
+| Frame | Extractor | Extension | Fixed output transport | Output stub (probe start) | Route |
+|-------|-----------|-----------|------------------------|---------------------------|-------|
+| Candidate preview | `placement.candidate_extractor` | `placement.candidate_extension` | `placement.candidate_fixed_output_transport` | `placement.candidate_output_stub` | (existing probe kinds unchanged) |
+| Genome selected | `placement.selected_extractor` | `placement.selected_extension` | `placement.selected_fixed_output_transport` | `placement.selected_output_stub` | — |
+| Commit success | `placement.confirmed_extractor` | `placement.confirmed_extension` | `placement.confirmed_fixed_output_transport` | `placement.confirmed_output_stub` | `route.committed_path` |
+
+See [`2026-05-27-rttp-miner-output-transport-topology-design.md`](2026-05-27-rttp-miner-output-transport-topology-design.md): FOT cell is belt/pipe only (transport priority), never extension equipment.
 
 Optional wire fields: `candidate_id`, `commit_state`.
 

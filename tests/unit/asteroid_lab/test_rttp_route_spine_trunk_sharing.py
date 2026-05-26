@@ -6,14 +6,6 @@ from dataclasses import replace
 
 import pytest
 
-pytestmark = pytest.mark.django_db
-
-
-@pytest.fixture(scope="module", autouse=True)
-def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
-    return imported_game_data_batch_module
-
-
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
     FixedOutputTransportPolicy,
@@ -37,6 +29,13 @@ from tests.support.rttp_narrow_corridor_fixture import (
     NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID,
     build_narrow_corridor_optimization_input,
 )
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
 
 
 def test_private_route_overlap_excludes_skeleton_trunk_cells() -> None:

@@ -1,0 +1,110 @@
+{
+  "candidate_count": 2,
+  "captured_at": "2026-05-26T22:54:28.579865+00:00",
+  "gate_a_primary_pass_count": 0,
+  "notes": [
+    "Task A4: placement_goal_count from ReconstructionCompleteMap asteroid_field_cell_count \u00d7 placement_target_percent.",
+    "Task A5: output_stub outside traversable envelope reserved when FOT is outside mineable (FL-06); placement_goal_shortfall not goal cap.",
+    "committed_extractor_count below placement_goal_count is expected shortfall, not placement goal failure.",
+    "Task A6: validation fail-closed on missing_output_transport / missing_exterior_route; shortfall does not set validation_passed false."
+  ],
+  "results": [
+    {
+      "asteroid_field_cell_count": 583,
+      "blocking_stages": [
+        "S2",
+        "S3",
+        "S4",
+        "S6"
+      ],
+      "cert_status": "fail_t2",
+      "committed_extractor_count": 22,
+      "committed_output_transport_cells": 22,
+      "committed_route_cell_count": 146,
+      "confirmed_count": 22,
+      "diagnostic_flags": [
+        "exterior_route_missing",
+        "missing_extensions",
+        "placement_goal_shortfall",
+        "validation_false_positive"
+      ],
+      "exterior_connected_route_count": 0,
+      "first_failing_stage": "S2",
+      "first_failing_stage_hint": "S2",
+      "gate_a_passed": false,
+      "installable_shape_field_cell_count": 295,
+      "issue_codes": [
+        "throughput_target_shortfall"
+      ],
+      "non_overlapping_anchor_cap": 67,
+      "normal_candidate_count": 89,
+      "placement_goal_count": 467,
+      "placement_target_percent": 80,
+      "primary_symptom": "route_cells_zero_but_validation_passed",
+      "project_id": 23,
+      "route_feasible_candidate_cap": 89,
+      "run_key": "rttp-5358dced0734",
+      "slug": "rttp-core-recovery-test-map",
+      "slug_class": "unknown",
+      "solver_run_id": 224,
+      "t0_passed": true,
+      "t1a_passed": true,
+      "t1b_passed": true,
+      "t2_passed": false,
+      "t3_shell_passed": false,
+      "trunk_mask_cell_count_overlay": 0,
+      "validation_passed": true,
+      "visible_extension_cell_count": 0,
+      "visible_miner_cell_count": 22
+    },
+    {
+      "asteroid_field_cell_count": 583,
+      "blocking_stages": [
+        "S2",
+        "S3",
+        "S4",
+        "S6"
+      ],
+      "cert_status": "fail_t2",
+      "committed_extractor_count": 22,
+      "committed_output_transport_cells": 22,
+      "committed_route_cell_count": 146,
+      "confirmed_count": 22,
+      "diagnostic_flags": [
+        "exterior_route_missing",
+        "missing_extensions",
+        "placement_goal_shortfall",
+        "validation_false_positive"
+      ],
+      "exterior_connected_route_count": 0,
+      "first_failing_stage": "S2",
+      "first_failing_stage_hint": "S2",
+      "gate_a_passed": false,
+      "installable_shape_field_cell_count": 125,
+      "issue_codes": [
+        "throughput_target_shortfall"
+      ],
+      "non_overlapping_anchor_cap": 67,
+      "normal_candidate_count": 89,
+      "placement_goal_count": 467,
+      "placement_target_percent": 80,
+      "primary_symptom": "route_cells_zero_but_validation_passed",
+      "project_id": 5,
+      "route_feasible_candidate_cap": 89,
+      "run_key": "rttp-9e1403b3832e",
+      "slug": "rttp-cert-candidate-recon-l0",
+      "slug_class": "unknown",
+      "solver_run_id": 225,
+      "t0_passed": true,
+      "t1a_passed": true,
+      "t1b_passed": true,
+      "t2_passed": false,
+      "t3_shell_passed": false,
+      "trunk_mask_cell_count_overlay": 0,
+      "validation_passed": true,
+      "visible_extension_cell_count": 0,
+      "visible_miner_cell_count": 22
+    }
+  ],
+  "schema_version": "rttp.core_recovery_evidence.v1"
+}

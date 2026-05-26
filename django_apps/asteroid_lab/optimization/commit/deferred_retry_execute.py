@@ -7,7 +7,10 @@ from collections.abc import Mapping, Sequence
 
 from django_apps.asteroid_lab.contracts.deferred_retry_execute import DeferredRetryExecuteResult
 from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
-from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
+from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
+    BundleCandidate,
+    RouteProbeStartPolicy,
+)
 from django_apps.asteroid_lab.optimization.candidates.placement_cells import (
     fixed_output_transport_cell,
 )
@@ -136,6 +139,9 @@ def run_bounded_deferred_retry(
     inp: OptimizationInput,
     skeleton: RttpSkeleton,
     config: DeferredRetryShadowConfig,
+    route_probe_start_policy: RouteProbeStartPolicy = (
+        RouteProbeStartPolicy.OUTPUT_STUB_ONLY
+    ),
 ) -> DeferredRetryExecuteResult:
     """One-round deferred retry on latest domain after primary commits (no rollback)."""
 
@@ -185,6 +191,7 @@ def run_bounded_deferred_retry(
             committed_occupied=committed_occupied,
             committed_route_cells=committed_route_cells,
             committed_fixed_output_transport_cells=committed_fixed_output_transport_cells,
+            route_probe_start_policy=route_probe_start_policy,
             max_expansions=config.route_probe_max_expansions,
         )
         if outcome.committed:

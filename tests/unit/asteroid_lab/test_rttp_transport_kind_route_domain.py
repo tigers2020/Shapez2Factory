@@ -4,14 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = pytest.mark.django_db
-
-
-@pytest.fixture(scope="module", autouse=True)
-def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
-    return imported_game_data_batch_module
-
-
 from django_apps.asteroid_lab.optimization.input_contracts import (
     ExistingTransportCell,
     TransportKind,
@@ -35,6 +27,13 @@ from tests.unit.asteroid_lab.test_optimization_input_adapter import (
     _optimization_input_from_cells,
     _pipe_cell,
 )
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
 
 
 def test_partition_existing_transport_shape_active() -> None:

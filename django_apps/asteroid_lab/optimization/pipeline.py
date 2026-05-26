@@ -576,6 +576,7 @@ def _run_v01_rttp_pipeline(
             inp=inp,
             skeleton=skeleton,
             config=shadow_cfg,
+            route_probe_start_policy=route_probe_start_policy,
         )
         commit_result = execute_out.merged_commit_result
         _append_deferred_retry_execute_step(steps, execute_out=execute_out)

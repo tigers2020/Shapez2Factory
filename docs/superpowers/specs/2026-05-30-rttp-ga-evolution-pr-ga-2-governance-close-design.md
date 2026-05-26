@@ -193,7 +193,7 @@ but it is NOT evidence against PR-GA-2 selection correctness when ALL hold:
 
 Historical reference: run 76 (`validation_passed=true` at 10% target) used `reconstruction_max` 15360 — pre–complete-map SoT class.
 
-**CC-3B follow-up (separate track):** throughput target floor vs complete-map `reconstruction_max`, or canon ops slug refresh — **not** PR-GA-2 scope (§6).
+**CC-3B follow-up:** superseded by ops authority tier spec — [`2026-05-30-rttp-ops-authority-tier-design.md`](2026-05-30-rttp-ops-authority-tier-design.md) (T0/T1a/T1b/T2/T3; diagnostic canon reclassification). Product fixes remain tracks A/B/D/E — **not** PR-GA-2 scope (§6).
 
 ### Recommended regression line (PR body)
 

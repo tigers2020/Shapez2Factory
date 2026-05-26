@@ -92,12 +92,9 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**ACTIVE:** Capacity C-GATE — complete-map SoT architecture gates
-- Spec: [`docs/superpowers/specs/2026-05-29-reconstruction-capacity-c-gate-design.md`](../../docs/superpowers/specs/2026-05-29-reconstruction-capacity-c-gate-design.md)
-- Plan: [`docs/superpowers/plans/2026-05-29-reconstruction-capacity-c-gate.md`](../../docs/superpowers/plans/2026-05-29-reconstruction-capacity-c-gate.md)
-- Blocks: GA promotion until CLOSED (new GA spec still required after C-GATE)
-- Standing gate: `powershell -File scripts/test_capacity_sot.ps1`
-- PR-CGATE-1: docs + tests + script only (no solver semantics)
+**ACTIVE (2026-05-29):** v0.1 **next track selection** — **GA** (evolutionary search promotion; new spec + ACTIVE row required). Macro unpause **PAUSED** (child-pool fixture spec first). PR-CGATE-1b observability rename **not required** (gates green without production edits).
+
+**CLOSED (2026-05-29):** Capacity C-GATE — complete-map SoT architecture gates — PR [#94](https://github.com/tigers2020/Shapez2Factory/pull/94) squash-merged to `master` (`ec1b6a26`). G1/G2 import + semantic token gates; G3/G4 complete-map regression + Lab sparse-overlay capacity contract; standing `scripts/test_capacity_sot.ps1`. No production solver semantics change. Spec: [`2026-05-29-reconstruction-capacity-c-gate-design.md`](../../docs/superpowers/specs/2026-05-29-reconstruction-capacity-c-gate-design.md) · plan: [`2026-05-29-reconstruction-capacity-c-gate.md`](../../docs/superpowers/plans/2026-05-29-reconstruction-capacity-c-gate.md).
 
 **Tombstoned plans (do not execute checklists):** [`2026-05-25-reconstruction-field-cell-capacity-contract.md`](../../docs/superpowers/plans/2026-05-25-reconstruction-field-cell-capacity-contract.md) (`OBSOLETE` — use [`2026-05-26-reconstruction-complete-map-dto.md`](../../docs/superpowers/plans/2026-05-26-reconstruction-complete-map-dto.md) for complete-map SoT); [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md) (`PAUSED / DO NOT EXECUTE` — macro unpause requires new spec + ACTIVE row). Evidence: PR [#90](https://github.com/tigers2020/Shapez2Factory/pull/90) (`64d90603`).
 

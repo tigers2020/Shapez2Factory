@@ -61,7 +61,7 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | **ACTIVE:** Capacity C-GATE (spec/plan 2026-05-29). GA blocked until C-GATE CLOSED. Throughput PR-2a..2d **CLOSED** (#78–#81). | — |
+| **A** | v0.1 **next track:** GA (new spec; C-GATE **CLOSED** #94 `ec1b6a26`). Macro **PAUSED**. Throughput PR-2a..2d **CLOSED** (#78–#81). | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
 | **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
@@ -96,7 +96,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** **ACTIVE:** Capacity C-GATE (spec/plan 2026-05-29). GA blocked until C-GATE CLOSED (new GA spec still required). Macro **PAUSED**. Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
+**Open next:** **GA** promotion (new spec + `current_plan` ACTIVE row). Capacity C-GATE **CLOSED** ([#94](https://github.com/tigers2020/Shapez2Factory/pull/94) `ec1b6a26`). Macro **PAUSED**. Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
 
 ### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
 

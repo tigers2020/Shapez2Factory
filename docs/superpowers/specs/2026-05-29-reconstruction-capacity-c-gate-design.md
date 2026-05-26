@@ -1,7 +1,7 @@
 # Reconstruction Capacity C-GATE — Design Spec
 
 **Date:** 2026-05-29  
-**Status:** Design approved; implementation in progress (PR-CGATE-1)  
+**Status:** CLOSED (merged to `master` `ec1b6a26`, PR #94, 2026-05-29)  
 **Owner:** asteroid-lab / reconstruction SoT governance  
 **Track:** v0.1 next track — **Capacity C-GATE** (Approach 2: gates + contract hardening)  
 **Parent SoT:** [`2026-05-26-reconstruction-complete-map-dto-design.md`](2026-05-26-reconstruction-complete-map-dto-design.md)  

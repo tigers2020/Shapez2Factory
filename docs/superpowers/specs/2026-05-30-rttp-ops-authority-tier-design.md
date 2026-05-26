@@ -172,7 +172,7 @@ A **pass-capable** slug (existing or newly designated) must satisfy on **documen
 | PR class | Required tiers | Slug |
 |----------|----------------|------|
 | Selection / GA / `selection.mode` | **T0** | Diagnostic canon OK (`copy-import-495e552c`) |
-| Commit / catalog / FOT / layout validation | **T0 + T1b** (T1a as supporting evidence) | Diagnostic OK if T1b failure is **pre-existing** and cited |
+| Commit / catalog / FOT / layout validation | **T0** + targeted **T1b** evidence on PR branch, **or** documented pre-existing T1b FAIL on diagnostic canon plus separate narrow validation gate | Diagnostic canon: pre-existing T1b FAIL is not merge evidence by itself |
 | Throughput / PR-2c–2d budget | **T2** (+ **T0** if selection touched) | Diagnostic OK for T2-only failures |
 | Milestone ops / B-CS2 successor / “healthy slug” | **T3** | **Pass-capable slug required** (not `copy-import-495e552c` until A/B closes) |
 | Pytest-only / standing gates / decontamination | Existing CI scripts | No extra tier |

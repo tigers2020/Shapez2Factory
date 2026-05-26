@@ -61,7 +61,7 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | PR-GA-2 `selection.mode` **CLOSED** [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`. **Next:** macro child-pool fixture spec **or** CC-3B throughput-budget product track (new spec + ACTIVE row). PR-GA-1 **CLOSED** #95. C-GATE **CLOSED** #94. Macro **PAUSED**. | — |
+| **A** | PR-GA-2 **CLOSED** [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`. **CC-3B ops tier CLOSED** [`2026-05-30-rttp-ops-authority-tier-design`](specs/2026-05-30-rttp-ops-authority-tier-design.md) `32c55473`. **Next:** E T1b investigation → D throughput → A/B pass-capable slug; macro child-pool optional. | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
 | **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
@@ -96,7 +96,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** v0.1 track selection — macro child-pool fixture spec **or** canon slug throughput-budget (CC-3B) **or** explicit defer ([`current_plan.md`](../../documents/ai/current_plan.md)). PR-GA-2 **CLOSED** [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`. PR-GA-1 **CLOSED** [#95](https://github.com/tigers2020/Shapez2Factory/pull/95) `5b7ead43`. Capacity C-GATE **CLOSED** [#94](https://github.com/tigers2020/Shapez2Factory/pull/94) `ec1b6a26`. Macro **PAUSED**. Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
+**Open next:** **E** T1b commit-layout read-only investigation (recommended) → **D** T2 throughput policy → **A/B** pass-capable ops slug ([`2026-05-30-rttp-ops-authority-tier-design`](specs/2026-05-30-rttp-ops-authority-tier-design.md) §9). Diagnostic canon: `copy-import-495e552c` (T0/T1a pass; not T3). PR-GA-2 **CLOSED** [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`. CC-3B ops tier **CLOSED** `32c55473`. Macro **PAUSED**. See [`current_plan.md`](../../documents/ai/current_plan.md).
 
 ### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
 

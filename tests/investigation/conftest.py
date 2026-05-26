@@ -1,3 +1,5 @@
-"""Investigation tests reuse asteroid_lab unit fixtures."""
+"""Investigation probes — re-export unit fixtures (no nested pytest_plugins)."""
 
-pytest_plugins = ["tests.unit.asteroid_lab.conftest"]
+from tests.unit.asteroid_lab.conftest import (  # noqa: F401
+    greenfield_optimization_input,
+)

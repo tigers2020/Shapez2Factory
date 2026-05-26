@@ -235,9 +235,7 @@ def lab_run_summary_from_solver_summary(
     throughput_budget_satisfied = _throughput_budget_satisfied_top_level(solver_summary)
     diagnostic_expected_shortfall = bool(solver_summary.get("diagnostic_expected_shortfall", False))
     t3_ops_eligible_raw = solver_summary.get("t3_ops_eligible")
-    t3_ops_eligible = (
-        bool(t3_ops_eligible_raw) if isinstance(t3_ops_eligible_raw, bool) else None
-    )
+    t3_ops_eligible = bool(t3_ops_eligible_raw) if isinstance(t3_ops_eligible_raw, bool) else None
     confirmed = solver_summary.get("confirmed_count", _PLACEHOLDER)
     target = solver_summary.get("target_miner_bundle_count", _PLACEHOLDER)
     target_placement = solver_summary.get("target_placement_count", target)

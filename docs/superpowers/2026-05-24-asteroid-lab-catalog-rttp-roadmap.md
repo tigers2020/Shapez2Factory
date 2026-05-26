@@ -61,7 +61,8 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **Throughput policy (D)** | **D-PR implemented** (2026-05-30, pending merge) — [`2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md`](specs/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md). Canon: T2 **expected shortfall**. **Next:** Track **B** pass-capable slug. | — |
+| **Throughput policy (D)** | **D-PR** — PR [#99](https://github.com/tigers2020/Shapez2Factory/pull/99); T2 **expected shortfall** on diagnostic canon. | — |
+| **Pass-capable slug (B)** | **CLOSED (2026-05-30)** — `rttp-cert-candidate-tiny-passable-v2` registered; borderline T2 pass (`actual=target=480`). Evidence: [`task4-confirm-v2.json`](reports/2026-05-30-rttp-pass-capable-slug-certification-task4-confirm-v2.json). Spec: [`2026-05-30-rttp-pass-capable-slug-certification-design.md`](specs/2026-05-30-rttp-pass-capable-slug-certification-design.md) | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
 | **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
@@ -96,7 +97,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** **B** pass-capable slug (T3 ops) — D-PR code on branch (uncommitted). E + FL-06 **MERGED** (`7e46c736`). Diagnostic canon: T0/T1a/T1b pass; T2 **expected shortfall** + `t2_policy_*` fields; T3 blocked until B. See [`current_plan.md`](../../documents/ai/current_plan.md).
+**Open next:** **Track B CLOSED** (2026-05-30) — pass-capable slug `rttp-cert-candidate-tiny-passable-v2` certified + registered. **Track A** (throughput on `recon-l0` / diagnostic canon) **not opened** unless product requests. See [`current_plan.md`](../../documents/ai/current_plan.md) · [`2026-05-30-rttp-pass-capable-slug-certification-task3-summary.md`](reports/2026-05-30-rttp-pass-capable-slug-certification-task3-summary.md) · Task 4 [`task4-confirm-v2.json`](reports/2026-05-30-rttp-pass-capable-slug-certification-task4-confirm-v2.json).
 
 ### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
 

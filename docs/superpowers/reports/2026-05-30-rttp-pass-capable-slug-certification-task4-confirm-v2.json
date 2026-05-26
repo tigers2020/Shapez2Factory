@@ -1,0 +1,27 @@
+﻿{
+  "blocked_count": 0,
+  "candidate_count": 1,
+  "certified_pass_count": 1,
+  "results": [
+    {
+      "actual_committed": 480,
+      "cert_status": "certified_pass",
+      "issue_codes": [],
+      "project_id": 13,
+      "rttp_ops_slug_class": "pass_capable",
+      "slug": "rttp-cert-candidate-tiny-passable-v2",
+      "slug_class": "pass_capable",
+      "solver_run_id": 153,
+      "t0_passed": true,
+      "t1a_passed": true,
+      "t1b_passed": true,
+      "t2_passed": true,
+      "t2_policy_status": "satisfied",
+      "t3_shell_passed": true,
+      "throughput_budget_satisfied": true,
+      "throughput_target_min": 480,
+      "validation_passed": true
+    }
+  ],
+  "schema_version": "rttp.slug_certification_scan.v1"
+}

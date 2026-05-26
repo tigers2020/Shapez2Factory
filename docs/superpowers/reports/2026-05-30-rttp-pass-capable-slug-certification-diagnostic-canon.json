@@ -1,0 +1,27 @@
+{
+  "blocked_count": 0,
+  "candidate_count": 1,
+  "certified_pass_count": 0,
+  "results": [
+    {
+      "actual_committed": null,
+      "cert_status": "skipped_diagnostic",
+      "issue_codes": [],
+      "project_id": 1,
+      "rttp_ops_slug_class": "diagnostic_canon",
+      "slug": "copy-import-495e552c",
+      "slug_class": "diagnostic_canon",
+      "solver_run_id": null,
+      "t0_passed": false,
+      "t1a_passed": false,
+      "t1b_passed": false,
+      "t2_passed": false,
+      "t2_policy_status": null,
+      "t3_shell_passed": false,
+      "throughput_budget_satisfied": null,
+      "throughput_target_min": null,
+      "validation_passed": null
+    }
+  ],
+  "schema_version": "rttp.slug_certification_scan.v1"
+}

@@ -249,9 +249,7 @@ def test_pr_f_applied_replacements_exist() -> None:
 
 
 def test_pr_f_delete_grades_do_not_overlap_protected() -> None:
-    delete_grades = frozenset(
-        {"DUPLICATE_COVERAGE", "OBSOLETE_PRODUCT_PATH", "BROKEN_OR_DEAD"}
-    )
+    delete_grades = frozenset({"DUPLICATE_COVERAGE", "OBSOLETE_PRODUCT_PATH", "BROKEN_OR_DEAD"})
     overlaps: list[str] = []
     for entry in PR_F_AGGRESSIVE_AUDIT_CANDIDATES:
         if entry.grade not in delete_grades:

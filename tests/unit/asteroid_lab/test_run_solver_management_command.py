@@ -13,10 +13,10 @@ from django.core.management.base import CommandError
 from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
 from django_apps.asteroid_lab.contracts.rttp_ops_policy import (
     T2_POLICY_STATUS_EXPECTED_DIAGNOSTIC_SHORTFALL,
 )
+from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY,

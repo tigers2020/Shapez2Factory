@@ -24,6 +24,7 @@ from django_apps.asteroid_lab.contracts.building_catalog_slice_hash import (
     catalog_slice_hash,
 )
 from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
+from django_apps.asteroid_lab.contracts.ga_evolution_shadow import GaEvolutionShadowConfig
 from django_apps.asteroid_lab.contracts.game_data_snapshot import AsteroidGameDataSnapshot
 from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
     GameDataSnapshotProvenance,
@@ -94,6 +95,7 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY,
     SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY,
     SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
+    SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
@@ -200,6 +202,64 @@ def _require_bool(value: object, *, field: str) -> bool:
     raise ValueError(msg)
 
 
+def _ga_shadow_require_bool(value: object, *, field: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    msg = f"ga_evolution_shadow.{field} must be a boolean"
+    raise ValueError(msg)
+
+
+def _ga_shadow_require_int(value: object, *, field: str) -> int:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    msg = f"ga_evolution_shadow.{field} must be an integer"
+    raise ValueError(msg)
+
+
+def _ga_shadow_require_float(value: object, *, field: str) -> float:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    msg = f"ga_evolution_shadow.{field} must be a number"
+    raise ValueError(msg)
+
+
+def _ga_evolution_shadow_config_from_run_config(
+    config: dict[str, Any],
+) -> GaEvolutionShadowConfig:
+    """Map ``config_json`` GA shadow policy (PR-GA-1); never reads solver_summary."""
+
+    raw = config.get(SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY)
+    if raw is None:
+        return GaEvolutionShadowConfig()
+    if not isinstance(raw, dict):
+        msg = "ga_evolution_shadow must be an object"
+        raise ValueError(msg)
+    observe_only = _ga_shadow_require_bool(raw.get("observe_only", True), field="observe_only")
+    if not observe_only:
+        msg = "ga_evolution_shadow.observe_only must be true in PR-GA-1"
+        raise ValueError(msg)
+    enabled = _ga_shadow_require_bool(raw.get("enabled", False), field="enabled")
+    return GaEvolutionShadowConfig(
+        enabled=enabled,
+        observe_only=True,
+        population_size=_ga_shadow_require_int(
+            raw.get("population_size", 24),
+            field="population_size",
+        ),
+        generations=_ga_shadow_require_int(raw.get("generations", 8), field="generations"),
+        mutation_rate=_ga_shadow_require_float(
+            raw.get("mutation_rate", 0.15),
+            field="mutation_rate",
+        ),
+        tournament_size=_ga_shadow_require_int(
+            raw.get("tournament_size", 3),
+            field="tournament_size",
+        ),
+        elite_count=_ga_shadow_require_int(raw.get("elite_count", 2), field="elite_count"),
+        random_seed=_ga_shadow_require_int(raw.get("random_seed", 0), field="random_seed"),
+    )
+
+
 def _deferred_retry_shadow_config_from_run_config(
     config: dict[str, Any],
 ) -> DeferredRetryShadowConfig:
@@ -250,6 +310,7 @@ def _rttp_pipeline_config_from_run_config(
     max_raw = config.get(SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY, 64)
     max_macro = int(max_raw) if max_raw is not None else 64
     shadow = _deferred_retry_shadow_config_from_run_config(config)
+    ga_shadow = _ga_evolution_shadow_config_from_run_config(config)
     resolved_max_goal = (
         max_placement_goal_count
         if max_placement_goal_count is not None
@@ -259,6 +320,7 @@ def _rttp_pipeline_config_from_run_config(
         macro_only_mode=macro_only,
         max_macro_candidates=max_macro,
         deferred_retry_shadow=shadow,
+        ga_evolution_shadow=ga_shadow,
         target_throughput_per_min=target_throughput_per_min,
         max_placement_goal_count=resolved_max_goal,
     )

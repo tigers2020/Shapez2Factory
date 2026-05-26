@@ -24,6 +24,7 @@ from django_apps.asteroid_lab.contracts.deferred_retry_execute import (
     deferred_retry_execute_metrics,
 )
 from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
+from django_apps.asteroid_lab.contracts.ga_evolution_shadow import GaEvolutionShadowConfig
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
     ExtractorPlacementPolicy,
@@ -82,6 +83,10 @@ from django_apps.asteroid_lab.optimization.rttp_solver_summary import (
     RttpAlgorithmStepId,
     algorithm_step_summary_to_json,
 )
+from django_apps.asteroid_lab.optimization.selection.ga_evolution_shadow import (
+    build_ga_evolution_shadow_summary,
+    ga_evolution_shadow_metrics,
+)
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import (
     PlacementGenome,
     select_genome,
@@ -90,6 +95,7 @@ from django_apps.asteroid_lab.optimization.selection.macro_equivalence import de
 from django_apps.asteroid_lab.optimization.selection.macro_greedy_regret import (
     select_macro_genome,
 )
+from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
 from django_apps.asteroid_lab.optimization.validation.catalog_layout_validation import (
     validate_pipeline_layout,
@@ -198,6 +204,42 @@ def _record_pipeline_step(
         description=description,
         metrics_json=metrics_json,
         cell_overlay_json=cell_overlay_json,
+    )
+
+
+def _append_ga_evolution_shadow_step(
+    steps: list[dict[str, Any]],
+    *,
+    shadow_config: GaEvolutionShadowConfig,
+    primary_genome: PlacementGenome,
+    normal_candidates: tuple[BundleCandidate, ...],
+    skeleton: RttpSkeleton,
+    inp: OptimizationInput,
+    goal_count: int,
+) -> None:
+    """Record GA evolution shadow (observe-only; greedy genome remains commit authority)."""
+
+    summary = build_ga_evolution_shadow_summary(
+        primary_genome=primary_genome,
+        normal_candidates=normal_candidates,
+        skeleton=skeleton,
+        inp=inp,
+        goal_count=goal_count,
+        config=shadow_config,
+    )
+    metrics = ga_evolution_shadow_metrics(summary)
+    steps.append(
+        algorithm_step_summary_to_json(
+            {
+                "step_id": RttpAlgorithmStepId.RTTP_GA_EVOLUTION_SHADOW.value,
+                "phase": "genome_fitness",
+                "event_type": et.EVENT_TYPE_RTTP_GA_EVOLUTION_SHADOW,
+                "title": "GA evolution shadow (observe-only)",
+                "summary": "Parallel GA proposal; greedy genome remains commit authority.",
+                "metrics": metrics,
+                "passed": True,
+            }
+        )
     )
 
 
@@ -456,6 +498,16 @@ def _run_v01_rttp_pipeline(
         metrics_json=selection_metrics,
         cell_overlay_json=selection_payload.cell_overlay_json,
         passed=len(genome.commit_order) > 0,
+    )
+
+    _append_ga_evolution_shadow_step(
+        steps,
+        shadow_config=config.ga_evolution_shadow,
+        primary_genome=genome,
+        normal_candidates=generation.normal_candidates,
+        skeleton=skeleton,
+        inp=inp,
+        goal_count=selection_goal,
     )
 
     candidates_by_id = {

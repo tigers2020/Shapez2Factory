@@ -19,22 +19,24 @@ Only PR_F_APPROVED_DELETIONS / PR_F_APPLIED_DELETIONS are mechanical authority.
 | Field | Value |
 |-------|-------|
 | PR-F0 inventory | **COMPLETE** (2026-05-30) |
+| PR-F1 mechanical | **SKIP** (0 `BROKEN_OR_DEAD` / `DUPLICATE_COVERAGE`) |
+| PR-F2 `asteroid_lab` human review | **COMPLETE** (2026-05-30) — **0 deletions**; 2 rows promoted to `PROTECTED_CONTRACT` |
 | Registry sync | `PR_F_AGGRESSIVE_AUDIT_CANDIDATES` = 240 file rows |
 | Deletes applied | 0 (`PR_F_APPROVED_DELETIONS` / `PR_F_APPLIED_DELETIONS` empty) |
 
 ---
 
-## Summary by grade (F0 complete)
+## Summary by grade (post F2)
 
 | Grade | Count | Target slice |
 |-------|------:|--------------|
-| `PROTECTED_CONTRACT` | 229 | — |
+| `PROTECTED_CONTRACT` | 231 | — |
 | `PROTECTED_REGRESSION` | 0 | — |
 | `DUPLICATE_COVERAGE` | 0 | F1 |
 | `OBSOLETE_PRODUCT_PATH` | 0 | F2–F4 |
 | `PLACEHOLDER_SKIP` | 0 | review |
 | `DEFERRED_FEATURE_TEST` | 4 | keep |
-| `INTENT_UNKNOWN` | 2 | report |
+| `INTENT_UNKNOWN` | 0 | — |
 | `BROKEN_OR_DEAD` | 0 | F1 |
 | `ENV_GUARD_SKIP` | 5 | keep |
 
@@ -51,12 +53,14 @@ No `BROKEN_OR_DEAD` rows in F0. PR-E already removed 0-byte smoke and duplicate 
 
 ---
 
-## Tier 3 — Human review (`INTENT_UNKNOWN`)
+## Tier 3 — Human review (`INTENT_UNKNOWN`) — F2 closed
 
-| path | reason | replacement |
-|------|--------|-------------|
-| `tests/unit/asteroid_lab/test_lab_unified_replay_append.py` | Product path superseded; helper contract TBD | `tests/unit/asteroid_lab/test_lab_rttp_snapshot_compose.py` |
-| `tests/unit/asteroid_lab/test_ga_evolution_shadow.py` | GA shadow — confirm vs PR-GA-2 before F2 | — |
+| path | F2 decision | evidence |
+|------|-------------|----------|
+| `tests/unit/asteroid_lab/test_lab_unified_replay_append.py` | **KEEP** → `PROTECTED_CONTRACT` | Sole test for `last_renderable_map_frame_index` in `lab_unified_replay_append.py`; 3B-S compose uses `last_renderable_frame_index` (different helper). |
+| `tests/unit/asteroid_lab/test_ga_evolution_shadow.py` | **KEEP** → `PROTECTED_CONTRACT` | PR-GA-1 shadow + factories imported by `test_rttp_ga_evolution_pr_ga_2.py`. |
+
+No rows promoted to `PR_F_APPROVED_DELETIONS`.
 
 ---
 
@@ -145,7 +149,7 @@ No `BROKEN_OR_DEAD` rows in F0. PR-E already removed 0-byte smoke and duplicate 
 | `tests/unit/asteroid_lab/test_fl06_route_reservation_alignment.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
 | `tests/unit/asteroid_lab/test_fot_outside_mineable_pr1.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
 | `tests/unit/asteroid_lab/test_fot_pr2_outward_rim_void_probe.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
-| `tests/unit/asteroid_lab/test_ga_evolution_shadow.py` | `INTENT_UNKNOWN` | Helper vs obsolete product path — human review before F2 |
+| `tests/unit/asteroid_lab/test_ga_evolution_shadow.py` | `PROTECTED_CONTRACT` | PR-F2 keep: PR-GA-1/2 shadow; imported by test_rttp_ga_evolution_pr_ga_2 |
 | `tests/unit/asteroid_lab/test_game_data_contracts.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
 | `tests/unit/asteroid_lab/test_game_data_coord_transform_golden.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
 | `tests/unit/asteroid_lab/test_game_data_snapshot_adapter.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
@@ -169,7 +173,7 @@ No `BROKEN_OR_DEAD` rows in F0. PR-E already removed 0-byte smoke and duplicate 
 | `tests/unit/asteroid_lab/test_lab_screen_grid.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
 | `tests/unit/asteroid_lab/test_lab_timeline_adapter.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
 | `tests/unit/asteroid_lab/test_lab_timeline_rim_enrichment.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
-| `tests/unit/asteroid_lab/test_lab_unified_replay_append.py` | `INTENT_UNKNOWN` | Helper vs obsolete product path — human review before F2 |
+| `tests/unit/asteroid_lab/test_lab_unified_replay_append.py` | `PROTECTED_CONTRACT` | PR-F2 keep: last_renderable_map_frame_index shim contract |
 | `tests/unit/asteroid_lab/test_macro_commit_hud.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
 | `tests/unit/asteroid_lab/test_map_overwrite_updated_at.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |
 | `tests/unit/asteroid_lab/test_miner_placement_topology.py` | `PROTECTED_CONTRACT` | Asteroid lab domain contract (default protect in F0) |

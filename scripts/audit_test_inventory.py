@@ -22,12 +22,8 @@ DEFERRED_MACRO_FILES = frozenset(
     }
 )
 DEFERRED_G3 = frozenset({"test_coordinate_frame_equivalence.py"})
-INTENT_UNKNOWN_FILES = frozenset(
-    {
-        "test_lab_unified_replay_append.py",
-        "test_ga_evolution_shadow.py",
-    }
-)
+# Resolved PR-F2 (2026-05-30): both promoted to PROTECTED_CONTRACT in registry.
+INTENT_UNKNOWN_FILES: frozenset[str] = frozenset()
 ENV_GUARD_GAME_DATA = frozenset(
     {
         "test_admin_browse.py",

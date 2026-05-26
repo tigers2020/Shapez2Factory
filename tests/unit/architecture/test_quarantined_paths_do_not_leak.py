@@ -224,6 +224,11 @@ def test_pr_f_approved_deletions_empty_on_f0() -> None:
     assert PR_F_APPLIED_DELETIONS == ()
 
 
+def test_pr_f_no_intent_unknown_after_f2() -> None:
+    unknown = [e.path for e in PR_F_AGGRESSIVE_AUDIT_CANDIDATES if e.grade == "INTENT_UNKNOWN"]
+    assert unknown == [], f"resolve via F2+ human review before merge: {unknown}"
+
+
 def test_pr_f_protected_tests_non_empty() -> None:
     assert len(PR_F_PROTECTED_TESTS) >= 10
     for entry in PR_F_PROTECTED_TESTS:

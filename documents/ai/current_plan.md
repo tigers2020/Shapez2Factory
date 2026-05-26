@@ -92,7 +92,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**ACTIVE (2026-05-29):** RTTP GA evolution **PR-GA-1** — observe-only shadow (greedy remains commit authority).
+**ACTIVE (2026-05-29):** RTTP GA evolution **PR-GA-1** — observe-only shadow (greedy remains commit authority) — PR [#95](https://github.com/tigers2020/Shapez2Factory/pull/95) OPEN (`8d491734` on `feat/rttp-ga-evolution-shadow`). CI: lint/format/typecheck/test-fast/test-integration/macro-smoke **green** (2026-05-26).
 - Spec: [`docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md)
 - Plan: [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md)
 - Blocks: **PR-GA-2** `selection.mode` swap until PR-GA-1 CLOSED

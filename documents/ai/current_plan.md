@@ -92,7 +92,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Recommended ACTIVE:** **Fix spec for FL-06** — route reservation / output-stub alignment after multi-commit on `copy-import-495e552c` (owner matrix in E report). **D** (throughput) deferred until T1b routing/stub policy resolved.
+**Recommended ACTIVE:** **FL-06 output-stub / route-reservation alignment** — spec [`docs/superpowers/specs/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md) · plan [`docs/superpowers/plans/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment.md`](../../docs/superpowers/plans/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment.md). Investigation-first (H1a/H1b); **D** deferred until T1b resolved.
 
 **CLOSED (2026-05-30):** **E — T1b pipeline layout validation investigation** (read-only) — primary **FL-06** on `copy-import-495e552c`; catalog audit pass confirmed. Spec: [`docs/superpowers/specs/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-design.md) · plan: [`docs/superpowers/plans/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation.md`](../../docs/superpowers/plans/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation.md) · report: [`docs/superpowers/reports/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-report.md`](../../docs/superpowers/reports/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-report.md).
 

@@ -1,7 +1,7 @@
 # Asteroid Lab — RTTP & Catalog Roadmap
 
 **As of:** 2026-05-30  
-**Branch:** `master` @ [`f2750c3e`](https://github.com/tigers2020/Shapez2Factory/commit/f2750c3e) + E-track close (local, push pending)  
+**Branch:** `master` @ [`90fba2ed`](https://github.com/tigers2020/Shapez2Factory/commit/90fba2ed) (E-track close)  
 **Governance:** [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md) § Authority precedence · [`documents/index/document_inventory.md`](../../documents/index/document_inventory.md) § Asteroid Lab authority by topic  
 **Queue authority:** [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md)
 
@@ -61,7 +61,7 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | PR-GA-2 **CLOSED** [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`. **CC-3B ops tier CLOSED** [`2026-05-30-rttp-ops-authority-tier-design`](specs/2026-05-30-rttp-ops-authority-tier-design.md) `32c55473`. **E T1b investigation CLOSED** (primary **FL-06**) [`2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-design`](specs/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-design.md). **Next:** FL-06 output-stub / route-reservation alignment fix spec → **D** throughput (after T1b) → A/B pass-capable slug; macro child-pool optional. | — |
+| **A** | PR-GA-2 **CLOSED** [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`. **CC-3B ops tier CLOSED** [`2026-05-30-rttp-ops-authority-tier-design`](specs/2026-05-30-rttp-ops-authority-tier-design.md) `32c55473`. **E T1b investigation CLOSED** (primary **FL-06**) [`90fba2ed`](https://github.com/tigers2020/Shapez2Factory/commit/90fba2ed). **Next:** **FL-06** output-stub / route-reservation alignment [`2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design`](specs/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md) → **D** (after T1b) → A/B slug; macro child-pool optional. | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
 | **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
@@ -96,7 +96,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** **FL-06** output-stub / route-reservation alignment fix spec (recommended) → **D** T2 throughput policy (after T1b resolved) → **A/B** pass-capable ops slug ([`2026-05-30-rttp-ops-authority-tier-design`](specs/2026-05-30-rttp-ops-authority-tier-design.md) §9). **E** T1b investigation **CLOSED** — primary FL-06; report [`2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-report`](reports/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-report.md). Diagnostic canon: `copy-import-495e552c` (T0/T1a pass; T1b FL-06; not T3). PR-GA-2 **CLOSED** [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`. CC-3B ops tier **CLOSED** `32c55473`. Macro **PAUSED**. See [`current_plan.md`](../../documents/ai/current_plan.md).
+**Open next:** **FL-06** output-stub / route-reservation alignment fix ([`2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design`](specs/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md) APPROVED) → **D** T2 throughput (after T1b) → **A/B** pass-capable ops slug. **E** T1b **CLOSED** @ [`90fba2ed`](https://github.com/tigers2020/Shapez2Factory/commit/90fba2ed) — primary FL-06. Diagnostic canon: `copy-import-495e552c` (T0/T1a pass; T1b FL-06; not T3). Macro **PAUSED**. See [`current_plan.md`](../../documents/ai/current_plan.md).
 
 ### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
 

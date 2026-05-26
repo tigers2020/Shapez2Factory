@@ -1,7 +1,7 @@
 # RTTP Ops Authority Tier — Design Spec (CC-3B)
 
 **Date:** 2026-05-30  
-**Status:** Approved for implementation planning (governance only; no product fix in this track)  
+**Status:** CLOSED (C-track governance; `master` `be92dd14`, 2026-05-30) — no product fix in this track  
 **Owner:** RTTP Ops Authority / asteroid-lab runtime  
 **Track:** CC-3B — canon slug viability via **ops authority tiering** (not throughput-only)  
 **Parent:** [`2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md`](2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md) §3.3 (CC-3B deferred)  

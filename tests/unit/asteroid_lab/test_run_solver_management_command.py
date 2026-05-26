@@ -14,12 +14,16 @@ from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
+from django_apps.asteroid_lab.contracts.rttp_ops_policy import (
+    T2_POLICY_STATUS_EXPECTED_DIAGNOSTIC_SHORTFALL,
+)
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_SELECTION_KEY,
 )
+from django_apps.asteroid_lab.services.solver_runtime_entry import SolverRuntimeEntryResult
 
 pytestmark = pytest.mark.django_db
 
@@ -175,6 +179,33 @@ def test_run_solver_macro_only_and_deferred_retry_raises() -> None:
             deferred_retry_execute=True,
             stderr=StringIO(),
         )
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_run_solver_prints_t2_policy_line_for_diagnostic_shortfall(monkeypatch) -> None:
+    proj = m.AsteroidProject.objects.create(name="CliT2Policy", slug="cli-t2-policy-line")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    summary = {
+        "validation_passed": True,
+        "diagnostic_expected_shortfall": True,
+        "t2_policy_status": T2_POLICY_STATUS_EXPECTED_DIAGNOSTIC_SHORTFALL,
+        "issue_codes": ["throughput_target_shortfall"],
+    }
+    fake_result = SolverRuntimeEntryResult(
+        ok=True,
+        solver_run_id=999,
+        lab_replay_frames_json=[],
+        replay_track_metrics={},
+        solver_summary=summary,
+        validation_passed=True,
+    )
+    monkeypatch.setattr(
+        "django_apps.asteroid_lab.management.commands.run_solver.run_solver_runtime_for_project",
+        lambda *_args, **_kwargs: fake_result,
+    )
+    out = StringIO()
+    call_command("run_solver", slug=proj.slug, stdout=out, stderr=StringIO(), no_replay=True)
+    assert "t2_policy: expected_diagnostic_shortfall" in out.getvalue()
 
 
 def test_run_solver_command_unknown_slug_raises() -> None:

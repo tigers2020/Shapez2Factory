@@ -61,7 +61,7 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | **FL-06 MERGED** @ `7e46c736` (PR [#98](https://github.com/tigers2020/Shapez2Factory/pull/98)) — T1b layout PASS on canon (Run 109). **Next:** **D** throughput → A/B slug; macro child-pool optional. | — |
+| **Throughput policy (D)** | **D-PR implemented** (2026-05-30, pending merge) — [`2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md`](specs/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md). Canon: T2 **expected shortfall**. **Next:** Track **B** pass-capable slug. | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
 | **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
@@ -96,7 +96,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** **D** T2 throughput → **A/B** pass-capable ops slug. E T1b + FL-06 **MERGED** (`7e46c736`). Diagnostic canon: `copy-import-495e552c` (T0/T1a/T1b pass; T2/T3 still fail). See [`current_plan.md`](../../documents/ai/current_plan.md).
+**Open next:** **B** pass-capable slug (T3 ops) — D-PR code on branch (uncommitted). E + FL-06 **MERGED** (`7e46c736`). Diagnostic canon: T0/T1a/T1b pass; T2 **expected shortfall** + `t2_policy_*` fields; T3 blocked until B. See [`current_plan.md`](../../documents/ai/current_plan.md).
 
 ### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
 

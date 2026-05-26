@@ -118,7 +118,23 @@ def _section_capacity(cap: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _t2_policy_section_fields(summary: dict[str, Any]) -> dict[str, Any]:
+    diagnostic = summary.get("diagnostic_expected_shortfall")
+    t3_eligible = summary.get("t3_ops_eligible")
+    return {
+        "t2_policy_status": summary.get("t2_policy_status", _PLACEHOLDER),
+        "t2_policy_reason": summary.get("t2_policy_reason", _PLACEHOLDER),
+        "diagnostic_expected_shortfall": (
+            diagnostic if isinstance(diagnostic, bool) else _PLACEHOLDER
+        ),
+        "t3_ops_eligible": t3_eligible if isinstance(t3_eligible, bool) else _PLACEHOLDER,
+        "t3_blocked_reason": summary.get("t3_blocked_reason", _PLACEHOLDER),
+        "rttp_ops_slug_class": summary.get("rttp_ops_slug_class", _PLACEHOLDER),
+    }
+
+
 def _section_throughput_target(summary: dict[str, Any]) -> dict[str, Any]:
+    policy_fields = _t2_policy_section_fields(summary)
     keys = (
         "reconstruction_max_throughput_per_min",
         "throughput_target_percent",
@@ -130,12 +146,20 @@ def _section_throughput_target(summary: dict[str, Any]) -> dict[str, Any]:
         "actual_utilization_ratio",
         "budget_status",
         "throughput_target_status",
+        "t2_policy_status",
+        "t2_policy_reason",
+        "diagnostic_expected_shortfall",
+        "t3_ops_eligible",
+        "t3_blocked_reason",
+        "rttp_ops_slug_class",
     )
     actual = summary.get("actual_committed_output_per_min")
     target = summary.get("target_throughput_per_min")
     percent = summary.get("throughput_target_percent")
     if actual is None or target is None or percent is None:
-        return dict.fromkeys(keys, _PLACEHOLDER)
+        row = dict.fromkeys(keys, _PLACEHOLDER)
+        row.update(policy_fields)
+        return row
     satisfied = summary.get("throughput_budget_satisfied")
     if satisfied is True:
         budget_status = "satisfied"
@@ -157,6 +181,7 @@ def _section_throughput_target(summary: dict[str, Any]) -> dict[str, Any]:
         "actual_utilization_ratio": summary.get("actual_utilization_ratio", _PLACEHOLDER),
         "budget_status": budget_status,
         "throughput_target_status": summary.get("throughput_target_status", budget_status),
+        **policy_fields,
     }
 
 
@@ -208,6 +233,11 @@ def lab_run_summary_from_solver_summary(
     run_success = bool(solver_summary.get("run_success"))
     placement_capacity_satisfied = bool(solver_summary.get("placement_capacity_satisfied"))
     throughput_budget_satisfied = _throughput_budget_satisfied_top_level(solver_summary)
+    diagnostic_expected_shortfall = bool(solver_summary.get("diagnostic_expected_shortfall", False))
+    t3_ops_eligible_raw = solver_summary.get("t3_ops_eligible")
+    t3_ops_eligible = (
+        bool(t3_ops_eligible_raw) if isinstance(t3_ops_eligible_raw, bool) else None
+    )
     confirmed = solver_summary.get("confirmed_count", _PLACEHOLDER)
     target = solver_summary.get("target_miner_bundle_count", _PLACEHOLDER)
     target_placement = solver_summary.get("target_placement_count", target)
@@ -228,6 +258,9 @@ def lab_run_summary_from_solver_summary(
         "run_success": run_success,
         "placement_capacity_satisfied": placement_capacity_satisfied,
         "throughput_budget_satisfied": throughput_budget_satisfied,
+        "diagnostic_expected_shortfall": diagnostic_expected_shortfall,
+        "t3_ops_eligible": t3_ops_eligible,
+        "t2_policy_status": solver_summary.get("t2_policy_status"),
         "target_miner_bundle_count": target,
         "target_placement_count": target_placement,
         "target_throughput": target_throughput,

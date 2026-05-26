@@ -127,6 +127,22 @@ def test_capacity_satisfied_false_when_validation_ok_budget_fail() -> None:
     assert summary["throughput_budget_satisfied"] is False
 
 
+def test_t2_policy_does_not_change_validation_passed() -> None:
+    from django_apps.asteroid_lab.contracts.rttp_ops_policy import RTTP_DIAGNOSTIC_CANON_SLUG
+
+    summary = build_rttp_solver_summary(
+        pipeline_ok=False,
+        committed_count=0,
+        normal_count=0,
+        commit_order=(),
+        algorithm_steps=(),
+        project_slug=RTTP_DIAGNOSTIC_CANON_SLUG,
+        throughput_budget_fields={"throughput_budget_satisfied": False},
+    )
+    assert summary["validation_passed"] is False
+    assert summary["t2_policy_status"] == "expected_diagnostic_shortfall"
+
+
 def test_build_rttp_solver_summary_includes_actual_committed_when_provided() -> None:
     summary = build_rttp_solver_summary(
         pipeline_ok=True,

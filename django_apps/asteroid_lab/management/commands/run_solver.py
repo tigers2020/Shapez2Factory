@@ -227,6 +227,11 @@ class Command(BaseCommand):  # type: ignore[misc]
                 "t2_policy: expected_diagnostic_shortfall "
                 "(diagnostic canon; T3 ops not applicable)"
             )
+        slug_class = summary.get("rttp_ops_slug_class")
+        if slug_class == "pass_capable":
+            lines.append("rttp_ops_slug_class: pass_capable (T3 reference slug)")
+        elif slug_class:
+            lines.append(f"rttp_ops_slug_class: {slug_class}")
         if body.get("error_code"):
             lines.append(f"error_code: {body['error_code']}")
         if body.get("message"):

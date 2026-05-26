@@ -290,6 +290,74 @@
     }
   }
 
+  const RTTP_OPS_SLUG_CLASS_PASS_CAPABLE = "pass_capable";
+  const RTTP_OPS_SLUG_CLASS_DIAGNOSTIC_CANON = "diagnostic_canon";
+
+  function resolveRttpOpsSlugClass(run) {
+    if (!run || typeof run !== "object") return null;
+    const top = run.rttp_ops_slug_class;
+    if (top != null && top !== "" && top !== "—") return String(top);
+    const tt =
+      run.throughput_target && typeof run.throughput_target === "object"
+        ? run.throughput_target
+        : null;
+    if (
+      tt &&
+      tt.rttp_ops_slug_class != null &&
+      tt.rttp_ops_slug_class !== "" &&
+      tt.rttp_ops_slug_class !== "—"
+    ) {
+      return String(tt.rttp_ops_slug_class);
+    }
+    if (run.diagnostic_expected_shortfall === true) {
+      return RTTP_OPS_SLUG_CLASS_DIAGNOSTIC_CANON;
+    }
+    return null;
+  }
+
+  function isDiagnosticCanonRun(run) {
+    return Boolean(run && run.diagnostic_expected_shortfall === true);
+  }
+
+  function passCapableBadgeLabel() {
+    const msgid = "Pass-capable";
+    return typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
+  }
+
+  function shouldShowPassCapableBadge(run) {
+    return (
+      resolveRttpOpsSlugClass(run) === RTTP_OPS_SLUG_CLASS_PASS_CAPABLE &&
+      !isDiagnosticCanonRun(run)
+    );
+  }
+
+  function passCapableBadgeHtml() {
+    return (
+      '<span class="lab-ops-slug-badge lab-ops-slug-badge--pass-capable inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">' +
+      passCapableBadgeLabel() +
+      "</span>"
+    );
+  }
+
+  function passCapableReferenceStatusText(run) {
+    if (!shouldShowPassCapableBadge(run)) return null;
+    const msgid =
+      "T3 reference slug (pass-capable registry; throughput shortfall is a regression signal).";
+    return typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
+  }
+
+  function updateOpsSlugBadge(run) {
+    const el = document.getElementById("lab-detail-ops-slug-badge");
+    if (!el) return;
+    if (shouldShowPassCapableBadge(run)) {
+      el.innerHTML = passCapableBadgeHtml();
+      el.classList.remove("hidden");
+    } else {
+      el.textContent = "";
+      el.classList.add("hidden");
+    }
+  }
+
   function diagnosticT2ShortfallStatusText(run) {
     if (!run || run.diagnostic_expected_shortfall !== true) return null;
     const msgid =
@@ -1804,6 +1872,8 @@
       }
       const diagnosticText = diagnosticT2ShortfallStatusText(run);
       if (diagnosticText) return diagnosticText;
+      const passCapableText = passCapableReferenceStatusText(run);
+      if (passCapableText) return passCapableText;
       if (runCapacityFailed(run)) {
         return capacityFailedStatusText(run);
       }
@@ -1827,12 +1897,22 @@
         run && run.throughput_target && typeof run.throughput_target === "object"
           ? run.throughput_target
           : null;
-      const diagnosticSuffix =
-        run && run.diagnostic_expected_shortfall === true
-          ? typeof shapezUiT === "function"
+      let diagnosticSuffix = "";
+      if (run && isDiagnosticCanonRun(run)) {
+        diagnosticSuffix =
+          typeof shapezUiT === "function"
             ? shapezUiT(" (expected on diagnostic canon)")
-            : " (expected on diagnostic canon)"
-          : "";
+            : " (expected on diagnostic canon)";
+      } else if (
+        run &&
+        key === "throughput_target_shortfall" &&
+        resolveRttpOpsSlugClass(run) === RTTP_OPS_SLUG_CLASS_PASS_CAPABLE
+      ) {
+        diagnosticSuffix =
+          typeof shapezUiT === "function"
+            ? shapezUiT(" (regression on pass-capable slug)")
+            : " (regression on pass-capable slug)";
+      }
       if (key === "throughput_target_shortfall" && tt) {
         const dash = labUiDash();
         const shortfall = tt.throughput_shortfall_per_min;
@@ -2267,12 +2347,14 @@
         if (title) title.textContent = dash;
         const statusEl = document.getElementById("lab-detail-status");
         if (statusEl) statusEl.textContent = dash;
+        updateOpsSlugBadge(null);
         updateLabStatCards(null);
         updateLabDetailPanels(null);
         return;
       }
       const statusEl = document.getElementById("lab-detail-status");
       if (statusEl) statusEl.textContent = runDetailStatusLabel(run);
+      updateOpsSlugBadge(run);
       const title = document.getElementById("lab-detail-run-id");
       if (title) {
         title.textContent = run.id != null ? "Run #" + String(run.id) : dash;
@@ -2333,10 +2415,14 @@
               String(run.target_miner_bundle_count) +
               ")"
             : "Run #" + rid;
+        const passCapableBadge = shouldShowPassCapableBadge(run) ? passCapableBadgeHtml() : "";
         btn.innerHTML =
           '<div class="flex items-center justify-between gap-2">' +
-          '<div class="font-medium">Run #' +
+          '<div class="flex flex-wrap items-center gap-2 font-medium">' +
+          "<span>Run #" +
           rid +
+          "</span>" +
+          passCapableBadge +
           "</div>" +
           '<div class="text-sm ' +
           (failed ? "text-rose-300" : partial ? "text-amber-300" : "text-cyan-300") +

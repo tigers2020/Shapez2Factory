@@ -1,6 +1,8 @@
 # Current plan
 
-**Status (2026-05-28)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track B2 transport (T1–T3)**, **Track D**, **D+**, **FOT PR-1/2**, and **roadmap drift tombstones** on `master` (`64d90603` PR #90). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
+**Status (2026-05-30)**: **Roadmap v0.2 active** — ops canon (Track C) + test decontamination F-series (Track F) + standing gates (Track G). **v0.1 CLOSED** (Axis A+B catalog/RTTP core). Board: [`docs/superpowers/2026-05-24-asteroid-lab-catalog-rttp-roadmap.md`](../../docs/superpowers/2026-05-24-asteroid-lab-catalog-rttp-roadmap.md).
+
+**Runtime baseline (v0.1, on `master`)**: **RTTP Hybrid C** + **3B-S** Lab replay compose. Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
 
 **Runtime (code authority):**
 

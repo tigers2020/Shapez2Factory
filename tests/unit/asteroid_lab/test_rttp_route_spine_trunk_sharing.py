@@ -187,9 +187,7 @@ def test_private_approach_overlap_still_route_cell_conflict() -> None:
         domain=domain,
     )
     assert first.candidate_id in solo.committed_ids
-    private_cell = next(
-        c for c in solo.reserved_route_cells if c not in skeleton.trunk_mask_cells
-    )
+    private_cell = next(c for c in solo.reserved_route_cells if c not in skeleton.trunk_mask_cells)
     forced = replace(
         second,
         candidate_id=f"forced:{second.candidate_id}",

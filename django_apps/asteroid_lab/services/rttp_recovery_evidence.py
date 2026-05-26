@@ -116,13 +116,10 @@ def load_replay_overlay_connectivity(
 
     from django_apps.asteroid_lab import models as m
 
-    track = (
-        m.ReplayTrack.objects.filter(
-            project_id=int(project_id),
-            track_key=rttp_optimization_track_key(str(run_key)),
-        )
-        .first()
-    )
+    track = m.ReplayTrack.objects.filter(
+        project_id=int(project_id),
+        track_key=rttp_optimization_track_key(str(run_key)),
+    ).first()
     if track is None:
         return {
             "committed_output_transport_cells": 0,
@@ -260,9 +257,11 @@ def build_recovery_evidence_row(
         "t2_passed": cert.t2_pass,
         "t3_shell_passed": cert.t3_shell_pass,
         "slug_class": cert.slug_class,
-        "normal_candidate_count": int(solver_summary.get("normal_candidate_count") or 0)
-        if solver_summary.get("normal_candidate_count") is not None
-        else None,
+        "normal_candidate_count": (
+            int(solver_summary.get("normal_candidate_count") or 0)
+            if solver_summary.get("normal_candidate_count") is not None
+            else None
+        ),
         "gate_a_passed": False,
     }
     row["gate_a_passed"] = evaluate_gate_a_from_row(row)

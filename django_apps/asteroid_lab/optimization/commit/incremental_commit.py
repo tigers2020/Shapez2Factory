@@ -15,14 +15,14 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
 from django_apps.asteroid_lab.optimization.candidates.placement_cells import (
     fixed_output_transport_cell,
 )
+from django_apps.asteroid_lab.optimization.commit.route_path_evidence import (
+    build_route_path_evidence,
+)
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import (
     RouteCellDomain,
     build_route_domain_from_skeleton,
-)
-from django_apps.asteroid_lab.optimization.commit.route_path_evidence import (
-    build_route_path_evidence,
 )
 from django_apps.asteroid_lab.optimization.routing.route_goals import (
     probe_goal_coords,

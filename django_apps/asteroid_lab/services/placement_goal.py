@@ -92,11 +92,7 @@ def compute_placement_goal_count(
 
     if asteroid_field_cell_count <= 0 or placement_target_percent <= 0:
         return 0
-    product = (
-        Decimal(asteroid_field_cell_count)
-        * Decimal(placement_target_percent)
-        / Decimal(100)
-    )
+    product = Decimal(asteroid_field_cell_count) * Decimal(placement_target_percent) / Decimal(100)
     return int(product.to_integral_value(rounding=ROUND_CEILING))
 
 

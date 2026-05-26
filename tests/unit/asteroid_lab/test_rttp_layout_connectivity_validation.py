@@ -4,21 +4,16 @@ from __future__ import annotations
 
 import copy
 
-import pytest
-
+from django_apps.asteroid_lab.contracts.catalog_placement import (
+    CardinalDirection,
+    CatalogPlacementRef,
+)
 from django_apps.asteroid_lab.contracts.rttp_layout_issue_codes import (
     ISSUE_CODE_INSUFFICIENT_EXTERIOR_CONNECTORS,
     ISSUE_CODE_MISSING_EXTERIOR_ROUTE,
     ISSUE_CODE_MISSING_OUTPUT_TRANSPORT,
 )
-from django_apps.asteroid_lab.contracts.catalog_placement import (
-    CardinalDirection,
-    CatalogPlacementRef,
-)
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
-from django_apps.asteroid_lab.optimization.candidates.pattern_library import (
-    build_pattern_library,
-)
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import (
     OptimizationInput,

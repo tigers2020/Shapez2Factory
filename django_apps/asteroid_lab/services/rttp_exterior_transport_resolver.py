@@ -25,10 +25,7 @@ def space_belt_max_per_min(
     try:
         row = get_active_exterior_shape_transport_capacity(speed_tier=int(tier))
     except LookupError as exc:
-        msg = (
-            f"no active exterior transport capacity for shape "
-            f"speed_tier={int(tier)!r}: {exc}"
-        )
+        msg = f"no active exterior transport capacity for shape " f"speed_tier={int(tier)!r}: {exc}"
         raise ExteriorTransportCapacityConfigurationError(msg) from exc
     return space_belt_max_per_min_from_row(row)
 
@@ -39,10 +36,7 @@ def space_pipe_max_per_min(
     try:
         row = get_active_exterior_fluid_transport_capacity(speed_tier=int(tier))
     except LookupError as exc:
-        msg = (
-            f"no active exterior transport capacity for fluid "
-            f"speed_tier={int(tier)!r}: {exc}"
-        )
+        msg = f"no active exterior transport capacity for fluid " f"speed_tier={int(tier)!r}: {exc}"
         raise ExteriorTransportCapacityConfigurationError(msg) from exc
     return space_pipe_max_per_min_from_row(row)
 

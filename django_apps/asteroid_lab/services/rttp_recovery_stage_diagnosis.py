@@ -70,13 +70,8 @@ def _derive_primary_symptom(
 ) -> str:
     if FLAG_NO_COMMITTED_EXTRACTORS in flags:
         return SYMPTOM_NO_COMMITS
-    if (
-        FLAG_VALIDATION_FALSE_POSITIVE in flags
-        or (
-            validation_passed
-            and route_count <= 0
-            and FLAG_ROUTE_MATERIALIZATION_MISSING in flags
-        )
+    if FLAG_VALIDATION_FALSE_POSITIVE in flags or (
+        validation_passed and route_count <= 0 and FLAG_ROUTE_MATERIALIZATION_MISSING in flags
     ):
         return SYMPTOM_ROUTE_ZERO_VALIDATION_PASSED
     return SYMPTOM_NONE

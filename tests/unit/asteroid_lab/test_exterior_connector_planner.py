@@ -28,7 +28,9 @@ def test_planner_emits_exactly_required_goals(
         assert goal.coord in inp.external_void_cells
 
 
-def test_planner_shortfall_when_insufficient_void(greenfield_optimization_input: OptimizationInput) -> None:
+def test_planner_shortfall_when_insufficient_void(
+    greenfield_optimization_input: OptimizationInput,
+) -> None:
     inp = greenfield_optimization_input
     plan = plan_exterior_connectors(
         inp,

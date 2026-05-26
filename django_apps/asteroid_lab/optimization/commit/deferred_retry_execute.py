@@ -139,9 +139,7 @@ def run_bounded_deferred_retry(
     inp: OptimizationInput,
     skeleton: RttpSkeleton,
     config: DeferredRetryShadowConfig,
-    route_probe_start_policy: RouteProbeStartPolicy = (
-        RouteProbeStartPolicy.OUTPUT_STUB_ONLY
-    ),
+    route_probe_start_policy: RouteProbeStartPolicy = (RouteProbeStartPolicy.OUTPUT_STUB_ONLY),
 ) -> DeferredRetryExecuteResult:
     """One-round deferred retry on latest domain after primary commits (no rollback)."""
 

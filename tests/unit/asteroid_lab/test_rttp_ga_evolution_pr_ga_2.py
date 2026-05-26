@@ -122,9 +122,7 @@ def test_incremental_commit_receives_evolution_genome_when_mode_evolution(
     )
     assert len(captured) == 1
     assert result.genome.commit_order == tuple(
-        cid
-        for cid in captured[0].commit_order
-        if cid in result.commit_result.committed_ids
+        cid for cid in captured[0].commit_order if cid in result.commit_result.committed_ids
     )
     selection_step = next(
         row
@@ -241,7 +239,5 @@ def test_observe_only_false_does_not_switch_commit_authority(
     )
     assert len(captured) == 1
     assert result.genome.commit_order == tuple(
-        cid
-        for cid in captured[0].commit_order
-        if cid in result.commit_result.committed_ids
+        cid for cid in captured[0].commit_order if cid in result.commit_result.committed_ids
     )

@@ -57,6 +57,5 @@ def space_belt_max_per_min_from_row(row: ExteriorShapeTransportCapacity) -> Deci
 def space_pipe_max_per_min_from_row(row: ExteriorFluidTransportCapacity) -> Decimal:
     return cast(
         Decimal,
-        row.fluid_launcher_output_per_min
-        * Decimal(row.space_pipe_full_fluid_launcher_count),
+        row.fluid_launcher_output_per_min * Decimal(row.space_pipe_full_fluid_launcher_count),
     )

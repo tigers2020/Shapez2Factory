@@ -325,7 +325,5 @@ def test_incremental_commit_receives_greedy_genome_when_ga_enabled(
     )
     assert len(captured) == 1
     assert result.genome.commit_order == tuple(
-        cid
-        for cid in captured[0].commit_order
-        if cid in result.commit_result.committed_ids
+        cid for cid in captured[0].commit_order if cid in result.commit_result.committed_ids
     )

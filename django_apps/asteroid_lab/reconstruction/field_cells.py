@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.snapshots.transport_kind import TransportKind
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
+from django_apps.asteroid_lab.snapshots.transport_kind import TransportKind
 
 
 def asteroid_field_cells_from_complete_map(

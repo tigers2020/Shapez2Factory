@@ -32,9 +32,7 @@ def _route_domain_bbox(mineable: frozenset[Coord]) -> frozenset[Coord]:
     max_x = max(xs) + _OUTER_VOID_PADDING
     min_y = min(ys) - _OUTER_VOID_PADDING
     max_y = max(ys) + _OUTER_VOID_PADDING
-    return frozenset(
-        (x, y) for x in range(min_x, max_x + 1) for y in range(min_y, max_y + 1)
-    )
+    return frozenset((x, y) for x in range(min_x, max_x + 1) for y in range(min_y, max_y + 1))
 
 
 def _bfs_distance_from_mineable(
@@ -74,11 +72,7 @@ def _connector_candidates(
     ]
     if in_band:
         return in_band
-    fallback = [
-        coord
-        for coord in sorted(inp.external_void_cells)
-        if distances.get(coord, 0) >= 1
-    ]
+    fallback = [coord for coord in sorted(inp.external_void_cells) if distances.get(coord, 0) >= 1]
     return fallback if fallback else sorted(inp.external_void_cells)
 
 

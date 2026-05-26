@@ -51,12 +51,8 @@ def build_route_domain_from_skeleton(
     goal_coords = probe_goal_coords(inp, skeleton)
 
     void_walkable = frozenset(inp.external_void_cells - incompatible)
-    blocked = frozenset(
-        inp.mineable_cells - platform_cells - lift_coords - incompatible
-    )
-    traversable = frozenset(
-        (trunk_mask | lift_coords | goal_coords | void_walkable) - incompatible
-    )
+    blocked = frozenset(inp.mineable_cells - platform_cells - lift_coords - incompatible)
+    traversable = frozenset((trunk_mask | lift_coords | goal_coords | void_walkable) - incompatible)
     step_costs: dict[Coord, int] = {}
     for coord in void_walkable:
         step_costs[coord] = 1

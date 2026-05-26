@@ -21,14 +21,8 @@ from django_apps.game_data.services.exterior_transport_capacity import (
 
 @pytest.mark.django_db
 def test_seed_has_tier1_shape_and_fluid_active_rows() -> None:
-    assert (
-        ExteriorShapeTransportCapacity.objects.filter(speed_tier=1, is_active=True).count()
-        == 1
-    )
-    assert (
-        ExteriorFluidTransportCapacity.objects.filter(speed_tier=1, is_active=True).count()
-        == 1
-    )
+    assert ExteriorShapeTransportCapacity.objects.filter(speed_tier=1, is_active=True).count() == 1
+    assert ExteriorFluidTransportCapacity.objects.filter(speed_tier=1, is_active=True).count() == 1
 
 
 def test_no_import_batch_field_on_capacity_models() -> None:
@@ -39,9 +33,7 @@ def test_no_import_batch_field_on_capacity_models() -> None:
 
 @pytest.mark.django_db
 def test_unique_active_shape_row_per_speed_tier() -> None:
-    assert ExteriorShapeTransportCapacity.objects.filter(
-        speed_tier=1, is_active=True
-    ).exists()
+    assert ExteriorShapeTransportCapacity.objects.filter(speed_tier=1, is_active=True).exists()
     with pytest.raises(IntegrityError):
         ExteriorShapeTransportCapacity.objects.create(
             speed_tier=1,

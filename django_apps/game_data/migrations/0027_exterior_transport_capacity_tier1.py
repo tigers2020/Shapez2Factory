@@ -6,9 +6,7 @@ from decimal import Decimal
 
 from django.db import migrations, models
 
-EVTC_SPEC = (
-    "docs/superpowers/specs/2026-05-26-rttp-external-void-transport-capacity-contract.md"
-)
+EVTC_SPEC = "docs/superpowers/specs/2026-05-26-rttp-external-void-transport-capacity-contract.md"
 
 
 def seed_exterior_transport_capacity_tier1(apps, schema_editor) -> None:

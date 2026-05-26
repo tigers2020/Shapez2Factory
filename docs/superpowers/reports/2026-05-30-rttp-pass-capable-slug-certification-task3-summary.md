@@ -1,8 +1,9 @@
 # Track B Task 3 — Pass-capable slug scan evidence (2026-05-30)
 
-**Status:** **Track B CLOSED (Task 4, 2026-05-30)**  
+**Status:** **Track B CLOSED (complete, 2026-05-30)** — PR [#101](https://github.com/tigers2020/Shapez2Factory/pull/101)  
 **Registry:** `RTTP_PASS_CAPABLE_SLUGS` = `{rttp-cert-candidate-tiny-passable-v2}`  
-**Borderline pass:** `actual_committed=480` == `throughput_target_min=480` (non-vacuous; 5 shape fields)
+**Borderline pass:** `actual_committed=480` == `throughput_target_min=480` (non-vacuous; 5 shape fields)  
+**Post-merge confirm (local):** [`post-merge-confirm-v2.json`](2026-05-30-rttp-pass-capable-slug-certification-post-merge-confirm-v2.json) — `solver_run_id` **174**
 
 ## Artifacts
 
@@ -130,3 +131,5 @@ v2 achieves **`certified_pass`** on default 80% throughput policy (borderline: z
 | Post-registry confirm | [`task4-confirm-v2.json`](2026-05-30-rttp-pass-capable-slug-certification-task4-confirm-v2.json) — `slug_class=pass_capable`, `solver_run_id` 153 |
 | limit-30 rescan | [`task4-limit30.json`](2026-05-30-rttp-pass-capable-slug-certification-task4-limit30.json) — `certified_pass_count=4` (includes v2) |
 | Pre-registry cert | [`rescan-tiny-passable-v2.json`](2026-05-30-rttp-pass-capable-slug-certification-rescan-tiny-passable-v2.json) — `solver_run_id` 151 |
+| Post-merge confirm | [`post-merge-confirm-v2.json`](2026-05-30-rttp-pass-capable-slug-certification-post-merge-confirm-v2.json) — `solver_run_id` **174** |
+| DB cleanup | Removed 9× `rttp-cert-probe-mf*` ephemeral projects (sweep artifacts) |

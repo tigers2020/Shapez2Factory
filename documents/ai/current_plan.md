@@ -84,11 +84,20 @@ Coverage: fixture topology·export, replay `reconstruction_final` merge + `step4
 
 - **PR-D quarantine registry gate owner:** `powershell -File scripts/test_quarantine_registry.ps1`
 
+- **Capacity C-GATE (complete-map SoT) gate owner:** `powershell -File scripts/test_capacity_sot.ps1`
+  - Architecture: `test_capacity_complete_map_sot_gates.py` (G1 import + G2 semantic token)
+  - **Not** included in `test_reconstruction_narrow.ps1` or `test_optimization_contamination.ps1`
+
 Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**ACTIVE (2026-05-28):** v0.1 **next track selection** — pick one new spec before implementation: GA / macro unpause (PR-B) / capacity C-GATE. No code until spec + `current_plan` row exists.
+**ACTIVE:** Capacity C-GATE — complete-map SoT architecture gates
+- Spec: [`docs/superpowers/specs/2026-05-29-reconstruction-capacity-c-gate-design.md`](../../docs/superpowers/specs/2026-05-29-reconstruction-capacity-c-gate-design.md)
+- Plan: [`docs/superpowers/plans/2026-05-29-reconstruction-capacity-c-gate.md`](../../docs/superpowers/plans/2026-05-29-reconstruction-capacity-c-gate.md)
+- Blocks: GA promotion until CLOSED (new GA spec still required after C-GATE)
+- Standing gate: `powershell -File scripts/test_capacity_sot.ps1`
+- PR-CGATE-1: docs + tests + script only (no solver semantics)
 
 **Tombstoned plans (do not execute checklists):** [`2026-05-25-reconstruction-field-cell-capacity-contract.md`](../../docs/superpowers/plans/2026-05-25-reconstruction-field-cell-capacity-contract.md) (`OBSOLETE` — use [`2026-05-26-reconstruction-complete-map-dto.md`](../../docs/superpowers/plans/2026-05-26-reconstruction-complete-map-dto.md) for complete-map SoT); [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md) (`PAUSED / DO NOT EXECUTE` — macro unpause requires new spec + ACTIVE row). Evidence: PR [#90](https://github.com/tigers2020/Shapez2Factory/pull/90) (`64d90603`).
 

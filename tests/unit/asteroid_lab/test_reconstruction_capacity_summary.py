@@ -6,7 +6,17 @@ from decimal import Decimal
 
 import pytest
 
+from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
+from django_apps.asteroid_lab.reconstruction.complete_map import (
+    build_reconstruction_complete_map,
+    overlay_field_cell_count,
+)
+from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
+from django_apps.asteroid_lab.reconstruction.topology_contract import (
+    decode_shapez_copy_string,
+    load_reconstruction_fixture_line_pairs,
+)
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.services.reconstruction_capacity_summary import (
     build_reconstruction_capacity_envelope,
@@ -153,3 +163,19 @@ def test_builders_do_not_accept_solver_summary() -> None:
         build_reconstruction_observability,
     ):
         assert "solver_summary" not in inspect.signature(fn).parameters
+
+
+def _canon_cleanup_recon_complete():
+    required_copy, _solved = load_reconstruction_fixture_line_pairs()[1]
+    snap = decode_shapez_copy_string(required_copy)
+    cleanup = deconstruct_snapshot(snap)
+    recon = run_topology_reconstruction(cleanup)
+    complete = build_reconstruction_complete_map(cleanup=cleanup, recon=recon)
+    return recon, complete
+
+
+def test_canon_capacity_platform_count_matches_complete_map_shape_fields() -> None:
+    recon, complete = _canon_cleanup_recon_complete()
+    row = build_reconstruction_capacity_summary(complete_map=complete, resource_kind="shape")
+    assert row["capacity_upper_bound_platform_count"] == complete.shape_field_cell_count
+    assert overlay_field_cell_count(recon) < len(complete.field_cells)

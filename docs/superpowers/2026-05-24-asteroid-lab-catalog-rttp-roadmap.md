@@ -61,7 +61,7 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | v0.1 **next track selection** only (GA / macro unpause / capacity C-GATE — new spec each). Throughput PR-2a..2d **CLOSED** (#78–#81). | — |
+| **A** | **ACTIVE:** Capacity C-GATE (spec/plan 2026-05-29). GA blocked until C-GATE CLOSED. Throughput PR-2a..2d **CLOSED** (#78–#81). | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
 | **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
@@ -96,7 +96,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** v0.1 **next track selection** (GA / macro unpause / capacity C-GATE — each needs new spec + board section). Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
+**Open next:** **ACTIVE:** Capacity C-GATE (spec/plan 2026-05-29). GA blocked until C-GATE CLOSED (new GA spec still required). Macro **PAUSED**. Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
 
 ### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
 

@@ -5,6 +5,20 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
+from django_apps.asteroid_lab.reconstruction.complete_map import (
+    build_reconstruction_complete_map,
+    overlay_field_cell_count,
+)
+from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
+from django_apps.asteroid_lab.reconstruction.topology_contract import (
+    decode_shapez_copy_string,
+    load_reconstruction_fixture_line_pairs,
+)
+from django_apps.asteroid_lab.services.reconstruction_capacity_summary import (
+    build_reconstruction_capacity_envelope,
+    build_reconstruction_observability,
+)
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
@@ -282,3 +296,39 @@ def test_lab_run_summary_from_orm_partial_status() -> None:
     assert row["placed"] == 6
     assert row["capacity_deficit_count"] == 78
     assert row["throughput_deficit_count"] == 0
+
+
+def test_lab_capacity_uses_complete_map_even_when_overlay_is_sparse() -> None:
+    required_copy, _solved = load_reconstruction_fixture_line_pairs()[1]
+    snap = decode_shapez_copy_string(required_copy)
+    cleanup = deconstruct_snapshot(snap)
+    recon = run_topology_reconstruction(cleanup)
+    complete = build_reconstruction_complete_map(cleanup=cleanup, recon=recon)
+
+    obs = build_reconstruction_observability(recon=recon, complete_map=complete)
+    cap = build_reconstruction_capacity_envelope(complete_map=complete)
+
+    overlay_cells = len(recon.cells)
+    display_cells = len(complete.cells)
+    overlay_fields = overlay_field_cell_count(recon)
+    complete_fields = len(complete.field_cells)
+    shape_platform = cap["by_resource"]["shape"]["capacity_upper_bound_platform_count"]
+
+    assert overlay_cells != display_cells
+    assert overlay_fields < complete_fields
+    assert shape_platform == complete.shape_field_cell_count
+    assert shape_platform != overlay_fields
+
+    row = lab_run_summary_from_solver_summary(
+        run_id=1,
+        status="completed",
+        solver_summary={
+            "validation_passed": True,
+            "confirmed_count": 0,
+            "reconstruction_observability": obs,
+            "reconstruction_capacity": cap,
+        },
+    )
+    assert row["capacity"]["platform_upper_bound"] == shape_platform
+    assert row["reconstruction"]["asteroid_field_cell_count"] == complete_fields
+    assert row["reconstruction"]["shape_field_cell_count"] == complete.shape_field_cell_count

@@ -1,6 +1,8 @@
 # Current plan
 
-**Status (2026-05-28)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track B2 transport (T1–T3)**, **Track D**, **D+**, **FOT PR-1/2**, and **roadmap drift tombstones** on `master` (`64d90603` PR #90). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
+**Status (2026-05-30)**: **Roadmap v0.2 active** — ops canon (Track C) + test decontamination F-series (Track F) + standing gates (Track G). **v0.1 CLOSED** (Axis A+B catalog/RTTP core). Board: [`docs/superpowers/2026-05-24-asteroid-lab-catalog-rttp-roadmap.md`](../../docs/superpowers/2026-05-24-asteroid-lab-catalog-rttp-roadmap.md).
+
+**Runtime baseline (v0.1, on `master`)**: **RTTP Hybrid C** + **3B-S** Lab replay compose. Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
 
 **Runtime (code authority):**
 
@@ -92,9 +94,15 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**CLOSED (2026-05-30):** **Track B — pass-capable slug certified** — PR [#101](https://github.com/tigers2020/Shapez2Factory/pull/101). `rttp-cert-candidate-tiny-passable-v2`; **borderline T2** (`actual=target=480`); `slug_class=pass_capable`. **Post-merge confirm (local):** `solver_run_id` **174**, `certified_pass`. Prior: cert **151**, Task 4 **153**. Registry: [`rttp_ops_policy.py`](../../django_apps/asteroid_lab/contracts/rttp_ops_policy.py). Evidence: [`post-merge-confirm-v2.json`](../../docs/superpowers/reports/2026-05-30-rttp-pass-capable-slug-certification-post-merge-confirm-v2.json), [`task4-confirm-v2.json`](../../docs/superpowers/reports/2026-05-30-rttp-pass-capable-slug-certification-task4-confirm-v2.json). Ephemeral `rttp-cert-probe-mf*` DB rows removed (2026-05-30). **Next (optional):** Lab pass_capable badge (Task 6), weekly smoke on v2.. **Track A not opened.**
+**NEXT:** **Decontamination PR-F3** (`game_data` human/package review) — branch `feat/decontamination-pr-f3-game-data`. Plan: [`docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md`](../../docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md).
 
-**ACTIVE (parallel):** **Decontamination PR-F0** — aggressive test inventory (no deletions). Spec: [`docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md`](../../docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md) · plan: [`docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md`](../../docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md) · inventory report: [`docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md`](../../docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md). **Not** coordinate/island-local PR-F. F1–F5 = gated deletes only via `PR_F_*` registry. Standing gate owner unchanged: `scripts/test_quarantine_registry.ps1`.
+**CLOSED (2026-05-30):** **Track B Task 6 — Lab pass_capable badge** — PR [#102](https://github.com/tigers2020/Shapez2Factory/pull/102) on `master` (`093a2143`).
+
+**CLOSED (2026-05-30):** **Decontamination PR-F2** — `asteroid_lab` human review; 0 deletions; 2 `INTENT_UNKNOWN` → `PROTECTED_CONTRACT`. Branch: `feat/decontamination-pr-f2-asteroid-lab`. Inventory: [`docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md`](../../docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md).
+
+**CLOSED (2026-05-30):** **Track B — pass-capable slug certified** — PR [#101](https://github.com/tigers2020/Shapez2Factory/pull/101). `rttp-cert-candidate-tiny-passable-v2`; **borderline T2** (`actual=target=480`); `slug_class=pass_capable`. **Track A not opened.**
+
+**ACTIVE (follow-on):** **Decontamination PR-F3–F5** — gated deletes only via `PR_F_*` registry. F1 **SKIP** (0 mechanical rows). Standing gate: `scripts/test_quarantine_registry.ps1`. Spec: [`docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md`](../../docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md).
 
 **OPEN PR:** **D-PR — T2 diagnostic canon observability** — PR [#99](https://github.com/tigers2020/Shapez2Factory/pull/99) branch `feat/rttp-t2-diagnostic-shortfall-policy` (`07624e77`). Plan: [`docs/superpowers/plans/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon.md`](../../docs/superpowers/plans/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon.md). Spec: [`docs/superpowers/specs/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md). Local gates: RTTP `-k rttp` 165 passed / 4 skipped; contamination PASS; canon ops `solver_run_id` 110 — `t2_policy: expected_diagnostic_shortfall`, `issue_codes: throughput_target_shortfall`. **Do not merge** until GitHub `ci` workflow green (if queued).
 
@@ -344,12 +352,14 @@ Macro unpause **PAUSED** (child-pool fixture spec first). PR-GA-2 / CC-3B C-trac
   - PR-4-15 note: final `rttp.commit` step is post-LNS snapshot (not before shadow)
 - **CLOSED (2026-05-24):** Commit survivability arc (v0.1) — PR-1 shadow + PR-2 policy + PR-3 bounded execute + PR-4 real-map ops; B-CS1 pytest + B-CS2 ops; full GA / macro / capacity / multi-round retry **out of scope**
 
-- Decontamination PR-F — Aggressive test decontamination
-  - Status: **ACTIVE** (PR-F0 inventory — design approved 2026-05-30)
-  - Spec: [`docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md`](../../docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md`](../../docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md)
-  - Slices: F0 inventory (no delete) → F1 mechanical → F2 asteroid_lab → F3 game_data → F4 web → F5 integration/fixtures/support
-  - Evidence: [`docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md`](../../docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md) (DRAFT until F0 merge)
+- Decontamination PR-F0 — Aggressive test inventory (no deletions)
+  - Status: **CLOSED** (master, PR #100 `b5aa58fc`)
+  - Follow-on: **F1 SKIP** · **F2 CLOSED** (branch `feat/decontamination-pr-f2-asteroid-lab`, 0 deletes) · **F3–F5 READY**
+  - Spec/plan/inventory: same paths as PR-F series
+
+- Decontamination PR-F2 — asteroid_lab human review
+  - Status: **CLOSED** (branch pending merge)
+  - Outcome: 2 `INTENT_UNKNOWN` → `PROTECTED_CONTRACT`; no `PR_F_APPROVED_DELETIONS`
 
 - Decontamination PR-E — Dead code deletion
   - Status: **CLOSED** (master)

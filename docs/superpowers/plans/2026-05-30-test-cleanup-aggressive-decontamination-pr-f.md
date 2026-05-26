@@ -139,7 +139,9 @@ python -m ruff check tests/unit/architecture/quarantine_registry.py tests/unit/a
 
 ## PR-F1 — Mechanical deletion (outline)
 
-**Branch:** `feat/decontamination-pr-f1-mechanical`
+**F0 outcome (2026-05-30):** Inventory has **0** `BROKEN_OR_DEAD` and **0** `DUPLICATE_COVERAGE` rows → **F1 SKIP**; do not open an empty-delete PR. Proceed to **F2** (`asteroid_lab` human review).
+
+**Branch:** `feat/decontamination-pr-f1-mechanical` — **not required** unless new F1 candidates appear after inventory refresh.
 
 - [ ] Promote only `BROKEN_OR_DEAD` / `DUPLICATE_COVERAGE` rows with `target_slice="F1"` into `PR_F_APPROVED_DELETIONS`
 - [ ] Apply deletions; move to `PR_F_APPLIED_DELETIONS`
@@ -151,9 +153,14 @@ python -m ruff check tests/unit/architecture/quarantine_registry.py tests/unit/a
 
 **Branch:** `feat/decontamination-pr-f2-asteroid-lab`
 
-- [ ] Exclude any path matching `PR_F_PROTECTED_TESTS`
-- [ ] Narrow: `python -m pytest tests/unit/asteroid_lab/ -k rttp` + `scripts/test_reconstruction_narrow.ps1` when reconstruction tests touched
-- [ ] Max ~15–25 deletions per PR; split F2b if larger
+**F2 outcome (2026-05-30):** Human review of 2 `INTENT_UNKNOWN` rows → **both KEEP** (promoted to `PROTECTED_CONTRACT` in registry). **0** test file deletions. Next slice: **F3** (`game_data`).
+
+- [x] Exclude any path matching `PR_F_PROTECTED_TESTS`
+- [x] Review `test_lab_unified_replay_append.py` — keep (legacy helper contract)
+- [x] Review `test_ga_evolution_shadow.py` — keep (PR-GA-2 import surface)
+- [x] `test_pr_f_no_intent_unknown_after_f2` architecture gate
+- [x] Narrow: `python -m pytest tests/unit/architecture/test_quarantined_paths_do_not_leak.py` + `tests/unit/asteroid_lab/ -k rttp`
+- [x] `PR_F_APPROVED_DELETIONS` / `PR_F_APPLIED_DELETIONS` remain empty
 
 ---
 

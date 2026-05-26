@@ -1,11 +1,142 @@
 # Asteroid Lab — RTTP & Catalog Roadmap
 
+**Roadmap version:** **v0.2** (active) · **v0.1** closed 2026-05-30  
 **As of:** 2026-05-30  
-**Branch:** `master` @ [`90fba2ed`](https://github.com/tigers2020/Shapez2Factory/commit/90fba2ed) (E-track close)  
+**Branch:** `master` @ [`e8138dab`](https://github.com/tigers2020/Shapez2Factory/commit/e8138dab) (PR-F2 close)  
 **Governance:** [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md) § Authority precedence · [`documents/index/document_inventory.md`](../../documents/index/document_inventory.md) § Asteroid Lab authority by topic  
-**Queue authority:** [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md)
+**Queue authority:** [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md) — day-to-day NEXT/CLOSED rows
 
-Living **dual-axis** progress board. Commit links mark `master` merges. **Not algorithm input.**
+Living **dual-axis** progress board (v0.1) plus **v0.2 governance tracks**. Commit links mark `master` merges. **Not algorithm input.**
+
+---
+
+## Version glossary (do not conflate)
+
+| Label | Meaning | Authority doc |
+|-------|---------|-----------------|
+| **Roadmap v0.1** | Axis A (catalog canon) + Axis B (RTTP 11-step core) + B-CS formal closure | This file § [v0.1 archive](#v01-archive-closed-2026-05-30) |
+| **Roadmap v0.2** | Ops canon, throughput policy observability, test decontamination F-series, standing gates | This file § [v0.2 active](#v02--active-scope) |
+| **RTTP replay v0.2** | Replay on/off parity + `:rttp` DB track (2026-05-23) | [`2026-05-23-rttp-v0.2-replay-parity-design.md`](specs/2026-05-23-rttp-v0.2-replay-parity-design.md) — **merged under v0.1 runtime** |
+
+Promoting **macro unpause**, **full GA**, or **product throughput Track A** requires a **new spec + ACTIVE row** in `current_plan.md` — not implicit in v0.2.
+
+---
+
+## v0.2 — Active scope
+
+### Intent
+
+v0.1 proved **route-feasible RTTP + catalog-native candidates** on `master`. v0.2 makes that stack **operable and trustworthy**: explicit ops slugs, diagnostic vs pass-capable contracts, T2 policy in code/summary, and gated test cleanup — **without** reopening core commit/LNS/validation semantics.
+
+### In scope (v0.2 tracks)
+
+| Track | ID | Goal | Close when |
+|-------|-----|------|------------|
+| **C — Ops & throughput governance** | C1–C4 | T0–T3 ops tier + diagnostic canon + pass-capable reference slug + T2 observability in solver summary | D-PR [#99](https://github.com/tigers2020/Shapez2Factory/pull/99) merged; standing ops doc/spec pointers stable |
+| **F — Test decontamination** | F0–F5 | Inventory-driven, registry-gated deletes only | PR-F3..F5 each CLOSED or SKIP with evidence; `scripts/test_quarantine_registry.ps1` green |
+| **G — Standing gates** | G1–G4 | Maintenance ownership documented | Reconstruction narrow, optimization contamination, quarantine registry, capacity SoT scripts owned and referenced here |
+
+### Out of scope (explicit electives → v0.3+)
+
+- **Macro unpause** — blocked until **macro child-pool fixture** spec (≤2 `normal_candidates` on 4×4 under `OUTSIDE_MINEABLE` today).
+- **Product Track A** — throughput hardening on `recon-l0` / non-diagnostic maps — **not opened** unless product requests.
+- **Full GA / macro GA** — beyond config-gated evolution primary (PR-GA-2).
+- **PR-1b** route tile synthesis · **PR-2** island materializer (reconstruction deferrals).
+- Algorithm changes that weaken validation read-only rules, FOT guards, or replay-as-input forbidden shortcuts.
+
+### v0.2 definition of done
+
+1. **C-track:** D-PR merged; `copy-import-495e552c` remains **diagnostic canon** (T2 shortfall expected); `rttp-cert-candidate-tiny-passable-v2` remains **pass-capable reference** (Lab badge on `master`).
+2. **F-track:** PR-F3 (`game_data`) complete; F4/F5 complete or SKIP per inventory; no ungated test deletes.
+3. **G-track:** All four standing gate scripts documented below and green on `master` after each merge.
+4. **Queue:** `current_plan.md` NEXT points at **v0.3 track selection** (macro / Track A / GA) or states **v0.2 CLOSED** with date.
+
+---
+
+## v0.2 — Progress at a glance
+
+```text
+C — Ops & throughput governance
+[██████████████████░░░░░░]  ~75%   (tier + slugs + D-GOV ✅; D-PR #99 OPEN)
+
+F — Test decontamination (PR-F series)
+[████████████░░░░░░░░░░░░]  ~50%   (F0 ✅ F2 ✅; F3 ACTIVE; F4–F5 READY; F1 SKIP)
+
+G — Standing maintenance gates
+[████████████████████████]  ✅     (scripts exist; ownership below)
+
+Parallel — MacroBundle T3
+[██████████████████████]  ✅ code · ⏸ PAUSE (not v0.2)
+```
+
+### v0.2 work queue (execution order)
+
+Use [`current_plan.md`](../../documents/ai/current_plan.md) for branch names and PR URLs. Order:
+
+| # | Item | Status | Axis / track | Blocker |
+|---|------|--------|--------------|---------|
+| 1 | **D-PR** — T2 diagnostic canon observability | **OPEN** PR [#99](https://github.com/tigers2020/Shapez2Factory/pull/99) | C | GitHub `ci` green before merge |
+| 2 | **PR-F3** — `game_data` human/package review | **NEXT** | F | Plan: [`2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md`](plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md) |
+| 3 | **PR-F4** — next package (registry-gated) | READY | F | After F3 |
+| 4 | **PR-F5** — final F-series slice | READY | F | After F4 |
+| 5 | **v0.3 track selection** | **LATER** (product) | Elective | New spec each: macro unpause · Track A throughput · full GA |
+
+**Do not execute** tombstoned plans: [`2026-05-23-rttp-v1-macrobundle-t3.md`](plans/2026-05-23-rttp-v1-macrobundle-t3.md) (`PAUSED / DO NOT EXECUTE`), stale capacity checklist (PR #90).
+
+---
+
+## v0.2 — Track C (ops & throughput governance)
+
+**Slugs (canon):**
+
+| Role | Slug | T2 expectation |
+|------|------|----------------|
+| Diagnostic canon | `copy-import-495e552c` | **Expected shortfall** (`throughput_target_shortfall`); not a merge blocker |
+| Pass-capable reference | `rttp-cert-candidate-tiny-passable-v2` | Borderline pass (`actual=target=480`); `slug_class=pass_capable` |
+
+| Step | Status | Evidence |
+|------|--------|----------|
+| C1 — Ops authority tier T0–T3 | ✅ | [`2026-05-30-rttp-ops-authority-tier-design.md`](specs/2026-05-30-rttp-ops-authority-tier-design.md); `master` `32c55473` |
+| C2 — Throughput policy design (approach C) | ✅ | D-GOV CLOSED — [`2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md`](specs/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md) |
+| C3 — Pass-capable slug + Lab badge | ✅ | PR [#101](https://github.com/tigers2020/Shapez2Factory/pull/101), [#102](https://github.com/tigers2020/Shapez2Factory/pull/102); reports under `reports/2026-05-30-rttp-pass-capable-*` |
+| C4 — T2 diagnostic observability (summary fields) | 🔄 | PR [#99](https://github.com/tigers2020/Shapez2Factory/pull/99); plan [`2026-05-30-rttp-throughput-policy-t2-diagnostic-canon.md`](plans/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon.md) |
+| FL-06 output-stub / route-reservation | ✅ | Merged 2026-05-30 — canon T1b PASS (Run 109) |
+| GA evolution PR-GA-1 shadow | ✅ | PR [#95](https://github.com/tigers2020/Shapez2Factory/pull/95) |
+| GA evolution PR-GA-2 selection primary | ✅ | PR [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) |
+
+**Post–v0.2 elective (Track A):** real-map throughput campaigns on non-diagnostic slugs — **requires new spec**; do not reinterpret diagnostic canon as product FAIL.
+
+---
+
+## v0.2 — Track F (test decontamination)
+
+**Spec:** [`2026-05-30-test-cleanup-aggressive-decontamination-design.md`](specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md)  
+**Inventory:** [`reports/2026-05-30-test-decontamination-inventory.md`](reports/2026-05-30-test-decontamination-inventory.md)  
+**Gate:** `scripts/test_quarantine_registry.ps1` — deletes only via `PR_F_*` registry.
+
+| Step | Status | Evidence |
+|------|--------|----------|
+| F0 — Inventory (no deletes) | ✅ | PR #100 `b5aa58fc` |
+| F1 — Mechanical auto-delete | **SKIP** | 0 mechanical rows |
+| F2 — `asteroid_lab` human review | ✅ | PR-F2; 0 deletions; 2× `PROTECTED_CONTRACT` |
+| F3 — `game_data` human review | **ACTIVE** | Branch `feat/decontamination-pr-f3-game-data` |
+| F4 — Next package | READY | After F3 |
+| F5 — Final F slice | READY | After F4 |
+
+**v0.1 decontamination (already on `master`):** PR-A..E closed — see [v0.1 archive](#decontamination-pr-ae--master-closed).
+
+---
+
+## v0.2 — Track G (standing gates)
+
+| Gate | Owner script | Scope |
+|------|--------------|--------|
+| G1 — Reconstruction / replay boundary | `scripts/test_reconstruction_narrow.ps1` | B-CS4; **excludes** `test_rttp_replay_*` |
+| G2 — Optimization contamination | `scripts/test_optimization_contamination.ps1` | PR-B AST/token gates |
+| G3 — Quarantine registry | `scripts/test_quarantine_registry.ps1` | PR-D + PR-F applied deletes |
+| G4 — Capacity complete-map SoT | `scripts/test_capacity_sot.ps1` | C-GATE architecture (PR #94); no solver semantics change |
+
+Full PR gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`.
 
 ---
 
@@ -21,331 +152,146 @@ RTTP is a **route-feasible placement optimizer**, not a “place many miners” 
 소행성 지형 복원
 → 배치 후보 생성
 → 즉시 route feasibility 확인
-→ bundle 조합 선택 (v0.1: greedy-regret; full GA deferred)
+→ bundle 조합 선택 (default greedy-regret; evolution primary optional)
 → commit 시점 최신 route_domain으로 재-probe
 → 외부 trunk에 연결된 route만 확정
 → 최종 validation = read-only assert
 → replay/UI = output-only
 ```
 
-| # | Stage | Algorithm doc | v0.1 gate (tests / code) |
-|---|--------|---------------|---------------------------|
-| 1 | Decode | import / copy pipeline | ✅ Lab decode path |
-| 2 | Reconstruction | `reconstruction/` | ✅ narrow gate [`7a7d426e`](https://github.com/tigers2020/Shapez2Factory/commit/7a7d426e) |
-| 3 | Pattern Compiler | `asteroid_lab_02` · `pattern_library` | ✅ `test_rttp_*` patterns |
-| 4 | Candidate Generator | `asteroid_lab_03` | ✅ `test_rttp_candidate_generator.py` |
-| 5 | Immediate Route Probe | `asteroid_lab_04` | ✅ probe at generation |
-| 6 | Candidate Pool | `asteroid_lab_03` | ✅ unreachable excluded from normal pool |
-| 7 | Evolutionary Search | `asteroid_lab_05` | 🟡 **greedy-regret** default + optional **evolution** primary ([`2026-05-29-rttp-ga-evolution-design`](specs/2026-05-29-rttp-ga-evolution-design.md) PR-GA-2 **CLOSED** #97 `e43e197b`); macro GA deferred |
-| 8 | Incremental Commit | `asteroid_lab_07` | ✅ `test_rttp_commit.py` (`test_commit_reprobes_latest_domain`) |
-| 9 | Reservation / Trunk | commit + trunk merge | ✅ `test_rttp_existing_trunk.py` |
-| 10 | Validation | `asteroid_lab_08` · ADR-003 | ✅ read-only core; catalog footprint D+ PR-1..PR-3 closed |
-| 11 | Replay / UI | `asteroid_lab_09` · 3B-S | ✅ output-only; no replay-as-input |
+| # | Stage | Algorithm doc | v0.1 gate | v0.2 note |
+|---|--------|---------------|-----------|-----------|
+| 1 | Decode | import / copy pipeline | ✅ | — |
+| 2 | Reconstruction | `reconstruction/` | ✅ narrow gate | Capacity C-GATE architecture ✅ |
+| 3 | Pattern Compiler | `asteroid_lab_02` · `pattern_library` | ✅ | — |
+| 4 | Candidate Generator | `asteroid_lab_03` | ✅ catalog-native | — |
+| 5 | Immediate Route Probe | `asteroid_lab_04` | ✅ | — |
+| 6 | Candidate Pool | `asteroid_lab_03` | ✅ | — |
+| 7 | Evolutionary Search | `asteroid_lab_05` | ✅ greedy + optional evolution | Full GA / macro GA → **v0.3+** |
+| 8 | Incremental Commit | `asteroid_lab_07` | ✅ | FL-06 alignment ✅ |
+| 9 | Reservation / Trunk | commit + trunk merge | ✅ | — |
+| 10 | Validation | `asteroid_lab_08` · ADR-003 | ✅ D+ | — |
+| 11 | Replay / UI | `asteroid_lab_09` · 3B-S | ✅ | pass_capable Lab badge ✅ |
 
-**Catalog arc** (Axis A below) feeds steps **3–4** and future step **10** footprint checks; it does **not** replace steps **5–9**.
+**Catalog arc** (v0.1 Axis A) feeds steps **3–4** and step **10**; it does **not** replace steps **5–9**.
 
 ---
 
-## Progress at a glance (two axes)
+## v0.3+ electives (not started — pick one with spec)
+
+| Elective | Prerequisite | Why deferred |
+|----------|--------------|--------------|
+| **Macro unpause** | Macro child-pool fixture spec | 4×4 / narrow-corridor → ≤2 `normal_candidates`; MacroBundleT3 needs ≥3 |
+| **Track A product throughput** | Product request + new spec | Diagnostic canon deliberately shortfall-expected |
+| **Full GA / macro GA** | New board section + budget/ops gates | PR-GA-2 covers config-gated evolution primary only |
+| **PR-1b / PR-2 reconstruction** | Separate reconstruction spec | Deferred from complete-map PR #83 |
+
+---
+
+## v0.1 archive (closed 2026-05-30)
+
+v0.1 **definition:** Catalog input canon (Axis A) + RTTP core 11-step closure (Axis B) + B-CS1–B-CS4 milestones. **Status: CLOSED on `master`.**
 
 ```text
-Axis A — Catalog input canon (game_data → RTTP consumption)
-[████████████████████████]  ✅     (D+ PR-1 ✅; PR-2 ✅; PR-3 ✅)
+Axis A — Catalog input canon
+[████████████████████████]  ✅     (D+ PR-1..PR-3; B2; Track D)
 
-Axis B — RTTP core closure (route-feasible commit end-to-end)
-[████████████████████████]  ✅     (B-CS1–B-CS4 formal milestones CLOSED; standing narrow gate)
+Axis B — RTTP core closure
+[████████████████████████]  ✅     (B-CS1–B-CS4; standing narrow gate)
 
 Parallel — MacroBundle T3
-[██████████████████████]  ✅ CLOSED · ⏸ PAUSE (not core 11-step)
+[██████████████████████]  ✅ CLOSED · ⏸ PAUSE
 ```
 
-| Axis | Open next | Blocks |
-|------|-----------|--------|
-| **Throughput policy (D)** | **D-PR** — PR [#99](https://github.com/tigers2020/Shapez2Factory/pull/99); T2 **expected shortfall** on diagnostic canon. | — |
-| **Pass-capable slug (B)** | **CLOSED (2026-05-30)** — `rttp-cert-candidate-tiny-passable-v2` registered; borderline T2 pass (`actual=target=480`). Evidence: [`task4-confirm-v2.json`](reports/2026-05-30-rttp-pass-capable-slug-certification-task4-confirm-v2.json). Spec: [`2026-05-30-rttp-pass-capable-slug-certification-design.md`](specs/2026-05-30-rttp-pass-capable-slug-certification-design.md) | — |
-| **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
-| **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
-| **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
-| **Parallel** | None (paused) | macro child-pool fixture spec before unpause |
-
-### Decontamination — PR-B (optimization import canon) — master CLOSED
-
-| Step | Status | Evidence |
-|------|--------|----------|
-| PR-B AST import + token gates | ✅ | [`e56ff048`](https://github.com/tigers2020/Shapez2Factory/commit/e56ff048) PR #69 |
-| Milestone substring test absorbed | ✅ | removed `test_optimization_milestone_import_boundary.py` |
-| Standing gate | ✅ | `scripts/test_optimization_contamination.ps1` |
-| Spec | ✅ | [`2026-05-24-decontamination-pr-b-optimization-gates-design.md`](specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md) |
-
-### Decontamination — PR-D (quarantine / stale path isolation) — master CLOSED
-
-| Step | Status | Evidence |
-|------|--------|----------|
-| Two-tier registry + bounded active-root gate | ✅ | [`08320666`](https://github.com/tigers2020/Shapez2Factory/commit/08320666) PR #70 |
-| Plans snapshot `do_not_use_as_authority` | ✅ | `documents/plans/asteroid_lab_optimization/` |
-| PR-E candidates declared (not deleted) | ✅ | `PR_E_DELETE_CANDIDATES` in `quarantine_registry.py` |
-| Standing gate | ✅ | `scripts/test_quarantine_registry.ps1` |
-| Spec | ✅ | [`2026-05-24-decontamination-pr-d-quarantine-design.md`](specs/2026-05-24-decontamination-pr-d-quarantine-design.md) |
-
-### Decontamination — PR-E (dead code deletion) — master CLOSED
-
-| Step | Status | Evidence |
-|------|--------|----------|
-| Applied-only registry (`PrEDeleteCandidate`, `replacements` tuple) | ✅ | [`64a8fee9`](https://github.com/tigers2020/Shapez2Factory/commit/64a8fee9) PR #71 |
-| E-1/E-2 file deletion + E-3 pytest node removal | ✅ | 3 `PR_E_APPLIED_DELETIONS` records |
-| Quarantine gate applied-only (9 tests) | ✅ | `scripts/test_quarantine_registry.ps1` |
-| Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
-| Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
-
-**Open next:** **Track B CLOSED** (2026-05-30) — pass-capable slug `rttp-cert-candidate-tiny-passable-v2` certified + registered. **Track A** (throughput on `recon-l0` / diagnostic canon) **not opened** unless product requests. See [`current_plan.md`](../../documents/ai/current_plan.md) · [`2026-05-30-rttp-pass-capable-slug-certification-task3-summary.md`](reports/2026-05-30-rttp-pass-capable-slug-certification-task3-summary.md) · Task 4 [`task4-confirm-v2.json`](reports/2026-05-30-rttp-pass-capable-slug-certification-task4-confirm-v2.json).
-
-### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
-
-| Item | Status | Evidence |
-|------|--------|----------|
-| STALE capacity plan → `OBSOLETE / DO NOT EXECUTE` | ✅ | [`64d90603`](https://github.com/tigers2020/Shapez2Factory/commit/64d90603) PR [#90](https://github.com/tigers2020/Shapez2Factory/pull/90) |
-| Macro v1 plan → `PAUSED / DO NOT EXECUTE` | ✅ | same |
-| Replacement for capacity C-GATE | — | [`2026-05-26-reconstruction-complete-map-dto.md`](plans/2026-05-26-reconstruction-complete-map-dto.md) + fresh spec before ACTIVE row |
-
-### Post-2026-05-24 — Axis B addenda (merged on `master`)
+### Post–v0.1 addenda merged before v0.2 board (reference only)
 
 | Slice | Status | PR / commit |
 |-------|--------|-------------|
-| FOT outside mineable PR-1 | ✅ | [#88](https://github.com/tigers2020/Shapez2Factory/pull/88) [`ebde4c2c`](https://github.com/tigers2020/Shapez2Factory/commit/ebde4c2c) |
-| FOT outward rim / void probe PR-2 | ✅ | [#89](https://github.com/tigers2020/Shapez2Factory/pull/89) [`75c5ad08`](https://github.com/tigers2020/Shapez2Factory/commit/75c5ad08) |
-| FOT cross-commit hotfix (PR1.5) | ✅ | [`04bf7b4f`](https://github.com/tigers2020/Shapez2Factory/commit/04bf7b4f) |
-| Reconstruction complete-map + replay footprint | ✅ | [#83](https://github.com/tigers2020/Shapez2Factory/pull/83) [`7d07394b`](https://github.com/tigers2020/Shapez2Factory/commit/7d07394b) |
+| FOT PR-1 / PR-2 + cross-commit hotfix | ✅ | #88, #89, `04bf7b4f` |
+| Reconstruction complete-map + replay footprint | ✅ | #83 `7d07394b` |
+| Deferred commit retry PR-1..PR-4 | ✅ | #72–#76 |
+| Roadmap drift tombstones | ✅ | #90 `64d90603` |
+| Throughput PR-2a–2d | ✅ | #79–#81 |
+| Capacity C-GATE (architecture) | ✅ | #94 `ec1b6a26` |
 
-### Deferred commit retry — PR-1 shadow (observe-only) — master CLOSED
+### Decontamination PR-A..E — master CLOSED
 
-| Step | Status | Evidence |
-|------|--------|----------|
-| Spec | ✅ | [`2026-05-24-deferred-commit-retry-shadow-pr1-design.md`](specs/2026-05-24-deferred-commit-retry-shadow-pr1-design.md) |
-| Plan | ✅ | [`2026-05-24-deferred-commit-retry-shadow-pr1.md`](plans/2026-05-24-deferred-commit-retry-shadow-pr1.md) |
-| Pure builder + pipeline step `rttp.deferred_commit_retry_shadow` | ✅ | [`1e021f20`](https://github.com/tigers2020/Shapez2Factory/commit/1e021f20) PR #72 |
-| PR-2 policy DTO wiring / no-op | ✅ | [`a5cfca87`](https://github.com/tigers2020/Shapez2Factory/commit/a5cfca87) PR #73 |
-| PR-3 bounded execution | ✅ | [`d3de9645`](https://github.com/tigers2020/Shapez2Factory/commit/d3de9645) PR #75 |
-| PR-4 ops smoke | ✅ | [`64473a87`](https://github.com/tigers2020/Shapez2Factory/commit/64473a87) PR #76; ops `solver_run_id` 57 |
+| PR | Status | Commit |
+|----|--------|--------|
+| PR-B optimization gates | ✅ | `e56ff048` #69 |
+| PR-D quarantine | ✅ | `08320666` #70 |
+| PR-E dead code | ✅ | `64a8fee9` #71 |
 
-**Deferred commit retry slice 1–4:** **CLOSED** on `master` (2026-05-24).
+Specs: [`2026-05-24-decontamination-pr-b-optimization-gates-design.md`](specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md), [`2026-05-24-decontamination-pr-d-quarantine-design.md`](specs/2026-05-24-decontamination-pr-d-quarantine-design.md), [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md).
 
-**Commit survivability arc (v0.1 scope):** **CLOSED** — primary commit + observe-only shadow + runtime policy + bounded execute + real-map ops smoke are all on `master`. Full GA, macro unpause, capacity C-GATE, and multi-round retry remain **future governance tracks** (not implicit).
+### Axis B — RTTP core (11-step) — v0.1 evidence
 
----
+**Design authority:** [`2026-05-22-rttp-hybrid-c-layout-design.md`](specs/2026-05-22-rttp-hybrid-c-layout-design.md)
 
-## Axis B — RTTP core (11-step closure)
+| Block | Status | Regression |
+|-------|--------|------------|
+| B0 runtime shell | ✅ | `ASTEROID_LAB_RTTP_ENABLED` |
+| B1–B6 decode → pool | ✅ | `test_reconstruction_narrow.ps1` · `-k rttp` |
+| B7 selection | ✅ greedy + evolution | `test_rttp_greedy_regret.py` · `test_rttp_ga_evolution_pr_ga_2.py` |
+| B8–B9 commit + trunk | ✅ | `test_rttp_commit.py` · `test_rttp_lns.py` |
+| B10 validation | ✅ | D+ PR-1..PR-3 |
+| B11 replay / UI | ✅ | `test_rttp_replay_*` · 3B-S compose |
+| B-CS1..B-CS4 | ✅ | survivability · ops smoke · B-CS3/4 boundary tests |
 
-**Design authority:** [`2026-05-22-rttp-hybrid-c-layout-design.md`](specs/2026-05-22-rttp-hybrid-c-layout-design.md) · [`documents/Algorithm/asteroid_lab_00_overview.md`](../../documents/Algorithm/asteroid_lab_00_overview.md)
+### Axis A — Catalog input canon — v0.1 evidence
 
-### B0 — Runtime shell (config-gated entry)
+**Axis A: CLOSED** (2026-05-24). Plans: B2 consumption, Track D, D+ PR-1..PR-3 under `docs/superpowers/plans/2026-05-24-*`.
 
-| Step | Status | Commit / evidence |
-|------|--------|-------------------|
-| RTTP Hybrid C package on `master` | ✅ | [`docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md`](specs/2026-05-22-rttp-hybrid-c-layout-design.md) |
-| `solver_runtime_entry` + `ASTEROID_LAB_RTTP_ENABLED` | ✅ | [`current_plan.md`](../../documents/ai/current_plan.md) |
-| Strip-solver → recon-only baseline | ✅ | [`2026-05-22-strip-solver-keep-recon-complete-design.md`](specs/2026-05-22-strip-solver-keep-recon-complete-design.md) |
+### Parallel — MacroBundle T3
 
-### B1–B6 — Steps 1–6 (decode → pool)
-
-| Step | Status | Regression |
-|------|--------|------------|
-| 1–2 Decode + reconstruction | ✅ | `scripts/test_reconstruction_narrow.ps1` |
-| 3–6 Pattern → probe → pool | ✅ | `python -m pytest tests/unit/asteroid_lab/ -k rttp -v` (excl. macro_real_map if paused) |
-
-### B7 — Step 7 (selection)
-
-| Step | Status | Note |
-|------|--------|------|
-| Greedy-regret `PlacementGenome` (default) | ✅ | `test_rttp_greedy_regret.py` |
-| Bounded evolution primary (`selection.mode=evolution`) | ✅ | PR-GA-2 [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`; `test_rttp_ga_evolution_pr_ga_2.py` |
-| Macro pipeline GA / full Seq 4–5 | ⏸ deferred | New spec + board section required |
-
-### B8–B9 — Steps 8–9 (commit + trunk)
-
-| Step | Status | Commit / test |
-|------|--------|---------------|
-| Incremental commit + **re-probe** | ✅ | `test_rttp_commit.py` |
-| LNS repair on failure | ✅ | `test_rttp_lns.py` |
-| Existing trunk / route domain | ✅ | `test_rttp_existing_trunk.py` · B2-T3 [`38042eed`](https://github.com/tigers2020/Shapez2Factory/commit/38042eed) |
-
-**Invariant:** candidate-time `reachable` is **not** commit success proof — commit always uses latest `route_domain` snapshot.
-
-### B10 — Step 10 (validation)
-
-| Step | Status | Note |
-|------|--------|------|
-| Read-only final layout assert | ✅ | pipeline `validate_final_layout` |
-| Catalog placement audit (observe) | ✅ | D+ PR-1 [`3208f67e`](https://github.com/tigers2020/Shapez2Factory/commit/3208f67e); Ops E3 CLOSED (solver_run_id 49) |
-| Catalog fail-closed (mapped only) | ✅ | D+ PR-2 worktree 2026-05-24; Ops E4 `solver_run_id` 51 |
-
-### B11 — Step 11 (replay / UI)
-
-| Step | Status | Note |
-|------|--------|------|
-| Replay sink output-only | ✅ | `test_rttp_replay_*.py` |
-| 3B-S product timeline | ✅ | `lab_rttp_snapshot_compose` |
-
-### B-CS — Core closure milestones
-
-| ID | Milestone | Status | Evidence |
-|----|-----------|--------|----------|
-| B-CS1 | Commit survivability regression pack | ✅ | `tests/unit/asteroid_lab/test_rttp_commit_survivability.py` |
-| B-CS2 | Ops smoke — trunk-connected commit on real slug | ✅ | `solver_run_id` 55; `run_key` `rttp-3afe34cb62c4`; spec [`2026-05-24-b-cs2-trunk-ops-smoke-design.md`](specs/2026-05-24-b-cs2-trunk-ops-smoke-design.md) |
-| B-CS3 | Validation gate audit (no repair in validation) | ✅ | `test_b_cs3_validation_gate_boundary.py`; spec [`2026-05-24-b-cs3-validation-gate-audit-design.md`](specs/2026-05-24-b-cs3-validation-gate-audit-design.md) |
-| B-CS4 | Reconstruction / Lab replay boundary audit | ✅ | `test_b_cs4_reconstruction_replay_boundary.py`; spec [`2026-05-24-b-cs4-reconstruction-replay-boundary-design.md`](specs/2026-05-24-b-cs4-reconstruction-replay-boundary-design.md); standing owner: `scripts/test_reconstruction_narrow.ps1` |
+**PAUSED** — [`2026-05-23-rttp-v1-macrobundle-t3.md`](plans/2026-05-23-rttp-v1-macrobundle-t3.md) tombstoned PR #90. Runtime macro code remains; no new macro/E2E until unpause spec.
 
 ---
 
-## Parallel — MacroBundle T3 (not Axis B)
+## Ops smoke index
 
-**Goal:** Macro-only pipeline branch for v1 experiments. **PAUSED** — no new macro/E2E.
-
-| Step | Status | Commit |
-|------|--------|--------|
-| PR-A..J macro pipeline | ✅ | e.g. [`61af24b0`](https://github.com/tigers2020/Shapez2Factory/commit/61af24b0) … [`2fa55aac`](https://github.com/tigers2020/Shapez2Factory/commit/2fa55aac) |
-| PR-K/L web + Lab UI | ✅ | [`129d067e`](https://github.com/tigers2020/Shapez2Factory/commit/129d067e) · [`5b06d705`](https://github.com/tigers2020/Shapez2Factory/commit/5b06d705) |
-| CI macro smoke + CLI | ✅ | [`c8b5dc76`](https://github.com/tigers2020/Shapez2Factory/commit/c8b5dc76) · [`82c86ca3`](https://github.com/tigers2020/Shapez2Factory/commit/82c86ca3) |
-| Real-map macro E2E | ✅ | [`3c9fae42`](https://github.com/tigers2020/Shapez2Factory/commit/3c9fae42) |
-| Pause declared | ⏸ | [`0178435e`](https://github.com/tigers2020/Shapez2Factory/commit/0178435e) |
-| v1 implementation plan tombstoned | ⏸ | PR [#90](https://github.com/tigers2020/Shapez2Factory/pull/90) — [`2026-05-23-rttp-v1-macrobundle-t3.md`](plans/2026-05-23-rttp-v1-macrobundle-t3.md) **PAUSED / DO NOT EXECUTE** |
-
----
-
-## Axis A — Catalog input canon
-
-**Purpose:** Replace synthetic `lin_*` candidate geometry with **game_data-native** catalog footprints.  
-**Does not close** RTTP core (Axis B) by itself.
-
-**Centerline:**
-
-```text
-Catalog-native geometry → route feasibility inputs → (later) commit survivability hardening
-```
-
-### A0 — Reconstruction gate (feeds step 2)
-
-| Step | Status | Commit |
-|------|--------|--------|
-| Replay / topology narrow gate | ✅ | [`7a7d426e`](https://github.com/tigers2020/Shapez2Factory/commit/7a7d426e) |
-| Island bbox only | ✅ | [`8c98de84`](https://github.com/tigers2020/Shapez2Factory/commit/8c98de84) |
-
-### A1 — Track A: Provenance gate
-
-| Step | Status | Commit |
-|------|--------|--------|
-| Runtime provenance enforcement | ✅ | [`0a73eec3`](https://github.com/tigers2020/Shapez2Factory/commit/0a73eec3) |
-| Master integration | ✅ | [`1c4baecd`](https://github.com/tigers2020/Shapez2Factory/commit/1c4baecd) · PR #57 |
-
-### A2 — Track B2: Slice → transport → route domain
-
-**Plan:** [`2026-05-24-building-catalog-slice-first-consumption.md`](plans/2026-05-24-building-catalog-slice-first-consumption.md)
-
-| Step | Status | Commit / PR |
-|------|--------|-------------|
-| `BuildingCatalogSlice` + hash | ✅ | [`62ae2a17`](https://github.com/tigers2020/Shapez2Factory/commit/62ae2a17) · [`72029f52`](https://github.com/tigers2020/Shapez2Factory/commit/72029f52) |
-| Provenance v2 | ✅ | [`83f14561`](https://github.com/tigers2020/Shapez2Factory/commit/83f14561) |
-| T1 RTTP consumes slice | ✅ | [`b575c175`](https://github.com/tigers2020/Shapez2Factory/commit/b575c175) |
-| Per-cell transport (#60) | ✅ | [`493e72c3`](https://github.com/tigers2020/Shapez2Factory/commit/493e72c3) |
-| B2-T2 (#62) | ✅ | [`94027496`](https://github.com/tigers2020/Shapez2Factory/commit/94027496) |
-| B2-T3 route domain (#61) | ✅ | [`38042eed`](https://github.com/tigers2020/Shapez2Factory/commit/38042eed) |
-
-### A3 — Track D: Footprint & connector v2
-
-| Step | Status | Commit / PR |
-|------|--------|-------------|
-| Slice v2 geometries + metrics | ✅ | [`f781d7df`](https://github.com/tigers2020/Shapez2Factory/commit/f781d7df) · **PR #63** |
-| Plan close | ✅ | [`182b1e20`](https://github.com/tigers2020/Shapez2Factory/commit/182b1e20) |
-
-### A4 — PR-A: Doc authority repair
-
-| Step | Status | Commit / PR |
-|------|--------|-------------|
-| Contamination policy + inventory | ✅ | [`cd364b84`](https://github.com/tigers2020/Shapez2Factory/commit/cd364b84) · **PR #64** |
-| Plan close | ✅ | [`c20fc1e5`](https://github.com/tigers2020/Shapez2Factory/commit/c20fc1e5) |
-
-### A5 — Track D+ PR-1: Observe-only placement audit
-
-**Spec:** [`2026-05-24-track-d-plus-catalog-placement-validation-design.md`](specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md)  
-**Plan:** [`2026-05-24-track-d-plus-pr1-catalog-placement-audit.md`](plans/2026-05-24-track-d-plus-pr1-catalog-placement-audit.md)
-
-| Task | Status | Commit |
-|------|--------|--------|
-| Contracts + transform + audit | ✅ | [`3208f67e`](https://github.com/tigers2020/Shapez2Factory/commit/3208f67e) |
-| Pipeline step `rttp.catalog_placement_validation` | ✅ | same |
-| Pytest taxonomy (E3 fixtures) | ✅ | same |
-| Ops smoke E3 (real slug) | ✅ | `solver_run_id` 49; `config_json.solver_summary`: `rttp.catalog_placement_validation`, `observe_only`, `validation_passed`/`run_success` true |
-| Close in `current_plan` | ✅ | PR-1 CLOSED |
-
-**PR-1 contract:** must **not** change `validation_passed`, selection, fitness, macro, or replay semantics.
-
-### A6 — Track D+ PR-2: Fail-closed (mapped candidates)
-
-**Plan:** [`2026-05-24-track-d-plus-pr2-catalog-placement-validation.md`](plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md) — **CLOSED** (merged `d676286f`, PR #65)
-
-| Step | Status | Evidence |
-|------|--------|----------|
-| `CatalogValidationResult` + `CatalogPlacementIssueRow` | ✅ | `contracts/catalog_validation.py`, shared classification |
-| Mapped ref + ERROR → `validation_passed=false` | ✅ | `test_catalog_placement_validation.py` |
-| Unmapped synthetic → WARNING only | ✅ | pipeline + unit tests |
-| Pipeline AND + runtime `issue_codes` | ✅ | Task 3 + 3.5; Ops E4 |
-| Read-only AST guards | ✅ | `test_validation_readonly_guards.py` |
-| B-CS1 prerequisite regression | ✅ | `test_rttp_commit_survivability.py` (restored for gate) |
-
-### A7 — Track D+ PR-3: Catalog-native generator
-
-**Plan:** [`2026-05-24-track-d-plus-pr3-catalog-native-generator.md`](plans/2026-05-24-track-d-plus-pr3-catalog-native-generator.md) — **CLOSED** (merged `dfbda7b8`, PR #66)
-
-| Step | Status | Evidence |
-|------|--------|----------|
-| Production `catalog_placement_ref` on all normal candidates | ✅ | `candidate_generator.py` + unit/arch tests |
-| `build_catalog_placement_specs` from slice | ✅ | adapters + placements tests |
-| `lin_*` / `build_pattern_library` test-only | ✅ | `pattern_library` docstring + `synthetic_lin_patterns` marker |
-| Ops smoke E5 (real slug) | ✅ | `solver_run_id` 54; `normal_count` 127; `unmapped_candidate_count` 0 |
-
-**Axis A:** **CLOSED** (A5 Ops E3 + A6 + A7 done, 2026-05-24).
-
----
-
-## Ops smoke index (`copy-import-495e552c`)
+### v0.1 diagnostic slug (`copy-import-495e552c`)
 
 | Smoke | Axis | Status |
 |-------|------|--------|
-| A | A2 provenance v2 | ✅ |
-| B | A2 B2-T2 transport | ✅ |
-| C | A2 B2-T3 route domain | ✅ |
-| D | A3 Track D `rttp.catalog_slice` | ✅ |
-| **E3** | **A5 D+ placement audit (observe_only)** | **✅ CLOSED** | `solver_run_id` 49 |
-| **E4** | **A6 D+ mapped fail-closed** | **✅ CLOSED** | `solver_run_id` 51; `mapped_fail_closed`; warning-only `issue_codes` `[]` |
-| **E5** | **A7 D+ catalog-native generator** | **✅ CLOSED** | `solver_run_id` 54; `normal_count` 127; `unmapped_candidate_count` 0 |
-| **B-CS2** | **Axis B trunk-connected commit (real slug)** | **✅ CLOSED** | `solver_run_id` 55; `confirmed_count` 1; `skeleton_id` present; `mismatched_existing_transport_count` 0 |
+| A–E5, B-CS2 | A / B | ✅ (see v0.1 archive commits) |
+
+### v0.2 canon slugs
+
+| Slug | Role | Evidence |
+|------|------|----------|
+| `copy-import-495e552c` | Diagnostic canon | T0/T1a/T1b pass; T2 **expected shortfall** post D-GOV |
+| `rttp-cert-candidate-tiny-passable-v2` | Pass-capable reference | PR #101; [`task4-confirm-v2.json`](reports/2026-05-30-rttp-pass-capable-slug-certification-task4-confirm-v2.json) |
 
 ---
 
 ## Verification commands
 
-**RTTP core (Axis B):**
+**v0.2 C-track (RTTP + policy):**
 
 ```powershell
-python -m pytest tests/unit/asteroid_lab/ -k "rttp and not macro_real_map" -v
+python -m pytest tests/unit/asteroid_lab/ -k rttp
+python -m ruff check django_apps/asteroid_lab/optimization django_apps/asteroid_lab/services/lab_rttp_snapshot_compose.py django_apps/asteroid_lab/services/solver_runtime_entry.py
 ```
 
-**Catalog / D+ (Axis A):**
+**v0.2 F-track + G3:**
 
 ```powershell
-python -m pytest tests/unit/architecture/test_catalog_consumption_boundaries.py -v
-python -m ruff check django_apps/asteroid_lab/contracts django_apps/asteroid_lab/adapters django_apps/asteroid_lab/optimization/pipeline.py django_apps/asteroid_lab/optimization/rttp_solver_summary.py
+powershell -File scripts/test_quarantine_registry.ps1
 ```
 
-**Reconstruction (step 2):**
+**v0.1 standing (still required on every RTTP/recon touch):**
 
 ```powershell
 powershell -File scripts/test_reconstruction_narrow.ps1
+powershell -File scripts/test_optimization_contamination.ps1
+powershell -File scripts/test_capacity_sot.ps1
 ```
 
-**PR-B optimization contamination (decontamination):**
+**Catalog boundaries (Axis A maintenance):**
 
 ```powershell
-powershell -File scripts/test_optimization_contamination.ps1
+python -m pytest tests/unit/architecture/test_catalog_consumption_boundaries.py -v
 ```
 
 ---
@@ -354,17 +300,17 @@ powershell -File scripts/test_optimization_contamination.ps1
 
 | Order | Document |
 |-------|----------|
-| 1 | **This roadmap** — dual-axis commits + 11-step index |
-| 2 | [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md) § Authority precedence — queue + closure rules |
-| 3 | [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md) — active queue |
-| 4 | Topic specs / plans under `docs/superpowers/` |
-| 5 | [`documents/Algorithm/asteroid_lab_*.md`](../../documents/Algorithm/) — phase contracts |
+| 1 | **This roadmap** — v0.2 queue + v0.1 archive |
+| 2 | [`documents/ai/current_plan.md`](../../documents/ai/current_plan.md) — ACTIVE/NEXT/CLOSED rows |
+| 3 | Topic specs / plans under `docs/superpowers/` |
+| 4 | [`documents/Algorithm/asteroid_lab_*.md`](../../documents/Algorithm/) — phase contracts |
 
 ---
 
 ## Maintenance
 
-1. **Never** merge Axis A % into Axis B %.
-2. When merging to `master`, add SHA to the relevant Axis table.
-3. New work must declare axis: **A** (catalog), **B** (core), or **Parallel** (macro).
-4. Promoting full GA (step 7) requires new spec + new board section — not implicit.
+1. **Roadmap version:** Update the **v0.2 progress bars** and **work queue** when merging C/F tracks; move closed v0.2 slices to a dated CLOSED table — do not delete v0.1 archive without tombstone.
+2. **Never** merge Axis A % into Axis B % (v0.1 rule, still applies).
+3. New work must declare: **C** (ops/governance), **F** (decontamination), **G** (gate-only), **v0.1 axis** (A/B), or **Parallel** (macro).
+4. Opening **v0.3** requires a short **v0.3 scope** section here + ACTIVE row in `current_plan.md`.
+5. Promoting full GA, macro unpause, or Track A throughput requires **new spec** — not implicit from v0.2 %.

@@ -112,6 +112,25 @@ def test_skipped_diagnostic_for_canon_slug() -> None:
     assert result.cert_status == CERT_STATUS_SKIPPED_DIAGNOSTIC
 
 
+def test_fail_t1b_when_t1a_not_passed_despite_commit_step() -> None:
+    """t1a failure must not fall through to fail_t2/fail_runtime (Bugbot)."""
+    summary = {
+        "validation_passed": True,
+        "issue_codes": [],
+        "confirmed_count": 0,
+        "throughput_budget_satisfied": True,
+    }
+    steps = (_selection_step(), _commit_step(passed=True))
+    result = evaluate_t3_certification(
+        slug="other-slug",
+        solver_summary=summary,
+        pipeline_steps=steps,
+    )
+    assert result.t1a_pass is False
+    assert result.t1b_pass is True
+    assert result.cert_status == CERT_STATUS_FAIL_T1B
+
+
 def test_fail_t1b_when_commit_not_passed() -> None:
     summary = {
         "validation_passed": False,

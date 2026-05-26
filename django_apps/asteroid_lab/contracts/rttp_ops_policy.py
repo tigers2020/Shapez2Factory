@@ -252,7 +252,7 @@ def evaluate_t3_certification(
 
     if t0_pass and t1a_pass and t1b_pass and t2_pass and t3_shell_pass:
         cert_status = CERT_STATUS_CERTIFIED_PASS
-    elif not t1b_pass:
+    elif not t1a_pass or not t1b_pass:
         cert_status = CERT_STATUS_FAIL_T1B
     elif not t2_pass:
         cert_status = CERT_STATUS_FAIL_T2

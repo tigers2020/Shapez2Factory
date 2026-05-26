@@ -196,10 +196,13 @@ def test_entry_result_json_includes_optimization_milestone_section() -> None:
     assert map_types.isdisjoint(RTTP_MILESTONE_EVENT_TYPES)
 
 
+@pytest.mark.django_db
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_rttp_validation_failure_still_returns_optimization_milestones_section(
     monkeypatch: pytest.MonkeyPatch,
+    imported_game_data_batch_module: object,
 ) -> None:
+    _ = imported_game_data_batch_module
     real_run = rttp_pipeline.run_rttp_pipeline
 
     def _run_with_failed_validation(
@@ -208,7 +211,10 @@ def test_rttp_validation_failure_still_returns_optimization_milestones_section(
         result = real_run(*args, **kwargs)
         return replace(result, validation_passed=False)
 
-    monkeypatch.setattr(rttp_pipeline, "run_rttp_pipeline", _run_with_failed_validation)
+    monkeypatch.setattr(
+        "django_apps.asteroid_lab.services.solver_runtime_entry.run_rttp_pipeline",
+        _run_with_failed_validation,
+    )
 
     proj = m.AsteroidProject.objects.create(name="MileFail", slug="mile-fail")
     create_copy_code_map_input(proj, _minimal_valid_copy())

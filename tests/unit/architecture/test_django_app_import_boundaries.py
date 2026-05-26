@@ -49,8 +49,10 @@ _IMPORT_MATRIX_SKIP: dict[str, frozenset[str]] = {
         {
             "django_apps/asteroid_lab/management/commands/run_solver.py",
             "django_apps/asteroid_lab/management/commands/scan_rttp_slug_certification.py",
+            "django_apps/asteroid_lab/management/commands/capture_rttp_recovery_evidence.py",
             "django_apps/asteroid_lab/services/reconstruction_capacity_summary.py",
             "django_apps/asteroid_lab/services/committed_throughput_summary.py",
+            "django_apps/asteroid_lab/services/rttp_exterior_transport_resolver.py",
             # Phase A: display-only sprite resolver reads pinned game_data ORM rows.
             "django_apps/asteroid_lab/catalog/asteroid_sprite_projection.py",
         }

@@ -28,6 +28,13 @@ from tests.support.reconstruction_complete_map_fixtures import (
     minimal_cleanup_and_recon_from_cells,
 )
 
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
+
 
 def _field_cell(x: int, y: int) -> DecodedCellDTO:
     return DecodedCellDTO(

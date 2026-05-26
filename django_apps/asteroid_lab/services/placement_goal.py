@@ -1,4 +1,11 @@
-"""Throughput-aware placement goal policy (PR-2d; never replay input)."""
+"""Placement coverage goal policy (PR-2d + Task 4 recovery).
+
+``throughput_target_percent`` run-config key is a **legacy alias** for
+``placement_target_percent`` (placement coverage %, not throughput /min alone).
+
+``DEFAULT_MAX_PLACEMENT_GOAL_COUNT`` / ``legacy_configured_max_placement_goal`` are
+**diagnostic only** — they must never clamp ``placement_goal_count``.
+"""
 
 from __future__ import annotations
 
@@ -21,16 +28,17 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
 
 MIN_MAX_PLACEMENT_GOAL_COUNT = 1
 MAX_MAX_PLACEMENT_GOAL_COUNT = 128
+# Deprecated product clamp default; parse helper only — never use in placement_goal_count.
 DEFAULT_MAX_PLACEMENT_GOAL_COUNT = 32
 
 
 class ThroughputShortfallReason(StrEnum):
     SATISFIED = "satisfied"
-    ROUTE_FEASIBLE_CANDIDATE_CAP = "route_feasible_candidate_cap"
-    NON_OVERLAPPING_ANCHOR_CAP = "non_overlapping_anchor_cap"
-    COMMIT_CONFLICT_CAP = "commit_conflict_cap"
-    SELECTION_GOAL_CAP = "selection_goal_cap"
-    CANDIDATE_POOL_EXHAUSTED = "candidate_pool_exhausted"
+    ROUTE_FEASIBLE_SHORTFALL = "route_feasible_shortfall"
+    ANCHOR_CAPACITY_SHORTFALL = "anchor_capacity_shortfall"
+    COMMIT_SHORTFALL = "commit_shortfall"
+    PLACEMENT_GOAL_SHORTFALL = "placement_goal_shortfall"
+    CANDIDATE_GENERATION_SHORTFALL = "candidate_generation_shortfall"
     BEST_BUNDLE_ZERO = "best_bundle_zero"
     NO_ACTUAL_OUTPUT = "no_actual_output"
 
@@ -38,23 +46,54 @@ class ThroughputShortfallReason(StrEnum):
 @dataclass(frozen=True, slots=True)
 class PlacementGoalPlan:
     placement_goal_count: int
+    asteroid_field_cell_count: int
+    placement_target_percent: int
     bundles_needed_for_target: int
     best_bundle_throughput_per_min: Decimal
     route_feasible_candidate_cap: int
     non_overlapping_anchor_cap: int
-    configured_max_placement_goal: int
+    legacy_configured_max_placement_goal: int
     skeleton_capacity_goals: int
+
+    @property
+    def mineable_platform_cell_count(self) -> int:
+        """Backward-compatible alias for ``asteroid_field_cell_count``."""
+
+        return self.asteroid_field_cell_count
+
+    @property
+    def configured_max_placement_goal(self) -> int:
+        """Backward-compatible alias for diagnostic legacy max (not product goal)."""
+
+        return self.legacy_configured_max_placement_goal
 
     def to_summary_dict(self) -> dict[str, Any]:
         return {
             "placement_goal_count": self.placement_goal_count,
+            "asteroid_field_cell_count": self.asteroid_field_cell_count,
+            "mineable_platform_cell_count": self.asteroid_field_cell_count,
+            "placement_target_percent": self.placement_target_percent,
             "bundles_needed_for_target": self.bundles_needed_for_target,
             "best_bundle_throughput_per_min": decimal_str(self.best_bundle_throughput_per_min),
             "route_feasible_candidate_cap": self.route_feasible_candidate_cap,
             "non_overlapping_anchor_cap": self.non_overlapping_anchor_cap,
-            "configured_max_placement_goal": self.configured_max_placement_goal,
+            "legacy_configured_max_placement_goal": self.legacy_configured_max_placement_goal,
+            "configured_max_placement_goal": self.legacy_configured_max_placement_goal,
             "skeleton_capacity_goals": self.skeleton_capacity_goals,
         }
+
+
+def compute_placement_goal_count(
+    *,
+    asteroid_field_cell_count: int,
+    placement_target_percent: int,
+) -> int:
+    """Product placement target from reconstruction-complete asteroid field coverage."""
+
+    if asteroid_field_cell_count <= 0 or placement_target_percent <= 0:
+        return 0
+    product = Decimal(asteroid_field_cell_count) * Decimal(placement_target_percent) / Decimal(100)
+    return int(product.to_integral_value(rounding=ROUND_CEILING))
 
 
 def parse_max_placement_goal_count(config: Mapping[str, Any]) -> int:
@@ -98,10 +137,14 @@ def build_placement_goal_plan(
     *,
     normal_candidates: Sequence[BundleCandidate],
     transport_kind: TransportKind,
+    asteroid_field_cell_count: int,
+    placement_target_percent: int,
     target_throughput_per_min: Decimal,
     skeleton_capacity_goals: int,
-    configured_max_placement_goal: int,
+    legacy_configured_max_placement_goal: int,
 ) -> PlacementGoalPlan:
+    """Build product placement goal + diagnostic caps (caps do not lower goal)."""
+
     reachable = [candidate for candidate in normal_candidates if candidate.reachable]
     route_cap = len(reachable)
     deduped = dedupe_candidates(tuple(reachable))
@@ -114,33 +157,44 @@ def build_placement_goal_plan(
         target=target_throughput_per_min,
         best_bundle=best,
     )
-    floor = max(0, skeleton_capacity_goals)
-    raw_goal = max(floor, bundles_needed)
-    placement_goal_count = min(
-        route_cap,
-        anchor_cap,
-        configured_max_placement_goal,
-        raw_goal,
+    placement_goal_count = compute_placement_goal_count(
+        asteroid_field_cell_count=asteroid_field_cell_count,
+        placement_target_percent=placement_target_percent,
     )
     return PlacementGoalPlan(
         placement_goal_count=placement_goal_count,
+        asteroid_field_cell_count=asteroid_field_cell_count,
+        placement_target_percent=placement_target_percent,
         bundles_needed_for_target=bundles_needed,
         best_bundle_throughput_per_min=best,
         route_feasible_candidate_cap=route_cap,
         non_overlapping_anchor_cap=anchor_cap,
-        configured_max_placement_goal=configured_max_placement_goal,
+        legacy_configured_max_placement_goal=legacy_configured_max_placement_goal,
         skeleton_capacity_goals=skeleton_capacity_goals,
     )
 
 
-def _selection_cap_reason(plan: PlacementGoalPlan) -> ThroughputShortfallReason:
-    if plan.placement_goal_count == plan.route_feasible_candidate_cap:
-        return ThroughputShortfallReason.ROUTE_FEASIBLE_CANDIDATE_CAP
-    if plan.placement_goal_count == plan.non_overlapping_anchor_cap:
-        return ThroughputShortfallReason.NON_OVERLAPPING_ANCHOR_CAP
-    if plan.placement_goal_count == plan.configured_max_placement_goal:
-        return ThroughputShortfallReason.SELECTION_GOAL_CAP
-    return ThroughputShortfallReason.SELECTION_GOAL_CAP
+def _placement_coverage_shortfall_reason(
+    plan: PlacementGoalPlan,
+    *,
+    selected_count: int,
+    normal_count: int,
+) -> ThroughputShortfallReason:
+    if selected_count < plan.placement_goal_count:
+        if (
+            plan.route_feasible_candidate_cap < plan.placement_goal_count
+            and selected_count <= plan.route_feasible_candidate_cap
+        ):
+            return ThroughputShortfallReason.ROUTE_FEASIBLE_SHORTFALL
+        if (
+            plan.non_overlapping_anchor_cap < plan.placement_goal_count
+            and selected_count <= plan.non_overlapping_anchor_cap
+        ):
+            return ThroughputShortfallReason.ANCHOR_CAPACITY_SHORTFALL
+        if normal_count < plan.placement_goal_count:
+            return ThroughputShortfallReason.CANDIDATE_GENERATION_SHORTFALL
+        return ThroughputShortfallReason.CANDIDATE_GENERATION_SHORTFALL
+    return ThroughputShortfallReason.PLACEMENT_GOAL_SHORTFALL
 
 
 def attribute_throughput_shortfall(
@@ -162,21 +216,26 @@ def attribute_throughput_shortfall(
         return ThroughputShortfallReason.NO_ACTUAL_OUTPUT
     if plan.best_bundle_throughput_per_min <= 0:
         return ThroughputShortfallReason.BEST_BUNDLE_ZERO
-    if normal_count == 0 or plan.route_feasible_candidate_cap == 0:
-        return ThroughputShortfallReason.CANDIDATE_POOL_EXHAUSTED
+    if normal_count == 0:
+        return ThroughputShortfallReason.CANDIDATE_GENERATION_SHORTFALL
+
+    if selected_count < plan.placement_goal_count:
+        return _placement_coverage_shortfall_reason(
+            plan,
+            selected_count=selected_count,
+            normal_count=normal_count,
+        )
 
     if selected_count < plan.bundles_needed_for_target:
-        if plan.placement_goal_count < plan.bundles_needed_for_target:
-            return _selection_cap_reason(plan)
-        if selected_count < plan.placement_goal_count:
-            return ThroughputShortfallReason.CANDIDATE_POOL_EXHAUSTED
+        if plan.bundles_needed_for_target > plan.placement_goal_count:
+            return ThroughputShortfallReason.PLACEMENT_GOAL_SHORTFALL
 
     if selected_count >= plan.placement_goal_count and (
         committed_count < selected_count or conflict_count > 0
     ):
-        return ThroughputShortfallReason.COMMIT_CONFLICT_CAP
+        return ThroughputShortfallReason.COMMIT_SHORTFALL
 
-    return ThroughputShortfallReason.SELECTION_GOAL_CAP
+    return ThroughputShortfallReason.PLACEMENT_GOAL_SHORTFALL
 
 
 __all__ = [
@@ -187,5 +246,6 @@ __all__ = [
     "ThroughputShortfallReason",
     "attribute_throughput_shortfall",
     "build_placement_goal_plan",
+    "compute_placement_goal_count",
     "parse_max_placement_goal_count",
 ]

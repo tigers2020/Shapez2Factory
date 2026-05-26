@@ -27,6 +27,7 @@ class RouteCellDomain:
     trunk_mask_cells: frozenset[Coord]
     lift_edges: tuple[LiftEdge, ...]
     traversable_cells: frozenset[Coord]
+    step_costs: frozenset[tuple[Coord, int]] = frozenset()
 
 
 def build_route_domain_from_skeleton(
@@ -49,21 +50,21 @@ def build_route_domain_from_skeleton(
     trunk_mask = frozenset(skeleton.trunk_mask_cells - incompatible)
     goal_coords = probe_goal_coords(inp, skeleton)
 
-    blocked = frozenset(
-        (inp.mineable_cells | inp.external_void_cells)
-        - platform_cells
-        - trunk_mask
-        - lift_coords
-        - goal_coords
-    )
-    blocked = frozenset(blocked | incompatible)
-    traversable = frozenset((trunk_mask | lift_coords | goal_coords) - incompatible)
+    void_walkable = frozenset(inp.external_void_cells - incompatible)
+    blocked = frozenset(inp.mineable_cells - platform_cells - lift_coords - incompatible)
+    traversable = frozenset((trunk_mask | lift_coords | goal_coords | void_walkable) - incompatible)
+    step_costs: dict[Coord, int] = {}
+    for coord in void_walkable:
+        step_costs[coord] = 1
+    for coord in trunk_mask | lift_coords | goal_coords:
+        step_costs.setdefault(coord, 2)
 
     return RouteCellDomain(
         blocked_cells=blocked,
         trunk_mask_cells=trunk_mask,
         lift_edges=lift_edges,
         traversable_cells=traversable,
+        step_costs=frozenset(step_costs.items()),
     )
 
 

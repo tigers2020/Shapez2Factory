@@ -11,15 +11,26 @@ def probe_goal_coords(
     inp: OptimizationInput,
     skeleton: RttpSkeleton,
 ) -> frozenset[Coord]:
-    """Coords reachable by route probe: ``route_goals`` plus skeleton ``ring_ports``."""
+    """Coords for route probe: EVTC selected connectors; legacy adds ring ports."""
 
-    goals: set[Coord] = set()
-    for goal in inp.route_goals:
-        if goal.transport_kind is None or goal.transport_kind is inp.transport_kind:
-            goals.add(goal.coord)
-    for port in skeleton.ring_ports:
-        goals.add(port.coord)
+    goals: set[Coord] = {
+        goal.coord
+        for goal in inp.route_goals
+        if goal.transport_kind is None or goal.transport_kind is inp.transport_kind
+    }
+    if inp.required_external_connector_count is None:
+        goals.update(port.coord for port in skeleton.ring_ports)
     return frozenset(goals)
 
 
-__all__ = ["probe_goal_coords"]
+def probe_goal_priorities(inp: OptimizationInput) -> dict[Coord, int]:
+    """Per-goal priority for commit-time probe tie-break (EVTC-7a)."""
+
+    return {
+        goal.coord: goal.priority
+        for goal in inp.route_goals
+        if goal.transport_kind is None or goal.transport_kind is inp.transport_kind
+    }
+
+
+__all__ = ["probe_goal_coords", "probe_goal_priorities"]

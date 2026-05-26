@@ -55,6 +55,7 @@ class OptimizationInput:
     blocked_incompatible_transport_cells: frozenset[Coord] = frozenset()
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW
     catalog_slice: BuildingCatalogSlice | None = None
+    required_external_connector_count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,7 +92,11 @@ class RttpPipelineConfig:
     ga_evolution_shadow: GaEvolutionShadowConfig = field(default_factory=GaEvolutionShadowConfig)
     selection_mode: SelectionMode = SelectionMode.GREEDY_REGRET
     target_throughput_per_min: Decimal | None = None
+    # Legacy run-config key ``throughput_target_percent`` — semantic = placement coverage %.
+    placement_target_percent: int = 80
     max_placement_goal_count: int = 32
+    # From ``ReconstructionCompleteMap`` (0 = infer ``len(inp.mineable_cells)`` in pipeline).
+    placement_platform_cell_count: int = 0
     # (x, y, cell_kind) for per-anchor miner sprite (fluid vs shape field)
     mineable_field_kind_by_coord: tuple[tuple[int, int, str], ...] = ()
 

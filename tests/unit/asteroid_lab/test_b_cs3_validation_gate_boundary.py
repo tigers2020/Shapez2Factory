@@ -53,6 +53,8 @@ _PIPELINE_PATH = _REPO_ROOT / "django_apps/asteroid_lab/optimization/pipeline.py
 _VALIDATION_MODULE_PATHS = (
     _REPO_ROOT / "django_apps/asteroid_lab/optimization/validation/final_validation.py",
     _REPO_ROOT / "django_apps/asteroid_lab/optimization/validation/catalog_layout_validation.py",
+    _REPO_ROOT
+    / "django_apps/asteroid_lab/optimization/validation/layout_connectivity_validation.py",
     _REPO_ROOT / "django_apps/asteroid_lab/adapters/catalog_placement_validation.py",
     _REPO_ROOT / "django_apps/asteroid_lab/adapters/catalog_placement_audit.py",
 )
@@ -236,16 +238,18 @@ def test_b_cs3_observe_only_still_invokes_final_layout(monkeypatch: pytest.Monke
         "django_apps.asteroid_lab.optimization.validation.catalog_layout_validation.validate_final_layout",
         _spy,
     )
-    passed, catalog_result = validate_pipeline_layout(
+    passed, catalog_result, connectivity_issues = validate_pipeline_layout(
         committed_ids=committed_ids,
         reserved_route_cells=reserved,
         candidates_by_id=candidates_by_id,
         inp=inp,
         catalog_mode="observe_only",
+        trunk_mask_cells=frozenset({(8, 7)}),
     )
     assert calls == ["final"]
     assert passed is True
     assert catalog_result is None
+    assert connectivity_issues == ()
 
 
 # --- Task 3: reachable + no re-probe (B-CS3-3, B-CS3-6) ---

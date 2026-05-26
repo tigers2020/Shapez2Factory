@@ -20,11 +20,13 @@ def _plan(
 ) -> PlacementGoalPlan:
     return PlacementGoalPlan(
         placement_goal_count=placement_goal_count,
+        asteroid_field_cell_count=placement_goal_count,
+        placement_target_percent=100,
         bundles_needed_for_target=bundles_needed_for_target,
         best_bundle_throughput_per_min=Decimal("120"),
         route_feasible_candidate_cap=route_feasible_candidate_cap,
         non_overlapping_anchor_cap=non_overlapping_anchor_cap,
-        configured_max_placement_goal=32,
+        legacy_configured_max_placement_goal=32,
         skeleton_capacity_goals=1,
     )
 
@@ -54,13 +56,13 @@ def test_cap_reason_before_conflict() -> None:
         target=Decimal("1536"),
         normal_count=127,
     )
-    assert reason == ThroughputShortfallReason.SELECTION_GOAL_CAP
+    assert reason == ThroughputShortfallReason.PLACEMENT_GOAL_SHORTFALL
 
 
 def test_route_feasible_cap_when_binding() -> None:
     reason = attribute_throughput_shortfall(
         plan=_plan(
-            placement_goal_count=5,
+            placement_goal_count=13,
             bundles_needed_for_target=13,
             route_feasible_candidate_cap=5,
             non_overlapping_anchor_cap=40,
@@ -73,7 +75,7 @@ def test_route_feasible_cap_when_binding() -> None:
         target=Decimal("1536"),
         normal_count=5,
     )
-    assert reason == ThroughputShortfallReason.ROUTE_FEASIBLE_CANDIDATE_CAP
+    assert reason == ThroughputShortfallReason.ROUTE_FEASIBLE_SHORTFALL
 
 
 def test_conflict_only_when_selection_reached_goal() -> None:
@@ -87,4 +89,4 @@ def test_conflict_only_when_selection_reached_goal() -> None:
         target=Decimal("1536"),
         normal_count=127,
     )
-    assert reason == ThroughputShortfallReason.COMMIT_CONFLICT_CAP
+    assert reason == ThroughputShortfallReason.COMMIT_SHORTFALL

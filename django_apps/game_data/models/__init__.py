@@ -14,6 +14,10 @@ from django_apps.game_data.models.buildings import (
     BuildingVariant,
     TransportBuildingRegistry,
 )
+from django_apps.game_data.models.exterior_transport_capacity import (
+    ExteriorFluidTransportCapacity,
+    ExteriorShapeTransportCapacity,
+)
 from django_apps.game_data.models.import_meta import (
     ArtifactChecksum,
     ExportIncompleteSection,
@@ -93,6 +97,8 @@ __all__ = [
     "ConnectableSimulation",
     "ExportIncompleteSection",
     "ExportWarning",
+    "ExteriorFluidTransportCapacity",
+    "ExteriorShapeTransportCapacity",
     "FluidColor",
     "GameContentAsset",
     "GlobalBeltSpeedPolicy",

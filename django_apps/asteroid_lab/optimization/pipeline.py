@@ -122,21 +122,44 @@ class PipelineResult:
     placement_goal_plan: PlacementGoalPlan | None = None
 
 
+def _placement_platform_cell_count(
+    config: RttpPipelineConfig,
+    inp: OptimizationInput,
+) -> int:
+    if config.placement_platform_cell_count > 0:
+        return config.placement_platform_cell_count
+    return len(inp.mineable_cells)
+
+
 def _selection_goal_for_pipeline(
     *,
     config: RttpPipelineConfig,
+    inp: OptimizationInput,
     skeleton_capacity_goals: int,
     normal_candidates: Sequence[BundleCandidate],
     transport_kind: TransportKind,
 ) -> tuple[int, PlacementGoalPlan | None]:
+    asteroid_field_cells = _placement_platform_cell_count(config, inp)
     if config.target_throughput_per_min is None:
+        if config.placement_target_percent > 0 and asteroid_field_cells > 0:
+            from django_apps.asteroid_lab.services.placement_goal import (
+                compute_placement_goal_count,
+            )
+
+            coverage_goal = compute_placement_goal_count(
+                asteroid_field_cell_count=asteroid_field_cells,
+                placement_target_percent=config.placement_target_percent,
+            )
+            return max(coverage_goal, skeleton_capacity_goals), None
         return max(0, skeleton_capacity_goals), None
     plan = build_placement_goal_plan(
         normal_candidates=normal_candidates,
         transport_kind=transport_kind,
+        asteroid_field_cell_count=asteroid_field_cells,
+        placement_target_percent=config.placement_target_percent,
         target_throughput_per_min=config.target_throughput_per_min,
         skeleton_capacity_goals=skeleton_capacity_goals,
-        configured_max_placement_goal=config.max_placement_goal_count,
+        legacy_configured_max_placement_goal=config.max_placement_goal_count,
     )
     return plan.placement_goal_count, plan
 
@@ -471,6 +494,7 @@ def _run_v01_rttp_pipeline(
 
     selection_goal, placement_plan = _selection_goal_for_pipeline(
         config=config,
+        inp=inp,
         skeleton_capacity_goals=skeleton.capacity_goals,
         normal_candidates=generation.normal_candidates,
         transport_kind=inp.transport_kind,
@@ -552,6 +576,7 @@ def _run_v01_rttp_pipeline(
             inp=inp,
             skeleton=skeleton,
             config=shadow_cfg,
+            route_probe_start_policy=route_probe_start_policy,
         )
         commit_result = execute_out.merged_commit_result
         _append_deferred_retry_execute_step(steps, execute_out=execute_out)
@@ -566,12 +591,13 @@ def _run_v01_rttp_pipeline(
         )
 
     catalog_mode = config.catalog_placement_validation_mode
-    validation_passed, catalog_result = validate_pipeline_layout(
+    validation_passed, catalog_result, layout_connectivity_issues = validate_pipeline_layout(
         committed_ids=commit_result.committed_ids,
         reserved_route_cells=commit_result.reserved_route_cells,
         candidates_by_id=candidates_by_id,
         inp=inp,
         catalog_mode=catalog_mode,
+        trunk_mask_cells=skeleton.trunk_mask_cells,
     )
 
     commit_payload, placement_diag = build_commit_replay_payload(
@@ -595,6 +621,13 @@ def _run_v01_rttp_pipeline(
             "committed_ids": list(commit_result.committed_ids),
             "commit_order": list(genome.commit_order),
             "validation_passed": validation_passed,
+            "layout_connectivity_issue_codes": list(layout_connectivity_issues),
+            "required_external_connectors": inp.required_external_connector_count,
+            "planned_external_connectors": len(inp.route_goals),
+            "selected_connector_coords": [
+                [int(goal.coord[0]), int(goal.coord[1])] for goal in inp.route_goals
+            ],
+            "commit_route_evidence": list(commit_result.commit_route_evidence),
             "conflict_count": len(commit_result.conflicts),
             "normal_count": len(generation.normal_candidates),
             "visible_miner_cell_count": placement_diag.visible_miner_cell_count,
@@ -709,6 +742,7 @@ def _run_macro_rttp_pipeline(
 
     selection_goal, placement_plan = _selection_goal_for_pipeline(
         config=config,
+        inp=inp,
         skeleton_capacity_goals=skeleton.capacity_goals,
         normal_candidates=generation.normal_candidates,
         transport_kind=inp.transport_kind,

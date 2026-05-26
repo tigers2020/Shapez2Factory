@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
+from django_apps.asteroid_lab.snapshots.transport_kind import TransportKind
 
 
 def asteroid_field_cells_from_complete_map(
@@ -32,8 +33,29 @@ def detect_primary_resource_kind(complete_map: ReconstructionCompleteMap) -> str
     return "shape"
 
 
+def total_asteroid_field_cell_count(complete_map: ReconstructionCompleteMap) -> int:
+    """All reconstruction-complete ``asteroid_*_field`` cells (shape + fluid)."""
+
+    return len(complete_map.field_cells)
+
+
+def asteroid_field_cell_count_for_placement(
+    complete_map: ReconstructionCompleteMap,
+    transport_kind: TransportKind,
+) -> int:
+    """Installable platform slots for ``transport_kind`` on reconstruction-complete map."""
+
+    if transport_kind == TransportKind.SHAPE_BELT:
+        return complete_map.shape_field_cell_count
+    if transport_kind == TransportKind.FLUID_PIPE:
+        return complete_map.fluid_field_cell_count
+    return len(complete_map.field_cells)
+
+
 __all__ = [
+    "asteroid_field_cell_count_for_placement",
     "asteroid_field_cells_from_complete_map",
     "count_asteroid_field_cells_by_resource",
     "detect_primary_resource_kind",
+    "total_asteroid_field_cell_count",
 ]

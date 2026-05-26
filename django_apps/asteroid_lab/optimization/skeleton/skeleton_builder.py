@@ -101,6 +101,8 @@ def _score_option(
 
 
 def _capacity_goals(inp: OptimizationInput) -> int:
+    if inp.required_external_connector_count is not None:
+        return max(0, inp.required_external_connector_count)
     mineable_count = len(inp.mineable_cells)
     platforms = math.floor(mineable_count * PLATFORM_ESTIMATE_RATIO / CELLS_PER_PLATFORM_ESTIMATE)
     if inp.transport_kind is TransportKind.FLUID_PIPE:

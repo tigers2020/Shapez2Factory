@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django_apps.asteroid_lab.adapters.catalog_transport_policy import (
     resolve_cell_transport_kind,
     resolve_default_asteroid_transport_kind,
@@ -17,17 +19,25 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     RouteGoalKind,
     TransportKind,
 )
+from django_apps.asteroid_lab.optimization.routing.exterior_connector_planner import (
+    plan_exterior_connectors,
+)
 from django_apps.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
     build_reconstruction_complete_map,
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from django_apps.asteroid_lab.services.reconstruction_capacity_summary import (
+    build_reconstruction_capacity_envelope,
+)
+from django_apps.asteroid_lab.services.required_external_connectors import (
+    required_external_connectors,
+)
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 
-_EXTERNAL_MARGIN_PRIORITY = 20
 _TRANSPORT_CELL_KINDS = frozenset({"space_belt", "space_pipe"})
 
 
@@ -129,16 +139,47 @@ def _default_transport_kind(
     return TransportKind.SHAPE_BELT
 
 
-def _external_margin_route_goals(
-    rim_cells: frozenset[Coord],
-    external_void_cells: frozenset[Coord],
+def _resource_kind_for_transport(transport_kind: TransportKind) -> str:
+    if transport_kind is TransportKind.FLUID_PIPE:
+        return "fluid"
+    return "shape"
+
+
+def _max_asteroid_throughput_per_min(
+    complete_map: ReconstructionCompleteMap,
+    transport_kind: TransportKind,
+) -> Decimal:
+    envelope = build_reconstruction_capacity_envelope(complete_map=complete_map)
+    resource = _resource_kind_for_transport(transport_kind)
+    return Decimal(envelope["by_resource"][resource]["max_throughput_per_min"])
+
+
+def _planned_exterior_route_goals(
+    inp_partial: OptimizationInput,
+    *,
+    transport_kind: TransportKind,
+    required_count: int,
+) -> tuple[RouteGoal, ...]:
+    plan = plan_exterior_connectors(
+        inp_partial,
+        required_count=required_count,
+        transport_kind=transport_kind,
+    )
+    return plan.selected_goals
+
+
+def _legacy_rim_adjacent_margin_route_goals(
+    inp: OptimizationInput,
+    *,
     transport_kind: TransportKind,
 ) -> tuple[RouteGoal, ...]:
+    """Pre-EVTC margin flood when throughput implies zero required connectors."""
+
     seen: set[Coord] = set()
     goals: list[RouteGoal] = []
-    for rim in sorted(rim_cells):
-        for neighbor in neighbors4(rim):
-            if neighbor not in external_void_cells or neighbor in seen:
+    for rim_cell in sorted(inp.rim_cells):
+        for neighbor in neighbors4(rim_cell):
+            if neighbor not in inp.external_void_cells or neighbor in seen:
                 continue
             seen.add(neighbor)
             goals.append(
@@ -146,7 +187,7 @@ def _external_margin_route_goals(
                     coord=neighbor,
                     goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
                     transport_kind=transport_kind,
-                    priority=_EXTERNAL_MARGIN_PRIORITY,
+                    priority=20,
                     existing_trunk=False,
                 )
             )
@@ -182,7 +223,38 @@ def optimization_input_from_reconstruction(
     existing_trunk, blocked_incompatible, _mismatch_by_kind = partition_existing_transport(
         existing_transport, transport_kind
     )
-    route_goals = _external_margin_route_goals(rim, external_void, transport_kind)
+    inp_partial = OptimizationInput(
+        mineable_cells=mineable,
+        rim_cells=rim,
+        inner_cells=inner,
+        external_void_cells=external_void,
+        protected_corridor_cells=frozenset(),
+        existing_trunk_cells=existing_trunk,
+        transport_kind=transport_kind,
+        route_goals=(),
+        existing_transport_cells=existing_transport,
+        blocked_incompatible_transport_cells=blocked_incompatible,
+        coord_frame=coord_frame,
+        catalog_slice=catalog_slice,
+    )
+    max_throughput = _max_asteroid_throughput_per_min(complete_map, transport_kind)
+    required_count = required_external_connectors(
+        max_asteroid_throughput_per_min=max_throughput,
+        transport_kind=transport_kind,
+    )
+    if required_count <= 0:
+        route_goals = _legacy_rim_adjacent_margin_route_goals(
+            inp_partial,
+            transport_kind=transport_kind,
+        )
+        evtc_required_count: int | None = None
+    else:
+        route_goals = _planned_exterior_route_goals(
+            inp_partial,
+            transport_kind=transport_kind,
+            required_count=required_count,
+        )
+        evtc_required_count = required_count
 
     return OptimizationInput(
         mineable_cells=mineable,
@@ -197,6 +269,7 @@ def optimization_input_from_reconstruction(
         blocked_incompatible_transport_cells=blocked_incompatible,
         coord_frame=coord_frame,
         catalog_slice=catalog_slice,
+        required_external_connector_count=evtc_required_count,
     )
 
 

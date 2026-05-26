@@ -1,6 +1,6 @@
 # Current plan
 
-**Status (2026-05-30)**: **Roadmap v0.2 active** — ops canon (Track C) + test decontamination F-series (Track F) + standing gates (Track G). **v0.1 CLOSED** (Axis A+B catalog/RTTP core). Board: [`docs/superpowers/2026-05-24-asteroid-lab-catalog-rttp-roadmap.md`](../../docs/superpowers/2026-05-24-asteroid-lab-catalog-rttp-roadmap.md).
+**Status (2026-05-30)**: **Roadmap v0.2 active** — ops canon (Track C) + test decontamination F-series (Track F) + standing gates (Track G) + **Algorithm Stabilization (v0.2A Core Recovery)**. **v0.1 CLOSED** (Axis A+B catalog/RTTP core; product-grade algorithm correctness **not** fully proven). Board: [`docs/superpowers/2026-05-24-asteroid-lab-catalog-rttp-roadmap.md`](../../docs/superpowers/2026-05-24-asteroid-lab-catalog-rttp-roadmap.md). **Recovery canon:** [`docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md).
 
 **Runtime baseline (v0.1, on `master`)**: **RTTP Hybrid C** + **3B-S** Lab replay compose. Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
 
@@ -94,7 +94,11 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
+**EVTC (2026-05-26)** — Spec · Plan (links above). **EVTC-1a/1b CLOSED.** **EVTC-2–7 CLOSED** (code + narrow RTTP/EVTC + `test_fast.ps1` + evidence recapture). **OPEN PR:** [#104](https://github.com/tigers2020/Shapez2Factory/pull/104) on `feat/decontamination-pr-f2-asteroid-lab` (12 commits incl. placement-goal wire + test_map fixture). **Narrow:** `pytest -k "rttp or evtc or exterior_connector or route_probe"` — 232 passed. **Fast gate:** `scripts/test_fast.ps1` — 1597 passed. **Evidence:** [`after-evtc.json`](../../docs/superpowers/reports/2026-05-30-rttp-core-recovery-evidence-after-evtc.json) — `committed_extractor_count=22`, `validation_passed=true`, `gate_a_passed=false` (diagnostic). **A5 baseline 24→22:** EVTC weighted exterior-void probing prioritizes capacity-aligned exterior connector routes over legacy ring-port candidates; layout passes validation with 22 committed extractors; Gate A remains a diagnostic failure as expected. **EVTC-6b DEFERRED:** `route_not_shortest_feasible` — diagnostic code exists; validation wiring and enforcement are **not** part of this release. **Merge:** await CI (`test_full`, ruff, mypy per workflow); A2–A6 parallel WIP stashed locally — not in PR #104.
+
 **NEXT:** **Decontamination PR-F3** (`game_data` human/package review) — branch `feat/decontamination-pr-f3-game-data`. Plan: [`docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md`](../../docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md).
+
+**ACTIVE (parallel) — RTTP v0.2 Core Algorithm Recovery** — extension topology (S2b) · Gate B throughput. Spec: [`docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md) (**§13** — Gate A CLOSED 2026-05-26, Gate B OPEN). A2–A6 task evidence on branch WIP / separate PRs.
 
 **CLOSED (2026-05-30):** **Track B Task 6 — Lab pass_capable badge** — PR [#102](https://github.com/tigers2020/Shapez2Factory/pull/102) on `master` (`093a2143`).
 

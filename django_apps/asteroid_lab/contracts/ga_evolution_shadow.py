@@ -30,6 +30,7 @@ class GaEvolutionShadowSummary:
     gene_count: int
     anchor_count: int
     order_agreement_ratio: float
+    primary_selection_mode: str = "greedy_regret"
 
 
 __all__ = ["GaEvolutionShadowConfig", "GaEvolutionShadowSummary"]

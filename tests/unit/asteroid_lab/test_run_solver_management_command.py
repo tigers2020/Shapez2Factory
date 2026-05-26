@@ -16,7 +16,9 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
+    SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
+    SOLVER_RUN_CONFIG_RTTP_SELECTION_KEY,
 )
 
 pytestmark = pytest.mark.django_db
@@ -124,6 +126,42 @@ def test_run_solver_deferred_retry_execute_json_stdout() -> None:
     body = json.loads(out.getvalue())
     assert body.get("solver_run_id") is not None
     assert "solver_summary" in body
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_run_solver_selection_mode_evolution_sets_config() -> None:
+    proj = m.AsteroidProject.objects.create(name="CliGa2", slug="cli-run-ga2-evolution")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    out = StringIO()
+    with pytest.raises(SystemExit) as exc_info:
+        call_command(
+            "run_solver",
+            slug=proj.slug,
+            selection_mode="evolution",
+            no_replay=True,
+            stdout=out,
+            stderr=StringIO(),
+        )
+    assert exc_info.value.code == 1
+    run = m.SolverRun.objects.filter(project_id=proj.pk).order_by("-id").first()
+    assert run is not None
+    selection = (run.config_json or {}).get(SOLVER_RUN_CONFIG_RTTP_SELECTION_KEY) or {}
+    assert selection.get("mode") == "evolution"
+    ga_shadow = (run.config_json or {}).get(SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY) or {}
+    assert ga_shadow.get("enabled") is True
+
+
+def test_run_solver_macro_only_and_selection_mode_evolution_raises() -> None:
+    proj = m.AsteroidProject.objects.create(name="CliGa2Conflict", slug="cli-ga2-macro-conflict")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    with pytest.raises(CommandError, match="Cannot combine"):
+        call_command(
+            "run_solver",
+            slug=proj.slug,
+            macro_only=True,
+            selection_mode="evolution",
+            stderr=StringIO(),
+        )
 
 
 def test_run_solver_macro_only_and_deferred_retry_raises() -> None:

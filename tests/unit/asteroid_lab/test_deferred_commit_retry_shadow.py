@@ -370,7 +370,7 @@ def test_deferred_shadow_runs_before_lns_and_unchanged_by_lns(
     with (
         patch.object(
             pipeline_mod,
-            "select_genome",
+            "select_primary_genome",
             return_value=fake_genome,
         ),
         patch.object(

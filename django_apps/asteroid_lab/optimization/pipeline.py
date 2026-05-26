@@ -25,6 +25,7 @@ from django_apps.asteroid_lab.contracts.deferred_retry_execute import (
 )
 from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
 from django_apps.asteroid_lab.contracts.ga_evolution_shadow import GaEvolutionShadowConfig
+from django_apps.asteroid_lab.contracts.selection_mode import SelectionMode
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
     ExtractorPlacementPolicy,
@@ -87,14 +88,12 @@ from django_apps.asteroid_lab.optimization.selection.ga_evolution_shadow import 
     build_ga_evolution_shadow_summary,
     ga_evolution_shadow_metrics,
 )
-from django_apps.asteroid_lab.optimization.selection.greedy_regret import (
-    PlacementGenome,
-    select_genome,
-)
+from django_apps.asteroid_lab.optimization.selection.greedy_regret import PlacementGenome
 from django_apps.asteroid_lab.optimization.selection.macro_equivalence import dedupe_macros
 from django_apps.asteroid_lab.optimization.selection.macro_greedy_regret import (
     select_macro_genome,
 )
+from django_apps.asteroid_lab.optimization.selection.primary_genome import select_primary_genome
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
 from django_apps.asteroid_lab.optimization.validation.catalog_layout_validation import (
@@ -211,13 +210,14 @@ def _append_ga_evolution_shadow_step(
     steps: list[dict[str, Any]],
     *,
     shadow_config: GaEvolutionShadowConfig,
+    selection_mode: SelectionMode,
     primary_genome: PlacementGenome,
     normal_candidates: tuple[BundleCandidate, ...],
     skeleton: RttpSkeleton,
     inp: OptimizationInput,
     goal_count: int,
 ) -> None:
-    """Record GA evolution shadow (observe-only; greedy genome remains commit authority)."""
+    """Record GA evolution shadow diagnostics (does not change commit authority)."""
 
     summary = build_ga_evolution_shadow_summary(
         primary_genome=primary_genome,
@@ -226,16 +226,23 @@ def _append_ga_evolution_shadow_step(
         inp=inp,
         goal_count=goal_count,
         config=shadow_config,
+        primary_mode=selection_mode,
     )
     metrics = ga_evolution_shadow_metrics(summary)
+    if selection_mode is SelectionMode.EVOLUTION:
+        title = "GA evolution shadow (greedy baseline)"
+        step_summary = "Greedy-regret baseline proposal; evolution genome is commit authority."
+    else:
+        title = "GA evolution shadow (observe-only)"
+        step_summary = "Parallel GA proposal; greedy genome remains commit authority."
     steps.append(
         algorithm_step_summary_to_json(
             {
                 "step_id": RttpAlgorithmStepId.RTTP_GA_EVOLUTION_SHADOW.value,
                 "phase": "genome_fitness",
                 "event_type": et.EVENT_TYPE_RTTP_GA_EVOLUTION_SHADOW,
-                "title": "GA evolution shadow (observe-only)",
-                "summary": "Parallel GA proposal; greedy genome remains commit authority.",
+                "title": title,
+                "summary": step_summary,
                 "metrics": metrics,
                 "passed": True,
             }
@@ -468,11 +475,13 @@ def _run_v01_rttp_pipeline(
         normal_candidates=generation.normal_candidates,
         transport_kind=inp.transport_kind,
     )
-    genome = select_genome(
-        generation.normal_candidates,
-        skeleton,
-        inp,
+    genome = select_primary_genome(
+        mode=config.selection_mode,
+        normal_candidates=generation.normal_candidates,
+        skeleton=skeleton,
+        inp=inp,
         goal_count=selection_goal,
+        ga_config=config.ga_evolution_shadow,
     )
     selection_payload = build_selection_replay_payload(
         genome,
@@ -483,6 +492,7 @@ def _run_v01_rttp_pipeline(
         "commit_order": list(genome.commit_order),
         "selected_count": len(genome.commit_order),
         "placement_goal_count": selection_goal,
+        "selection_mode": config.selection_mode.value,
     }
     if placement_plan is not None:
         selection_metrics.update(placement_plan.to_summary_dict())
@@ -503,6 +513,7 @@ def _run_v01_rttp_pipeline(
     _append_ga_evolution_shadow_step(
         steps,
         shadow_config=config.ga_evolution_shadow,
+        selection_mode=config.selection_mode,
         primary_genome=genome,
         normal_candidates=generation.normal_candidates,
         skeleton=skeleton,

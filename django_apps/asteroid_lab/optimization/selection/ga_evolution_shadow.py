@@ -8,6 +8,7 @@ from django_apps.asteroid_lab.contracts.ga_evolution_shadow import (
     GaEvolutionShadowConfig,
     GaEvolutionShadowSummary,
 )
+from django_apps.asteroid_lab.contracts.selection_mode import SelectionMode
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.selection.ga_evolution import select_genome_evolution
@@ -17,6 +18,7 @@ from django_apps.asteroid_lab.optimization.selection.genome_fitness import (
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import (
     PlacementGenome,
     SelectionConfig,
+    select_genome,
 )
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 
@@ -55,12 +57,14 @@ def build_ga_evolution_shadow_summary(
     inp: OptimizationInput,
     goal_count: int,
     config: GaEvolutionShadowConfig,
+    primary_mode: SelectionMode = SelectionMode.GREEDY_REGRET,
 ) -> GaEvolutionShadowSummary:
     primary_order = tuple(primary_genome.commit_order)
+    mode_value = primary_mode.value
     if not config.enabled:
         return GaEvolutionShadowSummary(
             enabled=False,
-            observe_only=True,
+            observe_only=config.observe_only,
             primary_commit_order=primary_order,
             shadow_proposed_commit_order=(),
             shadow_fitness_total=0.0,
@@ -70,20 +74,25 @@ def build_ga_evolution_shadow_summary(
             gene_count=0,
             anchor_count=0,
             order_agreement_ratio=1.0 if not primary_order else 0.0,
+            primary_selection_mode=mode_value,
         )
 
-    if not config.observe_only:
-        msg = "ga_evolution_shadow.observe_only must be true in PR-GA-1"
-        raise ValueError(msg)
-
     candidates_by_id = {candidate.candidate_id: candidate for candidate in normal_candidates}
-    shadow_genome = select_genome_evolution(
-        normal_candidates,
-        skeleton,
-        inp,
-        goal_count=goal_count,
-        config=config,
-    )
+    if primary_mode is SelectionMode.EVOLUTION:
+        shadow_genome = select_genome(
+            normal_candidates,
+            skeleton,
+            inp,
+            goal_count=goal_count,
+        )
+    else:
+        shadow_genome = select_genome_evolution(
+            normal_candidates,
+            skeleton,
+            inp,
+            goal_count=goal_count,
+            config=config,
+        )
     shadow_order = tuple(shadow_genome.commit_order)
     shadow_fitness = evaluate_genome_fitness(
         shadow_order,
@@ -96,7 +105,7 @@ def build_ga_evolution_shadow_summary(
 
     return GaEvolutionShadowSummary(
         enabled=True,
-        observe_only=True,
+        observe_only=config.observe_only,
         primary_commit_order=primary_order,
         shadow_proposed_commit_order=shadow_order,
         shadow_fitness_total=shadow_fitness,
@@ -106,6 +115,7 @@ def build_ga_evolution_shadow_summary(
         gene_count=len(shadow_order),
         anchor_count=_anchor_count(shadow_order, candidates_by_id),
         order_agreement_ratio=_order_agreement_ratio(primary_order, shadow_order),
+        primary_selection_mode=mode_value,
     )
 
 
@@ -122,6 +132,7 @@ def ga_evolution_shadow_metrics(summary: GaEvolutionShadowSummary) -> dict[str, 
         "gene_count": summary.gene_count,
         "anchor_count": summary.anchor_count,
         "order_agreement_ratio": summary.order_agreement_ratio,
+        "primary_selection_mode": summary.primary_selection_mode,
     }
 
 

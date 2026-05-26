@@ -8,7 +8,9 @@ param(
     [switch]$MacroOnly,
     [switch]$NoReplay,
     [switch]$Json,
-    [switch]$DeferredRetryExecute
+    [switch]$DeferredRetryExecute,
+    [ValidateSet("greedy_regret", "evolution")]
+    [string]$SelectionMode
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,6 +31,9 @@ if ($Json) {
 }
 if ($DeferredRetryExecute) {
     $argsList += "--deferred-retry-execute"
+}
+if ($SelectionMode) {
+    $argsList += @("--selection-mode", $SelectionMode)
 }
 
 python @argsList

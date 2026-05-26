@@ -5,7 +5,7 @@
 **Owner:** asteroid-lab / RTTP Layer 3 (selection)  
 **Track:** v0.1 GA promotion — post Capacity C-GATE CLOSED ([#94](https://github.com/tigers2020/Shapez2Factory/pull/94) `ec1b6a26`)  
 **Parent:** [`2026-05-22-rttp-hybrid-c-layout-design.md`](2026-05-22-rttp-hybrid-c-layout-design.md) Layer 3 · [`documents/Algorithm/asteroid_lab_05_genome_fitness.md`](../../../documents/Algorithm/asteroid_lab_05_genome_fitness.md)  
-**Implementation plan:** [`../plans/2026-05-29-rttp-ga-evolution.md`](../plans/2026-05-29-rttp-ga-evolution.md)  
+**Implementation plan:** PR-GA-1 [`../plans/2026-05-29-rttp-ga-evolution.md`](../plans/2026-05-29-rttp-ga-evolution.md) (CLOSED) · PR-GA-2 [`../plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md`](../plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md) (pending approval)  
 **Queue:** [`documents/ai/current_plan.md`](../../../documents/ai/current_plan.md)
 
 **Related (patterns):**
@@ -199,7 +199,9 @@ Insert **after** `RTTP_GENOME_SELECTION`, **before** deferred retry shadow / com
 
 ---
 
-## §5 — PR-GA-2 scope (config-gated swap) — outline only
+## §5 — PR-GA-2 scope (config-gated swap)
+
+**Executable checklist:** [`../plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md`](../plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md) (implementation blocked until plan approval).
 
 ### In scope (separate PR / plan appendix)
 

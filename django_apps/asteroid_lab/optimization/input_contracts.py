@@ -10,6 +10,7 @@ from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCa
 from django_apps.asteroid_lab.contracts.catalog_placement import CatalogValidationMode
 from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
 from django_apps.asteroid_lab.contracts.ga_evolution_shadow import GaEvolutionShadowConfig
+from django_apps.asteroid_lab.contracts.selection_mode import SelectionMode
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 
@@ -88,6 +89,7 @@ class RttpPipelineConfig:
         default_factory=DeferredRetryShadowConfig
     )
     ga_evolution_shadow: GaEvolutionShadowConfig = field(default_factory=GaEvolutionShadowConfig)
+    selection_mode: SelectionMode = SelectionMode.GREEDY_REGRET
     target_throughput_per_min: Decimal | None = None
     max_placement_goal_count: int = 32
     # (x, y, cell_kind) for per-anchor miner sprite (fluid vs shape field)
@@ -104,5 +106,6 @@ __all__ = [
     "RouteGoalKind",
     "RttpPipelineConfig",
     "RttpSkeletonConfig",
+    "SelectionMode",
     "TransportKind",
 ]

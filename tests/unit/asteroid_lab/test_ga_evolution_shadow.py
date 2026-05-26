@@ -223,11 +223,17 @@ def test_ga_shadow_config_from_run_config_enabled() -> None:
     assert cfg.observe_only is True
 
 
-def test_ga_shadow_observe_only_false_raises() -> None:
-    with pytest.raises(ValueError, match="observe_only"):
-        _ga_evolution_shadow_config_from_run_config(
-            {SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY: {"observe_only": False}}
-        )
+def test_ga_shadow_observe_only_false_allowed_not_commit_switch() -> None:
+    cfg = _ga_evolution_shadow_config_from_run_config(
+        {SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY: {"observe_only": False}}
+    )
+    assert cfg.observe_only is False
+    pipeline_cfg = _rttp_pipeline_config_from_run_config(
+        {SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY: {"observe_only": False}}
+    )
+    from django_apps.asteroid_lab.contracts.selection_mode import SelectionMode
+
+    assert pipeline_cfg.selection_mode is SelectionMode.GREEDY_REGRET
 
 
 def test_pipeline_config_includes_ga_shadow() -> None:

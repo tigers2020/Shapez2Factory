@@ -92,7 +92,11 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Recommended ACTIVE:** **D — throughput policy (T2)** — FL-06 merged to `master` (`7e46c736`, PR #98).
+**Recommended ACTIVE:** **Track B — pass-capable slug** (T3 ops evidence) — new spec after D-PR merge.
+
+**OPEN PR:** **D-PR — T2 diagnostic canon observability** — PR [#99](https://github.com/tigers2020/Shapez2Factory/pull/99) branch `feat/rttp-t2-diagnostic-shortfall-policy` (`07624e77`). Plan: [`docs/superpowers/plans/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon.md`](../../docs/superpowers/plans/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon.md). Spec: [`docs/superpowers/specs/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md). Local gates: RTTP `-k rttp` 165 passed / 4 skipped; contamination PASS; canon ops `solver_run_id` 110 — `t2_policy: expected_diagnostic_shortfall`, `issue_codes: throughput_target_shortfall`. **Do not merge** until GitHub `ci` workflow green (if queued).
+
+**CLOSED (2026-05-30):** **D-GOV — Track D throughput policy design (approach C)** — diagnostic canon T2 shortfall = expected policy; no forced T2 PASS on `copy-import-495e552c`. Spec approved.
 
 **CLOSED (2026-05-30, merged):** **FL-06 output-stub / route-reservation alignment** — H1a fix in `incremental_commit`; canon T1b PASS (Run 109, 30 commits). Spec: [`docs/superpowers/specs/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md) · plan: [`docs/superpowers/plans/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment.md`](../../docs/superpowers/plans/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment.md) · notes: [`docs/superpowers/reports/2026-05-30-rttp-fl06-route-reservation-investigation-notes.md`](../../docs/superpowers/reports/2026-05-30-rttp-fl06-route-reservation-investigation-notes.md).
 
@@ -100,7 +104,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 Macro unpause **PAUSED** (child-pool fixture spec first). PR-GA-2 / CC-3B C-track CLOSED — do not reopen without regression evidence.
 
-**CLOSED (2026-05-30):** RTTP **CC-3B ops authority tier** (C track) — T0/T1a/T1b/T2/T3 taxonomy; `copy-import-495e552c` = diagnostic canon (T0+T1a pass; T1b/T2/T3 fail) — governance on `master` (`32c55473`). Spec: [`docs/superpowers/specs/2026-05-30-rttp-ops-authority-tier-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-ops-authority-tier-design.md). Supersedes CC-3B “throughput-only” framing in [`2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md) §3.3.
+**CLOSED (2026-05-30):** RTTP **CC-3B ops authority tier** (C track) — T0/T1a/T1b/T2/T3 taxonomy; `copy-import-495e552c` = diagnostic canon — governance on `master` (`32c55473`). Post-FL-06: T0/T1a/T1b pass; **T2 expected shortfall** per Track D spec (not merge blocker); T3 blocked until pass-capable slug (Track B). Spec: [`docs/superpowers/specs/2026-05-30-rttp-ops-authority-tier-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-ops-authority-tier-design.md). Supersedes CC-3B “throughput-only” framing in [`2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md) §3.3.
 
 **CLOSED (2026-05-30):** RTTP GA evolution **PR-GA-2** — config-gated `selection.mode` (evolution primary) — PR [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) squash-merged to `master` (`e43e197b`). Governance close: [`docs/superpowers/specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md) (CC-3A selection-path ops; CC-3B → ops tier spec). Plan: [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md) · design: [`docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md) §5.
 

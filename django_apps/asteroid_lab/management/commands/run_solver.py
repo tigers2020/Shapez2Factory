@@ -222,6 +222,11 @@ class Command(BaseCommand):  # type: ignore[misc]
         issue_codes = summary.get("issue_codes") or []
         if issue_codes:
             lines.append(f"issue_codes: {', '.join(str(c) for c in issue_codes)}")
+        if summary.get("diagnostic_expected_shortfall"):
+            lines.append(
+                "t2_policy: expected_diagnostic_shortfall "
+                "(diagnostic canon; T3 ops not applicable)"
+            )
         if body.get("error_code"):
             lines.append(f"error_code: {body['error_code']}")
         if body.get("message"):

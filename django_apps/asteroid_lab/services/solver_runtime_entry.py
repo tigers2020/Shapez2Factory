@@ -611,6 +611,9 @@ def _run_rttp_solver_for_map_input(
             config=run_config,
         )
     run_id = int(run_dto.id)
+    project_slug: str | None = (
+        m.AsteroidProject.objects.filter(pk=int(project_id)).values_list("slug", flat=True).first()
+    )
     try:
         _readback_solver_run_provenance(run_id, expected=game_data_provenance)
     except (ProvenanceParseError, ValueError) as exc:
@@ -720,6 +723,7 @@ def _run_rttp_solver_for_map_input(
         throughput_budget_fields=budget_fields,
         throughput_goal=throughput_goal_payload,
         throughput_shortfall_reason=shortfall_reason,
+        project_slug=project_slug,
     )
     _persist_solver_run_outcome(
         run_id,

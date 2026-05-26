@@ -290,8 +290,16 @@
     }
   }
 
+  function diagnosticT2ShortfallStatusText(run) {
+    if (!run || run.diagnostic_expected_shortfall !== true) return null;
+    const msgid =
+      "Expected diagnostic T2 shortfall (route-feasible vs reconstruction max); not a regression gate.";
+    return typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
+  }
+
   function runCapacityFailed(run) {
     if (!run || typeof run !== "object") return false;
+    if (run.diagnostic_expected_shortfall === true) return false;
     if (run.run_success === true) return false;
     // Top-level null when no throughput target (see _throughput_budget_satisfied_top_level).
     if (run.throughput_budget_satisfied === false) {
@@ -1794,6 +1802,8 @@
       if (run.status === "failed" || run.validation_passed === false) {
         return "validation failed";
       }
+      const diagnosticText = diagnosticT2ShortfallStatusText(run);
+      if (diagnosticText) return diagnosticText;
       if (runCapacityFailed(run)) {
         return capacityFailedStatusText(run);
       }
@@ -1817,13 +1827,19 @@
         run && run.throughput_target && typeof run.throughput_target === "object"
           ? run.throughput_target
           : null;
+      const diagnosticSuffix =
+        run && run.diagnostic_expected_shortfall === true
+          ? typeof shapezUiT === "function"
+            ? shapezUiT(" (expected on diagnostic canon)")
+            : " (expected on diagnostic canon)"
+          : "";
       if (key === "throughput_target_shortfall" && tt) {
         const dash = labUiDash();
         const shortfall = tt.throughput_shortfall_per_min;
         if (shortfall != null && shortfall !== dash) {
           const perMinLabel = typeof shapezUiT === "function" ? shapezUiT("/min") : "/min";
           const shortLabel = typeof shapezUiT === "function" ? shapezUiT("Short by") : "Short by";
-          return shortLabel + " " + formatCompactNumber(shortfall) + perMinLabel;
+          return shortLabel + " " + formatCompactNumber(shortfall) + perMinLabel + diagnosticSuffix;
         }
       }
       const msgidByCode = {
@@ -1831,7 +1847,8 @@
         rttp_validation_failed: "RTTP validation failed",
       };
       const msgid = msgidByCode[key] || key;
-      return typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
+      const base = typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
+      return key === "throughput_target_shortfall" ? base + diagnosticSuffix : base;
     }
 
     function formatCompactNumber(value) {

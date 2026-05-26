@@ -13,6 +13,7 @@ from django_apps.asteroid_lab.catalog.projection_compat_metrics import (
     equipment_projection_metrics,
 )
 from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCatalogSlice
+from django_apps.asteroid_lab.contracts.rttp_ops_policy import classify_t2_policy
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 from django_apps.asteroid_lab.reconstruction.confidence import QUALITY_TIER_CONFIDENT
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
@@ -165,6 +166,7 @@ def build_rttp_solver_summary(
     throughput_budget_fields: Mapping[str, Any] | None = None,
     throughput_goal: Mapping[str, Any] | None = None,
     throughput_shortfall_reason: str | None = None,
+    project_slug: str | None = None,
 ) -> dict[str, Any]:
     """Aggregate RTTP scalars and per-step summaries for ``SolverRun.config_json``."""
 
@@ -240,6 +242,12 @@ def build_rttp_solver_summary(
                 }
             )
             summary["issue_details"] = details
+    if throughput_budget_fields is not None:
+        policy = classify_t2_policy(
+            project_slug=project_slug,
+            throughput_budget_satisfied=summary.get("throughput_budget_satisfied"),
+        )
+        summary.update(policy.as_summary_fields())
     return summary
 
 

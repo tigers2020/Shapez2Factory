@@ -92,7 +92,9 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Recommended ACTIVE:** **E — T1b commit-layout read-only investigation** on diagnostic canon `copy-import-495e552c` (catalog placement failure taxonomy before T2/T3 recovery). Alternates: macro child-pool fixture spec (B) · throughput policy (D) · pass-capable slug A/B.
+**Recommended ACTIVE:** **Fix spec for FL-06** — route reservation / output-stub alignment after multi-commit on `copy-import-495e552c` (owner matrix in E report). **D** (throughput) deferred until T1b routing/stub policy resolved.
+
+**CLOSED (2026-05-30):** **E — T1b pipeline layout validation investigation** (read-only) — primary **FL-06** on `copy-import-495e552c`; catalog audit pass confirmed. Spec: [`docs/superpowers/specs/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-design.md) · plan: [`docs/superpowers/plans/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation.md`](../../docs/superpowers/plans/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation.md) · report: [`docs/superpowers/reports/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-report.md`](../../docs/superpowers/reports/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-report.md).
 
 Macro unpause **PAUSED** (child-pool fixture spec first). PR-GA-2 / CC-3B C-track CLOSED — do not reopen without regression evidence.
 

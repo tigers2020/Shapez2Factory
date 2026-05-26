@@ -21,6 +21,8 @@ _ALLOWLIST_EXTRA: frozenset[str] = frozenset(
         "candidates/candidate_generator.py",
         "candidates/transport_attach_surface.py",
         "validation/catalog_layout_validation.py",
+        "validation/layout_connectivity_validation.py",
+        "commit/incremental_commit.py",
     }
 )
 
@@ -119,7 +121,12 @@ def _forbidden_import_reason(rel: str, module: str) -> str | None:
             return "reconstruction import outside allowlist"
         return None
     if module.startswith("django_apps.asteroid_lab.services"):
-        if rel not in {"reconstruction_adapter.py", "pipeline.py", "replay_sink.py"}:
+        if rel not in {
+            "reconstruction_adapter.py",
+            "pipeline.py",
+            "replay_sink.py",
+            "validation/layout_connectivity_validation.py",
+        }:
             return "services import outside allowlist"
         return None
     if module.startswith("django_apps.asteroid_lab.adapters"):

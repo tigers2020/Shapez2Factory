@@ -19,6 +19,7 @@ from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
 )
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
+from django_apps.asteroid_lab.optimization.routing.route_goals import probe_goal_priorities
 from django_apps.asteroid_lab.optimization.routing.route_probe import probe_route
 from django_apps.asteroid_lab.optimization.routing.route_probe_start import (
     resolve_route_probe_start,
@@ -169,8 +170,14 @@ def snapshot_commit_reservation(
     )
     path: tuple[Coord, ...] = ()
     route_cells: frozenset[Coord] = frozenset()
+    goal_priorities = probe_goal_priorities(inp)
     if probe_start is not None:
-        probe = probe_route(current_domain, probe_start, goals)
+        probe = probe_route(
+            current_domain,
+            probe_start,
+            goals,
+            goal_priority=goal_priorities,
+        )
         path = probe.path
         route_cells = _route_cells_from_path(path, candidate.occupied_cells)
     outcome = _attempt_commit_one(
@@ -182,6 +189,7 @@ def snapshot_commit_reservation(
         committed_route_cells=committed_route_cells,
         committed_fixed_output_transport_cells=committed_fixed_output_transport_cells,
         route_probe_start_policy=route_probe_start_policy,
+        goal_priorities=goal_priorities,
     )
     stub = candidate.output_stub
     return CommitRouteReservationSnapshot(

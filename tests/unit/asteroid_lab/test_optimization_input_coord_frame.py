@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_reconstruction,
@@ -15,6 +17,13 @@ from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from tests.support.reconstruction_complete_map_fixtures import (
     minimal_cleanup_and_recon_from_cells,
 )
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
 
 
 def test_optimization_input_defaults_to_island_raw_frame(

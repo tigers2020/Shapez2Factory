@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.contracts import rttp_ops_policy as policy
 from django_apps.asteroid_lab.contracts.rttp_ops_policy import (
     RTTP_DIAGNOSTIC_CANON_SLUG,
     RTTP_OPS_SLUG_CLASS_DIAGNOSTIC_CANON,
+    RTTP_OPS_SLUG_CLASS_PASS_CAPABLE,
     RTTP_OPS_SLUG_CLASS_UNKNOWN,
     T2_POLICY_REASON_DIAGNOSTIC_CANON_ROUTE_FEASIBLE_GAP,
     T2_POLICY_STATUS_EXPECTED_DIAGNOSTIC_SHORTFALL,
@@ -86,6 +88,36 @@ def test_build_rttp_solver_summary_omits_policy_without_throughput_budget_fields
     )
     assert "t2_policy_status" not in summary
     assert "diagnostic_expected_shortfall" not in summary
+
+
+def test_pass_capable_slug_shortfall_never_expected(monkeypatch) -> None:
+    monkeypatch.setattr(
+        policy,
+        "RTTP_PASS_CAPABLE_SLUGS",
+        frozenset({"cert-reference-slug"}),
+    )
+    row = classify_t2_policy(
+        project_slug="cert-reference-slug",
+        throughput_budget_satisfied=False,
+    )
+    assert row.t2_policy_status == T2_POLICY_STATUS_SHORTFALL
+    assert row.diagnostic_expected_shortfall is False
+    assert row.rttp_ops_slug_class == RTTP_OPS_SLUG_CLASS_PASS_CAPABLE
+
+
+def test_tiny_passable_v2_shortfall_never_expected_diagnostic() -> None:
+    from django_apps.asteroid_lab.contracts.rttp_ops_policy import (
+        RTTP_PASS_CAPABLE_TINY_PASSABLE_V2_SLUG,
+        T2_POLICY_STATUS_EXPECTED_DIAGNOSTIC_SHORTFALL,
+    )
+
+    row = classify_t2_policy(
+        project_slug=RTTP_PASS_CAPABLE_TINY_PASSABLE_V2_SLUG,
+        throughput_budget_satisfied=False,
+    )
+    assert row.t2_policy_status == T2_POLICY_STATUS_SHORTFALL
+    assert row.t2_policy_status != T2_POLICY_STATUS_EXPECTED_DIAGNOSTIC_SHORTFALL
+    assert row.diagnostic_expected_shortfall is False
 
 
 def test_build_rttp_solver_summary_merges_t2_policy_for_diagnostic_canon() -> None:

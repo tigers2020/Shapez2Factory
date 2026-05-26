@@ -6,6 +6,8 @@ import inspect
 from dataclasses import dataclass
 from enum import StrEnum
 
+from django_apps.asteroid_lab.adapters.catalog_geometry_transform import cardinal_unit_vector
+from django_apps.asteroid_lab.contracts.catalog_placement import CardinalDirection
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
     RouteProbeStartPolicy,
@@ -19,8 +21,14 @@ from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import (
     RouteCellDomain,
     build_route_domain_from_skeleton,
 )
-from django_apps.asteroid_lab.optimization.routing.route_goals import probe_goal_coords
-from django_apps.asteroid_lab.optimization.routing.route_probe import probe_route
+from django_apps.asteroid_lab.optimization.commit.route_path_evidence import (
+    build_route_path_evidence,
+)
+from django_apps.asteroid_lab.optimization.routing.route_goals import (
+    probe_goal_coords,
+    probe_goal_priorities,
+)
+from django_apps.asteroid_lab.optimization.routing.route_probe import RouteProbeResult, probe_route
 from django_apps.asteroid_lab.optimization.routing.route_probe_start import (
     resolve_route_probe_start,
 )
@@ -72,6 +80,7 @@ class CommitResult:
     reserved_route_cells: frozenset[Coord]
     domain_version: int
     conflicts: tuple[CommitConflict, ...]
+    commit_route_evidence: tuple[dict[str, object], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +90,7 @@ class CommitAttemptOutcome:
     committed: bool
     conflict: CommitConflict | None = None
     route_cells: frozenset[Coord] = frozenset()
+    route_probe: RouteProbeResult | None = None
 
 
 def initial_commit_domain(
@@ -114,6 +124,7 @@ def _rebuild_domain(
         trunk_mask_cells=trunk_mask,
         lift_edges=base.lift_edges,
         traversable_cells=traversable,
+        step_costs=base.step_costs,
     )
 
 
@@ -124,23 +135,95 @@ def _route_cells_from_path(
     return frozenset(cell for cell in path if cell not in occupied)
 
 
+def _augment_route_cells_with_output_spine(
+    candidate: BundleCandidate,
+    route_cells: frozenset[Coord],
+    domain: RouteCellDomain,
+    *,
+    committed_route_cells: frozenset[Coord] = frozenset(),
+    shareable_trunk_cells: frozenset[Coord] = frozenset(),
+    max_steps: int = 128,
+) -> frozenset[Coord]:
+    """Reserve belt cells from FOT through stub toward trunk when probe path is degenerate."""
+
+    unit = cardinal_unit_vector(CardinalDirection(candidate.output_dir))
+    stub = candidate.output_stub
+    fot = fixed_output_transport_cell(candidate)
+    spine: set[Coord] = set(route_cells)
+    trunk_shareable = shareable_trunk_cells or domain.trunk_mask_cells
+
+    def _may_traverse_toward_trunk(cell: Coord) -> bool:
+        if cell in candidate.occupied_cells or cell in domain.blocked_cells:
+            return False
+        if cell in committed_route_cells and cell not in trunk_shareable:
+            return False
+        return cell in domain.traversable_cells or cell in domain.trunk_mask_cells
+
+    cur = stub
+    while cur != fot and len(spine) < max_steps:
+        prev = (cur[0] - unit[0], cur[1] - unit[1])
+        if not _may_traverse_toward_trunk(prev):
+            break
+        spine.add(prev)
+        cur = prev
+
+    cur = stub
+    for _ in range(max_steps):
+        nxt = (cur[0] + unit[0], cur[1] + unit[1])
+        if not _may_traverse_toward_trunk(nxt):
+            break
+        spine.add(nxt)
+        if nxt in trunk_shareable:
+            break
+        cur = nxt
+
+    return frozenset(spine)
+
+
+def _private_route_cell_overlap(
+    route_cells: frozenset[Coord],
+    committed_route_cells: frozenset[Coord],
+    *,
+    shareable_trunk_cells: frozenset[Coord],
+) -> frozenset[Coord]:
+    """Cells where a new route collides with prior reservations outside shared trunk."""
+
+    overlap = route_cells & committed_route_cells
+    return frozenset(cell for cell in overlap if cell not in shareable_trunk_cells)
+
+
 def _route_cells_with_required_output_stub(
     candidate: BundleCandidate,
     route_cells: frozenset[Coord],
     domain: RouteCellDomain,
+    inp: OptimizationInput,
 ) -> frozenset[Coord] | None:
     """Ensure committed route reservation includes output_stub when routes are reserved (FL-06).
 
     When probe uses platform/anchor fallback, ``probe.path`` may omit ``output_stub`` even though
     validation requires stub membership in ``reserved_route_cells``. Include stub when it is not
-    blocked and not equipment-occupied; reject commit otherwise.
+    equipment-occupied; reject commit when stub lies on occupied equipment only.
+
+    ``domain.blocked_cells`` blocks route *probe* traversal, not belt reservation at the miner
+    output face (often outside ``traversable_cells`` for OUTWARD_FROM_RIM FOT).
     """
 
     stub = candidate.output_stub
-    if not route_cells or stub in route_cells:
-        return route_cells
-    if stub in candidate.occupied_cells or stub in domain.blocked_cells:
+    if stub in candidate.occupied_cells:
         return None
+    fot = fixed_output_transport_cell(candidate)
+    if stub in domain.blocked_cells:
+        if fot in inp.mineable_cells:
+            return None
+        if not route_cells:
+            return frozenset({stub})
+        if stub in route_cells:
+            return route_cells
+        return frozenset({stub}) | route_cells
+    if not route_cells:
+        return frozenset({stub})
+    if stub in route_cells:
+        return route_cells
     return frozenset({stub}) | route_cells
 
 
@@ -150,6 +233,7 @@ def _attempt_commit_one(
     skeleton: RttpSkeleton,
     inp: OptimizationInput,
     goals: frozenset[Coord],
+    goal_priorities: dict[Coord, int],
     committed_occupied: frozenset[Coord],
     committed_route_cells: frozenset[Coord],
     committed_fixed_output_transport_cells: frozenset[Coord],
@@ -231,6 +315,7 @@ def _attempt_commit_one(
         probe_start,
         goals,
         max_expansions=resolved_expansions,
+        goal_priority=goal_priorities,
     )
     if not probe.reachable:
         return CommitAttemptOutcome(
@@ -241,10 +326,18 @@ def _attempt_commit_one(
             ),
         )
     route_cells = _route_cells_from_path(probe.path, candidate.occupied_cells)
+    route_cells = _augment_route_cells_with_output_spine(
+        candidate,
+        route_cells,
+        current_domain,
+        committed_route_cells=committed_route_cells,
+        shareable_trunk_cells=skeleton.trunk_mask_cells,
+    )
     merged_route_cells = _route_cells_with_required_output_stub(
         candidate,
         route_cells,
         current_domain,
+        inp,
     )
     if merged_route_cells is None:
         return CommitAttemptOutcome(
@@ -255,7 +348,12 @@ def _attempt_commit_one(
             ),
         )
     route_cells = merged_route_cells
-    if route_cells & committed_route_cells:
+    private_overlap = _private_route_cell_overlap(
+        route_cells,
+        committed_route_cells,
+        shareable_trunk_cells=skeleton.trunk_mask_cells,
+    )
+    if private_overlap:
         return CommitAttemptOutcome(
             committed=False,
             conflict=CommitConflict(
@@ -279,7 +377,11 @@ def _attempt_commit_one(
                 reason=CommitConflictReason.HARD_PROTECTED_CONFLICT,
             ),
         )
-    return CommitAttemptOutcome(committed=True, route_cells=route_cells)
+    return CommitAttemptOutcome(
+        committed=True,
+        route_cells=route_cells,
+        route_probe=probe,
+    )
 
 
 def incremental_commit(
@@ -294,8 +396,10 @@ def incremental_commit(
     """Commit candidates in genome order; re-probe latest domain before each confirm."""
 
     goals = probe_goal_coords(inp, skeleton)
+    goal_priorities = probe_goal_priorities(inp)
     committed_ids: list[str] = []
     conflicts: list[CommitConflict] = []
+    evidence_rows: list[dict[str, object]] = []
     committed_occupied = domain.committed_occupied
     committed_route_cells = domain.committed_route_cells
     committed_fixed_output_transport_cells = domain.committed_fixed_output_transport_cells
@@ -318,6 +422,7 @@ def incremental_commit(
             skeleton=skeleton,
             inp=inp,
             goals=goals,
+            goal_priorities=goal_priorities,
             committed_occupied=committed_occupied,
             committed_route_cells=committed_route_cells,
             committed_fixed_output_transport_cells=committed_fixed_output_transport_cells,
@@ -329,6 +434,13 @@ def incremental_commit(
             continue
 
         route_cells = outcome.route_cells
+        if outcome.route_probe is not None:
+            evidence_rows.append(
+                build_route_path_evidence(
+                    candidate_id=candidate_id,
+                    probe=outcome.route_probe,
+                )
+            )
         committed_ids.append(candidate_id)
         committed_occupied = frozenset(committed_occupied | candidate.occupied_cells)
         committed_fixed_output_transport_cells = frozenset(
@@ -343,6 +455,7 @@ def incremental_commit(
         reserved_route_cells=committed_route_cells,
         domain_version=domain_version,
         conflicts=tuple(conflicts),
+        commit_route_evidence=tuple(evidence_rows),
     )
 
 
@@ -353,6 +466,7 @@ __all__ = [
     "CommitDomainState",
     "CommitResult",
     "_attempt_commit_one",
+    "_private_route_cell_overlap",
     "incremental_commit",
     "initial_commit_domain",
 ]

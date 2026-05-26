@@ -21,7 +21,10 @@ from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
     _attempt_commit_one,
 )
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
-from django_apps.asteroid_lab.optimization.routing.route_goals import probe_goal_coords
+from django_apps.asteroid_lab.optimization.routing.route_goals import (
+    probe_goal_coords,
+    probe_goal_priorities,
+)
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 
 
@@ -155,6 +158,7 @@ def run_bounded_deferred_retry(
         )
 
     goals = probe_goal_coords(inp, skeleton)
+    goal_priorities = probe_goal_priorities(inp)
     (
         committed_occupied,
         committed_fixed_output_transport_cells,
@@ -177,6 +181,7 @@ def run_bounded_deferred_retry(
             skeleton=skeleton,
             inp=inp,
             goals=goals,
+            goal_priorities=goal_priorities,
             committed_occupied=committed_occupied,
             committed_route_cells=committed_route_cells,
             committed_fixed_output_transport_cells=committed_fixed_output_transport_cells,

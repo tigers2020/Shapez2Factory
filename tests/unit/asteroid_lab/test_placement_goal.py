@@ -90,14 +90,16 @@ def test_reference_slug_plan_factor4_only(monkeypatch: pytest.MonkeyPatch) -> No
     plan = build_placement_goal_plan(
         normal_candidates=normals,
         transport_kind=TransportKind.SHAPE_BELT,
+        asteroid_field_cell_count=13,
+        placement_target_percent=100,
         target_throughput_per_min=Decimal("1536"),
         skeleton_capacity_goals=1,
-        configured_max_placement_goal=32,
+        legacy_configured_max_placement_goal=32,
     )
     assert plan.best_bundle_throughput_per_min == Decimal("120")
     assert plan.bundles_needed_for_target == 13
     assert plan.placement_goal_count == 13
-    assert plan.configured_max_placement_goal == 32
+    assert plan.legacy_configured_max_placement_goal == 32
 
 
 def test_plan_uses_factor16_when_reachable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -122,9 +124,11 @@ def test_plan_uses_factor16_when_reachable(monkeypatch: pytest.MonkeyPatch) -> N
     plan = build_placement_goal_plan(
         normal_candidates=normals,
         transport_kind=TransportKind.SHAPE_BELT,
+        asteroid_field_cell_count=2,
+        placement_target_percent=100,
         target_throughput_per_min=Decimal("1536"),
         skeleton_capacity_goals=1,
-        configured_max_placement_goal=32,
+        legacy_configured_max_placement_goal=32,
     )
     assert plan.best_bundle_throughput_per_min == Decimal("480")
     assert plan.bundles_needed_for_target == 4

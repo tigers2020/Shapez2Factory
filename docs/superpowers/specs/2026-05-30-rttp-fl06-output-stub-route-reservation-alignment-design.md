@@ -1,7 +1,7 @@
 # FL-06 Output Stub / Route Reservation Alignment — Design Spec
 
 **Date:** 2026-05-30  
-**Status:** APPROVED (FL-06 fix track; architect review 2026-05-30)  
+**Status:** CLOSED (implementation on branch `feat/rttp-fl06-output-stub-reservation`; pending merge)  
 **Owner:** RTTP Validation / commit routing domain  
 **Scope name:** **FL-06 Output Stub / Route Reservation Alignment**  
 **Parent (E-track CLOSED):** [`2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-design.md`](2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-design.md) · report [`2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-report.md`](../reports/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-report.md)  

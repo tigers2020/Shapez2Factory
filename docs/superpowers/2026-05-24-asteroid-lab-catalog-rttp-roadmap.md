@@ -61,7 +61,7 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | PR-GA-2 **CLOSED** [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`. **CC-3B ops tier CLOSED** [`2026-05-30-rttp-ops-authority-tier-design`](specs/2026-05-30-rttp-ops-authority-tier-design.md) `32c55473`. **E T1b investigation CLOSED** (primary **FL-06**) [`90fba2ed`](https://github.com/tigers2020/Shapez2Factory/commit/90fba2ed). **Next:** **FL-06** output-stub / route-reservation alignment [`2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design`](specs/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md) → **D** (after T1b) → A/B slug; macro child-pool optional. | — |
+| **A** | **FL-06 CLOSED** (branch `feat/rttp-fl06-output-stub-reservation`) — T1b layout PASS on canon (Run 109). **Next:** merge FL-06 PR → **D** throughput → A/B slug; macro child-pool optional. | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
 | **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
@@ -96,7 +96,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** **FL-06** output-stub / route-reservation alignment fix ([`2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design`](specs/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md) APPROVED) → **D** T2 throughput (after T1b) → **A/B** pass-capable ops slug. **E** T1b **CLOSED** @ [`90fba2ed`](https://github.com/tigers2020/Shapez2Factory/commit/90fba2ed) — primary FL-06. Diagnostic canon: `copy-import-495e552c` (T0/T1a pass; T1b FL-06; not T3). Macro **PAUSED**. See [`current_plan.md`](../../documents/ai/current_plan.md).
+**Open next:** Merge **FL-06** branch → **D** T2 throughput → **A/B** pass-capable ops slug. E T1b + FL-06 **CLOSED** on branch. Diagnostic canon: `copy-import-495e552c` (T0/T1a/T1b pass post-fix; T2/T3 still fail). See [`current_plan.md`](../../documents/ai/current_plan.md).
 
 ### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
 

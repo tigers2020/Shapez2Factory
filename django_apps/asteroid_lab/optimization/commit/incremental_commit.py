@@ -43,6 +43,7 @@ class CommitConflictReason(StrEnum):
     FIXED_OUTPUT_TRANSPORT_INSIDE_MINEABLE = "fixed_output_transport_inside_mineable"
     TRANSPORT_KIND_CONFLICT = "transport_kind_conflict"
     HARD_PROTECTED_CONFLICT = "hard_protected_conflict"
+    OUTPUT_STUB_NOT_RESERVED = "output_stub_not_reserved"
     CANDIDATE_NOT_FOUND = "candidate_not_found"
     MACRO_CHILD_CONFLICT = "macro_child_conflict"
 
@@ -121,6 +122,26 @@ def _route_cells_from_path(
     occupied: frozenset[Coord],
 ) -> frozenset[Coord]:
     return frozenset(cell for cell in path if cell not in occupied)
+
+
+def _route_cells_with_required_output_stub(
+    candidate: BundleCandidate,
+    route_cells: frozenset[Coord],
+    domain: RouteCellDomain,
+) -> frozenset[Coord] | None:
+    """Ensure committed route reservation includes output_stub when routes are reserved (FL-06).
+
+    When probe uses platform/anchor fallback, ``probe.path`` may omit ``output_stub`` even though
+    validation requires stub membership in ``reserved_route_cells``. Include stub when it is not
+    blocked and not equipment-occupied; reject commit otherwise.
+    """
+
+    stub = candidate.output_stub
+    if not route_cells or stub in route_cells:
+        return route_cells
+    if stub in candidate.occupied_cells or stub in domain.blocked_cells:
+        return None
+    return frozenset({stub}) | route_cells
 
 
 def _attempt_commit_one(
@@ -220,6 +241,20 @@ def _attempt_commit_one(
             ),
         )
     route_cells = _route_cells_from_path(probe.path, candidate.occupied_cells)
+    merged_route_cells = _route_cells_with_required_output_stub(
+        candidate,
+        route_cells,
+        current_domain,
+    )
+    if merged_route_cells is None:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.OUTPUT_STUB_NOT_RESERVED,
+            ),
+        )
+    route_cells = merged_route_cells
     if route_cells & committed_route_cells:
         return CommitAttemptOutcome(
             committed=False,

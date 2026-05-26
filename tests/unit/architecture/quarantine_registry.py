@@ -243,7 +243,6 @@ def path_matches_protected(path: str, protected: str) -> bool:
     return norm == prot or norm.startswith(prot + "/")
 
 
-
 PR_F_AGGRESSIVE_AUDIT_CANDIDATES: tuple[PrFAuditEntry, ...] = (
     PrFAuditEntry(
         id="f0-000-tests-integration-api-test_health",
@@ -2886,4 +2885,3 @@ PR_F_AGGRESSIVE_AUDIT_CANDIDATES: tuple[PrFAuditEntry, ...] = (
         evidence="F0 inventory",
     ),
 )
-

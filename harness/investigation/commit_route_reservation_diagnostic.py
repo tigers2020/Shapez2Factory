@@ -138,9 +138,7 @@ def replay_fl06_diagnostics_for_commit_order(
         if not outcome.committed:
             continue
         committed_occupied = frozenset(committed_occupied | candidate.occupied_cells)
-        committed_fot = frozenset(
-            committed_fot | {fixed_output_transport_cell(candidate)}
-        )
+        committed_fot = frozenset(committed_fot | {fixed_output_transport_cell(candidate)})
         committed_route_cells = frozenset(committed_route_cells | outcome.route_cells)
 
     return rows

@@ -281,7 +281,7 @@ Expose `t2_policy_status`, `diagnostic_expected_shortfall`, `t3_ops_eligible` fo
 - [x] `validation_passed` unchanged by policy classifier alone (`test_t2_policy_does_not_change_validation_passed`)
 - [x] Lab projection + JS: `diagnostic_expected_shortfall` bypasses `runCapacityFailed`
 - [x] `test_optimization_contamination.ps1` PASS (2026-05-30)
-- [ ] Canon slug ops readback: `manage.py run_solver --slug copy-import-495e552c` (post-merge / local DB)
+- [x] Canon slug ops readback: `manage.py run_solver --slug copy-import-495e552c` — `solver_run_id` 110 (2026-05-30, PR #99 branch)
 - [x] Forbidden shortcuts: no fake `throughput_budget_satisfied`, no issue_codes stripping
 
 ---

@@ -71,11 +71,7 @@ def build_crop_copy(*, run_id: int, max_fields: int = 24) -> str:
         msg = "no commit anchors"
         raise ValueError(msg)
     origin = anchors[0]
-    cluster = [
-        a
-        for a in anchors
-        if abs(a[0] - origin[0]) + abs(a[1] - origin[1]) <= 8
-    ]
+    cluster = [a for a in anchors if abs(a[0] - origin[0]) + abs(a[1] - origin[1]) <= 8]
     x0, x1, y0, y1 = _bbox(cluster, pad=2)
 
     field_in_box = sorted(

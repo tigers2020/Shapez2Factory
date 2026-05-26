@@ -4,7 +4,8 @@ Writes:
   var/log/pr_f0_audit_entries.py  — paste into quarantine_registry via _merge_pr_f_registry.py
   var/log/pr_f0_report_tables.md  — per-package tables for inventory report
 
-Not a CI gate. See docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md
+Not a CI gate. See docs/superpowers/specs/
+2026-05-30-test-cleanup-aggressive-decontamination-design.md
 """
 
 from __future__ import annotations
@@ -109,9 +110,7 @@ def classify(rel: str) -> tuple[str, str, str | None, str | None]:
             None,
             None,
         )
-    if rel.startswith("tests/unit/shapez_solver/") or rel.startswith(
-        "tests/unit/shapez_core/"
-    ):
+    if rel.startswith("tests/unit/shapez_solver/") or rel.startswith("tests/unit/shapez_core/"):
         return (
             "PROTECTED_CONTRACT",
             "Recipe graph / shape core public contracts",
@@ -182,9 +181,7 @@ def format_report_tables(files: list[str]) -> str:
 
 
 def main() -> None:
-    files = sorted(
-        p.relative_to(ROOT).as_posix() for p in ROOT.glob("tests/**/test_*.py")
-    )
+    files = sorted(p.relative_to(ROOT).as_posix() for p in ROOT.glob("tests/**/test_*.py"))
     grades: dict[str, int] = {}
     for rel in files:
         g, *_ = classify(rel)

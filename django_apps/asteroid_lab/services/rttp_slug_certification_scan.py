@@ -55,11 +55,7 @@ def resolve_scan_projects(
         project = m.AsteroidProject.objects.filter(pk=int(project_id)).first()
         return [project] if project is not None else []
 
-    qs = (
-        m.AsteroidProject.objects.filter(map_inputs__isnull=False)
-        .distinct()
-        .order_by("slug")
-    )
+    qs = m.AsteroidProject.objects.filter(map_inputs__isnull=False).distinct().order_by("slug")
     if not include_diagnostic:
         qs = qs.exclude(slug__in=RTTP_DIAGNOSTIC_CANON_SLUGS)
     if limit is not None and limit > 0:
@@ -103,9 +99,7 @@ def _row_from_certification(
         "t3_shell_passed": cert.t3_shell_pass,
         "validation_passed": summary.get("validation_passed"),
         "issue_codes": issue_codes,
-        "actual_committed": _parse_metric_number(
-            summary.get("actual_committed_output_per_min")
-        ),
+        "actual_committed": _parse_metric_number(summary.get("actual_committed_output_per_min")),
         "throughput_target_min": _parse_metric_number(summary.get("target_throughput_per_min")),
         "throughput_budget_satisfied": summary.get("throughput_budget_satisfied"),
         "t2_policy_status": summary.get("t2_policy_status"),
@@ -127,9 +121,7 @@ def scan_project_certification(
     run_solver: Callable[..., SolverRuntimeEntryResult] | None = None,
 ) -> dict[str, Any]:
     """Run one slug through the same runtime entry as ``run_solver`` and evaluate T3 tiers."""
-    solver_runner = (
-        run_solver if run_solver is not None else run_solver_runtime_for_project
-    )
+    solver_runner = run_solver if run_solver is not None else run_solver_runtime_for_project
     slug = str(project.slug)
     project_id = int(project.pk)
     slug_class = classify_rttp_ops_slug(slug)
@@ -247,9 +239,7 @@ def run_slug_certification_scan(
     catalog_slice: Any,
     run_solver: Callable[..., SolverRuntimeEntryResult] | None = None,
 ) -> dict[str, Any]:
-    solver_runner = (
-        run_solver if run_solver is not None else run_solver_runtime_for_project
-    )
+    solver_runner = run_solver if run_solver is not None else run_solver_runtime_for_project
     results = [
         scan_project_certification(
             project,

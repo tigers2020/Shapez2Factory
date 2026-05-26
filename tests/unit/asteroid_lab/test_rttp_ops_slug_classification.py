@@ -46,8 +46,7 @@ def test_diagnostic_canon_wins_when_slug_in_both_lists(monkeypatch: pytest.Monke
         frozenset({RTTP_DIAGNOSTIC_CANON_SLUG}),
     )
     assert (
-        classify_rttp_ops_slug(RTTP_DIAGNOSTIC_CANON_SLUG)
-        == RTTP_OPS_SLUG_CLASS_DIAGNOSTIC_CANON
+        classify_rttp_ops_slug(RTTP_DIAGNOSTIC_CANON_SLUG) == RTTP_OPS_SLUG_CLASS_DIAGNOSTIC_CANON
     )
 
 

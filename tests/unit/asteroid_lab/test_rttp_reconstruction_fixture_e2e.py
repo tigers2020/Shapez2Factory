@@ -22,6 +22,13 @@ from django_apps.asteroid_lab.reconstruction.topology_contract import (
 )
 from tests.support.catalog_test_fixtures import build_minimal_test_catalog_slice
 
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
+
 
 def _optimization_input_from_fixture_line(line_index: int) -> OptimizationInput:
     required_copy, _solved_copy = load_reconstruction_fixture_line_pairs()[line_index]

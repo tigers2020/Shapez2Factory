@@ -4,6 +4,15 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pytest
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
+
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,

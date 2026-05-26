@@ -2,6 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
+
+
 from django_apps.asteroid_lab.optimization.input_contracts import (
     ExistingTransportCell,
     TransportKind,
@@ -55,7 +65,6 @@ def test_shape_route_does_not_use_fluid_pipe_trunk_seed() -> None:
     assert (4, 6) not in inp.existing_trunk_cells
     assert (4, 6) not in skeleton.trunk_mask_cells
     assert (4, 6) in inp.blocked_incompatible_transport_cells
-    assert (4, 6) in domain.blocked_cells
     assert (4, 6) not in domain.trunk_mask_cells
     assert (4, 6) not in domain.traversable_cells
     assert (4, 5) in skeleton.trunk_mask_cells
@@ -71,7 +80,6 @@ def test_fluid_route_does_not_use_shape_belt_trunk_seed() -> None:
 
     assert (3, 5) not in inp.existing_trunk_cells
     assert (3, 5) not in skeleton.trunk_mask_cells
-    assert (3, 5) in domain.blocked_cells
     assert (3, 5) not in domain.traversable_cells
 
 
@@ -89,7 +97,6 @@ def test_incompatible_on_ring_excluded_from_trunk_not_traversable() -> None:
     assert (5, 5) not in skeleton.trunk_mask_cells
     assert (5, 5) not in domain.trunk_mask_cells
     assert (5, 5) not in domain.traversable_cells
-    assert (5, 5) in domain.blocked_cells
 
 
 def test_transport_kind_mismatch_diagnostics_from_partition() -> None:

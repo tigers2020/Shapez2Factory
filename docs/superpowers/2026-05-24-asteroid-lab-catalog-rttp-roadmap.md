@@ -61,7 +61,7 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | **ACTIVE:** PR-GA-1 GA shadow ([`2026-05-29-rttp-ga-evolution-design`](specs/2026-05-29-rttp-ga-evolution-design.md)); PR-GA-2 evolution mode after CLOSED. C-GATE **CLOSED** #94 `ec1b6a26`. Macro **PAUSED**. Throughput PR-2a..2d **CLOSED** (#78–#81). | — |
+| **A** | **ACTIVE:** PR-GA-2 `selection.mode` ([`2026-05-29-rttp-ga-evolution-design`](specs/2026-05-29-rttp-ga-evolution-design.md) Appendix A). PR-GA-1 shadow **CLOSED** #95 `5b7ead43`. C-GATE **CLOSED** #94 `ec1b6a26`. Macro **PAUSED**. Throughput PR-2a..2d **CLOSED** (#78–#81). | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
 | **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
@@ -96,7 +96,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** **GA** promotion (new spec + `current_plan` ACTIVE row). Capacity C-GATE **CLOSED** ([#94](https://github.com/tigers2020/Shapez2Factory/pull/94) `ec1b6a26`). Macro **PAUSED**. Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
+**Open next:** **PR-GA-2** `selection.mode` config-gated evolution primary (PR-GA-1 shadow **CLOSED** [#95](https://github.com/tigers2020/Shapez2Factory/pull/95) `5b7ead43`). Capacity C-GATE **CLOSED** ([#94](https://github.com/tigers2020/Shapez2Factory/pull/94) `ec1b6a26`). Macro **PAUSED**. Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
 
 ### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
 

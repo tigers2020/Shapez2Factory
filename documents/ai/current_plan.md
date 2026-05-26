@@ -92,12 +92,13 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**ACTIVE (2026-05-29):** RTTP GA evolution **PR-GA-1** — observe-only shadow (greedy remains commit authority) — PR [#95](https://github.com/tigers2020/Shapez2Factory/pull/95) OPEN (`8d491734` on `feat/rttp-ga-evolution-shadow`). CI: lint/format/typecheck/test-fast/test-integration/macro-smoke **green** (2026-05-26).
-- Spec: [`docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md)
-- Plan: [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md)
-- Blocks: **PR-GA-2** `selection.mode` swap until PR-GA-1 CLOSED
+**ACTIVE (2026-05-29):** RTTP GA evolution **PR-GA-2** — config-gated `selection.mode` swap (evolution primary; shadow observe-only path already on `master`).
+- Spec: [`docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md) §5 · plan Appendix A
+- Plan: [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md) Appendix A
 
 Macro unpause **PAUSED** (child-pool fixture spec first). PR-CGATE-1b observability rename **not required** (gates green without production edits).
+
+**CLOSED (2026-05-29):** RTTP GA evolution **PR-GA-1** — observe-only shadow (`rttp.ga_evolution_shadow`; greedy remains commit authority) — PR [#95](https://github.com/tigers2020/Shapez2Factory/pull/95) squash-merged to `master` (`5b7ead43`). Default `ga_evolution_shadow.enabled=false`; `observe_only: false` rejected until PR-GA-2. Spec: [`2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md) · plan: [`2026-05-29-rttp-ga-evolution.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md).
 
 **CLOSED (2026-05-29):** Capacity C-GATE — complete-map SoT architecture gates — PR [#94](https://github.com/tigers2020/Shapez2Factory/pull/94) squash-merged to `master` (`ec1b6a26`). G1/G2 import + semantic token gates; G3/G4 complete-map regression + Lab sparse-overlay capacity contract; standing `scripts/test_capacity_sot.ps1`. No production solver semantics change. Spec: [`2026-05-29-reconstruction-capacity-c-gate-design.md`](../../docs/superpowers/specs/2026-05-29-reconstruction-capacity-c-gate-design.md) · plan: [`2026-05-29-reconstruction-capacity-c-gate.md`](../../docs/superpowers/plans/2026-05-29-reconstruction-capacity-c-gate.md).
 

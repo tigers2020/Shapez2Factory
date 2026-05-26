@@ -28,6 +28,10 @@ from django_apps.game_data.models.l10n import (
     LazyLocalizedTextRef,
     LocalizedMessage,
 )
+from django_apps.game_data.models.exterior_transport_capacity import (
+    ExteriorFluidTransportCapacity,
+    ExteriorShapeTransportCapacity,
+)
 from django_apps.game_data.models.mining import MiningExtractionRule
 from django_apps.game_data.models.references import GameDataReference
 from django_apps.game_data.models.reflection import ClrTypeRegistryEntry
@@ -93,6 +97,8 @@ __all__ = [
     "ConnectableSimulation",
     "ExportIncompleteSection",
     "ExportWarning",
+    "ExteriorFluidTransportCapacity",
+    "ExteriorShapeTransportCapacity",
     "FluidColor",
     "GameContentAsset",
     "GlobalBeltSpeedPolicy",

@@ -1055,6 +1055,57 @@ class LocalizedMessageAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
     message_preview.short_description = "Text"
 
 
+@admin.register(m.ExteriorShapeTransportCapacity)
+class ExteriorShapeTransportCapacityAdmin(admin.ModelAdmin):
+    list_display = (
+        "speed_tier",
+        "mini_unit_output_per_min",
+        "buildings_per_regular_belt",
+        "space_belt_full_belt_count",
+        "source_kind",
+        "is_active",
+    )
+    list_filter = ("speed_tier", "source_kind", "is_active")
+    search_fields = ("source_note",)
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_view_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return bool(request.user.is_active and request.user.is_staff)
+
+
+@admin.register(m.ExteriorFluidTransportCapacity)
+class ExteriorFluidTransportCapacityAdmin(admin.ModelAdmin):
+    list_display = (
+        "speed_tier",
+        "fluid_launcher_output_per_min",
+        "space_pipe_full_fluid_launcher_count",
+        "source_kind",
+        "is_active",
+    )
+    list_filter = ("speed_tier", "source_kind", "is_active")
+    search_fields = ("source_note",)
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_view_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return bool(request.user.is_active and request.user.is_staff)
+
+
 @admin.register(m.MiningExtractionRule)
 class MiningExtractionRuleAdmin(admin.ModelAdmin):
     list_display = (

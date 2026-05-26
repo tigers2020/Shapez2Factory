@@ -11,6 +11,10 @@ import pytest
 from django.core.management import call_command
 
 from django_apps.game_data.models import ImportBatch
+from django_apps.game_data.models.exterior_transport_capacity import (
+    ExteriorFluidTransportCapacity,
+    ExteriorShapeTransportCapacity,
+)
 from django_apps.game_data.models.mining import MiningExtractionRule
 from tests.unit.game_data._dump_expectations import (
     PINNED_BATCH_NAME,
@@ -33,6 +37,8 @@ def _require_game_data_dump(path: Path) -> None:
 _FLUSH_SKIP_TABLES = frozenset(
     {
         MiningExtractionRule._meta.db_table,
+        ExteriorShapeTransportCapacity._meta.db_table,
+        ExteriorFluidTransportCapacity._meta.db_table,
     }
 )
 
@@ -40,8 +46,8 @@ _FLUSH_SKIP_TABLES = frozenset(
 def _flush_committed_game_data(django_db_blocker: Any) -> None:
     """Delete imported game_data rows (module teardown / pre-loaddata). Never global flush.
 
-    CANON_MANUAL tables (e.g. MiningExtractionRule) are preserved — seeded by migration,
-    not loaddata.
+    CANON tables seeded by migration (MiningExtractionRule, Exterior*TransportCapacity)
+    are preserved — not loaddata.
     """
     from django.apps import apps
     from django.db import connection

@@ -1,7 +1,8 @@
-"""PR-D / PR-E — quarantine registry gates (stale path isolation).
+"""PR-D / PR-E / PR-F — quarantine registry gates (stale path isolation).
 
 Spec: docs/superpowers/specs/2026-05-24-decontamination-pr-d-quarantine-design.md
 PR-E: docs/superpowers/specs/2026-05-24-decontamination-pr-e-dead-code-design.md
+PR-F: docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md
 """
 
 from __future__ import annotations
@@ -15,8 +16,14 @@ from tests.unit.architecture.quarantine_registry import (
     MAX_TRANSITIVE_IMPORT_DEPTH,
     PR_E_APPLIED_DELETIONS,
     PR_E_DELETE_CANDIDATES,
+    PR_F_AGGRESSIVE_AUDIT_CANDIDATES,
+    PR_F_APPLIED_DELETIONS,
+    PR_F_APPROVED_DELETIONS,
+    PR_F_PROTECTED_TESTS,
     QUARANTINED_DOC_PATHS,
     QUARANTINED_MODULE_PREFIXES,
+    VALID_INVENTORY_GRADES,
+    path_matches_protected,
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -199,6 +206,60 @@ def test_pr_e_replacement_targets_exist() -> None:
             if not _replacement_exists(replacement):
                 missing.append(f"{entry.path} -> {replacement}")
     assert missing == [], f"missing replacements: {missing}"
+
+
+def test_pr_f_audit_candidates_have_valid_grades() -> None:
+    assert len(PR_F_AGGRESSIVE_AUDIT_CANDIDATES) >= 200
+    ids = [entry.id for entry in PR_F_AGGRESSIVE_AUDIT_CANDIDATES]
+    assert len(ids) == len(set(ids))
+    for entry in PR_F_AGGRESSIVE_AUDIT_CANDIDATES:
+        assert entry.grade in VALID_INVENTORY_GRADES
+        assert entry.path.strip()
+        assert entry.reason.strip()
+        assert entry.evidence.strip()
+
+
+def test_pr_f_approved_deletions_empty_on_f0() -> None:
+    assert PR_F_APPROVED_DELETIONS == ()
+    assert PR_F_APPLIED_DELETIONS == ()
+
+
+def test_pr_f_protected_tests_non_empty() -> None:
+    assert len(PR_F_PROTECTED_TESTS) >= 10
+    for entry in PR_F_PROTECTED_TESTS:
+        assert entry.strip()
+
+
+def test_pr_f_approved_never_overlaps_protected() -> None:
+    overlaps: list[str] = []
+    for entry in PR_F_APPROVED_DELETIONS:
+        for protected in PR_F_PROTECTED_TESTS:
+            if path_matches_protected(entry.path, protected):
+                overlaps.append(f"{entry.path} vs {protected}")
+    assert overlaps == []
+
+
+def test_pr_f_applied_replacements_exist() -> None:
+    missing: list[str] = []
+    for entry in PR_F_APPLIED_DELETIONS:
+        for replacement in entry.replacements:
+            if not _replacement_exists(replacement):
+                missing.append(f"{entry.path} -> {replacement}")
+    assert missing == [], f"missing PR-F replacements: {missing}"
+
+
+def test_pr_f_delete_grades_do_not_overlap_protected() -> None:
+    delete_grades = frozenset(
+        {"DUPLICATE_COVERAGE", "OBSOLETE_PRODUCT_PATH", "BROKEN_OR_DEAD"}
+    )
+    overlaps: list[str] = []
+    for entry in PR_F_AGGRESSIVE_AUDIT_CANDIDATES:
+        if entry.grade not in delete_grades:
+            continue
+        for protected in PR_F_PROTECTED_TESTS:
+            if path_matches_protected(entry.path, protected):
+                overlaps.append(f"{entry.id}: {entry.path} vs {protected}")
+    assert overlaps == []
 
 
 def test_quarantine_gate_does_not_overlap_pr_b_scope() -> None:

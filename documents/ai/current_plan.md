@@ -92,6 +92,8 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
+**ACTIVE:** **Decontamination PR-F0** — aggressive test inventory (no deletions). Spec: [`docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md`](../../docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md) · plan: [`docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md`](../../docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md) · inventory report: [`docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md`](../../docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md). **Not** coordinate/island-local PR-F. F1–F5 = gated deletes only via `PR_F_*` registry. Standing gate owner unchanged: `scripts/test_quarantine_registry.ps1`.
+
 **Recommended ACTIVE:** **Track B — pass-capable slug** (T3 ops evidence) — new spec after D-PR merge.
 
 **OPEN PR:** **D-PR — T2 diagnostic canon observability** — PR [#99](https://github.com/tigers2020/Shapez2Factory/pull/99) branch `feat/rttp-t2-diagnostic-shortfall-policy` (`07624e77`). Plan: [`docs/superpowers/plans/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon.md`](../../docs/superpowers/plans/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon.md). Spec: [`docs/superpowers/specs/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-throughput-policy-t2-diagnostic-canon-design.md). Local gates: RTTP `-k rttp` 165 passed / 4 skipped; contamination PASS; canon ops `solver_run_id` 110 — `t2_policy: expected_diagnostic_shortfall`, `issue_codes: throughput_target_shortfall`. **Do not merge** until GitHub `ci` workflow green (if queued).
@@ -341,6 +343,13 @@ Macro unpause **PAUSED** (child-pool fixture spec first). PR-GA-2 / CC-3B C-trac
   - `validation_passed` / `run_success` true; `issue_codes` `[]`
   - PR-4-15 note: final `rttp.commit` step is post-LNS snapshot (not before shadow)
 - **CLOSED (2026-05-24):** Commit survivability arc (v0.1) — PR-1 shadow + PR-2 policy + PR-3 bounded execute + PR-4 real-map ops; B-CS1 pytest + B-CS2 ops; full GA / macro / capacity / multi-round retry **out of scope**
+
+- Decontamination PR-F — Aggressive test decontamination
+  - Status: **ACTIVE** (PR-F0 inventory — design approved 2026-05-30)
+  - Spec: [`docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md`](../../docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md)
+  - Plan: [`docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md`](../../docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md)
+  - Slices: F0 inventory (no delete) → F1 mechanical → F2 asteroid_lab → F3 game_data → F4 web → F5 integration/fixtures/support
+  - Evidence: [`docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md`](../../docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md) (DRAFT until F0 merge)
 
 - Decontamination PR-E — Dead code deletion
   - Status: **CLOSED** (master)

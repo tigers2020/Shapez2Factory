@@ -312,8 +312,6 @@
   }
 
   function capacityFailedStatusText(run) {
-    const diagnosticText = diagnosticT2ShortfallStatusText(run);
-    if (diagnosticText) return diagnosticText;
     const placed =
       run.placed != null && run.placed !== "" && run.placed !== "—" ? run.placed : "—";
     const target =
@@ -1804,6 +1802,8 @@
       if (run.status === "failed" || run.validation_passed === false) {
         return "validation failed";
       }
+      const diagnosticText = diagnosticT2ShortfallStatusText(run);
+      if (diagnosticText) return diagnosticText;
       if (runCapacityFailed(run)) {
         return capacityFailedStatusText(run);
       }

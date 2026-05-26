@@ -146,9 +146,7 @@ def _forbidden_recon_cells_usage(tree: ast.Module, *, rel: str) -> list[str]:
             if any(s in node.func.id for s in _FORBIDDEN_CALLEE_SUBSTRINGS):
                 for arg in node.args:
                     if _is_recon_cells(arg, _RECON_RESULT_PARAM_NAMES):
-                        hits.append(
-                            f"{rel}:L{node.lineno}: recon.cells passed to {node.func.id}"
-                        )
+                        hits.append(f"{rel}:L{node.lineno}: recon.cells passed to {node.func.id}")
     return hits
 
 

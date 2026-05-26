@@ -38,6 +38,7 @@ _RTTP_PIPELINE_STEP_IDS = (
     RttpAlgorithmStepId.RTTP_ROUTE_DOMAIN,
     RttpAlgorithmStepId.RTTP_CANDIDATE_POOL,
     RttpAlgorithmStepId.RTTP_GENOME_SELECTION,
+    RttpAlgorithmStepId.RTTP_GA_EVOLUTION_SHADOW,
     RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_SHADOW,
     RttpAlgorithmStepId.RTTP_COMMIT,
     RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION,
@@ -198,6 +199,7 @@ def test_rttp_pipeline_algorithm_steps_match_milestone_event_types(
     _NON_MILESTONE_STEP_IDS = frozenset(
         {
             RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION.value,
+            RttpAlgorithmStepId.RTTP_GA_EVOLUTION_SHADOW.value,
             RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_SHADOW.value,
         }
     )

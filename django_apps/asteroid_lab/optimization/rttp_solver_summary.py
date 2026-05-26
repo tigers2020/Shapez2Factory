@@ -33,6 +33,7 @@ class RttpAlgorithmStepId(StrEnum):
     RTTP_COMMIT = "rttp.commit"
     RTTP_CATALOG_SLICE = "rttp.catalog_slice"
     RTTP_CATALOG_PLACEMENT_VALIDATION = "rttp.catalog_placement_validation"
+    RTTP_GA_EVOLUTION_SHADOW = "rttp.ga_evolution_shadow"
     RTTP_DEFERRED_COMMIT_RETRY_SHADOW = "rttp.deferred_commit_retry_shadow"
     RTTP_DEFERRED_COMMIT_RETRY_EXECUTE = "rttp.deferred_commit_retry_execute"
 

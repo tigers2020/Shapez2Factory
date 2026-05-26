@@ -61,7 +61,7 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | v0.1 **next track:** GA (new spec; C-GATE **CLOSED** #94 `ec1b6a26`). Macro **PAUSED**. Throughput PR-2a..2d **CLOSED** (#78–#81). | — |
+| **A** | **ACTIVE:** PR-GA-1 GA shadow ([`2026-05-29-rttp-ga-evolution-design`](specs/2026-05-29-rttp-ga-evolution-design.md)); PR-GA-2 evolution mode after CLOSED. C-GATE **CLOSED** #94 `ec1b6a26`. Macro **PAUSED**. Throughput PR-2a..2d **CLOSED** (#78–#81). | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
 | **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |

@@ -33,6 +33,7 @@ from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
     parse_provenance_config,
     provenance_to_config_dict,
 )
+from django_apps.asteroid_lab.contracts.selection_mode import SelectionMode
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
     FixedOutputTransportPolicy,
@@ -99,6 +100,7 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
+    SOLVER_RUN_CONFIG_RTTP_SELECTION_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
     SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY,
 )
@@ -223,6 +225,30 @@ def _ga_shadow_require_float(value: object, *, field: str) -> float:
     raise ValueError(msg)
 
 
+_VALID_SELECTION_MODES = frozenset(
+    {SelectionMode.GREEDY_REGRET.value, SelectionMode.EVOLUTION.value}
+)
+
+
+def _selection_mode_from_run_config(config: dict[str, Any]) -> SelectionMode:
+    """Map ``config_json.selection.mode`` (PR-GA-2); never reads solver_summary."""
+
+    raw = config.get(SOLVER_RUN_CONFIG_RTTP_SELECTION_KEY)
+    if raw is None:
+        return SelectionMode.GREEDY_REGRET
+    if not isinstance(raw, dict):
+        msg = "selection must be an object"
+        raise ValueError(msg)
+    mode_raw = raw.get("mode", SelectionMode.GREEDY_REGRET.value)
+    if not isinstance(mode_raw, str):
+        msg = "selection.mode must be a string"
+        raise ValueError(msg)
+    if mode_raw not in _VALID_SELECTION_MODES:
+        msg = f"selection.mode must be one of {sorted(_VALID_SELECTION_MODES)}"
+        raise ValueError(msg)
+    return SelectionMode(mode_raw)
+
+
 def _ga_evolution_shadow_config_from_run_config(
     config: dict[str, Any],
 ) -> GaEvolutionShadowConfig:
@@ -235,13 +261,10 @@ def _ga_evolution_shadow_config_from_run_config(
         msg = "ga_evolution_shadow must be an object"
         raise ValueError(msg)
     observe_only = _ga_shadow_require_bool(raw.get("observe_only", True), field="observe_only")
-    if not observe_only:
-        msg = "ga_evolution_shadow.observe_only must be true in PR-GA-1"
-        raise ValueError(msg)
     enabled = _ga_shadow_require_bool(raw.get("enabled", False), field="enabled")
     return GaEvolutionShadowConfig(
         enabled=enabled,
-        observe_only=True,
+        observe_only=observe_only,
         population_size=_ga_shadow_require_int(
             raw.get("population_size", 24),
             field="population_size",
@@ -311,6 +334,7 @@ def _rttp_pipeline_config_from_run_config(
     max_macro = int(max_raw) if max_raw is not None else 64
     shadow = _deferred_retry_shadow_config_from_run_config(config)
     ga_shadow = _ga_evolution_shadow_config_from_run_config(config)
+    selection_mode = _selection_mode_from_run_config(config)
     resolved_max_goal = (
         max_placement_goal_count
         if max_placement_goal_count is not None
@@ -321,6 +345,7 @@ def _rttp_pipeline_config_from_run_config(
         max_macro_candidates=max_macro,
         deferred_retry_shadow=shadow,
         ga_evolution_shadow=ga_shadow,
+        selection_mode=selection_mode,
         target_throughput_per_min=target_throughput_per_min,
         max_placement_goal_count=resolved_max_goal,
     )

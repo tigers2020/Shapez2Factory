@@ -13,8 +13,10 @@ from django_apps.asteroid_lab.services.placement_goal import parse_max_placement
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY,
     SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
+    SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
+    SOLVER_RUN_CONFIG_RTTP_SELECTION_KEY,
     SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY,
 )
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
@@ -81,6 +83,12 @@ class Command(BaseCommand):  # type: ignore[misc]
             default=None,
             help="Max bundles greedy-regret may select (1-128, default 32).",
         )
+        parser.add_argument(
+            "--selection-mode",
+            choices=("greedy_regret", "evolution"),
+            default=None,
+            help="Set config_json selection.mode (PR-GA-2 normative ops entrypoint).",
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
         slug = str(options["slug"]).strip()
@@ -103,11 +111,14 @@ class Command(BaseCommand):  # type: ignore[misc]
             raise CommandError(f"game_data snapshot failed: {exc.code.value}") from exc
 
         config: dict[str, Any] = {}
+        selection_mode = options.get("selection_mode")
         if options["macro_only"] and options["deferred_retry_execute"]:
             raise CommandError(
                 "Cannot combine --macro-only with --deferred-retry-execute "
                 "(v0.1 normal RTTP path only)."
             )
+        if options["macro_only"] and selection_mode == "evolution":
+            raise CommandError("Cannot combine --macro-only with --selection-mode=evolution.")
         if options["macro_only"]:
             config[SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY] = True
         if options["no_replay"]:
@@ -117,6 +128,15 @@ class Command(BaseCommand):  # type: ignore[misc]
                 "enabled": True,
                 "observe_only": False,
             }
+        if selection_mode is not None:
+            config[SOLVER_RUN_CONFIG_RTTP_SELECTION_KEY] = {"mode": selection_mode}
+            if selection_mode == "evolution":
+                config[SOLVER_RUN_CONFIG_RTTP_GA_EVOLUTION_SHADOW_KEY] = {
+                    "enabled": True,
+                    "generations": 4,
+                    "population_size": 24,
+                    "random_seed": 0,
+                }
         if options["throughput_target_percent"] is not None:
             try:
                 config[SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY] = (

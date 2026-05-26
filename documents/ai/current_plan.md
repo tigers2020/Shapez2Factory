@@ -92,9 +92,10 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**ACTIVE (2026-05-29):** RTTP GA evolution **PR-GA-2** — config-gated `selection.mode` swap (evolution primary; shadow observe-only path already on `master`).
-- Spec: [`docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md) §5 · plan Appendix A
-- Plan: [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md) Appendix A
+**ACTIVE (2026-05-29):** RTTP GA evolution **PR-GA-2** — config-gated `selection.mode` swap (evolution primary). **Implementation on branch `feat/rttp-ga-evolution-pr-ga-2`** (Tasks 0–8 green locally; Task 9 governance CLOSED after PR merge).
+- Spec: [`docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md) §5
+- Plan: [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md) (executable checklist; supersedes parent plan Appendix A outline)
+- Parent (PR-GA-1 CLOSED): [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md)
 
 Macro unpause **PAUSED** (child-pool fixture spec first). PR-CGATE-1b observability rename **not required** (gates green without production edits).
 

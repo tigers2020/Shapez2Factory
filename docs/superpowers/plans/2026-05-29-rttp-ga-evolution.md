@@ -552,19 +552,19 @@ powershell -File scripts/test_optimization_contamination.ps1
 
 ---
 
-## Appendix A — PR-GA-2 (config-gated swap) — outline only
+## Appendix A — PR-GA-2 (config-gated swap)
 
-**Do not implement in PR-GA-1 branch.**
+**Status:** Executable plan published — [`2026-05-29-rttp-ga-evolution-pr-ga-2.md`](2026-05-29-rttp-ga-evolution-pr-ga-2.md). **Do not implement from this outline;** use the dedicated plan (Tasks 0–9, TDD steps, invariants).
 
-| Task | Work |
-|------|------|
-| A1 | `SelectionMode` StrEnum + `RttpPipelineConfig.selection_mode` default `greedy_regret` |
-| A2 | Pipeline branch: `select_genome_evolution` when `evolution` |
-| A3 | Allow `ga_evolution_shadow.observe_only=false` only when mode=shadow? (N/A) — evolution mode uses GA as primary |
-| A4 | `config_json.selection.mode` mapper fail-closed |
-| A5 | Tests: frozen fixture greedy vs evolution genome diff optional |
-| A6 | Ops smoke: `manage.py run_solver --slug copy-import-495e552c` with config enabling evolution |
-| A7 | `current_plan` PR-GA-2 CLOSED |
+| Task | Work | Dedicated plan |
+|------|------|----------------|
+| A1 | `SelectionMode` StrEnum + `RttpPipelineConfig.selection_mode` | Task 1 |
+| A2 | Pipeline branch: `select_genome_evolution` when `evolution` | Tasks 3–4 |
+| A3 | Shadow policy cleanup (`observe_only` not commit switch) | Task 5 |
+| A4 | `config_json.selection.mode` mapper fail-closed | Task 2 |
+| A5 | Tests: default greedy unchanged; evolution primary commit spy | Task 4 |
+| A6 | Ops smoke: `copy-import-495e552c` `--selection-mode evolution` | Task 7 |
+| A7 | `current_plan` PR-GA-2 CLOSED | Task 9 |
 
 ---
 

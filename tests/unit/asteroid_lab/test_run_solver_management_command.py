@@ -208,6 +208,35 @@ def test_run_solver_prints_t2_policy_line_for_diagnostic_shortfall(monkeypatch) 
     assert "t2_policy: expected_diagnostic_shortfall" in out.getvalue()
 
 
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_run_solver_prints_pass_capable_slug_class_line(monkeypatch) -> None:
+    proj = m.AsteroidProject.objects.create(name="CliPassCap", slug="cli-pass-capable-line")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    summary = {
+        "validation_passed": True,
+        "rttp_ops_slug_class": "pass_capable",
+        "throughput_budget_satisfied": True,
+        "issue_codes": [],
+    }
+    fake_result = SolverRuntimeEntryResult(
+        ok=True,
+        solver_run_id=1000,
+        lab_replay_frames_json=[],
+        replay_track_metrics={},
+        solver_summary=summary,
+        validation_passed=True,
+    )
+    monkeypatch.setattr(
+        "django_apps.asteroid_lab.management.commands.run_solver.run_solver_runtime_for_project",
+        lambda *_args, **_kwargs: fake_result,
+    )
+    out = StringIO()
+    call_command("run_solver", slug=proj.slug, stdout=out, stderr=StringIO(), no_replay=True)
+    text = out.getvalue()
+    assert "rttp_ops_slug_class: pass_capable (T3 reference slug)" in text
+    assert "expected_diagnostic_shortfall" not in text
+
+
 def test_run_solver_command_unknown_slug_raises() -> None:
     with pytest.raises(CommandError, match="Unknown project slug"):
         call_command("run_solver", slug="no-such-project-slug")

@@ -30,6 +30,27 @@ def test_lab_js_maps_throughput_target_shortfall_to_gettext_msgid() -> None:
     assert 'throughput_target_shortfall: "throughput target shortfall"' in js
 
 
+def test_lab_template_ops_slug_badge_slot() -> None:
+    template = TEMPLATE.read_text(encoding="utf-8")
+    assert 'id="lab-detail-ops-slug-badge"' in template
+
+
+def test_lab_js_pass_capable_badge_contract() -> None:
+    js = (
+        REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
+    css = (REPO / "assets" / "css" / "input.css").read_text(encoding="utf-8")
+    assert "resolveRttpOpsSlugClass" in js
+    assert 'getElementById("lab-detail-ops-slug-badge")' in js
+    assert "Pass-capable" in js
+    assert "pass_capable" in js
+    assert "lab-ops-slug-badge--pass-capable" in css
+    detail_fn = js[js.index("function runDetailStatusLabel") : js.index("function labUiDash")]
+    diag_use = detail_fn.index("diagnosticT2ShortfallStatusText(run)")
+    pc_use = detail_fn.index("passCapableReferenceStatusText(run)")
+    assert diag_use < pc_use, "diagnostic shortfall copy must win over pass_capable status"
+
+
 def test_lab_footprint_subtitle_documents_field_cells() -> None:
     text = TEMPLATE.read_text(encoding="utf-8") + STAT_PARTIAL.read_text(encoding="utf-8")
     assert "field cells / map cells" in text

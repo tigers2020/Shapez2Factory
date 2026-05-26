@@ -92,12 +92,11 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**ACTIVE (2026-05-29):** RTTP GA evolution **PR-GA-2** — config-gated `selection.mode` swap (evolution primary). **Implementation on branch `feat/rttp-ga-evolution-pr-ga-2`** (Tasks 0–8 green locally; Task 9 governance CLOSED after PR merge).
-- Spec: [`docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md) §5
-- Plan: [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md) (executable checklist; supersedes parent plan Appendix A outline)
-- Parent (PR-GA-1 CLOSED): [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md)
+**v0.1 next track selection** — new spec + ACTIVE row (macro child-pool fixture **or** canon slug throughput-budget / CC-3B product fix **or** explicit defer). PR-GA-2 CLOSED; do not reopen without regression evidence.
 
 Macro unpause **PAUSED** (child-pool fixture spec first). PR-CGATE-1b observability rename **not required** (gates green without production edits).
+
+**CLOSED (2026-05-30):** RTTP GA evolution **PR-GA-2** — config-gated `selection.mode` (evolution primary) — PR [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) squash-merged to `master` (`e43e197b`). Governance close: [`docs/superpowers/specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md) (CC-3A selection-path ops; CC-3B throughput deferred). Plan: [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md) · design: [`docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md) §5.
 
 **CLOSED (2026-05-29):** RTTP GA evolution **PR-GA-1** — observe-only shadow (`rttp.ga_evolution_shadow`; greedy remains commit authority) — PR [#95](https://github.com/tigers2020/Shapez2Factory/pull/95) squash-merged to `master` (`5b7ead43`). Default `ga_evolution_shadow.enabled=false`; `observe_only: false` rejected until PR-GA-2. Spec: [`2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md) · plan: [`2026-05-29-rttp-ga-evolution.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md).
 

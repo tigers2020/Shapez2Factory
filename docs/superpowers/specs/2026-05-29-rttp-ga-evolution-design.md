@@ -1,11 +1,11 @@
 # RTTP GA Evolution — Design Spec
 
 **Date:** 2026-05-29  
-**Status:** Approved for implementation planning (B → A rollout)  
+**Status:** PR-GA-1 CLOSED ([#95](https://github.com/tigers2020/Shapez2Factory/pull/95) `5b7ead43`); PR-GA-2 CLOSED ([#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`, 2026-05-30)  
 **Owner:** asteroid-lab / RTTP Layer 3 (selection)  
 **Track:** v0.1 GA promotion — post Capacity C-GATE CLOSED ([#94](https://github.com/tigers2020/Shapez2Factory/pull/94) `ec1b6a26`)  
 **Parent:** [`2026-05-22-rttp-hybrid-c-layout-design.md`](2026-05-22-rttp-hybrid-c-layout-design.md) Layer 3 · [`documents/Algorithm/asteroid_lab_05_genome_fitness.md`](../../../documents/Algorithm/asteroid_lab_05_genome_fitness.md)  
-**Implementation plan:** PR-GA-1 [`../plans/2026-05-29-rttp-ga-evolution.md`](../plans/2026-05-29-rttp-ga-evolution.md) (CLOSED) · PR-GA-2 [`../plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md`](../plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md) (pending approval)  
+**Implementation plan:** PR-GA-1 [`../plans/2026-05-29-rttp-ga-evolution.md`](../plans/2026-05-29-rttp-ga-evolution.md) (CLOSED) · PR-GA-2 [`../plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md`](../plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md) (CLOSED) · governance close [`2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md`](2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md)  
 **Queue:** [`documents/ai/current_plan.md`](../../../documents/ai/current_plan.md)
 
 **Related (patterns):**
@@ -210,7 +210,7 @@ Insert **after** `RTTP_GENOME_SELECTION`, **before** deferred retry shadow / com
 - `select_genome_evolution(...)` — production path using same GA core as shadow (without shadow wrapper)
 - `config_json.selection.mode` fail-closed mapper
 - Tests: evolution mode returns genome; default unchanged on master fixtures
-- Ops smoke: `--config-json-path` with `selection.mode=evolution` on `copy-import-495e552c`
+- Ops smoke: `manage.py run_solver --selection-mode evolution` on `copy-import-495e552c` (CC-3A selection-path; see governance close spec)
 
 ### Non-goals (PR-GA-2)
 
@@ -279,10 +279,11 @@ Plan: docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md
 Blocks: PR-GA-2 (selection.mode swap) until PR-GA-1 CLOSED
 ```
 
-### After PR-GA-1 CLOSED
+### After PR-GA-2 CLOSED (2026-05-30)
 
 ```text
-ACTIVE: RTTP GA evolution PR-GA-2 — config-gated selection.mode
+CLOSED: RTTP GA evolution PR-GA-2 — config-gated selection.mode (#97 e43e197b)
+Next: v0.1 track selection per documents/ai/current_plan.md
 ```
 
 ---

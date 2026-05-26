@@ -36,7 +36,7 @@ RTTP is a **route-feasible placement optimizer**, not a “place many miners” 
 | 4 | Candidate Generator | `asteroid_lab_03` | ✅ `test_rttp_candidate_generator.py` |
 | 5 | Immediate Route Probe | `asteroid_lab_04` | ✅ probe at generation |
 | 6 | Candidate Pool | `asteroid_lab_03` | ✅ unreachable excluded from normal pool |
-| 7 | Evolutionary Search | `asteroid_lab_05` | 🟡 **greedy-regret** only ([`2026-05-22-rttp-hybrid-c`](specs/2026-05-22-rttp-hybrid-c-layout-design.md)); full GA deferred |
+| 7 | Evolutionary Search | `asteroid_lab_05` | 🟡 **greedy-regret** default + optional **evolution** primary ([`2026-05-29-rttp-ga-evolution-design`](specs/2026-05-29-rttp-ga-evolution-design.md) PR-GA-2 **CLOSED** #97 `e43e197b`); macro GA deferred |
 | 8 | Incremental Commit | `asteroid_lab_07` | ✅ `test_rttp_commit.py` (`test_commit_reprobes_latest_domain`) |
 | 9 | Reservation / Trunk | commit + trunk merge | ✅ `test_rttp_existing_trunk.py` |
 | 10 | Validation | `asteroid_lab_08` · ADR-003 | ✅ read-only core; catalog footprint D+ PR-1..PR-3 closed |
@@ -61,7 +61,7 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | **ACTIVE:** PR-GA-2 `selection.mode` ([`2026-05-29-rttp-ga-evolution-design`](specs/2026-05-29-rttp-ga-evolution-design.md) Appendix A). PR-GA-1 shadow **CLOSED** #95 `5b7ead43`. C-GATE **CLOSED** #94 `ec1b6a26`. Macro **PAUSED**. Throughput PR-2a..2d **CLOSED** (#78–#81). | — |
+| **A** | PR-GA-2 `selection.mode` **CLOSED** [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`. **Next:** macro child-pool fixture spec **or** CC-3B throughput-budget product track (new spec + ACTIVE row). PR-GA-1 **CLOSED** #95. C-GATE **CLOSED** #94. Macro **PAUSED**. | — |
 | **A (D+)** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination; FOT PR-1/2 + cross-commit hotfix on `master` | — |
 | **Decontamination** | — (PR-A..E **CLOSED** on `master`) | — |
@@ -96,7 +96,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** **PR-GA-2** `selection.mode` config-gated evolution primary (PR-GA-1 shadow **CLOSED** [#95](https://github.com/tigers2020/Shapez2Factory/pull/95) `5b7ead43`). Capacity C-GATE **CLOSED** ([#94](https://github.com/tigers2020/Shapez2Factory/pull/94) `ec1b6a26`). Macro **PAUSED**. Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
+**Open next:** v0.1 track selection — macro child-pool fixture spec **or** canon slug throughput-budget (CC-3B) **or** explicit defer ([`current_plan.md`](../../documents/ai/current_plan.md)). PR-GA-2 **CLOSED** [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`. PR-GA-1 **CLOSED** [#95](https://github.com/tigers2020/Shapez2Factory/pull/95) `5b7ead43`. Capacity C-GATE **CLOSED** [#94](https://github.com/tigers2020/Shapez2Factory/pull/94) `ec1b6a26`. Macro **PAUSED**. Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
 
 ### Roadmap drift cleanup — tombstone plans (PR #90) — master CLOSED
 
@@ -155,8 +155,9 @@ Parallel — MacroBundle T3
 
 | Step | Status | Note |
 |------|--------|------|
-| Greedy-regret `PlacementGenome` | ✅ | `test_rttp_greedy_regret.py` |
-| Full GA / evolution (Seq 4–5) | ⏸ deferred | Out of v0.1; not on this board until promoted |
+| Greedy-regret `PlacementGenome` (default) | ✅ | `test_rttp_greedy_regret.py` |
+| Bounded evolution primary (`selection.mode=evolution`) | ✅ | PR-GA-2 [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`; `test_rttp_ga_evolution_pr_ga_2.py` |
+| Macro pipeline GA / full Seq 4–5 | ⏸ deferred | New spec + board section required |
 
 ### B8–B9 — Steps 8–9 (commit + trunk)
 

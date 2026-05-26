@@ -1,7 +1,7 @@
 # RTTP GA Evolution PR-GA-2 — Governance Close Design
 
 **Date:** 2026-05-30  
-**Status:** Approved (close governance; implementation on branch `feat/rttp-ga-evolution-pr-ga-2`)  
+**Status:** CLOSED — PR-GA-2 merged ([#97](https://github.com/tigers2020/Shapez2Factory/pull/97) `e43e197b`, 2026-05-30)  
 **Owner:** RTTP Release Governance / asteroid-lab Layer 3 (selection)  
 **Scope:** **A only** — PR-GA-2 safe close (no new feature track, no macro unpause, no post-merge v0.1 selection)  
 **Parent design:** [`2026-05-29-rttp-ga-evolution-design.md`](2026-05-29-rttp-ga-evolution-design.md) §5  

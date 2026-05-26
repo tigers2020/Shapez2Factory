@@ -554,7 +554,7 @@ powershell -File scripts/test_optimization_contamination.ps1
 
 ## Appendix A — PR-GA-2 (config-gated swap)
 
-**Status:** Executable plan published — [`2026-05-29-rttp-ga-evolution-pr-ga-2.md`](2026-05-29-rttp-ga-evolution-pr-ga-2.md). **Do not implement from this outline;** use the dedicated plan (Tasks 0–9, TDD steps, invariants).
+**Status:** **CLOSED** (2026-05-30) — PR [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) squash-merged to `master` (`e43e197b`). Executable plan: [`2026-05-29-rttp-ga-evolution-pr-ga-2.md`](2026-05-29-rttp-ga-evolution-pr-ga-2.md). Governance close: [`../specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md`](../specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md).
 
 | Task | Work | Dedicated plan |
 |------|------|----------------|

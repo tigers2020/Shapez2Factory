@@ -1,0 +1,28 @@
+"""Gate A frozen bounds for P1-ELCP-RF-E0 (investigation test assertions only).
+
+Update only when rttp-core-recovery-test-map Gate A overlap-pack stale universe changes.
+Source: docs/superpowers/reports/2026-05-27-rttp-elcp-rf-d0-stale-candidate-reachable-report.md
+"""
+
+from __future__ import annotations
+
+EXPECTED_OVERLAP_STALE_ROW_COUNT = 34
+EXPECTED_ROUTE_CELL_CONFLICT_COUNT = 22
+EXPECTED_INLET_ON_SHARED_TRANSPORT_COUNT = 12
+
+E0_MECHANISM_COVERAGE_MIN = 0.95
+E0_UNATTRIBUTED_RATIO_MAX = 0.10
+E0_VERDICT_DOMINANCE_THRESHOLD = 0.50
+E0_SPLIT_FAMILY_MIN_RATIO = 0.35
+E0_MECHANISM_CLASS_DOMINANCE_FOR_NOMINATION = 0.50
+
+__all__ = [
+    "E0_MECHANISM_CLASS_DOMINANCE_FOR_NOMINATION",
+    "E0_MECHANISM_COVERAGE_MIN",
+    "E0_SPLIT_FAMILY_MIN_RATIO",
+    "E0_UNATTRIBUTED_RATIO_MAX",
+    "E0_VERDICT_DOMINANCE_THRESHOLD",
+    "EXPECTED_INLET_ON_SHARED_TRANSPORT_COUNT",
+    "EXPECTED_OVERLAP_STALE_ROW_COUNT",
+    "EXPECTED_ROUTE_CELL_CONFLICT_COUNT",
+]

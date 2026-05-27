@@ -394,7 +394,7 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
         game_data_provenance=game_data_build.provenance,
         catalog_slice=game_data_build.catalog_slice,
     )
-    body = entry_result_to_json_dict(result)
+    body = entry_result_to_json_dict(result, project_slug=str(project.slug))
     if result.error_code in (
         SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
         SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND,

@@ -77,6 +77,10 @@ from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import
     _empty_track_metrics,
     build_lab_optimization_milestone_frames_for_project,
 )
+from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
+    build_lab_replay_lazy_handle,
+    lab_replay_payload_mode,
+)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
@@ -830,14 +834,18 @@ def _normalize_milestone_track_metrics(metrics: dict[str, Any]) -> dict[str, Any
     return _empty_track_metrics()
 
 
-def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any]:
+def entry_result_to_json_dict(
+    result: SolverRuntimeEntryResult,
+    *,
+    project_slug: str | None = None,
+) -> dict[str, Any]:
     frames = list(result.lab_replay_frames_json)
     milestone_frames = list(result.lab_optimization_milestone_frames_json)
+    mode = lab_replay_payload_mode()
     body: dict[str, Any] = {
         "ok": result.ok,
         "solver_run_id": result.solver_run_id,
         "lab_replay_frame_count": len(frames),
-        "lab_replay_frames_json": frames,
         "replay_track_metrics": result.replay_track_metrics,
         "lab_optimization_milestone_frame_count": len(milestone_frames),
         "lab_optimization_milestone_frames_json": milestone_frames,
@@ -850,6 +858,28 @@ def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any
         "validation_issue_details": list(result.solver_summary.get("issue_details") or []),
         "gene_template_source": dict(result.gene_template_source),
     }
+    handle = build_lab_replay_lazy_handle(
+        mode=mode,
+        frames=frames,
+        project_slug=str(project_slug or ""),
+        solver_run_id=result.solver_run_id,
+    )
+    if mode == "lazy":
+        body["lab_replay"] = {
+            "mode": handle.mode,
+            "frame_count": handle.frame_count,
+            "preview_frame_index": handle.preview_frame_index,
+            "preview_frame": handle.preview_frame,
+            "fetch_url": handle.fetch_url,
+            "replay_payload_version": handle.replay_payload_version,
+        }
+        body["metrics"] = {
+            "post_payload_slimmed": True,
+            "lab_replay_inline_omitted": True,
+            "lab_replay_frame_count": handle.frame_count,
+        }
+    else:
+        body["lab_replay_frames_json"] = frames
     if result.error_code is not None:
         body["error_code"] = result.error_code.value
     if result.message is not None:

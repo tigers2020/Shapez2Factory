@@ -10,7 +10,10 @@ from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
     incremental_commit,
     initial_commit_domain,
 )
-from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput, RttpSkeletonConfig
+from django_apps.asteroid_lab.optimization.input_contracts import (
+    OptimizationInput,
+    RttpSkeletonConfig,
+)
 from django_apps.asteroid_lab.optimization.routing.exterior_lane_capacity_planner import (
     build_exterior_lane_capacity_plan,
 )

@@ -9,7 +9,6 @@ import pytest
 from django_apps.asteroid_lab.optimization.input_contracts import (
     OptimizationInput,
     RouteGoalKind,
-    TransportKind,
 )
 from django_apps.asteroid_lab.optimization.routing.exterior_lane_capacity_planner import (
     build_exterior_lane_capacity_plan,

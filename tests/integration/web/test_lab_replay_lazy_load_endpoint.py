@@ -61,3 +61,25 @@ def test_lab_replay_get_unknown_run_returns_404(client: Client) -> None:
     )
     resp = client.get(url, HTTP_ACCEPT="application/json")
     assert resp.status_code == 404
+
+
+@override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="inline")
+def test_lab_replay_get_matches_inline_post_for_same_run(client: Client) -> None:
+    from tests.integration.web.test_asteroid_miner_layout_solver import _unique_valid_copy
+
+    copy_code = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    create_resp = client.post(create_url, {"copy_code": copy_code}, HTTP_ACCEPT="application/json")
+    data = json.loads(create_resp.content.decode())
+    slug = str(data["project_slug"])
+    run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
+    post_body = json.loads(client.post(run_url, HTTP_ACCEPT="application/json").content.decode())
+    run_id = int(post_body["solver_run_id"])
+    inline_frames = list(post_body["lab_replay_frames_json"])
+
+    get_url = reverse(
+        "web:asteroid-miner-layout-project-solver-run-lab-replay",
+        kwargs={"slug": slug, "run_id": run_id},
+    )
+    get_body = json.loads(client.get(get_url, HTTP_ACCEPT="application/json").content.decode())
+    assert get_body["frames"] == inline_frames

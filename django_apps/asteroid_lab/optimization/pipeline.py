@@ -479,8 +479,7 @@ def _apply_mining_equipment_goal(
     )
 
     elcp_plan_active = (
-        config.reconstruction_max_throughput_per_min is not None
-        and exterior_lane_plan is not None
+        config.reconstruction_max_throughput_per_min is not None and exterior_lane_plan is not None
     )
     evaluation = evaluate_mining_equipment_goal_for_pipeline(
         structural_validation_passed=structural_validation_passed,
@@ -798,9 +797,7 @@ def _run_v01_rttp_pipeline(
             "structural_validation_passed": structural_passed,
             "optimization_goal": dict(optimization_goal),
             "run_status": run_status,
-            "target_mining_equipment_cells": optimization_goal.get(
-                "target_mining_equipment_cells"
-            ),
+            "target_mining_equipment_cells": optimization_goal.get("target_mining_equipment_cells"),
             "confirmed_passed_mining_equipment_cells": optimization_goal.get(
                 "confirmed_passed_mining_equipment_cells"
             ),

@@ -69,9 +69,7 @@ def _bundle_candidate(
         candidate_id=f"{anchor[0]},{anchor[1]}:test_lin:shape_belt",
         anchor_coord=anchor,
         pattern=pattern,
-        occupied_cells=frozenset(
-            (anchor[0] + c[0], anchor[1] + c[1]) for c in occupied
-        ),
+        occupied_cells=frozenset((anchor[0] + c[0], anchor[1] + c[1]) for c in occupied),
         output_stub=stub,
         output_dir="east",
         transport_kind=TransportKind.SHAPE_BELT,

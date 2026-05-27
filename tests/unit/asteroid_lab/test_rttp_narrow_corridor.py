@@ -137,5 +137,7 @@ def test_narrow_corridor_pipeline_deterministic(
     )
 
     assert first == second
-    assert first.validation_passed
+    assert first.structural_validation_passed
+    assert first.validation_passed is False
+    assert first.run_status == "partial_success"
     assert len(first.commit_result.committed_ids) >= 1

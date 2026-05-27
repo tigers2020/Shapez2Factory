@@ -215,10 +215,7 @@ def aggregate_mining_equipment_goal_result(
 def optimization_goal_passed(result: MiningEquipmentGoalResult) -> bool:
     if result.target_mining_equipment_cells <= 0:
         return True
-    return (
-        result.confirmed_passed_mining_equipment_cells
-        >= result.target_mining_equipment_cells
-    )
+    return result.confirmed_passed_mining_equipment_cells >= result.target_mining_equipment_cells
 
 
 def optimization_goal_to_json(result: MiningEquipmentGoalResult) -> dict[str, object]:

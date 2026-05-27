@@ -150,7 +150,4 @@ def test_cert_slug_overlap_pack_at_least_greedy_baseline(
     )
     assert overlap_len >= greedy_len
     assert overlap_len >= CERT_SLUG_GREEDY_REGRET_BASELINE
-    print(
-        f"B1_CERT_SLUG_GREEDY_LEN={greedy_len} "
-        f"B1_CERT_SLUG_OVERLAP_LEN={overlap_len}"
-    )
+    print(f"B1_CERT_SLUG_GREEDY_LEN={greedy_len} " f"B1_CERT_SLUG_OVERLAP_LEN={overlap_len}")

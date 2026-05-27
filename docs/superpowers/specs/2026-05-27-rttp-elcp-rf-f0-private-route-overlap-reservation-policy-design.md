@@ -8,7 +8,8 @@
 **Prerequisite (CLOSED):** [`2026-05-27-rttp-elcp-rf-e0-post-probe-reservation-mechanism-design.md`](2026-05-27-rttp-elcp-rf-e0-post-probe-reservation-mechanism-design.md) · report [`../reports/2026-05-27-rttp-elcp-rf-e0-post-probe-reservation-mechanism-report.md`](../reports/2026-05-27-rttp-elcp-rf-e0-post-probe-reservation-mechanism-report.md)  
 **Related contracts:** [`2026-05-30-rttp-exterior-lane-trunk-merge-design.md`](2026-05-30-rttp-exterior-lane-trunk-merge-design.md) (ELCP-TM §4.2–§4.3) · [`2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md`](2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md) (FL-06) · [`2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`](2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md) §A5  
 **Queue:** [`documents/ai/current_plan.md`](../../../documents/ai/current_plan.md)  
-**Implementation plan:** [`../plans/2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy.md`](../plans/2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy.md)
+**Implementation plan:** [`../plans/2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy.md`](../plans/2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy.md)  
+**F1.1 forensic (read-only, CLOSED):** [`2026-05-27-rttp-elcp-rf-f1.1-private-route-overlap-forensic-design.md`](2026-05-27-rttp-elcp-rf-f1.1-private-route-overlap-forensic-design.md) · report [`../reports/2026-05-27-rttp-elcp-rf-f1.1-private-route-overlap-forensic-report.md`](../reports/2026-05-27-rttp-elcp-rf-f1.1-private-route-overlap-forensic-report.md)
 
 **Korean title (reference):** private route overlap / shareable trunk reservation policy (bounded B-spec)
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from enum import StrEnum
@@ -434,6 +435,19 @@ def _readback_solver_run_provenance(
         raise ValueError(msg)
 
 
+def _solver_run_status_from_summary(solver_summary: Mapping[str, Any]) -> str:
+    """Map product ``run_status`` to :class:`SolverRun.RunStatus` value."""
+
+    run_status = str(solver_summary.get("run_status") or "")
+    if run_status == "partial_success":
+        if hasattr(m.SolverRun.RunStatus, "PARTIAL"):
+            return m.SolverRun.RunStatus.PARTIAL
+        return m.SolverRun.RunStatus.COMPLETED
+    if run_status == "fail" or not bool(solver_summary.get("validation_passed")):
+        return m.SolverRun.RunStatus.FAILED
+    return m.SolverRun.RunStatus.COMPLETED
+
+
 def _persist_solver_run_outcome(
     run_id: int,
     *,
@@ -442,7 +456,8 @@ def _persist_solver_run_outcome(
     run = m.SolverRun.objects.get(pk=int(run_id))
     config = dict(run.config_json or {})
     config[SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY] = dict(solver_summary)
-    m.SolverRun.objects.filter(pk=int(run_id)).update(config_json=config)
+    status = _solver_run_status_from_summary(solver_summary)
+    m.SolverRun.objects.filter(pk=int(run_id)).update(config_json=config, status=status)
 
 
 def _solver_not_available_result(project_id: int) -> SolverRuntimeEntryResult:
@@ -727,6 +742,7 @@ def _run_rttp_solver_for_map_input(
         shortfall_reason = reason.value
         if throughput_goal_payload is not None:
             throughput_goal_payload["throughput_shortfall_reason"] = shortfall_reason
+    optimization_goal = dict(pipeline_result.optimization_goal or {})
     summary = build_rttp_solver_summary(
         pipeline_ok=pipeline_result.validation_passed,
         committed_count=len(committed),
@@ -747,6 +763,9 @@ def _run_rttp_solver_for_map_input(
         throughput_goal=throughput_goal_payload,
         throughput_shortfall_reason=shortfall_reason,
         project_slug=project_slug,
+        optimization_goal=optimization_goal or None,
+        run_status=pipeline_result.run_status,
+        structural_validation_passed=pipeline_result.structural_validation_passed,
     )
     _persist_solver_run_outcome(
         run_id,
@@ -904,7 +923,13 @@ def entry_result_to_json_dict(
     if result.message is not None:
         body["message"] = result.message
     if result.solver_run_id is not None and result.solver_summary:
-        ui_status = "completed" if result.ok else "failed"
+        run_status = str(result.solver_summary.get("run_status") or "")
+        if run_status == "partial_success":
+            ui_status = "partial"
+        elif result.ok:
+            ui_status = "completed"
+        else:
+            ui_status = "failed"
         body["run_summary"] = lab_run_summary_from_solver_summary(
             run_id=int(result.solver_run_id),
             status=ui_status,

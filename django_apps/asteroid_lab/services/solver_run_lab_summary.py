@@ -283,6 +283,9 @@ def lab_run_summary_from_solver_summary(
         "rttp": _section_rttp(solver_summary),
         "throughput_target": _section_throughput_target(solver_summary),
         "throughput_goal": dict(solver_summary.get("throughput_goal") or {}),
+        "optimization_goal": dict(solver_summary.get("optimization_goal") or {}),
+        "run_status": solver_summary.get("run_status"),
+        "structural_validation_passed": solver_summary.get("structural_validation_passed"),
     }
     if isinstance(macro_commit_summary, dict) and macro_commit_summary:
         row["macro_commit_summary"] = dict(macro_commit_summary)

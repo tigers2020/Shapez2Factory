@@ -128,6 +128,9 @@ class PipelineResult:
     algorithm_steps: tuple[dict[str, Any], ...] = ()
     committed_throughput_factors: tuple[int, ...] = ()
     placement_goal_plan: PlacementGoalPlan | None = None
+    structural_validation_passed: bool = False
+    optimization_goal: dict[str, Any] | None = None
+    run_status: str = "fail"
 
 
 def _placement_platform_cell_count(
@@ -462,6 +465,42 @@ def _exterior_lane_commit_validation_snapshot(
     )
 
 
+def _apply_mining_equipment_goal(
+    *,
+    structural_validation_passed: bool,
+    commit_result: CommitResult,
+    candidates_by_id: dict[str, BundleCandidate],
+    inp: OptimizationInput,
+    config: RttpPipelineConfig,
+    exterior_lane_plan: ExteriorLaneCapacityPlan | None,
+) -> tuple[bool, dict[str, Any], bool, str]:
+    from django_apps.asteroid_lab.services.mining_equipment_goal import (
+        evaluate_mining_equipment_goal_for_pipeline,
+    )
+
+    elcp_plan_active = (
+        config.reconstruction_max_throughput_per_min is not None
+        and exterior_lane_plan is not None
+    )
+    evaluation = evaluate_mining_equipment_goal_for_pipeline(
+        structural_validation_passed=structural_validation_passed,
+        commit_result=commit_result,
+        candidates_by_id=candidates_by_id,
+        mineable_cells=inp.mineable_cells,
+        transport_kind=inp.transport_kind,
+        placement_target_percent=config.placement_target_percent,
+        placement_platform_cell_count=_placement_platform_cell_count(config, inp),
+        elcp_plan_active=elcp_plan_active,
+        exterior_lane_plan_present=exterior_lane_plan is not None,
+    )
+    return (
+        evaluation.validation_passed,
+        evaluation.optimization_goal,
+        evaluation.structural_validation_passed,
+        evaluation.run_status,
+    )
+
+
 def _coord_pair_json(coord: Coord | None) -> list[int] | None:
     if coord is None:
         return None
@@ -712,15 +751,27 @@ def _run_v01_rttp_pipeline(
         )
 
     catalog_mode = config.catalog_placement_validation_mode
-    validation_passed, catalog_result, layout_connectivity_issues = validate_pipeline_layout(
-        committed_ids=commit_result.committed_ids,
-        reserved_route_cells=commit_result.reserved_route_cells,
-        candidates_by_id=candidates_by_id,
-        inp=inp,
-        catalog_mode=catalog_mode,
-        trunk_mask_cells=skeleton.trunk_mask_cells,
-        lane_commit_snapshot=_exterior_lane_commit_validation_snapshot(commit_result),
-        exterior_lane_plan=exterior_lane_plan,
+    structural_validation_passed, catalog_result, layout_connectivity_issues = (
+        validate_pipeline_layout(
+            committed_ids=commit_result.committed_ids,
+            reserved_route_cells=commit_result.reserved_route_cells,
+            candidates_by_id=candidates_by_id,
+            inp=inp,
+            catalog_mode=catalog_mode,
+            trunk_mask_cells=skeleton.trunk_mask_cells,
+            lane_commit_snapshot=_exterior_lane_commit_validation_snapshot(commit_result),
+            exterior_lane_plan=exterior_lane_plan,
+        )
+    )
+    validation_passed, optimization_goal, structural_passed, run_status = (
+        _apply_mining_equipment_goal(
+            structural_validation_passed=structural_validation_passed,
+            commit_result=commit_result,
+            candidates_by_id=candidates_by_id,
+            inp=inp,
+            config=config,
+            exterior_lane_plan=exterior_lane_plan,
+        )
     )
 
     commit_payload, placement_diag = build_commit_replay_payload(
@@ -744,6 +795,15 @@ def _run_v01_rttp_pipeline(
             "committed_ids": list(commit_result.committed_ids),
             "commit_order": list(genome.commit_order),
             "validation_passed": validation_passed,
+            "structural_validation_passed": structural_passed,
+            "optimization_goal": dict(optimization_goal),
+            "run_status": run_status,
+            "target_mining_equipment_cells": optimization_goal.get(
+                "target_mining_equipment_cells"
+            ),
+            "confirmed_passed_mining_equipment_cells": optimization_goal.get(
+                "confirmed_passed_mining_equipment_cells"
+            ),
             "layout_connectivity_issue_codes": list(layout_connectivity_issues),
             "required_external_connectors": inp.required_external_connector_count,
             "planned_external_connectors": len(inp.route_goals),
@@ -805,6 +865,9 @@ def _run_v01_rttp_pipeline(
         algorithm_steps=tuple(steps),
         committed_throughput_factors=throughput_factors,
         placement_goal_plan=placement_plan,
+        structural_validation_passed=structural_passed,
+        optimization_goal=dict(optimization_goal),
+        run_status=run_status,
     )
 
 
@@ -955,6 +1018,19 @@ def _run_macro_rttp_pipeline(
         )
         validation_passed = macro_ok and catalog_result.passed
 
+    from django_apps.asteroid_lab.services.mining_equipment_goal import (
+        macro_only_optimization_goal,
+        resolve_run_status,
+    )
+
+    structural_passed = validation_passed
+    optimization_goal = macro_only_optimization_goal()
+    run_status = resolve_run_status(
+        structural_validation_passed=structural_passed,
+        optimization_goal=optimization_goal,
+    ).value
+    validation_passed = structural_passed and bool(optimization_goal["passed"])
+
     commit_payload = build_macro_commit_replay_payload(
         macro_commit,
         validation_passed=validation_passed,
@@ -977,6 +1053,9 @@ def _run_macro_rttp_pipeline(
             "committed_macro_ids": list(macro_commit.committed_macro_ids),
             "commit_order": list(genome.commit_order),
             "validation_passed": validation_passed,
+            "structural_validation_passed": structural_passed,
+            "optimization_goal": dict(optimization_goal),
+            "run_status": run_status,
             "conflict_count": len(commit_result.conflicts),
             "domain_version": macro_commit.domain_version,
             "normal_count": len(generation.normal_candidates),
@@ -1007,6 +1086,9 @@ def _run_macro_rttp_pipeline(
         algorithm_steps=tuple(steps),
         committed_throughput_factors=throughput_factors,
         placement_goal_plan=placement_plan,
+        structural_validation_passed=structural_passed,
+        optimization_goal=dict(optimization_goal),
+        run_status=run_status,
     )
 
 

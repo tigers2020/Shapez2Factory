@@ -125,6 +125,22 @@ def _placement_capacity_dev_metric(
     return committed_count >= min(goal, needed)
 
 
+def _issue_codes_for_solver_summary(
+    *,
+    pipeline_ok: bool,
+    catalog_error_issue_codes: tuple[str, ...],
+    optimization_goal: Mapping[str, Any] | None,
+) -> list[str]:
+    if pipeline_ok:
+        return []
+    if catalog_error_issue_codes:
+        return list(catalog_error_issue_codes)
+    issue_code = optimization_goal.get("issue_code") if optimization_goal is not None else None
+    if isinstance(issue_code, str) and issue_code:
+        return [issue_code]
+    return ["rttp_validation_failed"]
+
+
 def extract_macro_commit_summary(
     algorithm_steps: Sequence[Mapping[str, Any]],
     *,
@@ -167,6 +183,9 @@ def build_rttp_solver_summary(
     throughput_goal: Mapping[str, Any] | None = None,
     throughput_shortfall_reason: str | None = None,
     project_slug: str | None = None,
+    optimization_goal: Mapping[str, Any] | None = None,
+    run_status: str | None = None,
+    structural_validation_passed: bool | None = None,
 ) -> dict[str, Any]:
     """Aggregate RTTP scalars and per-step summaries for ``SolverRun.config_json``."""
 
@@ -180,6 +199,12 @@ def build_rttp_solver_summary(
     if throughput_budget_fields is not None:
         budget_ok = bool(throughput_budget_fields.get("throughput_budget_satisfied"))
     deprecated_capacity_ok = budget_ok if throughput_budget_fields is not None else pipeline_ok
+    goal_block = dict(optimization_goal) if optimization_goal is not None else None
+    issue_codes = _issue_codes_for_solver_summary(
+        pipeline_ok=pipeline_ok,
+        catalog_error_issue_codes=catalog_error_issue_codes,
+        optimization_goal=goal_block,
+    )
     summary: dict[str, Any] = {
         "algorithm": RTTP_ALGORITHM_LABEL,
         "macro_only_mode": bool(macro_only_mode),
@@ -196,18 +221,19 @@ def build_rttp_solver_summary(
         "target_placement_count": len(commit_order),
         "normal_candidate_count": normal_count,
         "commit_order": list(commit_order),
-        "issue_codes": (
-            []
-            if pipeline_ok
-            else (
-                list(catalog_error_issue_codes)
-                if catalog_error_issue_codes
-                else ["rttp_validation_failed"]
-            )
-        ),
+        "issue_codes": issue_codes,
         "issue_details": [] if pipeline_ok else [],
         "algorithm_steps": steps_json,
     }
+    if run_status is not None:
+        summary["run_status"] = str(run_status)
+    if structural_validation_passed is not None:
+        summary["structural_validation_passed"] = bool(structural_validation_passed)
+    if goal_block is not None:
+        summary["optimization_goal"] = goal_block
+        target_cells = goal_block.get("target_mining_equipment_cells")
+        if target_cells is not None:
+            summary["target_mining_equipment_cells"] = target_cells
     macro_hud = extract_macro_commit_summary(
         algorithm_steps,
         macro_only_mode=macro_only_mode,

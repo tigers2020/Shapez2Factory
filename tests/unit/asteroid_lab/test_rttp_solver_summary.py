@@ -10,6 +10,9 @@ import pytest
 from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.contracts.rttp_optimization_goal import (
+    MINING_EQUIPMENT_GOAL_SHORTFALL_ISSUE_CODE,
+)
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
 )
@@ -66,6 +69,33 @@ def _minimal_valid_copy() -> str:
     ).encode("utf-8")
     b64 = base64.b64encode(gzip.compress(payload)).decode("ascii")
     return f"SHAPEZ2-4-{b64}"
+
+
+def test_build_rttp_solver_summary_preserves_mining_equipment_goal_block() -> None:
+    goal = {
+        "passed": False,
+        "issue_code": MINING_EQUIPMENT_GOAL_SHORTFALL_ISSUE_CODE,
+        "target_mining_equipment_cells": 467,
+        "confirmed_passed_mining_equipment_cells": 25,
+        "shortfall": 442,
+        "confirmed_committed_bundle_count": 25,
+    }
+    summary = build_rttp_solver_summary(
+        pipeline_ok=False,
+        committed_count=25,
+        normal_count=59,
+        commit_order=("a",),
+        algorithm_steps=(),
+        optimization_goal=goal,
+        run_status="partial_success",
+        structural_validation_passed=True,
+    )
+    assert summary["optimization_goal"] == goal
+    assert summary["run_status"] == "partial_success"
+    assert summary["structural_validation_passed"] is True
+    assert summary["validation_passed"] is False
+    assert MINING_EQUIPMENT_GOAL_SHORTFALL_ISSUE_CODE in summary["issue_codes"]
+    assert summary["target_mining_equipment_cells"] == 467
 
 
 def test_build_rttp_solver_summary_includes_reconstruction_capacity_when_provided() -> None:

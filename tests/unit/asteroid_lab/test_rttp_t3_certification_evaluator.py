@@ -62,10 +62,10 @@ def test_tiny_passable_v2_borderline_certified_pass_evidence() -> None:
             "metrics": {
                 "validation_passed": True,
                 "committed_ids": [
-                    "-1,9:cat_canon_manual_Layout_ShapeMiner_N:shape_belt",
-                    "-2,8:cat_canon_manual_Layout_ShapeMiner_E:shape_belt",
-                    "-1,10:cat_canon_manual_Layout_ShapeMiner_S:shape_belt",
-                    "-1,8:cat_canon_manual_Layout_ShapeMiner_W:shape_belt",
+                    "-1,9:cat_canon_manual_Layout_ShapeMiner_N_ext0:shape_belt",
+                    "-2,8:cat_canon_manual_Layout_ShapeMiner_E_ext0:shape_belt",
+                    "-1,10:cat_canon_manual_Layout_ShapeMiner_S_ext0:shape_belt",
+                    "-1,8:cat_canon_manual_Layout_ShapeMiner_W_ext0:shape_belt",
                 ],
             },
         },

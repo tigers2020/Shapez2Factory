@@ -31,6 +31,7 @@ from django_apps.asteroid_lab.reconstruction.complete_map import build_reconstru
 from django_apps.asteroid_lab.reconstruction.field_cells import (
     asteroid_field_cell_count_for_placement,
 )
+from django_apps.asteroid_lab.services.placement_goal import compute_placement_goal_count
 from django_apps.asteroid_lab.services.reconstruction_capacity_summary import (
     build_reconstruction_capacity_envelope,
 )
@@ -42,13 +43,16 @@ from django_apps.asteroid_lab.services.throughput_target import (
     parse_throughput_target_percent,
     primary_reconstruction_max_per_min,
 )
+from tests.support.rttp_core_recovery_test_map_expectations import (
+    expected_placement_metrics_for_complete_map,
+)
 
 
 @pytest.mark.django_db
 def test_recovery_map_validation_passes_with_placement_goal_shortfall_only(
     imported_game_data_batch_module: object,
 ) -> None:
-    """62 < 467 is product shortfall; transport/exterior invariants must still pass validation."""
+    """Committed count < map-derived placement_goal; transport/exterior invariants must pass."""
 
     from django_apps.asteroid_lab import models as m
     from django_apps.asteroid_lab.management.commands.import_rttp_core_recovery_test_map import (
@@ -84,6 +88,16 @@ def test_recovery_map_validation_passes_with_placement_goal_shortfall_only(
         percent=percent,
     )
     platform = asteroid_field_cell_count_for_placement(complete_map, inp.transport_kind)
+    expected_platform, expected_goal = expected_placement_metrics_for_complete_map(
+        complete_map,
+        inp.transport_kind,
+        placement_target_percent=percent,
+    )
+    assert platform == expected_platform
+    assert expected_goal == compute_placement_goal_count(
+        asteroid_field_cell_count=platform,
+        placement_target_percent=percent,
+    )
     pipeline_result = run_rttp_pipeline(
         inp,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
@@ -98,7 +112,8 @@ def test_recovery_map_validation_passes_with_placement_goal_shortfall_only(
     committed_count = len(pipeline_result.commit_result.committed_ids)
     plan = pipeline_result.placement_goal_plan
     assert plan is not None
-    assert plan.placement_goal_count == 467
+    assert plan.placement_goal_count == expected_goal
+    assert plan.asteroid_field_cell_count == expected_platform
     assert committed_count > 0
     assert committed_count < plan.placement_goal_count
     assert pipeline_result.validation_passed is True

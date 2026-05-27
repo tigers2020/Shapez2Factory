@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from typing import Final
 
+from django_apps.asteroid_lab.adapters.catalog_geometry_transform import cardinal_unit_vector
+from django_apps.asteroid_lab.catalog.extension_topology_synthesis import (
+    synthesize_opposite_arm_linear_topologies,
+)
 from django_apps.asteroid_lab.catalog.island_extractor_defaults import (
     ISLAND_EXTRACTOR_DEFAULTS,
     IslandExtractorCarrierKind,
 )
 from django_apps.asteroid_lab.catalog.miner_placement_topology import (
+    MinerPlacementTopology,
     normalize_miner_placement_topology,
 )
 from django_apps.asteroid_lab.catalog.projection_source import (
@@ -26,6 +31,10 @@ from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     BuildingConnectorSnapshot,
     BuildingFootprintCell,
 )
+from django_apps.asteroid_lab.genetic_sample.gene_template import (
+    throughput_factor_for_extension_count,
+)
+from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 
 CANON_MANUAL_CANONICAL_ID_PREFIX: Final[str] = "canon_manual:"
@@ -73,6 +82,61 @@ def _layouts_for_transport(transport_kind: TransportKind) -> frozenset[str]:
     return _LAYOUTS_BY_TRANSPORT.get(transport_kind, frozenset())
 
 
+def _violates_inv_r(
+    topo: MinerPlacementTopology,
+    extension_offsets: tuple[Coord, ...],
+    *,
+    output_dir: CardinalDirection,
+) -> bool:
+    occupied = frozenset({topo.extractor_offset, *extension_offsets})
+    if topo.fixed_output_transport_offset in occupied:
+        return True
+    if topo.output_stub_offset in occupied:
+        return True
+    unit = cardinal_unit_vector(output_dir)
+    output_axis = (
+        topo.extractor_offset[0] + unit[0],
+        topo.extractor_offset[1] + unit[1],
+    )
+    return output_axis in extension_offsets
+
+
+def _projected_spec_for_extension_count(
+    geometry: VariantGeometryCatalog,
+    topo: MinerPlacementTopology,
+    *,
+    rotation: CardinalDirection,
+    extension_offsets: tuple[Coord, ...],
+    extension_count: int,
+    topology_kind: str,
+    source_kind: ProjectionSourceKind,
+    source_detail: str,
+) -> ProjectedEquipmentSpec | None:
+    if _violates_inv_r(topo, extension_offsets, output_dir=rotation):
+        return None
+    occupied = frozenset({topo.extractor_offset, *extension_offsets})
+    return ProjectedEquipmentSpec(
+        layout_t=geometry.internal_name,
+        canonical_id=geometry.canonical_id,
+        pattern_id=catalog_pattern_id(
+            geometry.canonical_id,
+            rotation,
+            extension_count=extension_count,
+        ),
+        rotation=rotation,
+        extractor_offset=topo.extractor_offset,
+        extension_offsets=extension_offsets,
+        fixed_output_transport_offset=topo.fixed_output_transport_offset,
+        output_stub_offset=topo.output_stub_offset,
+        occupied_offsets=tuple(sorted(occupied)),
+        output_dir=CardinalDirection(topo.output_dir),
+        throughput_factor=throughput_factor_for_extension_count(extension_count),
+        topology_kind=topology_kind,
+        source_kind=source_kind,
+        source_detail=source_detail,
+    )
+
+
 def _specs_from_geometry(
     geometry: VariantGeometryCatalog,
     *,
@@ -88,24 +152,19 @@ def _specs_from_geometry(
         topo = normalize_miner_placement_topology(geometry, rotation)
         if topo is None:
             continue
-        pattern_id = catalog_pattern_id(geometry.canonical_id, rotation)
-        specs.append(
-            ProjectedEquipmentSpec(
-                layout_t=geometry.internal_name,
-                canonical_id=geometry.canonical_id,
-                pattern_id=pattern_id,
+        for ext_topo in synthesize_opposite_arm_linear_topologies(output_dir=rotation):
+            row = _projected_spec_for_extension_count(
+                geometry,
+                topo,
                 rotation=rotation,
-                extractor_offset=topo.extractor_offset,
-                extension_offsets=topo.extension_offsets,
-                fixed_output_transport_offset=topo.fixed_output_transport_offset,
-                output_stub_offset=topo.output_stub_offset,
-                occupied_offsets=tuple(sorted(topo.occupied_offsets)),
-                output_dir=CardinalDirection(topo.output_dir),
-                throughput_factor=topo.throughput_factor,
+                extension_offsets=ext_topo.extension_offsets,
+                extension_count=ext_topo.extension_count,
+                topology_kind=ext_topo.topology_kind.value,
                 source_kind=source_kind,
                 source_detail=source_detail,
             )
-        )
+            if row is not None:
+                specs.append(row)
     return specs
 
 
@@ -169,7 +228,11 @@ def list_equipment_placement_specs(
     return tuple(
         sorted(
             specs,
-            key=lambda s: (s.canonical_id, s.rotation.value, s.pattern_id),
+            key=lambda s: (
+                s.canonical_id,
+                s.rotation.value,
+                s.pattern_id,
+            ),
         )
     )
 

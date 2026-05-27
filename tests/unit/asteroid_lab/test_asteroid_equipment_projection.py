@@ -58,11 +58,15 @@ def test_two_cell_shape_miner_spec_occupies_extractor_only(
         catalog_slice_with_shape_miner,
         transport_kind=TransportKind.SHAPE_BELT,
     )
-    east = [s for s in specs if s.rotation is CardinalDirection.E][0]
-    assert (1, 0) not in east.occupied_offsets
-    assert east.throughput_factor == 4
-    assert east.extension_offsets == ()
-    assert east.fixed_output_transport_offset == (1, 0)
+    e_specs = [s for s in specs if s.rotation is CardinalDirection.E]
+    assert len(e_specs) == 4
+    assert {s.throughput_factor for s in e_specs} == {4, 8, 12, 16}
+    east_ext0 = next(s for s in e_specs if s.pattern_id.endswith("_ext0"))
+    assert (1, 0) not in east_ext0.occupied_offsets
+    assert east_ext0.throughput_factor == 4
+    assert east_ext0.extension_offsets == ()
+    assert east_ext0.fixed_output_transport_offset == (1, 0)
+    assert east_ext0.topology_kind == "none"
 
 
 def test_canon_manual_when_allowlisted_layout_missing_from_slice() -> None:

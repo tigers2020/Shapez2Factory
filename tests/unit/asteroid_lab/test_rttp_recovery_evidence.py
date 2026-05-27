@@ -74,8 +74,9 @@ def test_build_recovery_evidence_row_from_solver_summary() -> None:
                 },
             }
         ],
-        "reconstruction_capacity": {"shape_field_cell_count": 583},
-        "placement_goal_plan": {"placement_goal_count": 32},
+        # Synthetic summary (recon-l0 slug), not recovery test_map — values are passthrough only.
+        "reconstruction_capacity": {"shape_field_cell_count": 100},
+        "placement_goal_plan": {"placement_goal_count": 320},
     }
     row = build_recovery_evidence_row(
         slug="rttp-cert-candidate-recon-l0",
@@ -92,7 +93,7 @@ def test_build_recovery_evidence_row_from_solver_summary() -> None:
         },
     )
     assert row["committed_extractor_count"] == 2
-    assert row["installable_shape_field_cell_count"] == 583
+    assert row["installable_shape_field_cell_count"] == 100
     assert row["visible_extension_cell_count"] == 0
     assert row["validation_passed"] is False
     assert row["gate_a_passed"] is False
@@ -103,7 +104,7 @@ def test_build_recovery_evidence_row_from_solver_summary() -> None:
 
 def test_gate_a_requires_transport_and_exterior_not_commit_count_only() -> None:
     row_high_commit_no_transport = {
-        "committed_extractor_count": 23,
+        "committed_extractor_count": 230,
         "committed_output_transport_cells": 0,
         "committed_route_cell_count": 0,
         "exterior_connected_route_count": 0,

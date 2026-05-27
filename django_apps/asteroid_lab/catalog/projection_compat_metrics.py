@@ -39,16 +39,15 @@ def record_route_compat_tile_emitted() -> None:
 def _equipment_spec_index(
     catalog_slice: BuildingCatalogSlice,
     transport_kind: TransportKind,
-) -> dict[tuple[str, str], ProjectedEquipmentSpec]:
+) -> dict[str, ProjectedEquipmentSpec]:
     from django_apps.asteroid_lab.catalog.asteroid_equipment_projection import (
         list_equipment_placement_specs,
     )
 
-    index: dict[tuple[str, str], ProjectedEquipmentSpec] = {}
-    for spec in list_equipment_placement_specs(catalog_slice, transport_kind=transport_kind):
-        key = (spec.canonical_id, spec.rotation.value)
-        index[key] = spec
-    return index
+    return {
+        spec.pattern_id: spec
+        for spec in list_equipment_placement_specs(catalog_slice, transport_kind=transport_kind)
+    }
 
 
 def _source_kind_counts(
@@ -116,7 +115,7 @@ def committed_projection_audit_metrics(
                 }
             )
             continue
-        spec = index.get((ref.canonical_id, ref.rotation.value))
+        spec = index.get(candidate.pattern.pattern_id)
         if spec is None:
             audit_rows.append(
                 {

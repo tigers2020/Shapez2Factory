@@ -64,6 +64,7 @@ class ProjectedEquipmentSpec:
     occupied_offsets: tuple[Coord, ...]
     output_dir: CardinalDirection
     throughput_factor: int
+    topology_kind: str
     source_kind: ProjectionSourceKind
     source_detail: str
 

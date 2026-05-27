@@ -38,22 +38,24 @@ def test_build_specs_four_rotations_deterministic() -> None:
         _slice_with_output(),
         transport_kind=TransportKind.SHAPE_BELT,
     )
-    assert len(specs) == 4
-    rotations = [s.rotation for s in specs]
-    assert rotations == [
+    assert len(specs) == 16
+    for rotation in (
         CardinalDirection.E,
         CardinalDirection.N,
         CardinalDirection.S,
         CardinalDirection.W,
-    ]
+    ):
+        rot_specs = [s for s in specs if s.rotation is rotation]
+        assert len(rot_specs) == 4
+        assert {s.throughput_factor for s in rot_specs} == {4, 8, 12, 16}
     assert all(s.pattern_id.startswith("cat_") for s in specs)
-    assert all(s.throughput_factor == 4 for s in specs)
+    assert all(s.pattern_id.endswith(("_ext0", "_ext1", "_ext2", "_ext3")) for s in specs)
 
 
 def test_build_specs_fluid_transport_uses_fluid_miner_not_shape_slice() -> None:
     sl = _slice_with_output()
     specs = build_catalog_placement_specs(sl, transport_kind=TransportKind.FLUID_PIPE)
-    assert len(specs) == 4
+    assert len(specs) == 16
     assert all("FluidMiner" in s.canonical_id for s in specs)
     assert all("InternalVariant" not in s.canonical_id for s in specs)
 

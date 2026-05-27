@@ -13,9 +13,9 @@ from tests.support.catalog_test_fixtures import build_minimal_test_catalog_slice
 
 # Stable catalog-native candidate IDs for B-CS1 / Sequence 10A (``bv:1`` minimal slice).
 # Stable under FixedOutputTransportPolicy.OUTSIDE_MINEABLE (FOT off mineable).
-NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID = "7,5:cat_bv_1_S:shape_belt"
-NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID = "7,9:cat_bv_1_N:shape_belt"
-NARROW_CORRIDOR_PROTECTED_CANDIDATE_ID = "5,5:cat_bv_1_E:shape_belt"
+NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID = "7,5:cat_bv_1_S_ext0:shape_belt"
+NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID = "7,9:cat_bv_1_N_ext0:shape_belt"
+NARROW_CORRIDOR_PROTECTED_CANDIDATE_ID = "5,5:cat_bv_1_E_ext0:shape_belt"
 
 _NEIGHBORS4: tuple[tuple[int, int], ...] = ((0, 1), (0, -1), (1, 0), (-1, 0))
 

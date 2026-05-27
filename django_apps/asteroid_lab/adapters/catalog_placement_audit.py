@@ -91,12 +91,13 @@ def classify_committed_catalog_placements(
                 )
             )
             continue
+        # S2b: pattern.occupied_offsets includes synthesized extensions (not Phase-1 topo only).
         expected = frozenset(
             (
                 ref.anchor_coord[0] + offset[0],
                 ref.anchor_coord[1] + offset[1],
             )
-            for offset in topology.occupied_offsets
+            for offset in candidate.pattern.occupied_offsets
         )
         if expected == candidate.occupied_cells:
             continue

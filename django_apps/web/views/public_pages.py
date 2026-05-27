@@ -11,7 +11,7 @@ from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonRe
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.translation import gettext as _
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from django_apps.asteroid_lab.adapters.decode_adapter import AsteroidLabCopyDecodeError
 from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
@@ -22,6 +22,7 @@ from django_apps.asteroid_lab.models import (
     AsteroidProject,
     ReplayFrame,
     ReplayTrack,
+    SolverRun,
 )
 from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
@@ -413,6 +414,38 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
     if not result.ok:
         return JsonResponse(body, status=400)
     return JsonResponse(body, status=200)
+
+
+@require_GET
+def asteroid_miner_layout_project_solver_run_lab_replay(
+    request: HttpRequest,
+    slug: str,
+    run_id: int,
+) -> JsonResponse:
+    project = AsteroidProject.objects.filter(slug=slug).first()
+    if project is None:
+        return JsonResponse({"ok": False, "error": "project_not_found"}, status=404)
+    run = SolverRun.objects.filter(pk=int(run_id), project_id=int(project.pk)).first()
+    if run is None:
+        return JsonResponse({"ok": False, "error": "solver_run_not_found"}, status=404)
+    frames, metrics = build_lab_replay_frames_for_project(
+        int(project.pk),
+        solver_run_id=int(run.pk),
+    )
+    return JsonResponse(
+        {
+            "schema_version": 1,
+            "run_id": int(run.pk),
+            "project_slug": str(project.slug),
+            "frame_count": len(frames),
+            "frames": frames,
+            "replay_track_metrics": metrics,
+            "metrics": {
+                "source": "lazy_load",
+                "semantic_equivalent_to_inline": True,
+            },
+        }
+    )
 
 
 @require_POST

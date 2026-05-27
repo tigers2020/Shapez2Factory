@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from django.conf import settings
+from django.urls import reverse
 
 LAB_REPLAY_PAYLOAD_VERSION = 1
 LabReplayPayloadMode = Literal["inline", "lazy"]
@@ -27,10 +28,6 @@ def lab_replay_payload_mode() -> LabReplayPayloadMode:
     return "inline" if raw == "inline" else "lazy"
 
 
-def _lab_replay_fetch_url(*, project_slug: str, solver_run_id: int) -> str:
-    return f"/asteroid-miner-layout/p/{project_slug}/solver-runs/{int(solver_run_id)}/lab-replay/"
-
-
 def build_lab_replay_lazy_handle(
     *,
     mode: LabReplayPayloadMode,
@@ -43,9 +40,9 @@ def build_lab_replay_lazy_handle(
     preview = dict(frames[preview_index]) if count else None
     fetch_url: str | None = None
     if mode == "lazy" and solver_run_id is not None and project_slug:
-        fetch_url = _lab_replay_fetch_url(
-            project_slug=str(project_slug),
-            solver_run_id=int(solver_run_id),
+        fetch_url = reverse(
+            "web:asteroid-miner-layout-project-solver-run-lab-replay",
+            kwargs={"slug": str(project_slug), "run_id": int(solver_run_id)},
         )
     return LabReplayLazyHandle(
         mode=mode,

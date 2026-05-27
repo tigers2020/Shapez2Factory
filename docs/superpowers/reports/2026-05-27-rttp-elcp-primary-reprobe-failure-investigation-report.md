@@ -152,6 +152,21 @@ Reason: dominant only within selected commit_order universe, not proven pool-sca
 
 ---
 
+## C0 follow-up (post-B1, 2026-05-27)
+
+Report: [`2026-05-27-rttp-elcp-rf-c0-post-b1-commit-regate-report.md`](2026-05-27-rttp-elcp-rf-c0-post-b1-commit-regate-report.md)
+
+Fresh dual-run on same SHA (`GREEDY_REGRET` vs `GREEDY_REGRET_OVERLAP_PACK`); frozen 59/3/29 is appendix only.
+
+| Fresh primary | Baseline | Overlap-pack | Delta |
+|---------------|---------:|-------------:|------:|
+| `primary_committed_count` | 3 | 7 | +4 |
+| `commit_order_len` | 59 | 67 | +8 |
+
+`lane_capacity_shortfall` B-spec re-gate: **BLOCKED** (`stale_candidate_reachable` dominant on overlap-pack).
+
+---
+
 ## Tooling delivered
 
 | Artifact | Path |
@@ -160,3 +175,5 @@ Reason: dominant only within selected commit_order universe, not proven pool-sca
 | Step forensics | `harness/investigation/rttp_elcp_reprobe_step_forensics.py` |
 | Universe sanity | `harness/investigation/rttp_elcp_universe_sanity.py` |
 | Tests | `tests/investigation/test_rttp_elcp_reprobe_*.py` |
+| C0 dual-mode harness | `harness/investigation/rttp_elcp_c0_dual_mode.py` |
+| C0 investigation test | `tests/investigation/test_rttp_elcp_rf_c0_post_b1_commit_regate.py` |

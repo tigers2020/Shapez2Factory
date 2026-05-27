@@ -155,12 +155,23 @@ def classify_probe_failure(
 
 
 @dataclass(frozen=True, slots=True)
+class MirrorDomainSnapshot:
+    """Domain state after a successful mirror commit (investigation-only)."""
+
+    commit_index: int
+    committed_route_cells: frozenset[Coord]
+    committed_occupied: frozenset[Coord]
+
+
+@dataclass(frozen=True, slots=True)
 class ElcpMirrorForensicsResult:
     ledger: tuple[ElcpAttemptLedgerRow, ...]
     mirror_committed_ids: tuple[str, ...]
     mirror_lane_capacity_shortfall_count: int
     mirror_route_feasible_shortfall_count: int
     mirror_conflict_count: int
+    domain_snapshots_after_success: tuple[MirrorDomainSnapshot, ...] = ()
+    domain_snapshots_at_attempt: tuple[MirrorDomainSnapshot, ...] = ()
 
 
 def _append_ledger_row(
@@ -235,6 +246,7 @@ def build_elcp_primary_mirror_ledger(
     route_probe_start_policy: RouteProbeStartPolicy,
     resource_kind: str,
     max_expansions: int | None = None,
+    collect_domain_snapshots: bool = False,
 ) -> ElcpMirrorForensicsResult:
     """Mirror ELCP ``incremental_commit`` loop; ledger rows for failed attempts only."""
     use_elcp = len(exterior_lane_plan.lanes) > 0
@@ -261,8 +273,18 @@ def build_elcp_primary_mirror_ledger(
     lane_capacity_shortfall_count = 0
     route_feasible_shortfall_count = 0
     trunk_states_elcp = initial_trunk_states(exterior_lane_plan)
+    snapshots_after_success: list[MirrorDomainSnapshot] = []
+    snapshots_at_attempt: list[MirrorDomainSnapshot] = []
 
     for commit_index, candidate_id in enumerate(genome.commit_order):
+        if collect_domain_snapshots:
+            snapshots_at_attempt.append(
+                MirrorDomainSnapshot(
+                    commit_index=commit_index,
+                    committed_route_cells=committed_route_cells,
+                    committed_occupied=committed_occupied,
+                )
+            )
         candidate = candidates_by_id.get(candidate_id)
         if candidate is None:
             conflicts.append(
@@ -473,6 +495,14 @@ def build_elcp_primary_mirror_ledger(
         committed_route_cells = frozenset(committed_route_cells | route_cells)
         trunk_mask_cells = frozenset(trunk_mask_cells | route_cells)
         domain_version += 1
+        if collect_domain_snapshots:
+            snapshots_after_success.append(
+                MirrorDomainSnapshot(
+                    commit_index=commit_index,
+                    committed_route_cells=committed_route_cells,
+                    committed_occupied=committed_occupied,
+                )
+            )
 
     return ElcpMirrorForensicsResult(
         ledger=tuple(ledger),
@@ -480,6 +510,8 @@ def build_elcp_primary_mirror_ledger(
         mirror_lane_capacity_shortfall_count=lane_capacity_shortfall_count,
         mirror_route_feasible_shortfall_count=route_feasible_shortfall_count,
         mirror_conflict_count=len(conflicts),
+        domain_snapshots_after_success=tuple(snapshots_after_success),
+        domain_snapshots_at_attempt=tuple(snapshots_at_attempt),
     )
 
 
@@ -570,6 +602,7 @@ __all__ = [
     "ElcpAttemptLedgerRow",
     "ElcpMirrorForensicsResult",
     "ElcpProbeFailureClass",
+    "MirrorDomainSnapshot",
     "assert_mirror_parity",
     "build_deferred_retry_audit",
     "build_elcp_primary_mirror_ledger",

@@ -185,8 +185,11 @@ def measure_json_sections(
     cap_n = max(0, int(largest_lab_frames_n))
     largest_cut = largest_meta[:cap_n] if cap_n else []
 
+    lab_replay_frames_json_bytes = int(top_level_key_bytes.get(lab_key, 0))
+
     return {
         "total_bytes": total_bytes,
+        "lab_replay_frames_json_bytes": lab_replay_frames_json_bytes,
         "top_level_key_bytes": top_level_key_bytes,
         "lab_replay": {
             "frame_count": n_lab,

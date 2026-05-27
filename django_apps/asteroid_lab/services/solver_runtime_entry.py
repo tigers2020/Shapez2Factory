@@ -64,6 +64,9 @@ from django_apps.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
     mineable_field_kind_by_coord,
 )
+from django_apps.asteroid_lab.reconstruction.field_cells import (
+    asteroid_field_cell_count_for_placement,
+)
 from django_apps.asteroid_lab.services.committed_throughput_summary import (
     build_actual_committed_output_per_min_from_factors,
 )
@@ -77,12 +80,16 @@ from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import
     _empty_track_metrics,
     build_lab_optimization_milestone_frames_for_project,
 )
+from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
+    build_lab_replay_lazy_handle,
+    lab_replay_payload_mode,
+)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
 from django_apps.asteroid_lab.services.placement_goal import (
     attribute_throughput_shortfall,
-    parse_max_placement_goal_count,
+    resolve_max_placement_goal_count,
 )
 from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     persist_reconstructed_asteroid_map,
@@ -335,11 +342,12 @@ def _rttp_pipeline_config_from_run_config(
     shadow = _deferred_retry_shadow_config_from_run_config(config)
     ga_shadow = _ga_evolution_shadow_config_from_run_config(config)
     selection_mode = _selection_mode_from_run_config(config)
-    resolved_max_goal = (
-        max_placement_goal_count
-        if max_placement_goal_count is not None
-        else parse_max_placement_goal_count(config)
-    )
+    if max_placement_goal_count is not None:
+        resolved_max_goal = max_placement_goal_count
+    elif SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY in config:
+        resolved_max_goal = int(config[SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY])
+    else:
+        resolved_max_goal = 0
     return RttpPipelineConfig(
         macro_only_mode=macro_only,
         max_macro_candidates=max_macro,
@@ -586,7 +594,15 @@ def _run_rttp_solver_for_map_input(
             message=str(exc),
         )
     try:
-        max_placement_goal = parse_max_placement_goal_count(run_config)
+        field_cell_count = asteroid_field_cell_count_for_placement(
+            complete_map,
+            opt_inp.transport_kind,
+        )
+        max_placement_goal = resolve_max_placement_goal_count(
+            run_config,
+            asteroid_field_cell_count=field_cell_count,
+            placement_target_percent=throughput_percent,
+        )
     except ValueError as exc:
         return _failure_result(
             int(project_id),
@@ -733,7 +749,10 @@ def _run_rttp_solver_for_map_input(
         solver_summary=summary,
     )
 
-    frames, metrics = build_lab_replay_frames_for_project(int(project_id))
+    frames, metrics = build_lab_replay_frames_for_project(
+        int(project_id),
+        solver_run_id=int(run_id),
+    )
     milestone_frames, milestone_metrics = _milestone_payload_for_project(
         int(project_id),
         run_key=rk,
@@ -830,14 +849,18 @@ def _normalize_milestone_track_metrics(metrics: dict[str, Any]) -> dict[str, Any
     return _empty_track_metrics()
 
 
-def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any]:
+def entry_result_to_json_dict(
+    result: SolverRuntimeEntryResult,
+    *,
+    project_slug: str | None = None,
+) -> dict[str, Any]:
     frames = list(result.lab_replay_frames_json)
     milestone_frames = list(result.lab_optimization_milestone_frames_json)
+    mode = lab_replay_payload_mode()
     body: dict[str, Any] = {
         "ok": result.ok,
         "solver_run_id": result.solver_run_id,
         "lab_replay_frame_count": len(frames),
-        "lab_replay_frames_json": frames,
         "replay_track_metrics": result.replay_track_metrics,
         "lab_optimization_milestone_frame_count": len(milestone_frames),
         "lab_optimization_milestone_frames_json": milestone_frames,
@@ -850,6 +873,28 @@ def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any
         "validation_issue_details": list(result.solver_summary.get("issue_details") or []),
         "gene_template_source": dict(result.gene_template_source),
     }
+    handle = build_lab_replay_lazy_handle(
+        mode=mode,
+        frames=frames,
+        project_slug=str(project_slug or ""),
+        solver_run_id=result.solver_run_id,
+    )
+    if mode == "lazy":
+        body["lab_replay"] = {
+            "mode": handle.mode,
+            "frame_count": handle.frame_count,
+            "preview_frame_index": handle.preview_frame_index,
+            "preview_frame": handle.preview_frame,
+            "fetch_url": handle.fetch_url,
+            "replay_payload_version": handle.replay_payload_version,
+        }
+        body["metrics"] = {
+            "post_payload_slimmed": True,
+            "lab_replay_inline_omitted": True,
+            "lab_replay_frame_count": handle.frame_count,
+        }
+    else:
+        body["lab_replay_frames_json"] = frames
     if result.error_code is not None:
         body["error_code"] = result.error_code.value
     if result.message is not None:

@@ -4,13 +4,23 @@ import json
 import random
 
 import pytest
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
 from django_apps.web.services import asteroid_lab_page_context as alc
+from tests.support.measure_json_sections import measure_json_sections
 
 pytestmark = pytest.mark.django_db
+
+# Measured on 2026-05-30 with _unique_valid_copy() Run Solver fixture (update if fixture changes).
+# inline POST total_bytes=63702; lazy POST total_bytes=24762; cap=max(lazy*2, 512_000)=512_000
+LAB_REPLAY_LAZY_POST_MAX_BYTES = 512_000
+
+
+@pytest.fixture
+def client() -> Client:
+    return Client()
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -318,3 +328,79 @@ def test_asteroid_miner_layout_post_invalid_copy_no_replay_frames() -> None:
     client.post(create_url, {"copy_code": "not-valid-shapez-payload"}, follow=True)
 
     assert m.ReplayFrame.objects.count() == 0
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module):
+    """Run Solver view builds game_data snapshot from pinned import batch."""
+
+    return imported_game_data_batch_module
+
+
+@override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="lazy")
+def test_post_run_solver_lazy_mode_omits_inline_lab_replay_frames(client: Client) -> None:
+    copy_code = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    create_resp = client.post(
+        create_url,
+        {"copy_code": copy_code, "Accept": "application/json"},
+        HTTP_ACCEPT="application/json",
+    )
+    data = json.loads(create_resp.content.decode())
+    slug = data["project_slug"]
+    run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
+    run_resp = client.post(run_url, HTTP_ACCEPT="application/json")
+    body = json.loads(run_resp.content.decode())
+    assert body.get("ok") is True
+    assert "lab_replay_frames_json" not in body
+    lab_replay = body.get("lab_replay") or {}
+    assert lab_replay.get("mode") == "lazy"
+    assert lab_replay.get("frame_count", 0) >= 1
+    assert lab_replay.get("preview_frame") is not None
+    assert lab_replay.get("fetch_url")
+
+
+@override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="inline")
+def test_measure_inline_post_bytes_for_fixture(client: Client) -> None:
+    """Record inline baseline; run once to calibrate LAB_REPLAY_LAZY_POST_MAX_BYTES."""
+    copy_code = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    create_resp = client.post(create_url, {"copy_code": copy_code}, HTTP_ACCEPT="application/json")
+    slug = json.loads(create_resp.content.decode())["project_slug"]
+    run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
+    inline_body = json.loads(client.post(run_url, HTTP_ACCEPT="application/json").content.decode())
+    sections = measure_json_sections(inline_body)
+    inline_bytes = int(sections["total_bytes"])
+    assert inline_bytes > 0
+
+
+@override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="lazy")
+def test_post_projects_json_size_attribution_and_lazy_post_under_cap(client: Client) -> None:
+    copy_code = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    create_resp = client.post(create_url, {"copy_code": copy_code}, HTTP_ACCEPT="application/json")
+    slug = json.loads(create_resp.content.decode())["project_slug"]
+    run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
+    lazy_body = json.loads(client.post(run_url, HTTP_ACCEPT="application/json").content.decode())
+    sections = measure_json_sections(lazy_body)
+    assert "lab_replay_frames_json" not in lazy_body
+    assert sections.get("lab_replay_frames_json_bytes", 0) == 0
+    assert int(sections["total_bytes"]) <= LAB_REPLAY_LAZY_POST_MAX_BYTES
+
+
+@override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="inline")
+def test_post_run_solver_inline_mode_still_includes_lab_replay_frames(client: Client) -> None:
+    copy_code = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    create_resp = client.post(
+        create_url,
+        {"copy_code": copy_code},
+        HTTP_ACCEPT="application/json",
+    )
+    data = json.loads(create_resp.content.decode())
+    slug = data["project_slug"]
+    run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
+    run_resp = client.post(run_url, HTTP_ACCEPT="application/json")
+    body = json.loads(run_resp.content.decode())
+    assert isinstance(body.get("lab_replay_frames_json"), list)
+    assert len(body["lab_replay_frames_json"]) >= 1

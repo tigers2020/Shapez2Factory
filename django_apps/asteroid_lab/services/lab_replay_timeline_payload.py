@@ -96,15 +96,7 @@ def resolve_replay_projection_context_for_project(
     return ReplayProjectionContext()
 
 
-def _solver_runtime_timeline_frames_for_project(
-    project_id: int,
-) -> tuple[ReplayTimelineFrame, ...]:
-    """Load persisted solver runtime replay frames from latest SolverRun.config_json."""
-    run = (
-        SolverRun.objects.filter(project_id=int(project_id)).order_by("-created_at", "-id").first()
-    )
-    if run is None:
-        return ()
+def _solver_runtime_timeline_frames_for_run(run: SolverRun) -> tuple[ReplayTimelineFrame, ...]:
     config = dict(run.config_json or {})
     raw = config.get(SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY)
     if not isinstance(raw, list) or not raw:
@@ -118,6 +110,18 @@ def _solver_runtime_timeline_frames_for_project(
         except Exception:  # noqa: BLE001
             continue
     return tuple(out)
+
+
+def _solver_runtime_timeline_frames_for_project(
+    project_id: int,
+) -> tuple[ReplayTimelineFrame, ...]:
+    """Load persisted solver runtime replay frames from latest SolverRun.config_json."""
+    run = (
+        SolverRun.objects.filter(project_id=int(project_id)).order_by("-created_at", "-id").first()
+    )
+    if run is None:
+        return ()
+    return _solver_runtime_timeline_frames_for_run(run)
 
 
 def _lab_timeline_frames_from_track(track: ReplayTrack | None) -> tuple[ReplayTimelineFrame, ...]:
@@ -226,20 +230,37 @@ def _track_metrics_from_serialized_frames(
 
 def build_lab_replay_frames_for_project(
     project_id: int,
+    *,
+    solver_run_id: int | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Compose Lab + solver runtime replay into product timeline JSON (never mutates sources)."""
 
-    lab_frames = _lab_timeline_frames_for_project(int(project_id))
-    runtime_frames = _solver_runtime_timeline_frames_for_project(int(project_id))
+    pid = int(project_id)
+    run: SolverRun | None = None
+    if solver_run_id is not None:
+        run = SolverRun.objects.filter(pk=int(solver_run_id), project_id=pid).first()
+        if run is None:
+            return [], _track_metrics_from_serialized_frames(
+                [],
+                diagnostic_reason=DIAGNOSTIC_NO_REPLAY_FRAMES,
+            )
+
+    lab_frames = _lab_timeline_frames_for_project(pid)
+    if run is not None:
+        runtime_frames = _solver_runtime_timeline_frames_for_run(run)
+        rttp_rows = load_rttp_compose_rows_for_project(pid, run_key=str(run.run_key))
+    else:
+        runtime_frames = _solver_runtime_timeline_frames_for_project(pid)
+        rttp_rows = load_rttp_compose_rows_for_project(pid)
+
     combined = compose_replay_timeline(
         lab_frames=(*lab_frames, *runtime_frames),
         max_frames=replay_limits.MAX_LAB_REPLAY_TIMELINE_FRAMES,
     )
     serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
-    rttp_rows = load_rttp_compose_rows_for_project(int(project_id))
     serialized = interleave_rttp_snapshot_frames(serialized, rttp_rows)
     serialized, frozen_rim_wire = enrich_lab_timeline_frames_with_terrain_rim(serialized)
-    diagnostic = _lab_replay_diagnostic_reason(int(project_id), composed_count=len(serialized))
+    diagnostic = _lab_replay_diagnostic_reason(pid, composed_count=len(serialized))
     metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
     if frozen_rim_wire is not None:
         metrics["frozen_terrain_rim_highlight"] = frozen_rim_wire
@@ -254,4 +275,5 @@ __all__ = [
     "get_latest_lab_replay_track_for_project",
     "resolve_replay_projection_context_for_project",
     "_solver_runtime_timeline_frames_for_project",
+    "_solver_runtime_timeline_frames_for_run",
 ]

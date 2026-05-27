@@ -78,7 +78,7 @@ def test_run_solver_persists_rttp_replay_frames_when_recording_enabled() -> None
     assert frame_count >= 4
 
 
-@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True, ASTEROID_LAB_REPLAY_PAYLOAD_MODE="inline")
 def test_run_solver_lab_json_h1_s_interleaved_rttp_full_snapshots() -> None:
     """H1-S: lab JSON interleaves full-snapshot RTTP frames; ``:rttp`` track still persisted."""
 

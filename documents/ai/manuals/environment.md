@@ -18,7 +18,7 @@ Load order: `.env` → `.env.debug` (when present).
 | Class | Description | Examples |
 |--------|------|-----|
 | **runtime** | Infrastructure · data paths needed locally/deployment | `DATABASE_URL`, `DJANGO_USE_SQLITE`, `SHAPEZ_BASEDATA_ROOT` |
-| **feature** | Product behavior toggles (code has readers) | (currently no Asteroid Lab replay–specific feature toggles) |
+| **feature** | Product behavior toggles (code has readers) | `ASTEROID_LAB_REPLAY_PAYLOAD_MODE` |
 | **infra** | Graph PNG preview · cache, etc. | `SOLVER_GRAPH_PREVIEW_*` |
 | **debug** | Do not put in default `.env` | `ASTEROID_LAB_BOUNDARY_JSONL`, `SHAPEZ_COPY_DEBUG_DIR` |
 | **unused** | Names left only in `.env` — **not referenced in code, delete** | `SHAPEZ_MINING_*`, `ASTEROID_LAB_REPLAY_JSON_DELIVERY`, etc. |
@@ -40,6 +40,7 @@ Load order: `.env` → `.env.debug` (when present).
 | `SOLVER_GRAPH_PREVIEW_CACHE_DIR` | `<BASE_DIR>/.graph_preview_cache` | `config/shapez_runtime_flags.py` |
 | `ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH` | `tests/fixtures/asteroid_lab/gene_templates` | `config/settings.py` |
 | `ASTEROID_LAB_MINERS_PER_ROUTE_OUT` | `12` | `config/settings.py` (shape belt goals per-route bundle budget) |
+| `ASTEROID_LAB_REPLAY_PAYLOAD_MODE` | `lazy` | `config/settings.py` — `inline` keeps full POST `lab_replay_frames_json`; `lazy` omits inline array (Sequence 13C) |
 | `ASTEROID_LAB_BOUNDARY_JSONL` | off | `django_apps/asteroid_lab/observability/boundary_jsonl.py` |
 | `ASTEROID_LAB_BOUNDARY_JSONL_DIR` | `var/asteroid_boundary_logs` | same |
 | `ASTEROID_LAB_SOLVER_SUMMARY_STACK_LOG` | on (`1`) | `django_apps/asteroid_lab/observability/solver_summary_stack_log.py` |
@@ -60,7 +61,7 @@ OAuth · Support URL, etc.: see `config/settings.py`.
 ## Unimplemented features and docs
 
 - **11B optimization overlay**: no env flag. On implementation, separate design · update this doc.
-- **13C lazy Lab replay**: env · settings added only in the **post–human-approval implementation phase**. See [`asteroid_lab_13_replay_payload_scalability.md`](../../Algorithm/asteroid_lab_13_replay_payload_scalability.md).
+- **13C lazy Lab replay**: `ASTEROID_LAB_REPLAY_PAYLOAD_MODE` registered (default `lazy`). See [`asteroid_lab_13_replay_payload_scalability.md`](../../Algorithm/asteroid_lab_13_replay_payload_scalability.md).
 
 ## Related manuals
 

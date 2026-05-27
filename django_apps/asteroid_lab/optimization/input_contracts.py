@@ -94,7 +94,8 @@ class RttpPipelineConfig:
     target_throughput_per_min: Decimal | None = None
     # Legacy run-config key ``throughput_target_percent`` — semantic = placement coverage %.
     placement_target_percent: int = 80
-    max_placement_goal_count: int = 32
+    # Resolved at runtime from field cells × placement_target_percent when unset in run config.
+    max_placement_goal_count: int = 0
     # From ``ReconstructionCompleteMap`` (0 = infer ``len(inp.mineable_cells)`` in pipeline).
     placement_platform_cell_count: int = 0
     # (x, y, cell_kind) for per-anchor miner sprite (fluid vs shape field)

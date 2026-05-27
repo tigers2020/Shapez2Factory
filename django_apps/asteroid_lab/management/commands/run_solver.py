@@ -81,7 +81,10 @@ class Command(BaseCommand):  # type: ignore[misc]
             "--max-placement-goal-count",
             type=int,
             default=None,
-            help="Max bundles greedy-regret may select (1-128, default 32).",
+            help=(
+                "Optional max placement override; must be >= placement_target_percent "
+                "of field cells (no default 32 cap)."
+            ),
         )
         parser.add_argument(
             "--selection-mode",

@@ -23,6 +23,9 @@ from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.services.reconstructed_map_persist_builder import (
     build_reconstructed_map_persist_payload,
 )
+from django_apps.asteroid_lab.services.reconstructed_map_thumbnail_service import (
+    sync_admin_list_thumbnail,
+)
 
 
 def run_reconstruction_for_map_input(
@@ -108,6 +111,8 @@ def persist_reconstructed_asteroid_map(
             ]
         )
 
+    row = m.ReconstructedAsteroidMap.objects.get(pk=int(row.pk))
+    sync_admin_list_thumbnail(row)
     return int(row.pk)
 
 

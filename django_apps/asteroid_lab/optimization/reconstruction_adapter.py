@@ -19,8 +19,8 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     RouteGoalKind,
     TransportKind,
 )
-from django_apps.asteroid_lab.optimization.routing.exterior_connector_planner import (
-    plan_exterior_connectors,
+from django_apps.asteroid_lab.optimization.routing.exterior_lane_capacity_planner import (
+    build_exterior_lane_capacity_plan,
 )
 from django_apps.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
@@ -154,20 +154,6 @@ def _max_asteroid_throughput_per_min(
     return Decimal(envelope["by_resource"][resource]["max_throughput_per_min"])
 
 
-def _planned_exterior_route_goals(
-    inp_partial: OptimizationInput,
-    *,
-    transport_kind: TransportKind,
-    required_count: int,
-) -> tuple[RouteGoal, ...]:
-    plan = plan_exterior_connectors(
-        inp_partial,
-        required_count=required_count,
-        transport_kind=transport_kind,
-    )
-    return plan.selected_goals
-
-
 def _legacy_rim_adjacent_margin_route_goals(
     inp: OptimizationInput,
     *,
@@ -249,11 +235,12 @@ def optimization_input_from_reconstruction(
         )
         evtc_required_count: int | None = None
     else:
-        route_goals = _planned_exterior_route_goals(
+        lane_plan = build_exterior_lane_capacity_plan(
             inp_partial,
+            max_asteroid_throughput_per_min=max_throughput,
             transport_kind=transport_kind,
-            required_count=required_count,
         )
+        route_goals = tuple(lane.connector_goal for lane in lane_plan.lanes)
         evtc_required_count = required_count
 
     return OptimizationInput(

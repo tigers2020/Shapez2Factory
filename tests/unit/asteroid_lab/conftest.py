@@ -176,3 +176,45 @@ def greenfield_with_catalog(
         greenfield_optimization_input,
         catalog_slice=catalog_slice_minimal,
     )
+
+
+@pytest.fixture
+def staff_client(db: None):
+    from django.contrib.auth import get_user_model
+    from django.test import Client
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        username="recon_map_admin_staff",
+        password="pass-word-123",
+        is_staff=True,
+        is_superuser=True,
+    )
+    client = Client()
+    client.force_login(user)
+    return client
+
+
+@pytest.fixture
+def reconstructed_row(db: None):
+    from django_apps.asteroid_lab import models as m
+
+    proj = m.AsteroidProject.objects.create(name="ThumbProj", slug="thumb-proj-admin")
+    inp = m.AsteroidMapInput.objects.create(
+        project=proj,
+        copy_code="",
+        source_kind=m.AsteroidMapInput.SourceKind.COPY_CODE,
+    )
+    decoded = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 1, "T": "SpaceBelt_Forward", "R": 0}],
+        },
+    }
+    return m.ReconstructedAsteroidMap.objects.create(
+        map_input=inp,
+        project=proj,
+        run_key="rk-thumb",
+        decoded_json=decoded,
+    )

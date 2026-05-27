@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from django_apps.asteroid_lab import models as m
@@ -85,6 +87,35 @@ def test_persist_reconstructed_map_idempotent(hole_island_copy: str) -> None:
     assert row.original_copy_code == hole_island_copy.strip()
     assert row.original_decoded_json.get("BP")
     assert row.decoded_json.get("BP", {}).get("Entries")
+    assert row.admin_list_thumbnail.name
+    assert row.admin_list_thumbnail_hash
+
+
+@pytest.mark.django_db
+def test_persist_succeeds_when_thumbnail_render_fails(hole_island_copy: str) -> None:
+    proj = m.AsteroidProject.objects.create(name="ReconThumbFail", slug="recon-thumb-fail")
+    inp = m.AsteroidMapInput.objects.create(
+        project=proj,
+        copy_code=hole_island_copy,
+        source_kind=m.AsteroidMapInput.SourceKind.COPY_CODE,
+    )
+    norm = normalize_decoded_blueprint(decode_copy_string(hole_island_copy.removesuffix("$")))
+    persist_decoded_snapshot_for_map_input(inp.id, norm)
+    cleanup, recon = run_reconstruction_for_map_input(inp.id)
+    with patch(
+        "django_apps.asteroid_lab.services.reconstructed_map_thumbnail_service.render_list_thumbnail_image_bytes",
+        side_effect=ValueError("render failed"),
+    ):
+        pk = persist_reconstructed_asteroid_map(
+            map_input_id=inp.id,
+            run_key="manual-thumb-fail",
+            recon=recon,
+            cleanup=cleanup,
+            cleanup_summary=dict(cleanup.summary_json),
+        )
+    row = m.ReconstructedAsteroidMap.objects.get(pk=pk)
+    assert row.decoded_json.get("BP", {}).get("Entries")
+    assert not row.admin_list_thumbnail
 
 
 @pytest.mark.django_db

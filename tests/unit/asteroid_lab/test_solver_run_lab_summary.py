@@ -295,6 +295,32 @@ def test_solver_runs_for_lab_project_orders_newest_first() -> None:
     assert lab_run_summary_from_orm(older)["status"] == "failed"
 
 
+def test_lab_run_summary_from_solver_summary_exposes_meg_fields() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=42,
+        status="partial",
+        solver_summary={
+            "validation_passed": False,
+            "run_status": "partial_success",
+            "structural_validation_passed": True,
+            "optimization_goal": {
+                "passed": False,
+                "issue_code": "mining_equipment_goal_shortfall",
+                "target_mining_equipment_cells": 467,
+                "confirmed_passed_mining_equipment_cells": 25,
+                "shortfall": 442,
+                "confirmed_committed_bundle_count": 25,
+            },
+            "issue_codes": ["mining_equipment_goal_shortfall"],
+            "confirmed_count": 25,
+        },
+    )
+    assert row["run_status"] == "partial_success"
+    assert row["structural_validation_passed"] is True
+    assert row["optimization_goal"]["shortfall"] == 442
+    assert row["validation_passed"] is False
+
+
 def test_lab_run_summary_from_orm_partial_status() -> None:
     proj = m.AsteroidProject.objects.create(name="Partial", slug="runs-partial")
     partial = m.SolverRun.objects.create(
@@ -304,7 +330,14 @@ def test_lab_run_summary_from_orm_partial_status() -> None:
         status=m.SolverRun.RunStatus.PARTIAL,
         config_json={
             SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY: {
-                "validation_passed": True,
+                "validation_passed": False,
+                "run_status": "partial_success",
+                "structural_validation_passed": True,
+                "optimization_goal": {
+                    "passed": False,
+                    "issue_code": "mining_equipment_goal_shortfall",
+                    "shortfall": 10,
+                },
                 "capacity_satisfied": False,
                 "run_success": False,
                 "placement_capacity_satisfied": False,
@@ -315,12 +348,14 @@ def test_lab_run_summary_from_orm_partial_status() -> None:
                 "target_placement_count": 84,
                 "capacity_deficit_count": 78,
                 "throughput_deficit_count": 0,
-                "issue_codes": ["under_target_throughput"],
+                "issue_codes": ["mining_equipment_goal_shortfall"],
             }
         },
     )
     row = lab_run_summary_from_orm(partial)
     assert row["status"] == "partial"
+    assert row["run_status"] == "partial_success"
+    assert row["optimization_goal"]["issue_code"] == "mining_equipment_goal_shortfall"
     assert row["capacity_satisfied"] is False
     assert row["placement_capacity_satisfied"] is False
     assert row["throughput_budget_satisfied"] is None

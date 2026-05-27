@@ -8,6 +8,10 @@ from django_apps.asteroid_lab.contracts.rttp_layout_issue_codes import (
     ISSUE_CODE_MISSING_EXTERIOR_ROUTE,
     ISSUE_CODE_MISSING_OUTPUT_TRANSPORT,
 )
+from django_apps.asteroid_lab.contracts.rttp_optimization_goal import (
+    MINING_EQUIPMENT_GOAL_SHORTFALL_ISSUE_CODE,
+    RttpRunStatus,
+)
 from django_apps.asteroid_lab.contracts.rttp_recovery_evidence import (
     GATE_A_PRIMARY_SLUGS,
     RTTP_CORE_RECOVERY_TEST_MAP_SLUG,
@@ -49,10 +53,10 @@ from tests.support.rttp_core_recovery_test_map_expectations import (
 
 
 @pytest.mark.django_db
-def test_recovery_map_validation_passes_with_placement_goal_shortfall_only(
+def test_recovery_map_structural_pass_optimization_goal_shortfall(
     imported_game_data_batch_module: object,
 ) -> None:
-    """Committed count < map-derived placement_goal; transport/exterior invariants must pass."""
+    """Structural layout pass with mining equipment goal shortfall (product fail, partial run)."""
 
     from django_apps.asteroid_lab import models as m
     from django_apps.asteroid_lab.management.commands.import_rttp_core_recovery_test_map import (
@@ -116,16 +120,31 @@ def test_recovery_map_validation_passes_with_placement_goal_shortfall_only(
     assert plan.asteroid_field_cell_count == expected_platform
     assert committed_count > 0
     assert committed_count < plan.placement_goal_count
-    assert pipeline_result.validation_passed is True
+
+    assert pipeline_result.structural_validation_passed is True
+    assert pipeline_result.optimization_goal is not None
+    assert pipeline_result.optimization_goal["passed"] is False
+    assert (
+        pipeline_result.optimization_goal["issue_code"]
+        == MINING_EQUIPMENT_GOAL_SHORTFALL_ISSUE_CODE
+    )
+    assert pipeline_result.validation_passed is False
+    assert pipeline_result.run_status == RttpRunStatus.PARTIAL_SUCCESS
 
     commit_step = next(
         row
         for row in pipeline_result.algorithm_steps
         if row["step_id"] == RttpAlgorithmStepId.RTTP_COMMIT.value
     )
-    layout_codes = list(commit_step["metrics"].get("layout_connectivity_issue_codes") or [])
+    commit_metrics = commit_step["metrics"]
+    layout_codes = list(commit_metrics.get("layout_connectivity_issue_codes") or [])
+    assert MINING_EQUIPMENT_GOAL_SHORTFALL_ISSUE_CODE not in layout_codes
     assert ISSUE_CODE_MISSING_OUTPUT_TRANSPORT not in layout_codes
     assert ISSUE_CODE_MISSING_EXTERIOR_ROUTE not in layout_codes
+
+    opt_goal = commit_metrics.get("optimization_goal") or {}
+    assert opt_goal.get("shortfall", 0) > 0
+    assert opt_goal.get("passed") is False
 
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
     exterior = count_exterior_connected_route_cells(

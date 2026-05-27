@@ -60,7 +60,9 @@ def test_existing_trunk_pipeline_commits_deterministically() -> None:
 
     assert first.normal_count >= 1
     assert len(first.commit_result.committed_ids) >= 1
-    assert first.validation_passed
+    assert first.structural_validation_passed
+    assert first.validation_passed is False
+    assert first.run_status == "partial_success"
     assert first == second
     assert first.commit_result.committed_ids == second.commit_result.committed_ids
     assert first.genome.commit_order == second.genome.commit_order

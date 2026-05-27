@@ -189,7 +189,8 @@ def test_pipeline_warning_only_catalog_does_not_fail_validation_or_top_level_iss
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
         pipeline_config=RttpPipelineConfig(catalog_placement_validation_mode="mapped_fail_closed"),
     )
-    assert result.validation_passed is True
+    assert result.structural_validation_passed is True
+    assert result.validation_passed is False
     audit_row = next(
         row
         for row in result.algorithm_steps
@@ -202,7 +203,7 @@ def test_pipeline_warning_only_catalog_does_not_fail_validation_or_top_level_iss
     )
     assert audit_row["metrics"]["catalog_error_issue_codes"] == []
     summary = build_rttp_solver_summary(
-        pipeline_ok=result.validation_passed,
+        pipeline_ok=result.structural_validation_passed,
         committed_count=len(result.commit_result.committed_ids),
         normal_count=result.normal_count,
         commit_order=result.genome.commit_order,
@@ -210,6 +211,9 @@ def test_pipeline_warning_only_catalog_does_not_fail_validation_or_top_level_iss
         catalog_error_issue_codes=catalog_error_issue_codes_from_algorithm_steps(
             result.algorithm_steps
         ),
+        optimization_goal=result.optimization_goal,
+        run_status=result.run_status,
+        structural_validation_passed=result.structural_validation_passed,
     )
     assert summary["issue_codes"] == []
     assert (
@@ -263,4 +267,5 @@ def test_pipeline_observe_only_mode_unchanged_when_catalog_validation_would_fail
     )
     assert audit_row["metrics"]["catalog_validation_mode"] == "observe_only"
     assert audit_row["passed"] is True
-    assert result.validation_passed is True
+    assert result.structural_validation_passed is True
+    assert result.validation_passed is False

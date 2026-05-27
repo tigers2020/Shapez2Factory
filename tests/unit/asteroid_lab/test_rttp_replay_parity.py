@@ -48,7 +48,8 @@ def test_pipeline_records_four_milestone_events(
         et.EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT,
     ]
     final = sink.events[-1]
-    assert final.metrics_json["validation_passed"] is True
+    assert final.metrics_json["validation_passed"] is False
+    assert final.metrics_json["structural_validation_passed"] is True
     assert final.metrics_json["committed_ids"]
     assert final.metrics_json["commit_order"]
 

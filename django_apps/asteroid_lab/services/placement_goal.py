@@ -6,6 +6,11 @@
 ``legacy_configured_max_placement_goal`` records the resolved run-config max
 (field cells × ``placement_target_percent`` floor when unset). It must never
 clamp ``placement_goal_count``.
+
+``placement_goal_count`` is a **deprecated alias** for the target count of
+pass-qualified **extractor + extension equipment cells** on mineable platform
+cells (not committed bundle count, not transport route cells). Canonical
+formula: ``mining_equipment_goal.compute_target_mining_equipment_cells``.
 """
 
 from __future__ import annotations
@@ -86,12 +91,16 @@ def compute_placement_goal_count(
     asteroid_field_cell_count: int,
     placement_target_percent: int,
 ) -> int:
-    """Product placement target from reconstruction-complete asteroid field coverage."""
+    """Deprecated alias — target mining equipment cells (extractor+extension), not bundle count."""
 
-    if asteroid_field_cell_count <= 0 or placement_target_percent <= 0:
-        return 0
-    product = Decimal(asteroid_field_cell_count) * Decimal(placement_target_percent) / Decimal(100)
-    return int(product.to_integral_value(rounding=ROUND_CEILING))
+    from django_apps.asteroid_lab.services.mining_equipment_goal import (
+        compute_target_mining_equipment_cells,
+    )
+
+    return compute_target_mining_equipment_cells(
+        mineable_cell_count=asteroid_field_cell_count,
+        placement_target_percent=placement_target_percent,
+    )
 
 
 def parse_max_placement_goal_count(config: Mapping[str, Any]) -> int:

@@ -56,6 +56,7 @@ from harness.investigation.rttp_elcp_universe_sanity import extract_elcp_attempt
 
 RECOVERY_SLUG = "rttp-core-recovery-test-map"
 
+
 @pytest.fixture(scope="module", autouse=True)
 def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
     return imported_game_data_batch_module
@@ -225,19 +226,15 @@ def test_recovery_map_primary_reprobe_mass_reproduced(
         exterior_lane_plan=captured.get("exterior_lane_plan"),
     )
     assert universe["commit_order_len"] == len(mirror.ledger) + len(primary.committed_ids)
-    assert universe["normal_candidate_count"] > universe["commit_order_len"], (
-        "forensics universe must be narrower than full normal candidate pool"
-    )
+    assert (
+        universe["normal_candidate_count"] > universe["commit_order_len"]
+    ), "forensics universe must be narrower than full normal candidate pool"
 
     step_forensics = extract_elcp_reprobe_forensics(pipeline_result.algorithm_steps)
     assert step_forensics["conflict_count"] == len(primary.conflicts)
+    assert step_forensics["lane_capacity_shortfall_count"] == primary.lane_capacity_shortfall_count
     assert (
-        step_forensics["lane_capacity_shortfall_count"]
-        == primary.lane_capacity_shortfall_count
-    )
-    assert (
-        step_forensics["route_feasible_shortfall_count"]
-        == primary.route_feasible_shortfall_count
+        step_forensics["route_feasible_shortfall_count"] == primary.route_feasible_shortfall_count
     )
 
     histogram = Counter(row.probe_failure_class.value for row in failed)

@@ -89,9 +89,7 @@ def exact_mis_size_for_component(
         vertex = nodes[0]
         rest = nodes[1:]
         without_vertex = recurse(rest)
-        independent_rest = tuple(
-            neighbor for neighbor in rest if neighbor not in adj[vertex]
-        )
+        independent_rest = tuple(neighbor for neighbor in rest if neighbor not in adj[vertex])
         with_vertex = 1 + recurse(independent_rest)
         return max(without_vertex, with_vertex)
 
@@ -143,9 +141,7 @@ def greedy_coloring_upper_bound_for_component(
     color_by_vertex: dict[str, int] = {}
     for vertex in ordered:
         used = {
-            color_by_vertex[neighbor]
-            for neighbor in adj[vertex]
-            if neighbor in color_by_vertex
+            color_by_vertex[neighbor] for neighbor in adj[vertex] if neighbor in color_by_vertex
         }
         color = 0
         while color in used:
@@ -195,9 +191,7 @@ def _exact_mis_vertices(
         vertex = nodes[0]
         rest = nodes[1:]
         without_vertex = recurse(rest)
-        independent_rest = tuple(
-            neighbor for neighbor in rest if neighbor not in adj[vertex]
-        )
+        independent_rest = tuple(neighbor for neighbor in rest if neighbor not in adj[vertex])
         with_vertex = (vertex,) + recurse(independent_rest)
         if len(with_vertex) > len(without_vertex):
             return with_vertex

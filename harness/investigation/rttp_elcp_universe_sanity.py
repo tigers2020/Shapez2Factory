@@ -87,9 +87,7 @@ def extract_elcp_attempt_universe_sanity(
     required_external_connectors = inp.required_external_connector_count
 
     forensics_scope = (
-        "selected_genome_commit_order_only"
-        if commit_order_len > 0
-        else "empty_commit_order"
+        "selected_genome_commit_order_only" if commit_order_len > 0 else "empty_commit_order"
     )
 
     return {

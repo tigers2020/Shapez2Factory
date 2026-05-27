@@ -156,9 +156,7 @@ def select_genome_overlap_pack(
         )
         if not try_append(pick.candidate_id):
             remaining = [
-                candidate
-                for candidate in remaining
-                if candidate.candidate_id != pick.candidate_id
+                candidate for candidate in remaining if candidate.candidate_id != pick.candidate_id
             ]
             continue
         remaining = [

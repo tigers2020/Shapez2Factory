@@ -145,12 +145,7 @@ def classify_probe_failure(
         ):
             return ElcpProbeFailureClass.DOMAIN_CONGESTION
         return ElcpProbeFailureClass.PROBE_UNREACHABLE
-    if (
-        candidate_reachable
-        and probe is not None
-        and probe.reachable
-        and not post_probe_committed
-    ):
+    if candidate_reachable and probe is not None and probe.reachable and not post_probe_committed:
         return ElcpProbeFailureClass.STALE_CANDIDATE_REACHABLE
     if fill_first_ok and not post_probe_committed:
         if trunk_pressure_correlated and tm_new_trunk_len > 0:
@@ -495,14 +490,8 @@ def assert_mirror_parity(
 ) -> None:
     assert mirror.mirror_committed_ids == production.committed_ids
     assert mirror.mirror_conflict_count == len(production.conflicts)
-    assert (
-        mirror.mirror_lane_capacity_shortfall_count
-        == production.lane_capacity_shortfall_count
-    )
-    assert (
-        mirror.mirror_route_feasible_shortfall_count
-        == production.route_feasible_shortfall_count
-    )
+    assert mirror.mirror_lane_capacity_shortfall_count == production.lane_capacity_shortfall_count
+    assert mirror.mirror_route_feasible_shortfall_count == production.route_feasible_shortfall_count
 
 
 def build_deferred_retry_audit(
@@ -537,11 +526,7 @@ def build_deferred_retry_audit(
         for row in ledger
     ]
     eligible_raw = shadow.domain_context.get("eligible_reprobe_failed_count")
-    eligible_count = (
-        int(eligible_raw)
-        if isinstance(eligible_raw, int)
-        else shadow.candidate_count
-    )
+    eligible_count = int(eligible_raw) if isinstance(eligible_raw, int) else shadow.candidate_count
     return {
         "primary_reprobe_failed_count": primary_reprobe,
         "eligible_reprobe_failed_count": eligible_count,

@@ -275,8 +275,7 @@ def trace_greedy_regret_selection(
         )
 
     attrition_ledger = tuple(
-        attrition_by_id[candidate_id]
-        for candidate_id in sorted(attrition_by_id)
+        attrition_by_id[candidate_id] for candidate_id in sorted(attrition_by_id)
     )
 
     return GreedyRegretSelectionTraceResult(
@@ -304,17 +303,11 @@ def assert_selection_trace_parity(
 
 def attrition_class_coverage(trace: GreedyRegretSelectionTraceResult) -> float:
     removed = [
-        row
-        for row in trace.attrition_ledger
-        if row.attrition_class is not AttritionClass.SELECTED
+        row for row in trace.attrition_ledger if row.attrition_class is not AttritionClass.SELECTED
     ]
     if not removed:
         return 1.0
-    known = sum(
-        1
-        for row in removed
-        if row.attrition_class is not AttritionClass.UNKNOWN_ATTRITION
-    )
+    known = sum(1 for row in removed if row.attrition_class is not AttritionClass.UNKNOWN_ATTRITION)
     return known / len(removed)
 
 

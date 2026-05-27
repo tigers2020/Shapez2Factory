@@ -60,12 +60,16 @@ These are **not substitutes for one another**; responsibilities differ.
 ```text
 Replay is output-only.
 One unified product replay timeline (dual-track policy deprecated 2026-05-19).
+Product replay timeline and milestone HUD payload remain separate.
+No implicit sync or index coupling between product timeline and milestone HUD.
 Every frame must remain 2D-renderable (map_view) when payload shape changes.
 No solver / algorithm reads replay payload.
 Replay semantic equivalence must be preserved.
 No large golden JSON unless explicitly approved.
 UI uses a single timeline controller unless a dedicated migration sequence opens.
 ```
+
+**Terminology note (2026-05-30):** Earlier drafts referenced "Lab / Optimization dual-track." Canonical product model is a **single product replay timeline** ([`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md)) plus a separate milestone HUD payload. Sequence 13C transport design: [`docs/superpowers/specs/2026-05-30-lab-replay-lazy-load-post-slimming-design.md`](../../docs/superpowers/specs/2026-05-30-lab-replay-lazy-load-post-slimming-design.md).
 
 **Forbidden before implementation approval (including this document phase):**
 
@@ -74,7 +78,7 @@ UI uses a single timeline controller unless a dedicated migration sequence opens
 - **Preemptive JS replay loading changes**
 - **Delta compression · encoding core implementation**
 - **Solver / replay semantics changes**
-- **13C implementation** — do not start without **explicit human approval**
+- **13C implementation** — approved 2026-05-30 per lazy-load design spec; see implementation plan in `docs/superpowers/plans/2026-05-30-lab-replay-lazy-load-post-slimming.md`
 
 ---
 
@@ -86,7 +90,7 @@ UI uses a single timeline controller unless a dedicated migration sequence opens
 
 - POST response: **summary · preview · fetch handle** (e.g. token · URL · resource id — exact format fixed in approved design).
 - **Full Lab replay** fetched via **separate request** when needed.
-- Frames returned by the **full replay endpoint** must be **semantically identical** to historical inline `lab_replay_frames_json`.
+- Frames returned by the **full replay endpoint** must be **semantically identical** to historical inline `lab_replay_frames_json` for the **requested `solver_run_id`** (run-scoped builder; not latest-run drift).
 
 **Semantic risk:** Ensure fetch path · cache · permissions · CSRF · errors on **partial load** do not corrupt UI state.
 
@@ -185,3 +189,4 @@ replay / debug remains output-only
 | Date | Content |
 |------|------|
 | 2026-05-17 | Sequence 13 roadmap canonical first fixed (13A·13B completion summary, 13C–13G, invariants · forbidden · tests · exit criteria) |
+| 2026-05-30 | Terminology sync (product timeline vs milestone HUD); 13C approved; run-scoped GET contract note |

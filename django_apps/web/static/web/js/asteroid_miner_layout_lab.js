@@ -1367,6 +1367,85 @@
     let replayTrackMetrics =
       trackMetricsRaw && typeof trackMetricsRaw === "object" ? trackMetricsRaw : {};
     let hasServerReplay = replayFrames.length > 0;
+    const labReplayLoadState = {
+      mode: "inline",
+      status: "idle",
+      frameCount: 0,
+      fetchUrl: null,
+      errorMessage: null,
+      loadPromise: null,
+    };
+
+    function renderLabReplayLoadStatus() {
+      const el = document.getElementById("lab-replay-load-status");
+      if (!el) return;
+      if (labReplayLoadState.mode !== "lazy") {
+        el.textContent = "";
+        return;
+      }
+      if (labReplayLoadState.status === "loading") {
+        el.textContent = "Replay: loading…";
+      } else if (labReplayLoadState.status === "loaded") {
+        el.textContent = "Replay: loaded " + String(labReplayLoadState.frameCount) + " frames";
+      } else if (labReplayLoadState.status === "error") {
+        el.textContent = "Replay: failed to load — retry";
+      } else {
+        el.textContent = "Replay: preview only";
+      }
+    }
+
+    function applyLoadedLabReplayPayload(payload) {
+      if (!payload || !Array.isArray(payload.frames)) return;
+      const prevIndex = replayArrayIndex;
+      replayFrames = payload.frames;
+      hasServerReplay = replayFrames.length > 0;
+      replayCleanup();
+      replayCleanup = initializeServerReplaySurface(replayFrames);
+      replayArrayIndex = Math.min(prevIndex, Math.max(0, replayFrames.length - 1));
+      labReplayLoadState.status = "loaded";
+      labReplayLoadState.frameCount = replayFrames.length;
+      renderLabReplayLoadStatus();
+      applyFrame();
+    }
+
+    function ensureLabReplayFramesLoaded(reason) {
+      if (labReplayLoadState.mode !== "lazy" || labReplayLoadState.status === "loaded") {
+        return Promise.resolve();
+      }
+      if (!labReplayLoadState.fetchUrl) {
+        return Promise.resolve();
+      }
+      if (labReplayLoadState.loadPromise) {
+        return labReplayLoadState.loadPromise;
+      }
+      labReplayLoadState.status = "loading";
+      renderLabReplayLoadStatus();
+      labReplayLoadState.loadPromise = fetch(labReplayLoadState.fetchUrl, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, data: data };
+          });
+        })
+        .then(function (bundle) {
+          if (!bundle.ok || !bundle.data || !Array.isArray(bundle.data.frames)) {
+            throw new Error("lab_replay_load_failed");
+          }
+          applyLoadedLabReplayPayload(bundle.data);
+        })
+        .catch(function () {
+          labReplayLoadState.status = "error";
+          labReplayLoadState.errorMessage = "load_failed";
+          renderLabReplayLoadStatus();
+        })
+        .finally(function () {
+          labReplayLoadState.loadPromise = null;
+        });
+      return labReplayLoadState.loadPromise;
+    }
+
     let initialFromServer = Object.assign(
       {},
       uiInitial && typeof uiInitial === "object" ? uiInitial : {},
@@ -2555,10 +2634,13 @@
     });
 
     playBtn?.addEventListener("click", function () {
-      const cap = hasServerReplay ? replayFrames.length : TOTAL_FRAMES;
-      if (cap <= 0) return;
-      setPlaying(!isPlaying);
-      applyFrame();
+      ensureLabReplayFramesLoaded("play").then(function () {
+        if (labReplayLoadState.status === "error") return;
+        const cap = hasServerReplay ? replayFrames.length : TOTAL_FRAMES;
+        if (cap <= 0) return;
+        setPlaying(!isPlaying);
+        applyFrame();
+      });
     });
 
     document.getElementById("lab-timeline-next")?.addEventListener("click", function () {
@@ -2576,7 +2658,10 @@
         setPlaying(false);
       });
       scrubEl.addEventListener("input", function () {
-        setTimelineIndex(scrubEl.value, { pause: true });
+        ensureLabReplayFramesLoaded("scrub").then(function () {
+          if (labReplayLoadState.status === "error") return;
+          setTimelineIndex(scrubEl.value, { pause: true });
+        });
       });
     }
 
@@ -2699,6 +2784,34 @@
         rootEl.dataset.labReplayTrackId = tid != null ? String(tid) : "";
       }
       baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
+      const lazy = payload.lab_replay;
+      if (lazy && lazy.mode === "lazy") {
+        labReplayLoadState.mode = "lazy";
+        labReplayLoadState.status = "idle";
+        labReplayLoadState.frameCount = Number(lazy.frame_count) || 0;
+        labReplayLoadState.fetchUrl = typeof lazy.fetch_url === "string" ? lazy.fetch_url : null;
+        labReplayLoadState.errorMessage = null;
+        labReplayLoadState.loadPromise = null;
+        const preview =
+          lazy.preview_frame && typeof lazy.preview_frame === "object" ? lazy.preview_frame : null;
+        replayFrames = preview ? [preview] : [];
+        hasServerReplay = replayFrames.length > 0;
+        if (!hasServerReplay) {
+          window.location.assign(redirectTo || window.location.href);
+          return;
+        }
+        replayCleanup();
+        replayCleanup = initializeServerReplaySurface(replayFrames);
+        replayArrayIndex = 0;
+        setPlaying(false);
+        renderLabReplayLoadStatus();
+        applyFrame();
+        return;
+      }
+      labReplayLoadState.mode = "inline";
+      labReplayLoadState.status = "idle";
+      labReplayLoadState.loadPromise = null;
+      renderLabReplayLoadStatus();
       const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];
       replayFrames = next;
       if (payload.replay_track_metrics && typeof payload.replay_track_metrics === "object") {

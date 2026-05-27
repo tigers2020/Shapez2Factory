@@ -168,6 +168,13 @@ ASTEROID_LAB_RTTP_ENABLED = os.environ.get("ASTEROID_LAB_RTTP_ENABLED", "1").str
     "yes",
 )
 
+ASTEROID_LAB_REPLAY_PAYLOAD_MODE = os.environ.get(
+    "ASTEROID_LAB_REPLAY_PAYLOAD_MODE",
+    "lazy",
+).strip().lower()
+if ASTEROID_LAB_REPLAY_PAYLOAD_MODE not in ("inline", "lazy"):
+    ASTEROID_LAB_REPLAY_PAYLOAD_MODE = "lazy"
+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",

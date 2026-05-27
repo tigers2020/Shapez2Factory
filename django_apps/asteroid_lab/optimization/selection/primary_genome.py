@@ -13,6 +13,9 @@ from django_apps.asteroid_lab.optimization.selection.greedy_regret import (
     PlacementGenome,
     select_genome,
 )
+from django_apps.asteroid_lab.optimization.selection.overlap_pack import (
+    select_genome_overlap_pack,
+)
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 
 
@@ -34,6 +37,8 @@ def select_primary_genome(
             goal_count=goal_count,
             config=ga_config,
         )
+    if mode is SelectionMode.GREEDY_REGRET_OVERLAP_PACK:
+        return select_genome_overlap_pack(pool, skeleton, inp, goal_count=goal_count)
     return select_genome(pool, skeleton, inp, goal_count=goal_count)
 
 

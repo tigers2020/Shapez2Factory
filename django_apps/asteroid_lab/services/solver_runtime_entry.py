@@ -233,7 +233,11 @@ def _ga_shadow_require_float(value: object, *, field: str) -> float:
 
 
 _VALID_SELECTION_MODES = frozenset(
-    {SelectionMode.GREEDY_REGRET.value, SelectionMode.EVOLUTION.value}
+    {
+        SelectionMode.GREEDY_REGRET.value,
+        SelectionMode.GREEDY_REGRET_OVERLAP_PACK.value,
+        SelectionMode.EVOLUTION.value,
+    }
 )
 
 

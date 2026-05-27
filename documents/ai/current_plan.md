@@ -110,6 +110,12 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 **CLOSED (2026-05-27):** **LNS ELCP propagation** — Run #238 wiring bug: LNS retry preserves ELCP context + replacement guard. Spec: [`2026-05-27-rttp-lns-elcp-propagation-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-lns-elcp-propagation-design.md) · plan: [`2026-05-27-rttp-lns-elcp-propagation.md`](../../docs/superpowers/plans/2026-05-27-rttp-lns-elcp-propagation.md). PR [#110](https://github.com/tigers2020/Shapez2Factory/pull/110). Regression: Run #239–241 — 3 committed / 3 assignments, validation_passed, no `route_without_lane_assignment` (P0 closed); throughput shortfall remains P1.
 
+**REOPENED (2026-05-27):** **P1-ELCP-RF** — Layer 2 commit-order forensics complete; B-spec **BLOCKED**. Report: [`2026-05-27-rttp-elcp-primary-reprobe-failure-investigation-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-primary-reprobe-failure-investigation-report.md).
+
+**CLOSED (2026-05-27):** **P1-ELCP-RF-A2** — Layer 1 selection attrition (`356→59`, Gate A). Report: [`2026-05-27-rttp-elcp-rf-a2-selection-universe-attrition-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-a2-selection-universe-attrition-report.md). **P1-ELCP-RF** remains REOPENED; `lane_capacity_shortfall` B-spec **BLOCKED**.
+
+**CLOSED (2026-05-27):** **P1-ELCP-RF-B1** — Overlap packing selection (`59→67` Gate A, opt-in `GREEDY_REGRET_OVERLAP_PACK`). Report: [`2026-05-27-rttp-elcp-rf-b1-overlap-packing-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-b1-overlap-packing-report.md). **P1-ELCP-RF** remains REOPENED; `lane_capacity_shortfall` B-spec **BLOCKED**.
+
 **ACTIVE (parallel) — RTTP v0.2 Core Algorithm Recovery** — **Gate B** throughput / A4-2 selection toward `placement_goal_count`. Recovery: [`2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md) §13.
 
 **CLOSED (2026-05-30):** **Track B Task 6 — Lab pass_capable badge** — PR [#102](https://github.com/tigers2020/Shapez2Factory/pull/102) on `master` (`093a2143`).

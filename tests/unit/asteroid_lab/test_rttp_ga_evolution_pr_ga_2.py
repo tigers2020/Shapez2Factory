@@ -36,7 +36,15 @@ def test_selection_mode_defaults_greedy_regret() -> None:
 
 def test_selection_mode_enum_values() -> None:
     assert SelectionMode.GREEDY_REGRET.value == "greedy_regret"
+    assert SelectionMode.GREEDY_REGRET_OVERLAP_PACK.value == "greedy_regret_overlap_pack"
     assert SelectionMode.EVOLUTION.value == "evolution"
+
+
+def test_selection_mode_overlap_pack_from_run_config() -> None:
+    mode = _selection_mode_from_run_config(
+        {SOLVER_RUN_CONFIG_RTTP_SELECTION_KEY: {"mode": "greedy_regret_overlap_pack"}}
+    )
+    assert mode is SelectionMode.GREEDY_REGRET_OVERLAP_PACK
 
 
 def test_selection_mode_from_run_config_default() -> None:

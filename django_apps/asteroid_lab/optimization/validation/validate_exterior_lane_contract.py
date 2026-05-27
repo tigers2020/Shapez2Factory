@@ -140,9 +140,7 @@ def validate_exterior_lane_contract_issues(
         if not _trunk_is_single_component(trunk_state.trunk_cells):
             issues.append(ISSUE_CODE_EXTERIOR_LANE_TRUNK_NOT_SHARED)
 
-    trunk_by_lane = {
-        state.lane_id: state for state in commit_result.exterior_lane_trunk_states
-    }
+    trunk_by_lane = {state.lane_id: state for state in commit_result.exterior_lane_trunk_states}
     for evidence in commit_result.exterior_lane_route_evidence:
         if not evidence.branch_cells:
             continue

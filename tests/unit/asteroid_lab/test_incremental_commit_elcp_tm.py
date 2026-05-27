@@ -150,9 +150,7 @@ def test_two_miners_same_lane_share_trunk_cells(
         mineable_cells=frozenset(),
         rim_cells=frozenset(),
         inner_cells=frozenset(),
-        external_void_cells=frozenset(
-            {(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)}
-        ),
+        external_void_cells=frozenset({(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)}),
         protected_corridor_cells=frozenset(),
         existing_trunk_cells=frozenset(),
         transport_kind=TransportKind.SHAPE_BELT,
@@ -198,9 +196,7 @@ def test_second_miner_reuses_trunk_and_reserves_branch_only(
         mineable_cells=frozenset(),
         rim_cells=frozenset(),
         inner_cells=frozenset(),
-        external_void_cells=frozenset(
-            {(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)}
-        ),
+        external_void_cells=frozenset({(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)}),
         protected_corridor_cells=frozenset(),
         existing_trunk_cells=frozenset(),
         transport_kind=TransportKind.SHAPE_BELT,

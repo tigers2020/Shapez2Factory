@@ -48,9 +48,11 @@ def increment_assignment_state(
     return tuple(
         ExteriorLaneAssignmentState(
             lane_id=row.lane_id,
-            assigned_load_per_min=row.assigned_load_per_min + delta
-            if row.lane_id == lane_id
-            else row.assigned_load_per_min,
+            assigned_load_per_min=(
+                row.assigned_load_per_min + delta
+                if row.lane_id == lane_id
+                else row.assigned_load_per_min
+            ),
         )
         for row in state
     )

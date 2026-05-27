@@ -67,15 +67,14 @@ def test_normal_occupied_matches_catalog_placement_spec(
     for cand in result.normal_candidates:
         ref = cand.catalog_placement_ref
         assert ref is not None
-        spec = next(
-            s for s in specs if s.canonical_id == ref.canonical_id and s.rotation == ref.rotation
-        )
+        spec = next(s for s in specs if s.pattern_id == cand.pattern.pattern_id)
         expected = frozenset(
             (ref.anchor_coord[0] + off[0], ref.anchor_coord[1] + off[1])
             for off in spec.occupied_offsets
         )
         assert cand.occupied_cells == expected
-        assert cand.pattern.extension_offsets == ()
+        assert cand.pattern.extension_offsets == spec.extension_offsets
+        assert cand.pattern.topology_kind == spec.topology_kind
         fot = (
             ref.anchor_coord[0] + cand.pattern.fixed_output_transport_offset[0],
             ref.anchor_coord[1] + cand.pattern.fixed_output_transport_offset[1],
@@ -110,13 +109,19 @@ def test_normal_candidate_has_empty_extensions_and_fot_not_occupied(
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
         fixed_output_transport_policy=FixedOutputTransportPolicy.ALLOW,
     )
+    catalog_sl = inp.catalog_slice
+    assert catalog_sl is not None
+    specs = build_catalog_placement_specs(catalog_sl, transport_kind=inp.transport_kind)
     assert result_allow.normal_candidates
-    cand = result_allow.normal_candidates[0]
-    anchor = cand.anchor_coord
+    ext0 = next(c for c in result_allow.normal_candidates if not c.pattern.extension_offsets)
+    anchor = ext0.anchor_coord
     fot = (
-        anchor[0] + cand.pattern.fixed_output_transport_offset[0],
-        anchor[1] + cand.pattern.fixed_output_transport_offset[1],
+        anchor[0] + ext0.pattern.fixed_output_transport_offset[0],
+        anchor[1] + ext0.pattern.fixed_output_transport_offset[1],
     )
-    assert cand.pattern.extension_offsets == ()
-    assert fot not in cand.occupied_cells
-    assert cand.throughput_factor == 4
+    assert fot not in ext0.occupied_cells
+    assert ext0.throughput_factor == 4
+    assert ext0.pattern.topology_kind in ("none", "catalog")
+    assert any(c.throughput_factor > 4 for c in result_allow.normal_candidates) or any(
+        len(s.extension_offsets) > 0 for s in specs
+    )

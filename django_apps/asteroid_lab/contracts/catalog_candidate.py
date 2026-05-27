@@ -15,9 +15,14 @@ def throughput_factor_for_footprint(cell_count: int) -> int:
     return _THROUGHPUT_BY_EXT[extension_count]
 
 
-def catalog_pattern_id(canonical_id: str, rotation: CardinalDirection) -> str:
+def catalog_pattern_id(
+    canonical_id: str,
+    rotation: CardinalDirection,
+    *,
+    extension_count: int = 0,
+) -> str:
     safe = canonical_id.replace(":", "_")
-    return f"cat_{safe}_{rotation.value}"
+    return f"cat_{safe}_{rotation.value}_ext{extension_count}"
 
 
 @dataclass(frozen=True, slots=True)

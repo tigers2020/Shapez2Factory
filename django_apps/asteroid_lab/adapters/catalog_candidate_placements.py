@@ -30,6 +30,7 @@ def build_catalog_placement_specs(
                 occupied_offsets=frozenset(row.occupied_offsets),
                 output_dir=row.output_dir.value,
                 throughput_factor=row.throughput_factor,
+                topology_kind=row.topology_kind,
             )
         )
     return tuple(specs)

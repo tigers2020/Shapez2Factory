@@ -22,14 +22,23 @@ def test_catalog_pattern_id_never_lin_prefix() -> None:
     pid = catalog_pattern_id("bv:miner", CardinalDirection.N)
     assert pid.startswith("cat_")
     assert "lin_" not in pid
-    assert pid == "cat_bv_miner_N"
+    assert pid == "cat_bv_miner_N_ext0"
+
+
+def test_catalog_pattern_id_always_includes_extension_count() -> None:
+    assert catalog_pattern_id("shape_miner", CardinalDirection.E, extension_count=0) == (
+        "cat_shape_miner_E_ext0"
+    )
+    assert catalog_pattern_id("shape_miner", CardinalDirection.E, extension_count=2).endswith(
+        "_ext2"
+    )
 
 
 def test_catalog_placement_spec_frozen() -> None:
     spec = CatalogPlacementSpec(
         canonical_id="bv:1",
         rotation=CardinalDirection.E,
-        pattern_id="cat_bv_1_E",
+        pattern_id="cat_bv_1_E_ext0",
         extractor_offset=(0, 0),
         extension_offsets=(),
         fixed_output_transport_offset=(1, 0),

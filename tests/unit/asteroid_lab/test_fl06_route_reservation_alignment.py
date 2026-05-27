@@ -140,7 +140,7 @@ def test_narrow_corridor_single_commit_documents_q1_q4_relationship(
         )
 
 
-H1A_NARROW_CORRIDOR_CANDIDATE_ID = "7,5:cat_bv_1_N:shape_belt"
+H1A_NARROW_CORRIDOR_CANDIDATE_ID = "7,5:cat_bv_1_N_ext0:shape_belt"
 
 
 def test_incremental_commit_reserved_routes_include_output_stub_after_fallback(

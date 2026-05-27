@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.adapters.catalog_candidate_placements import (
+    build_catalog_placement_specs,
+)
 from django_apps.asteroid_lab.catalog.asteroid_equipment_projection import (
     list_equipment_placement_specs,
 )
@@ -20,10 +23,8 @@ from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     BuildingConnectorSnapshot,
     BuildingFootprintCell,
 )
+from django_apps.asteroid_lab.optimization.candidates.bundle_pattern import BundlePattern
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
-from django_apps.asteroid_lab.optimization.candidates.pattern_library import (
-    build_pattern_library,
-)
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 from tests.support.catalog_test_fixtures import build_minimal_test_catalog_slice
 from tests.unit.asteroid_lab.test_catalog_placement_validation import _slice_with_variant
@@ -32,9 +33,9 @@ from tests.unit.asteroid_lab.test_catalog_placement_validation import _slice_wit
 def test_equipment_projection_metrics_includes_source_kind_counts() -> None:
     sl = build_minimal_test_catalog_slice()
     metrics = equipment_projection_metrics(sl, transport_kind=TransportKind.SHAPE_BELT)
-    assert metrics["equipment_projection_spec_count"] == 4
+    assert metrics["equipment_projection_spec_count"] == 16
     assert "projection_source_kind_counts" in metrics
-    assert metrics["projection_source_kind_counts"]["game_data_canon"] == 4
+    assert metrics["projection_source_kind_counts"]["game_data_canon"] == 16
 
 
 def test_committed_projection_audit_reports_source_kind() -> None:
@@ -46,8 +47,24 @@ def test_committed_projection_audit_reports_source_kind() -> None:
         footprint=footprint,
         connectors=connectors,
     )
-    pat = next(p for p in build_pattern_library() if p.pattern_id == "lin_e_len0")
-    ref = CatalogPlacementRef("bv:shape_miner", (5, 7), CardinalDirection.E)
+    spec = next(
+        s
+        for s in build_catalog_placement_specs(sl, transport_kind=TransportKind.SHAPE_BELT)
+        if s.rotation is CardinalDirection.E and s.pattern_id.endswith("_ext0")
+    )
+    pat = BundlePattern(
+        pattern_id=spec.pattern_id,
+        extension_count=len(spec.extension_offsets),
+        occupied_offsets=spec.occupied_offsets,
+        extractor_offset=spec.extractor_offset,
+        extension_offsets=spec.extension_offsets,
+        output_dir=spec.output_dir,
+        fixed_output_transport_offset=spec.fixed_output_transport_offset,
+        output_stub_offset=spec.output_stub_offset,
+        throughput_factor=spec.throughput_factor,
+        topology_kind=spec.topology_kind,
+    )
+    ref = CatalogPlacementRef(spec.canonical_id, (5, 7), CardinalDirection.E)
     cand = BundleCandidate(
         candidate_id="c1",
         anchor_coord=(5, 7),

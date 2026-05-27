@@ -37,7 +37,7 @@ def test_projected_equipment_spec_throughput_factor_is_int() -> None:
     spec = ProjectedEquipmentSpec(
         layout_t="Layout_ShapeMiner",
         canonical_id="bv:miner",
-        pattern_id="cat_bv_miner_E",
+        pattern_id="cat_bv_miner_E_ext0",
         rotation=CardinalDirection.E,
         extractor_offset=(0, 0),
         extension_offsets=(),
@@ -46,6 +46,7 @@ def test_projected_equipment_spec_throughput_factor_is_int() -> None:
         occupied_offsets=((0, 0),),
         output_dir=CardinalDirection.E,
         throughput_factor=4,
+        topology_kind="none",
         source_kind=ProjectionSourceKind.CANON_MANUAL,
         source_detail="island:balance",
     )

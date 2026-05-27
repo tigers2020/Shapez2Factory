@@ -206,7 +206,7 @@ equipment_occupied_cells ∩ reserved_route_cells == ∅
 - Allowlist: `Layout_ShapeMinerExtension`, `Layout_FluidMinerExtension`.
 - **Production-safe topology only:** copy canonical N/W/S tree contract into a new adapter (e.g. `catalog/extension_topology_contract.py`) sourced from `pattern_library` linear E + rotation.
 - **Must not** import `exhaustive_generator` or other test/legacy-only modules in `optimization/candidates/candidate_generator.py` production path.
-- Separate spec: `2026-05-27-rttp-extension-topology-synthesis-design.md` (to be written after Phase 1 ships).
+- Canonical spec: [`2026-05-30-rttp-extension-topology-synthesis-design.md`](2026-05-30-rttp-extension-topology-synthesis-design.md) (S2b-1 opposite-arm; S2b-2 N/S arms deferred).
 
 ---
 

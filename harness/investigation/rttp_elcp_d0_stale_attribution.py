@@ -107,9 +107,7 @@ class ElcpStaleAttributionRow:
             "commit_probe_reachable": self.commit_probe_reachable,
             "probe_start": list(self.probe_start) if self.probe_start else None,
             "candidate_route_probe_start": (
-                list(self.candidate_route_probe_start)
-                if self.candidate_route_probe_start
-                else None
+                list(self.candidate_route_probe_start) if self.candidate_route_probe_start else None
             ),
             "committed_route_cell_count": self.committed_route_cell_count,
             "new_blocking_cells_since_last_commit_count": (
@@ -141,15 +139,11 @@ def diff_blocking_cells(
     before: MirrorDomainSnapshot | None,
     at_attempt: MirrorDomainSnapshot,
 ) -> tuple[int, tuple[Coord, ...]]:
-    at_union = frozenset(
-        at_attempt.committed_route_cells | at_attempt.committed_occupied
-    )
+    at_union = frozenset(at_attempt.committed_route_cells | at_attempt.committed_occupied)
     if before is None:
         before_union: frozenset[Coord] = frozenset()
     else:
-        before_union = frozenset(
-            before.committed_route_cells | before.committed_occupied
-        )
+        before_union = frozenset(before.committed_route_cells | before.committed_occupied)
     diff = sorted(at_union - before_union)
     sample = tuple(diff[:_NEW_BLOCKING_SAMPLE_MAX])
     return len(diff), sample
@@ -450,14 +444,10 @@ def run_gate_a_elcp_d0_overlap_stale_forensics(
     histogram = dict(Counter(r.stale_attribution_class.value for r in rows))
     unattributed = histogram.get(ElcpStaleAttributionClass.UNATTRIBUTED_STALE.value, 0)
     coverage = 1.0 - (unattributed / len(rows)) if rows else 0.0
-    reservation_flags = [
-        r.commit_conflict_reason in RESERVATION_CONFLICT_REASONS for r in rows
-    ]
+    reservation_flags = [r.commit_conflict_reason in RESERVATION_CONFLICT_REASONS for r in rows]
     verdict = compute_d0_verdict(
         attribution_classes=[r.stale_attribution_class for r in rows],
-        new_blocking_cells_counts=[
-            r.new_blocking_cells_since_last_commit_count for r in rows
-        ],
+        new_blocking_cells_counts=[r.new_blocking_cells_since_last_commit_count for r in rows],
         reservation_conflict_flags=reservation_flags,
     )
 

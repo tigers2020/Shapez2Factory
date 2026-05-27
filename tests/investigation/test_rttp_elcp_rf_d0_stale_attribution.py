@@ -32,9 +32,7 @@ def test_gate_a_elcp_d0_overlap_stale_attribution(
 
     assert result.git_sha != "unknown"
     assert len(result.rows) == EXPECTED_OVERLAP_STALE_ROW_COUNT
-    assert all(
-        r.probe_failure_class == "stale_candidate_reachable" for r in result.rows
-    )
+    assert all(r.probe_failure_class == "stale_candidate_reachable" for r in result.rows)
 
     unattributed = sum(
         1

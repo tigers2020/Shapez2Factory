@@ -231,6 +231,9 @@ def run_bounded_deferred_retry(
             recovered_candidate_ids=frozenset(recovered_ids),
             retry_failures=tuple(retry_failures),
         ),
+        exterior_lane_trunk_states=primary_commit_result.exterior_lane_trunk_states,
+        exterior_lane_route_evidence=primary_commit_result.exterior_lane_route_evidence,
+        exterior_lane_activations=primary_commit_result.exterior_lane_activations,
     )
     return DeferredRetryExecuteResult(
         merged_commit_result=merged,

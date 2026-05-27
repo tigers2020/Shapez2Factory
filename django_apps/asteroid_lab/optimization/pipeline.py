@@ -24,6 +24,9 @@ from django_apps.asteroid_lab.contracts.deferred_retry_execute import (
     deferred_retry_execute_metrics,
 )
 from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
+from django_apps.asteroid_lab.contracts.exterior_lane_capacity import (
+    ExteriorLaneCapacityPlan,
+)
 from django_apps.asteroid_lab.contracts.ga_evolution_shadow import GaEvolutionShadowConfig
 from django_apps.asteroid_lab.contracts.selection_mode import SelectionMode
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
@@ -44,6 +47,7 @@ from django_apps.asteroid_lab.optimization.commit.deferred_retry_shadow import (
 )
 from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
     CommitResult,
+    _resource_kind_for_transport,
     incremental_commit,
     initial_commit_domain,
 )
@@ -70,6 +74,9 @@ from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
 from django_apps.asteroid_lab.optimization.replay_sink import (
     RttpReplaySink,
     resolve_replay_sink,
+)
+from django_apps.asteroid_lab.optimization.routing.exterior_lane_capacity_planner import (
+    build_exterior_lane_capacity_plan,
 )
 from django_apps.asteroid_lab.optimization.rttp_replay_diagnostics import (
     build_candidates_replay_payload,
@@ -417,6 +424,91 @@ def _transport_mismatch_metrics(inp: OptimizationInput) -> dict[str, int | dict[
     )
 
 
+def _exterior_lane_plan_for_pipeline(
+    inp: OptimizationInput,
+    config: RttpPipelineConfig,
+) -> ExteriorLaneCapacityPlan | None:
+    required = inp.required_external_connector_count
+    max_throughput = config.reconstruction_max_throughput_per_min
+    if required is None or required <= 0 or max_throughput is None:
+        return None
+    return build_exterior_lane_capacity_plan(
+        inp,
+        max_asteroid_throughput_per_min=max_throughput,
+        transport_kind=inp.transport_kind,
+    )
+
+
+def _coord_pair_json(coord: Coord | None) -> list[int] | None:
+    if coord is None:
+        return None
+    return [int(coord[0]), int(coord[1])]
+
+
+def _coord_list_json(cells: tuple[Coord, ...]) -> list[list[int]]:
+    return [[int(x), int(y)] for x, y in cells]
+
+
+def _exterior_lane_metrics_from_commit(
+    commit_result: CommitResult,
+    exterior_lane_plan: ExteriorLaneCapacityPlan | None,
+) -> dict[str, Any]:
+    """Serialize ELCP-TM output fields for ``rttp.commit`` metrics_json (spec §5.2)."""
+    if exterior_lane_plan is None:
+        return {
+            "exterior_lane_activations": [],
+            "exterior_lane_route_evidence": [],
+            "exterior_lane_trunk_states_summary": [],
+        }
+    activations: list[dict[str, Any]] = []
+    for activation_row in commit_result.exterior_lane_activations:
+        activations.append(
+            {
+                "activated_lane_id": activation_row.activated_lane_id,
+                "previous_lane_id": activation_row.previous_lane_id,
+                "activation_reason": activation_row.activation_reason,
+                "previous_lane_assigned_load_per_min": str(
+                    activation_row.previous_lane_assigned_load_per_min
+                ),
+                "previous_lane_capacity_per_min": str(
+                    activation_row.previous_lane_capacity_per_min
+                ),
+                "trigger_candidate_id": activation_row.trigger_candidate_id,
+                "trigger_candidate_throughput_per_min": str(
+                    activation_row.trigger_candidate_throughput_per_min
+                ),
+            }
+        )
+    route_evidence: list[dict[str, Any]] = []
+    for route_row in commit_result.exterior_lane_route_evidence:
+        route_evidence.append(
+            {
+                "candidate_id": route_row.candidate_id,
+                "lane_id": route_row.lane_id,
+                "candidate_throughput_per_min": str(route_row.candidate_throughput_per_min),
+                "branch_cells": _coord_list_json(route_row.branch_cells),
+                "reused_trunk_cells": _coord_list_json(route_row.reused_trunk_cells),
+                "new_trunk_cells": _coord_list_json(route_row.new_trunk_cells),
+                "reached_connector_coord": _coord_pair_json(route_row.reached_connector_coord),
+                "reached_trunk_coord": _coord_pair_json(route_row.reached_trunk_coord),
+            }
+        )
+    trunk_summary: list[dict[str, Any]] = [
+        {
+            "lane_id": s.lane_id,
+            "active": s.active,
+            "assigned_load_per_min": str(s.assigned_load_per_min),
+            "trunk_cell_count": len(s.trunk_cells),
+        }
+        for s in commit_result.exterior_lane_trunk_states
+    ]
+    return {
+        "exterior_lane_activations": activations,
+        "exterior_lane_route_evidence": route_evidence,
+        "exterior_lane_trunk_states_summary": trunk_summary,
+    }
+
+
 def _pipeline_field_kind_by_coord(config: RttpPipelineConfig) -> dict[Coord, str] | None:
     if not config.mineable_field_kind_by_coord:
         return None
@@ -549,6 +641,7 @@ def _run_v01_rttp_pipeline(
         candidate.candidate_id: candidate for candidate in generation.normal_candidates
     }
     domain = initial_commit_domain(skeleton, inp)
+    exterior_lane_plan = _exterior_lane_plan_for_pipeline(inp, config)
     primary_commit_result = incremental_commit(
         genome,
         candidates_by_id,
@@ -556,6 +649,8 @@ def _run_v01_rttp_pipeline(
         skeleton,
         domain=domain,
         route_probe_start_policy=route_probe_start_policy,
+        exterior_lane_plan=exterior_lane_plan,
+        resource_kind=_resource_kind_for_transport(inp.transport_kind),
     )
     _append_deferred_retry_shadow_step(
         steps,
@@ -598,6 +693,8 @@ def _run_v01_rttp_pipeline(
         inp=inp,
         catalog_mode=catalog_mode,
         trunk_mask_cells=skeleton.trunk_mask_cells,
+        commit_result=commit_result,
+        exterior_lane_plan=exterior_lane_plan,
     )
 
     commit_payload, placement_diag = build_commit_replay_payload(
@@ -628,6 +725,24 @@ def _run_v01_rttp_pipeline(
                 [int(goal.coord[0]), int(goal.coord[1])] for goal in inp.route_goals
             ],
             "commit_route_evidence": list(commit_result.commit_route_evidence),
+            "exterior_lane_plan": (
+                {
+                    "required_lane_count": exterior_lane_plan.required_lane_count,
+                    "lane_capacity_per_min": str(exterior_lane_plan.lane_capacity_per_min),
+                    "max_asteroid_throughput_per_min": str(
+                        exterior_lane_plan.max_asteroid_throughput_per_min
+                    ),
+                }
+                if exterior_lane_plan is not None
+                else None
+            ),
+            "exterior_lane_assignments": list(commit_result.exterior_lane_assignments),
+            "external_lane_assigned_loads": {
+                row.lane_id: str(row.assigned_load_per_min)
+                for row in commit_result.exterior_lane_assignment_state
+            },
+            "lane_capacity_shortfall_count": commit_result.lane_capacity_shortfall_count,
+            "route_feasible_shortfall_count": commit_result.route_feasible_shortfall_count,
             "conflict_count": len(commit_result.conflicts),
             "normal_count": len(generation.normal_candidates),
             "visible_miner_cell_count": placement_diag.visible_miner_cell_count,
@@ -638,6 +753,7 @@ def _run_v01_rttp_pipeline(
             "placement_route_overlap_warning_coords": [
                 [int(x), int(y)] for x, y in placement_diag.placement_route_overlap_warning_coords
             ],
+            **_exterior_lane_metrics_from_commit(commit_result, exterior_lane_plan),
         },
         cell_overlay_json=commit_payload.cell_overlay_json,
         passed=validation_passed,
@@ -839,6 +955,7 @@ def _run_macro_rttp_pipeline(
             "domain_version": macro_commit.domain_version,
             "normal_count": len(generation.normal_candidates),
             "macro_normal_count": len(macro_normal),
+            **_exterior_lane_metrics_from_commit(commit_result, None),
         },
         cell_overlay_json=commit_payload.cell_overlay_json,
         passed=validation_passed,

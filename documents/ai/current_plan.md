@@ -102,6 +102,10 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 **P1 follow-up (non-blocking):** `test_run_solver_management_command.py` — deferred-retry tests expect `SystemExit`; `scripts/test_changed.ps1` reports 2 failures (527 passed). Not S2b-1 regression; fix in separate PR.
 
+**ACTIVE — ELCP** — Exterior Lane Capacity Planner (EVTC extension: capacity-bearing exterior lanes + commit-time `route_probe` nearest merge). **NEXT: Task 1** DTO/helpers. Spec: [`2026-05-30-rttp-exterior-lane-capacity-planner-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-exterior-lane-capacity-planner-design.md) · plan: [`2026-05-30-rttp-exterior-lane-capacity-planner.md`](../../docs/superpowers/plans/2026-05-30-rttp-exterior-lane-capacity-planner.md).
+
+**ACTIVE — ELCP-TM** — Exterior lane trunk merge (fill-first activation + per-lane shared trunk; supersedes nearest-lane assignment when plan present). **NEXT: Task 1** TM DTOs. Spec: [`2026-05-30-rttp-exterior-lane-trunk-merge-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-exterior-lane-trunk-merge-design.md) · plan: [`2026-05-30-rttp-exterior-lane-trunk-merge.md`](../../docs/superpowers/plans/2026-05-30-rttp-exterior-lane-trunk-merge.md). Depends on ELCP Tasks 1–7.
+
 **ACTIVE (parallel) — RTTP v0.2 Core Algorithm Recovery** — **Gate B** throughput / A4-2 selection toward `placement_goal_count`. Recovery: [`2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md) §13.
 
 **CLOSED (2026-05-30):** **Track B Task 6 — Lab pass_capable badge** — PR [#102](https://github.com/tigers2020/Shapez2Factory/pull/102) on `master` (`093a2143`).

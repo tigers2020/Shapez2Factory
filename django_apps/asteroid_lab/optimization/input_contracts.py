@@ -99,6 +99,8 @@ class RttpPipelineConfig:
     placement_platform_cell_count: int = 0
     # (x, y, cell_kind) for per-anchor miner sprite (fluid vs shape field)
     mineable_field_kind_by_coord: tuple[tuple[int, int, str], ...] = ()
+    # ELCP: reconstruction envelope max for active resource (not replay input).
+    reconstruction_max_throughput_per_min: Decimal | None = None
 
 
 __all__ = [

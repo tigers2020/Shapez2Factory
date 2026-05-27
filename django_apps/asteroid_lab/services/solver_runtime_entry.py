@@ -639,10 +639,15 @@ def _run_rttp_solver_for_map_input(
         percent=throughput_percent,
     )
     pipeline_config = _pipeline_config_with_field_kinds(
-        _rttp_pipeline_config_from_run_config(
-            run_config,
-            target_throughput_per_min=target_throughput,
-            max_placement_goal_count=max_placement_goal,
+        replace(
+            _rttp_pipeline_config_from_run_config(
+                run_config,
+                target_throughput_per_min=target_throughput,
+                max_placement_goal_count=max_placement_goal,
+            ),
+            reconstruction_max_throughput_per_min=primary_reconstruction_max_per_min(
+                capacity_env
+            ),
         ),
         complete_map,
     )

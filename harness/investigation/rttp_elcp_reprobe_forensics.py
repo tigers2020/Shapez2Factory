@@ -31,6 +31,7 @@ from django_apps.asteroid_lab.optimization.commit.exterior_lane_fill_first impor
 from django_apps.asteroid_lab.optimization.commit.exterior_lane_trunk import (
     initial_trunk_states,
     partition_path_branch_and_trunk,
+    shareable_trunk_cells_for_transport,
     update_trunk_state_after_commit,
 )
 from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
@@ -43,6 +44,9 @@ from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
     _candidate_throughput_per_min,
     _rebuild_domain,
     _reorder_elcp_trunk_states,
+)
+from django_apps.asteroid_lab.optimization.commit.reservation_overlap_policy import (
+    compute_elcp_reservation_candidate_cells,
 )
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
@@ -404,14 +408,58 @@ def build_elcp_primary_mirror_ledger(
         lane_spec = next(
             lane for lane in exterior_lane_plan.lanes if lane.lane_id == fill_first.lane_id
         )
-        tm_branch, _tm_reused, tm_new_trunk = partition_path_branch_and_trunk(
+        tm_branch, tm_reused, tm_new_trunk = partition_path_branch_and_trunk(
             path=fill_first.probe.path,
             existing_trunk=trunk_row_pre.trunk_cells,
             connector_coord=lane_spec.connector_goal.coord,
         )
         tm_new_trunk_len = len(tm_new_trunk)
         route_delta = frozenset(tm_branch) | frozenset(tm_new_trunk)
-        lane_shareable = frozenset(trunk_row_pre.trunk_cells) | frozenset(tm_new_trunk)
+        shareable_at_commit = shareable_trunk_cells_for_transport(
+            trunk_states_elcp,
+            transport_kind=candidate.transport_kind,
+            prospective_new_trunk=frozenset(tm_new_trunk),
+        )
+        reservation_candidate_cells = compute_elcp_reservation_candidate_cells(
+            candidate=candidate,
+            inp=inp,
+            domain=current_domain,
+            branch_cells=tm_branch,
+            new_trunk_cells=tm_new_trunk,
+            reused_trunk_cells=tm_reused,
+            shareable_at_commit=shareable_at_commit,
+            committed_route_cells=committed_route_cells,
+        )
+        if reservation_candidate_cells is None:
+            route_feasible_shortfall_count += 1
+            conflict = CommitConflict(
+                candidate_id=candidate_id,
+                reason=CommitConflictReason.OUTPUT_STUB_NOT_RESERVED,
+            )
+            conflicts.append(conflict)
+            _append_ledger_row(
+                ledger,
+                candidate_id=candidate_id,
+                commit_index=commit_index,
+                candidate=candidate,
+                probe_start=probe_start,
+                fill_first_ok=fill_first_ok,
+                assigned_lane_id=fill_first.lane_id,
+                probe=fill_first.probe,
+                max_expansions=resolved_max,
+                goals_nonempty=True,
+                post_probe_committed=False,
+                committed_route_cell_count=len(committed_route_cells),
+                traversable_cell_count=traversable_cell_count,
+                tm_new_trunk_len=tm_new_trunk_len,
+                lane_capacity_shortfall_delta=0,
+                route_feasible_shortfall_delta=1,
+                conflict=conflict,
+                domain_version=domain_version,
+                trunk_pressure_correlated=tm_new_trunk_len > 0,
+            )
+            continue
+        lane_shareable = shareable_at_commit
         precomputed_route = route_delta
         precomputed_probe = fill_first.probe
         probe_for_class = fill_first.probe
@@ -438,6 +486,7 @@ def build_elcp_primary_mirror_ledger(
             precomputed_route_cells=precomputed_route,
             precomputed_probe=precomputed_probe,
             shareable_trunk_cells=lane_shareable,
+            overlap_reservation_cells=reservation_candidate_cells,
         )
         if not outcome.committed:
             route_delta_inc = 0
@@ -487,13 +536,18 @@ def build_elcp_primary_mirror_ledger(
                 trunk_states_elcp = _reorder_elcp_trunk_states(exterior_lane_plan, by_lane)
 
         route_cells = outcome.route_cells
+        route_delta_committed = (
+            outcome.committed_route_delta
+            if outcome.committed_route_delta
+            else route_cells
+        )
         committed_ids.append(candidate_id)
         committed_occupied = frozenset(committed_occupied | candidate.occupied_cells)
         committed_fixed_output_transport_cells = frozenset(
             committed_fixed_output_transport_cells | {fixed_output_transport_cell(candidate)}
         )
-        committed_route_cells = frozenset(committed_route_cells | route_cells)
-        trunk_mask_cells = frozenset(trunk_mask_cells | route_cells)
+        committed_route_cells = frozenset(committed_route_cells | route_delta_committed)
+        trunk_mask_cells = frozenset(trunk_mask_cells | route_delta_committed)
         domain_version += 1
         if collect_domain_snapshots:
             snapshots_after_success.append(

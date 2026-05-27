@@ -122,6 +122,8 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 **CLOSED (2026-05-27):** **P1-ELCP-RF-E0** — post-probe reservation mechanism (`ROUTE_CELL_RESERVATION_CONFLICT_DOMINANT`, `private_route_overlap` 23/34; bounded B-spec nominated). Report: [`2026-05-27-rttp-elcp-rf-e0-post-probe-reservation-mechanism-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-e0-post-probe-reservation-mechanism-report.md). **P1-ELCP-RF** remains REOPENED; `lane_capacity_shortfall` B-spec **BLOCKED**.
 
+**ACTIVE (2026-05-27):** **P1-ELCP-RF-F1** — private route overlap / shareable trunk reservation policy (F1a/F1b/F1c **implemented**; G1 **PARTIAL** 20/23 private_overlap rows, target ≤11). Report: [`2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy-report.md) · spec: [`2026-05-27-rttp-elcp-rf-f0-private-route-overlap-reservation-policy-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-elcp-rf-f0-private-route-overlap-reservation-policy-design.md) · plan: [`2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy.md`](../../docs/superpowers/plans/2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy.md).
+
 **ACTIVE (parallel) — RTTP v0.2 Core Algorithm Recovery** — **Gate B** throughput / A4-2 selection toward `placement_goal_count`. Recovery: [`2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md) §13.
 
 **CLOSED (2026-05-30):** **Track B Task 6 — Lab pass_capable badge** — PR [#102](https://github.com/tigers2020/Shapez2Factory/pull/102) on `master` (`093a2143`).

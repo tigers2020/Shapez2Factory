@@ -33,7 +33,11 @@ from django_apps.asteroid_lab.optimization.commit.exterior_lane_fill_first impor
 from django_apps.asteroid_lab.optimization.commit.exterior_lane_trunk import (
     initial_trunk_states,
     partition_path_branch_and_trunk,
+    shareable_trunk_cells_for_transport,
     update_trunk_state_after_commit,
+)
+from django_apps.asteroid_lab.optimization.commit.reservation_overlap_policy import (
+    compute_elcp_reservation_candidate_cells,
 )
 from django_apps.asteroid_lab.optimization.commit.route_path_evidence import (
     build_route_path_evidence,
@@ -118,6 +122,7 @@ class CommitAttemptOutcome:
     conflict: CommitConflict | None = None
     route_cells: frozenset[Coord] = frozenset()
     route_probe: RouteProbeResult | None = None
+    committed_route_delta: frozenset[Coord] = frozenset()
 
 
 def initial_commit_domain(
@@ -291,6 +296,7 @@ def _attempt_commit_one(
     precomputed_route_cells: frozenset[Coord] | None = None,
     precomputed_probe: RouteProbeResult | None = None,
     shareable_trunk_cells: frozenset[Coord] | None = None,
+    overlap_reservation_cells: frozenset[Coord] | None = None,
 ) -> CommitAttemptOutcome:
     if candidate.transport_kind is not inp.transport_kind:
         return CommitAttemptOutcome(
@@ -419,8 +425,13 @@ def _attempt_commit_one(
             ),
         )
     route_cells = merged_route_cells
+    cells_for_overlap = (
+        overlap_reservation_cells
+        if overlap_reservation_cells is not None
+        else route_cells
+    )
     private_overlap = _private_route_cell_overlap(
-        route_cells,
+        cells_for_overlap,
         committed_route_cells,
         shareable_trunk_cells=resolved_shareable,
     )
@@ -448,10 +459,16 @@ def _attempt_commit_one(
                 reason=CommitConflictReason.HARD_PROTECTED_CONFLICT,
             ),
         )
+    committed_delta = (
+        overlap_reservation_cells
+        if overlap_reservation_cells is not None
+        else route_cells
+    )
     return CommitAttemptOutcome(
         committed=True,
         route_cells=route_cells,
         route_probe=probe,
+        committed_route_delta=committed_delta,
     )
 
 
@@ -520,6 +537,7 @@ def incremental_commit(
         precomputed_route: frozenset[Coord] | None = None
         precomputed_probe: RouteProbeResult | None = None
         lane_shareable: frozenset[Coord] | None = None
+        elcp_overlap_reservation_cells: frozenset[Coord] | None = None
         tm_branch: tuple[Coord, ...] = ()
         tm_reused: tuple[Coord, ...] = ()
         tm_new_trunk: tuple[Coord, ...] = ()
@@ -585,7 +603,32 @@ def incremental_commit(
                 connector_coord=lane_spec.connector_goal.coord,
             )
             route_delta = frozenset(tm_branch) | frozenset(tm_new_trunk)
-            lane_shareable = frozenset(trunk_row_pre.trunk_cells) | frozenset(tm_new_trunk)
+            shareable_at_commit = shareable_trunk_cells_for_transport(
+                trunk_states_elcp,
+                transport_kind=candidate.transport_kind,
+                prospective_new_trunk=frozenset(tm_new_trunk),
+            )
+            reservation_candidate_cells = compute_elcp_reservation_candidate_cells(
+                candidate=candidate,
+                inp=inp,
+                domain=current_domain,
+                branch_cells=tm_branch,
+                new_trunk_cells=tm_new_trunk,
+                reused_trunk_cells=tm_reused,
+                shareable_at_commit=shareable_at_commit,
+                committed_route_cells=committed_route_cells,
+            )
+            if reservation_candidate_cells is None:
+                route_feasible_shortfall_count += 1
+                conflicts.append(
+                    CommitConflict(
+                        candidate_id=candidate_id,
+                        reason=CommitConflictReason.OUTPUT_STUB_NOT_RESERVED,
+                    )
+                )
+                continue
+            lane_shareable = shareable_at_commit
+            elcp_overlap_reservation_cells = reservation_candidate_cells
             precomputed_route = route_delta
             precomputed_probe = fill_first.probe
             commit_goals = frozenset({fill_first.connector_coord})
@@ -619,6 +662,7 @@ def incremental_commit(
             precomputed_route_cells=precomputed_route,
             precomputed_probe=precomputed_probe,
             shareable_trunk_cells=lane_shareable,
+            overlap_reservation_cells=elcp_overlap_reservation_cells,
         )
         if not outcome.committed:
             if outcome.conflict is not None:
@@ -672,8 +716,13 @@ def incremental_commit(
         committed_fixed_output_transport_cells = frozenset(
             committed_fixed_output_transport_cells | {fixed_output_transport_cell(candidate)}
         )
-        committed_route_cells = frozenset(committed_route_cells | route_cells)
-        trunk_mask_cells = frozenset(trunk_mask_cells | route_cells)
+        route_delta_committed = (
+            outcome.committed_route_delta
+            if outcome.committed_route_delta
+            else route_cells
+        )
+        committed_route_cells = frozenset(committed_route_cells | route_delta_committed)
+        trunk_mask_cells = frozenset(trunk_mask_cells | route_delta_committed)
         domain_version += 1
 
     return CommitResult(

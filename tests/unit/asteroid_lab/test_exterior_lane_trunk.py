@@ -12,6 +12,7 @@ from django_apps.asteroid_lab.contracts.exterior_lane_capacity import (
 from django_apps.asteroid_lab.optimization.commit.exterior_lane_trunk import (
     initial_trunk_states,
     partition_path_branch_and_trunk,
+    shareable_trunk_cells_for_transport,
     shareable_trunk_cells_from_states,
     update_trunk_state_after_commit,
 )
@@ -114,6 +115,25 @@ def test_shareable_trunk_union() -> None:
         connector_coord=(6, 0),
     )
     assert shareable_trunk_cells_from_states((s0, s1)) == frozenset({(1, 0), (5, 0)})
+
+
+def test_shareable_trunk_cells_for_transport_filters_kind_and_adds_prospective() -> None:
+    s_shape = _state(frozenset({(1, 0)}))
+    s_fluid = ExteriorLaneTrunkState(
+        lane_id="exterior_lane:fluid_pipe:0",
+        transport_kind=TransportKind.FLUID_PIPE,
+        active=True,
+        assigned_load_per_min=Decimal("0"),
+        trunk_cells=frozenset({(9, 9)}),
+        connector_coord=(10, 9),
+    )
+    shareable = shareable_trunk_cells_for_transport(
+        (s_shape, s_fluid),
+        transport_kind=TransportKind.SHAPE_BELT,
+        prospective_new_trunk=frozenset({(2, 0)}),
+    )
+    assert shareable == frozenset({(1, 0), (2, 0)})
+    assert (9, 9) not in shareable
 
 
 def test_update_trunk_state_merges_new_cells() -> None:

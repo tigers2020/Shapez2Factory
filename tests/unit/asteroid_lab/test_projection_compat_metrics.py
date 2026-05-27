@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.adapters.catalog_candidate_placements import (
+    build_catalog_placement_specs,
+)
 from django_apps.asteroid_lab.catalog.asteroid_equipment_projection import (
     list_equipment_placement_specs,
 )
@@ -19,9 +22,6 @@ from django_apps.asteroid_lab.contracts.catalog_placement import (
 from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     BuildingConnectorSnapshot,
     BuildingFootprintCell,
-)
-from django_apps.asteroid_lab.adapters.catalog_candidate_placements import (
-    build_catalog_placement_specs,
 )
 from django_apps.asteroid_lab.optimization.candidates.bundle_pattern import BundlePattern
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate

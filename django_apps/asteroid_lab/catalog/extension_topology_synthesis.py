@@ -49,9 +49,7 @@ def _linear_offsets_on_arm(arm: CardinalDirection, extension_count: int) -> tupl
     if extension_count == 0:
         return ()
     unit = cardinal_unit_vector(arm)
-    return tuple(
-        (unit[0] * (index + 1), unit[1] * (index + 1)) for index in range(extension_count)
-    )
+    return tuple((unit[0] * (index + 1), unit[1] * (index + 1)) for index in range(extension_count))
 
 
 def synthesize_opposite_arm_linear_topologies(

@@ -5,20 +5,20 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab.adapters.catalog_geometry_transform import cardinal_unit_vector
-from django_apps.asteroid_lab.contracts.game_data_snapshot import (
-    BuildingConnectorSnapshot,
-    BuildingFootprintCell,
-)
-from tests.unit.asteroid_lab.test_catalog_placement_validation import _slice_with_variant
 from django_apps.asteroid_lab.catalog.extension_topology_synthesis import (
     ExtensionTopologyKind,
     synthesize_opposite_arm_linear_topologies,
     throughput_factor_for_topology,
 )
 from django_apps.asteroid_lab.contracts.catalog_placement import CardinalDirection
+from django_apps.asteroid_lab.contracts.game_data_snapshot import (
+    BuildingConnectorSnapshot,
+    BuildingFootprintCell,
+)
 from django_apps.asteroid_lab.genetic_sample.gene_template import (
     throughput_factor_for_extension_count,
 )
+from tests.unit.asteroid_lab.test_catalog_placement_validation import _slice_with_variant
 
 _EXTRACTOR: tuple[int, int] = (0, 0)
 
@@ -116,5 +116,8 @@ def test_manual_shape_miner_emits_four_specs_per_rotation(
     e_specs = [s for s in specs if s.rotation is CardinalDirection.E]
     assert len(e_specs) == 4
     assert {s.throughput_factor for s in e_specs} == {4, 8, 12, 16}
-    assert all(s.pattern_id.endswith(f"_ext{n}") for n, s in enumerate(sorted(e_specs, key=lambda r: r.throughput_factor)))
+    assert all(
+        s.pattern_id.endswith(f"_ext{n}")
+        for n, s in enumerate(sorted(e_specs, key=lambda r: r.throughput_factor))
+    )
     assert len(specs) == 16

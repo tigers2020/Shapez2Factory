@@ -730,7 +730,10 @@ def _run_rttp_solver_for_map_input(
         solver_summary=summary,
     )
 
-    frames, metrics = build_lab_replay_frames_for_project(int(project_id))
+    frames, metrics = build_lab_replay_frames_for_project(
+        int(project_id),
+        solver_run_id=int(run_id),
+    )
     milestone_frames, milestone_metrics = _milestone_payload_for_project(
         int(project_id),
         run_key=rk,

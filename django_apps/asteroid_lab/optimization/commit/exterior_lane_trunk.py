@@ -9,6 +9,7 @@ from django_apps.asteroid_lab.contracts.exterior_lane_capacity import (
     ExteriorLaneCapacityPlan,
     ExteriorLaneTrunkState,
 )
+from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import TransportKind
 from django_apps.asteroid_lab.optimization.coords import Coord
 
 
@@ -66,11 +67,26 @@ def partition_path_branch_and_trunk(
 def shareable_trunk_cells_from_states(
     states: tuple[ExteriorLaneTrunkState, ...],
 ) -> frozenset[Coord]:
-    """Union of active lane trunk cells (same transport_kind per lane row)."""
+    """Union of active lane trunk cells (all active lanes; legacy callers)."""
 
     merged: set[Coord] = set()
     for state in states:
         if state.active:
+            merged.update(state.trunk_cells)
+    return frozenset(merged)
+
+
+def shareable_trunk_cells_for_transport(
+    states: tuple[ExteriorLaneTrunkState, ...],
+    *,
+    transport_kind: TransportKind,
+    prospective_new_trunk: frozenset[Coord] = frozenset(),
+) -> frozenset[Coord]:
+    """F0 §3.1: active-lane trunk union for transport_kind + partition new_trunk."""
+
+    merged: set[Coord] = set(prospective_new_trunk)
+    for state in states:
+        if state.active and state.transport_kind is transport_kind:
             merged.update(state.trunk_cells)
     return frozenset(merged)
 
@@ -100,6 +116,7 @@ __all__ = [
     "activate_trunk_state",
     "initial_trunk_states",
     "partition_path_branch_and_trunk",
+    "shareable_trunk_cells_for_transport",
     "shareable_trunk_cells_from_states",
     "update_trunk_state_after_commit",
 ]

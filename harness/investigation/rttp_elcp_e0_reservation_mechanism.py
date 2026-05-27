@@ -34,6 +34,7 @@ from django_apps.asteroid_lab.optimization.commit.exterior_lane_fill_first impor
 from django_apps.asteroid_lab.optimization.commit.exterior_lane_trunk import (
     initial_trunk_states,
     partition_path_branch_and_trunk,
+    shareable_trunk_cells_for_transport,
     update_trunk_state_after_commit,
 )
 from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
@@ -47,8 +48,10 @@ from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
     _rebuild_domain,
     _reorder_elcp_trunk_states,
     _route_cells_from_path,
-    _route_cells_with_required_output_stub,
     incremental_commit,
+)
+from django_apps.asteroid_lab.optimization.commit.reservation_overlap_policy import (
+    compute_elcp_reservation_candidate_cells,
 )
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
@@ -395,7 +398,10 @@ def _mechanism_signals_from_route_bundle(
     current_domain: object,
     probe: RouteProbeResult,
     precomputed_route: frozenset[Coord],
-    lane_shareable: frozenset[Coord],
+    shareable_at_commit: frozenset[Coord],
+    branch_cells: tuple[Coord, ...],
+    new_trunk_cells: tuple[Coord, ...],
+    reused_trunk_cells: tuple[Coord, ...],
 ) -> MechanismReplaySignals:
     stub = candidate.output_stub
     output_stub_in_committed_route = stub in committed_route_cells
@@ -414,33 +420,40 @@ def _mechanism_signals_from_route_bundle(
         )
 
     path_cells = _route_cells_from_path(probe.path, candidate.occupied_cells)
-    route_cells = frozenset(c for c in precomputed_route if c not in candidate.occupied_cells)
-    augmented = _augment_route_cells_with_output_spine(
-        candidate,
-        route_cells,
-        current_domain,
+    reservation_candidate = compute_elcp_reservation_candidate_cells(
+        candidate=candidate,
+        inp=inp,
+        domain=current_domain,
+        branch_cells=branch_cells,
+        new_trunk_cells=new_trunk_cells,
+        reused_trunk_cells=reused_trunk_cells,
+        shareable_at_commit=shareable_at_commit,
         committed_route_cells=committed_route_cells,
-        shareable_trunk_cells=lane_shareable,
     )
-    merged = _route_cells_with_required_output_stub(
-        candidate,
-        augmented,
-        current_domain,
-        inp,
-    )
-    if merged is None:
-        merged = frozenset()
+    if reservation_candidate is None:
+        reservation_candidate = frozenset()
 
     private_overlap = _private_route_cell_overlap(
-        merged,
+        reservation_candidate,
         committed_route_cells,
-        shareable_trunk_cells=lane_shareable,
+        shareable_trunk_cells=shareable_at_commit,
     )
-    overlap_all = merged & committed_route_cells
+    overlap_all = reservation_candidate & committed_route_cells
     undercoverage = frozenset(
-        c for c in overlap_all if c not in lane_shareable and c in current_domain.trunk_mask_cells
+        c
+        for c in overlap_all
+        if c not in shareable_at_commit and c in current_domain.trunk_mask_cells
     )
-    spine_augment = frozenset(augmented - path_cells)
+    base_cells = frozenset(branch_cells) | frozenset(new_trunk_cells)
+    augmented = _augment_route_cells_with_output_spine(
+        candidate,
+        base_cells,
+        current_domain,
+        committed_route_cells=committed_route_cells,
+        shareable_trunk_cells=shareable_at_commit,
+    )
+    spine_augment = frozenset(augmented - base_cells)
+    merged = reservation_candidate
     probe_merged_diff = frozenset((merged - path_cells) | (path_cells - merged))
 
     return MechanismReplaySignals(
@@ -519,13 +532,27 @@ def build_stale_replay_signal_cache(
         lane_spec = next(
             lane for lane in exterior_lane_plan.lanes if lane.lane_id == fill_first.lane_id
         )
-        tm_branch, _, tm_new_trunk = partition_path_branch_and_trunk(
+        tm_branch, tm_reused, tm_new_trunk = partition_path_branch_and_trunk(
             path=fill_first.probe.path,
             existing_trunk=trunk_row_pre.trunk_cells,
             connector_coord=lane_spec.connector_goal.coord,
         )
         precomputed_route = frozenset(tm_branch) | frozenset(tm_new_trunk)
-        lane_shareable = frozenset(trunk_row_pre.trunk_cells) | frozenset(tm_new_trunk)
+        shareable_at_commit = shareable_trunk_cells_for_transport(
+            trunk_states_elcp,
+            transport_kind=candidate.transport_kind,
+            prospective_new_trunk=frozenset(tm_new_trunk),
+        )
+        reservation_candidate_cells = compute_elcp_reservation_candidate_cells(
+            candidate=candidate,
+            inp=inp,
+            domain=current_domain,
+            branch_cells=tm_branch,
+            new_trunk_cells=tm_new_trunk,
+            reused_trunk_cells=tm_reused,
+            shareable_at_commit=shareable_at_commit,
+            committed_route_cells=committed_route_cells,
+        )
         commit_goals = frozenset({fill_first.connector_coord})
 
         outcome = _attempt_commit_one(
@@ -541,16 +568,21 @@ def build_stale_replay_signal_cache(
             max_expansions=resolved_max,
             precomputed_route_cells=precomputed_route,
             precomputed_probe=fill_first.probe,
-            shareable_trunk_cells=lane_shareable,
+            shareable_trunk_cells=shareable_at_commit,
+            overlap_reservation_cells=reservation_candidate_cells,
         )
 
         if outcome.committed:
-            route_cells = outcome.route_cells or frozenset()
+            route_delta = (
+                outcome.committed_route_delta
+                if outcome.committed_route_delta
+                else (outcome.route_cells or frozenset())
+            )
             committed_occupied = frozenset(committed_occupied | candidate.occupied_cells)
             committed_fixed_output_transport_cells = frozenset(
                 committed_fixed_output_transport_cells | {fixed_output_transport_cell(candidate)}
             )
-            committed_route_cells = frozenset(committed_route_cells | route_cells)
+            committed_route_cells = frozenset(committed_route_cells | route_delta)
             assignment_state = increment_assignment_state(
                 assignment_state,
                 lane_id=fill_first.lane_id,
@@ -590,7 +622,10 @@ def build_stale_replay_signal_cache(
             current_domain=current_domain,
             probe=fill_first.probe,
             precomputed_route=precomputed_route,
-            lane_shareable=lane_shareable,
+            shareable_at_commit=shareable_at_commit,
+            branch_cells=tm_branch,
+            new_trunk_cells=tm_new_trunk,
+            reused_trunk_cells=tm_reused,
         )
 
     return cache

@@ -123,6 +123,7 @@ def test_build_lab_replay_frames_for_run_uses_that_runs_config_json_not_latest()
     }
 
     assert "new" in latest_tags
+    assert "new" in new_tags
     assert "old" in old_tags
     assert "new" not in old_tags
     assert old_frames != new_frames

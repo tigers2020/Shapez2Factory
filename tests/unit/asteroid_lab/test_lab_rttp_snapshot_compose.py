@@ -19,10 +19,15 @@ from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
 from django_apps.asteroid_lab.services.lab_rttp_snapshot_compose import (
+    build_known_route_render_domain,
+    build_lab_render_bbox,
     clip_overlay_cells_to_base_map_domain,
+    coord_in_bbox,
     frame_has_renderable_map,
     interleave_rttp_snapshot_frames,
+    is_transport_or_route_overlay_row,
     last_renderable_frame_index,
+    project_overlay_coord_to_lab_xy,
     project_rttp_row_to_product_frame,
 )
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
@@ -70,6 +75,141 @@ def test_frame_has_renderable_map_cells() -> None:
     assert frame_has_renderable_map({"event_type": "x", "map_view": {}}) is False
 
 
+def test_clip_helper_classifies_fot_and_output_stub_as_transport_route() -> None:
+    fot = {
+        "x": 1,
+        "y": 0,
+        "kind": "placement.confirmed_fixed_output_transport",
+        "cell_kind": "space_belt",
+        "overlay_semantic_kind": "placement.confirmed_fixed_output_transport",
+    }
+    stub = {
+        "x": 2,
+        "y": 0,
+        "kind": "placement.confirmed_output_stub",
+        "cell_kind": "space_belt",
+        "overlay_semantic_kind": "placement.confirmed_output_stub",
+    }
+    assert is_transport_or_route_overlay_row(fot) is True
+    assert is_transport_or_route_overlay_row(stub) is True
+
+
+def test_clip_helper_rejects_shape_miner_equipment() -> None:
+    row = {
+        "x": 0,
+        "y": 0,
+        "kind": "placement.confirmed_extractor",
+        "cell_kind": "shape_miner",
+    }
+    assert is_transport_or_route_overlay_row(row) is False
+
+
+def test_project_overlay_coord_identity_when_in_anchors() -> None:
+    anchors = frozenset({(0, 0)})
+    assert project_overlay_coord_to_lab_xy(0, 0, anchors) == (0, 0)
+
+
+def test_lab_render_bbox_uses_projected_overlay_before_clip() -> None:
+    base_mv = {
+        "full_cells": [{"x": 0, "y": 0, "kind": "asteroid_shape_field"}],
+        "bbox": {"min_x": 0, "min_y": 0, "max_x": 0, "max_y": 0},
+    }
+    anchors = frozenset({(0, 0)})
+    raw = [
+        {"x": 0, "y": 0, "kind": "placement.confirmed_extractor", "cell_kind": "shape_miner"},
+        {"x": 9, "y": 0, "kind": "route.committed_path", "cell_kind": "space_belt"},
+    ]
+    bbox = build_lab_render_bbox(base_mv, raw, anchors)
+    assert bbox is not None
+    lab_xy = project_overlay_coord_to_lab_xy(9, 0, anchors)
+    assert coord_in_bbox(lab_xy, bbox) is True
+
+
+def test_known_route_render_domain_unions_projected_full_cells_and_transport() -> None:
+    base_mv = {
+        "full_cells": [{"x": 0, "y": 0, "kind": "asteroid_shape_field"}],
+    }
+    anchors = frozenset({(0, 0)})
+    raw = [
+        {"x": 0, "y": 1, "kind": "route.committed_path", "cell_kind": "space_belt"},
+        {"x": 0, "y": 2, "kind": "route.committed_path", "cell_kind": "space_belt"},
+    ]
+    domain = build_known_route_render_domain(base_mv, raw, anchors)
+    assert project_overlay_coord_to_lab_xy(0, 0, anchors) in domain
+    assert project_overlay_coord_to_lab_xy(0, 1, anchors) in domain
+    assert project_overlay_coord_to_lab_xy(0, 2, anchors) in domain
+
+
+def test_exterior_route_expands_dynamic_bbox_and_survives_anchor_clip() -> None:
+    """Exterior void route expands render envelope; only mineable anchor is (0,0)."""
+    base_mv = {
+        "full_cells": [{"x": 0, "y": 0, "kind": "asteroid_shape_field"}],
+        "bbox": {"min_x": 0, "min_y": 0, "max_x": 0, "max_y": 0},
+    }
+    overlay = [
+        {"x": 0, "y": 0, "kind": "placement.confirmed_extractor", "cell_kind": "shape_miner"},
+        {
+            "x": 9,
+            "y": 0,
+            "kind": "route.committed_path",
+            "cell_kind": "space_belt",
+            "tile_type": "SpaceBelt_Forward",
+        },
+    ]
+    clipped = clip_overlay_cells_to_base_map_domain(overlay, base_mv)
+    kinds = {(c["x"], c["y"]): c.get("kind") for c in clipped}
+    assert kinds[(0, 0)] == "placement.confirmed_extractor"
+    assert kinds[(9, 0)] == "route.committed_path"
+
+
+def test_equipment_outside_anchor_still_dropped() -> None:
+    base_mv = {
+        "full_cells": [{"x": 0, "y": 0, "kind": "asteroid_shape_field"}],
+    }
+    overlay = [
+        {
+            "x": 5,
+            "y": 0,
+            "kind": "placement.confirmed_extractor",
+            "cell_kind": "shape_miner",
+        },
+    ]
+    clipped = clip_overlay_cells_to_base_map_domain(overlay, base_mv)
+    assert clipped == []
+
+
+def test_route_outside_explicit_render_bbox_is_dropped() -> None:
+    base_mv = {
+        "full_cells": [{"x": 0, "y": 0, "kind": "asteroid_shape_field"}],
+        "bbox": {"min_x": 0, "min_y": 0, "max_x": 0, "max_y": 0},
+    }
+    overlay = [
+        {"x": 9, "y": 0, "kind": "route.committed_path", "cell_kind": "space_belt"},
+    ]
+    clipped = clip_overlay_cells_to_base_map_domain(
+        overlay,
+        base_mv,
+        lab_render_bbox_override=(0, 0, 0, 0),
+    )
+    assert clipped == []
+
+
+def test_mixed_confirmed_overlay_keeps_equipment_and_route_by_channel() -> None:
+    base_mv = {
+        "full_cells": [
+            {"x": 0, "y": 0, "kind": "asteroid_shape_field"},
+            {"x": 1, "y": 0, "kind": "internal_void"},
+        ],
+        "bbox": {"min_x": 0, "min_y": 0, "max_x": 1, "max_y": 0},
+    }
+    overlay = [
+        {"x": 0, "y": 0, "kind": "placement.confirmed_extractor", "cell_kind": "shape_miner"},
+        {"x": 1, "y": 0, "kind": "route.committed_path", "cell_kind": "space_belt"},
+    ]
+    clipped = clip_overlay_cells_to_base_map_domain(overlay, base_mv)
+    assert len(clipped) == 2
+
+
 def test_project_rttp_row_has_concrete_full_cells_no_inherited_mode() -> None:
     base = _map_frame(0)
     row = {
@@ -86,6 +226,42 @@ def test_project_rttp_row_has_concrete_full_cells_no_inherited_mode() -> None:
     assert len(out["map_view"]["full_cells"]) >= 1
     assert out["description"] == "probe domain snapshot"
     assert len(out["map_view"]["overlay_cells"]) == 1
+
+
+def test_project_rttp_commit_row_keeps_route_overlay_on_map() -> None:
+    base = {
+        "full_cells": [{"x": 0, "y": 0, "kind": "asteroid_shape_field"}],
+        "cell_delta": [],
+        "overlay_cells": [],
+        "bbox": {"min_x": 0, "min_y": 0, "max_x": 0, "max_y": 0},
+    }
+    row = {
+        "event_type": "routing.committed",
+        "phase": "incremental_commit",
+        "title": "Commit",
+        "description": "RTTP commit domain snapshot.",
+        "metrics": {},
+        "cell_overlay_json": {
+            "cells": [
+                {
+                    "x": 0,
+                    "y": 0,
+                    "kind": "placement.confirmed_extractor",
+                    "cell_kind": "shape_miner",
+                },
+                {
+                    "x": 9,
+                    "y": 0,
+                    "kind": "route.committed_path",
+                    "cell_kind": "space_belt",
+                    "tile_type": "SpaceBelt_Forward",
+                },
+            ]
+        },
+    }
+    out = project_rttp_row_to_product_frame(row, base_map_view=base)
+    ov = out["map_view"]["overlay_cells"]
+    assert any(c.get("kind") == "route.committed_path" for c in ov)
 
 
 def test_project_rttp_overlay_cells_clipped_to_base_map_domain() -> None:
@@ -226,7 +402,10 @@ def test_interleave_per_row_anchor_chain_after_reconstruction() -> None:
     probe = out[2]
     assert probe["description"] == "probe"
     assert probe["map_view"]["overlay_cells"] == []
-    assert out[5]["map_view"]["overlay_cells"] == []
+    commit_overlay = out[5]["map_view"]["overlay_cells"]
+    assert len(commit_overlay) == 1
+    assert commit_overlay[0]["kind"] == "route.committed_path"
+    assert (commit_overlay[0]["x"], commit_overlay[0]["y"]) == (5, 0)
 
 
 def test_interleave_legacy_write_buffer_rows_emit_canonical_product_types() -> None:

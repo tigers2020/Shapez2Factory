@@ -12,6 +12,10 @@ from django_apps.asteroid_lab.contracts.catalog_validation import (
     CatalogValidationResult,
     ValidationSeverity,
 )
+from django_apps.asteroid_lab.contracts.exterior_lane_capacity import (
+    ExteriorLaneCapacityPlan,
+    ExteriorLaneCommitValidationSnapshot,
+)
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
@@ -21,6 +25,9 @@ from django_apps.asteroid_lab.optimization.validation.final_validation import (
 )
 from django_apps.asteroid_lab.optimization.validation.layout_connectivity_validation import (
     validate_layout_connectivity_issues,
+)
+from django_apps.asteroid_lab.optimization.validation.validate_exterior_lane_contract import (
+    validate_exterior_lane_contract_issues,
 )
 
 
@@ -32,6 +39,8 @@ def validate_pipeline_layout(
     inp: OptimizationInput,
     catalog_mode: CatalogValidationMode,
     trunk_mask_cells: frozenset[Coord] | None = None,
+    lane_commit_snapshot: ExteriorLaneCommitValidationSnapshot | None = None,
+    exterior_lane_plan: ExteriorLaneCapacityPlan | None = None,
 ) -> tuple[bool, CatalogValidationResult | None, tuple[str, ...]]:
     connectivity_issues = validate_layout_connectivity_issues(
         committed_ids=committed_ids,
@@ -40,6 +49,15 @@ def validate_pipeline_layout(
         trunk_mask_cells=trunk_mask_cells or frozenset(),
         inp=inp,
     )
+    lane_issues: tuple[str, ...] = ()
+    if lane_commit_snapshot is not None and exterior_lane_plan is not None:
+        lane_issues = validate_exterior_lane_contract_issues(
+            committed_ids=committed_ids,
+            lane_commit_snapshot=lane_commit_snapshot,
+            candidates_by_id=candidates_by_id,
+            exterior_lane_plan=exterior_lane_plan,
+        )
+    connectivity_issues = connectivity_issues + lane_issues
     layout_ok = validate_final_layout(
         committed_ids,
         reserved_route_cells,

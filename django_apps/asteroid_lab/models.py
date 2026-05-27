@@ -589,6 +589,17 @@ class ReconstructedAsteroidMap(models.Model):
         blank=True,
         verbose_name="full_map lab 디코드 JSON",
     )
+    admin_list_thumbnail = models.ImageField(
+        upload_to="reconstructed_maps/list/%Y/%m/",
+        blank=True,
+        verbose_name="Admin changelist thumbnail",
+    )
+    admin_list_thumbnail_hash = models.CharField(max_length=64, blank=True)
+    admin_list_thumbnail_renderer_version = models.CharField(max_length=16, blank=True)
+    admin_list_thumbnail_cell_count = models.PositiveIntegerField(default=0)
+    admin_list_thumbnail_grid_w = models.PositiveSmallIntegerField(default=0)
+    admin_list_thumbnail_grid_h = models.PositiveSmallIntegerField(default=0)
+    admin_list_thumbnail_truncated = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

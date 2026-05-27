@@ -4,12 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from django_apps.asteroid_lab.contracts.exterior_lane_capacity import ExteriorLaneCapacityPlan
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
     ExtractorPlacementPolicy,
+    RouteProbeStartPolicy,
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
     generate_candidates,
+)
+from django_apps.asteroid_lab.optimization.commit.elcp_commit_guard import (
+    is_elcp_incomplete_commit_result,
+    retry_may_replace_best,
 )
 from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
     CommitResult,
@@ -75,6 +81,9 @@ def run_local_lns(
     *,
     policy: ExtractorPlacementPolicy = ExtractorPlacementPolicy.INTERIOR_AND_RIM,
     config: LocalLnsConfig | None = None,
+    exterior_lane_plan: ExteriorLaneCapacityPlan | None = None,
+    route_probe_start_policy: RouteProbeStartPolicy = RouteProbeStartPolicy.OUTPUT_STUB_ONLY,
+    resource_kind: str | None = None,
 ) -> tuple[PlacementGenome, CommitResult]:
     """Repair partial commit failures; only meaningful when ``commit_result.conflicts``."""
 
@@ -117,15 +126,27 @@ def run_local_lns(
             inp,
             skeleton,
             domain=domain,
+            route_probe_start_policy=route_probe_start_policy,
+            exterior_lane_plan=exterior_lane_plan,
+            resource_kind=resource_kind,
         )
 
-        if len(retry_result.committed_ids) > len(best_result.committed_ids):
+        if retry_may_replace_best(
+            exterior_lane_plan=exterior_lane_plan,
+            best_result=best_result,
+            retry_result=retry_result,
+        ):
             best_genome = retry_genome
             best_result = retry_result
             candidates_by_id.clear()
             candidates_by_id.update(merged)
 
         if not retry_result.conflicts:
+            if is_elcp_incomplete_commit_result(
+                exterior_lane_plan=exterior_lane_plan,
+                commit_result=retry_result,
+            ):
+                continue
             candidates_by_id.clear()
             candidates_by_id.update(merged)
             return retry_genome, retry_result

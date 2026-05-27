@@ -696,6 +696,9 @@ def _run_v01_rttp_pipeline(
             candidates_by_id,
             commit_result,
             policy=policy,
+            exterior_lane_plan=exterior_lane_plan,
+            route_probe_start_policy=route_probe_start_policy,
+            resource_kind=_resource_kind_for_transport(inp.transport_kind),
         )
 
     catalog_mode = config.catalog_placement_validation_mode

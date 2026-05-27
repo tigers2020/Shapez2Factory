@@ -139,6 +139,35 @@ def test_missing_lane_assignment_emits_issue() -> None:
     assert ISSUE_CODE_ROUTE_WITHOUT_LANE_ASSIGNMENT in issues
 
 
+def test_validate_exterior_lane_no_route_without_lane_when_assignments_match_commits() -> None:
+    plan = _plan()
+    candidate_id = "c0"
+    snapshot = ExteriorLaneCommitValidationSnapshot(
+        exterior_lane_assignments=(
+            {
+                "candidate_id": candidate_id,
+                "exterior_lane_id": plan.lanes[0].lane_id,
+            },
+        ),
+        exterior_lane_assignment_state=(
+            ExteriorLaneAssignmentState(
+                lane_id=plan.lanes[0].lane_id,
+                assigned_load_per_min=Decimal("480"),
+            ),
+        ),
+        exterior_lane_activations=(),
+        exterior_lane_trunk_states=(),
+        exterior_lane_route_evidence=(),
+    )
+    issues = validate_exterior_lane_contract_issues(
+        committed_ids=(candidate_id,),
+        lane_commit_snapshot=snapshot,
+        candidates_by_id={candidate_id: _shape_belt_candidate(candidate_id)},
+        exterior_lane_plan=plan,
+    )
+    assert ISSUE_CODE_ROUTE_WITHOUT_LANE_ASSIGNMENT not in issues
+
+
 def test_over_capacity_emits_issue() -> None:
     plan = _plan()
     commit_result = CommitResult(

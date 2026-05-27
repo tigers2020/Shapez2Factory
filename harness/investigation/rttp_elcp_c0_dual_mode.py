@@ -378,9 +378,7 @@ def run_gate_a_elcp_c0_mode(
     )
 
     step_forensics = extract_elcp_reprobe_forensics(pipeline_result.algorithm_steps)
-    assert (
-        step_forensics["lane_capacity_shortfall_count"] == primary.lane_capacity_shortfall_count
-    )
+    assert step_forensics["lane_capacity_shortfall_count"] == primary.lane_capacity_shortfall_count
     assert (
         step_forensics["route_feasible_shortfall_count"] == primary.route_feasible_shortfall_count
     )

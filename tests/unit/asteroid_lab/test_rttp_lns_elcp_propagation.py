@@ -108,7 +108,9 @@ def test_local_lns_forwards_elcp_kwargs_to_incremental_commit(monkeypatch) -> No
     monkeypatch.setattr(
         local_lns,
         "select_genome",
-        lambda pool, *_a, **_k: PlacementGenome(commit_order=tuple(c.candidate_id for c in pool)),
+        lambda pool, *_a, **_k: PlacementGenome(
+            commit_order=tuple(c.candidate_id for c in pool)
+        ),
     )
     monkeypatch.setattr(local_lns, "initial_commit_domain", lambda *_a, **_k: object())
     monkeypatch.setattr(local_lns, "incremental_commit", _fake_incremental_commit)
@@ -163,7 +165,9 @@ def test_local_lns_rejects_elcp_incomplete_conflict_free_early_exit(monkeypatch)
     monkeypatch.setattr(
         local_lns,
         "select_genome",
-        lambda pool, *_a, **_k: PlacementGenome(commit_order=tuple(c.candidate_id for c in pool)),
+        lambda pool, *_a, **_k: PlacementGenome(
+            commit_order=tuple(c.candidate_id for c in pool)
+        ),
     )
     monkeypatch.setattr(local_lns, "initial_commit_domain", lambda *_a, **_k: object())
     monkeypatch.setattr(

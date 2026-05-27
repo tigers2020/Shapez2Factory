@@ -111,7 +111,9 @@ def test_retry_may_replace_best_rejects_elcp_incomplete_higher_count() -> None:
     plan = _plan()
     primary = _commit_result(
         committed_ids=("keep",),
-        assignments=({"candidate_id": "keep", "exterior_lane_id": "exterior_lane:shape_belt:0"},),
+        assignments=(
+            {"candidate_id": "keep", "exterior_lane_id": "exterior_lane:shape_belt:0"},
+        ),
     )
     retry = _commit_result(
         committed_ids=("keep", "extra1", "extra2"),
@@ -131,7 +133,9 @@ def test_retry_may_replace_best_accepts_elcp_complete_higher_count() -> None:
     plan = _plan()
     primary = _commit_result(
         committed_ids=("keep",),
-        assignments=({"candidate_id": "keep", "exterior_lane_id": "exterior_lane:shape_belt:0"},),
+        assignments=(
+            {"candidate_id": "keep", "exterior_lane_id": "exterior_lane:shape_belt:0"},
+        ),
     )
     retry = _commit_result(
         committed_ids=("keep", "extra"),

@@ -8,6 +8,7 @@ from decimal import Decimal
 from django_apps.asteroid_lab.contracts.exterior_lane_capacity import (
     ACTIVATION_REASON_CAPACITY_EXHAUSTED,
     ExteriorLaneCapacityPlan,
+    ExteriorLaneCommitValidationSnapshot,
     ExteriorTransportLane,
 )
 from django_apps.asteroid_lab.contracts.rttp_layout_issue_codes import (
@@ -22,7 +23,6 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import Bund
 from django_apps.asteroid_lab.optimization.commit.exterior_lane_assignment import (
     assigned_load_by_lane_id,
 )
-from django_apps.asteroid_lab.optimization.commit.incremental_commit import CommitResult
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord, neighbors4
 
 
@@ -75,7 +75,7 @@ def _branch_cells_reach_anchors(
 def validate_exterior_lane_contract_issues(
     *,
     committed_ids: tuple[str, ...],
-    commit_result: CommitResult,
+    lane_commit_snapshot: ExteriorLaneCommitValidationSnapshot,
     candidates_by_id: dict[str, BundleCandidate],
     exterior_lane_plan: ExteriorLaneCapacityPlan | None,
 ) -> tuple[str, ...]:
@@ -88,7 +88,7 @@ def validate_exterior_lane_contract_issues(
     lanes = _lane_by_id(exterior_lane_plan)
     assignments_by_candidate = {
         str(row["candidate_id"]): row
-        for row in commit_result.exterior_lane_assignments
+        for row in lane_commit_snapshot.exterior_lane_assignments
         if "candidate_id" in row
     }
 
@@ -106,7 +106,7 @@ def validate_exterior_lane_contract_issues(
         if candidate.transport_kind is not lane.transport_kind:
             issues.append(ISSUE_CODE_EXTERIOR_LANE_KIND_MISMATCH)
 
-    assigned = assigned_load_by_lane_id(commit_result.exterior_lane_assignment_state)
+    assigned = assigned_load_by_lane_id(lane_commit_snapshot.exterior_lane_assignment_state)
     for lane_id, load in assigned.items():
         lane = lanes.get(lane_id)
         if lane is None:
@@ -123,7 +123,7 @@ def validate_exterior_lane_contract_issues(
         if ISSUE_CODE_EXTERIOR_LANE_OVER_CAPACITY not in issues:
             issues.append(ISSUE_CODE_EXTERIOR_LANE_OVER_CAPACITY)
 
-    for activation in commit_result.exterior_lane_activations:
+    for activation in lane_commit_snapshot.exterior_lane_activations:
         if activation.activation_reason != ACTIVATION_REASON_CAPACITY_EXHAUSTED:
             issues.append(ISSUE_CODE_EXTERIOR_LANE_PREMATURE_ACTIVATION)
             continue
@@ -134,14 +134,16 @@ def validate_exterior_lane_contract_issues(
         if combined <= activation.previous_lane_capacity_per_min:
             issues.append(ISSUE_CODE_EXTERIOR_LANE_PREMATURE_ACTIVATION)
 
-    for trunk_state in commit_result.exterior_lane_trunk_states:
+    for trunk_state in lane_commit_snapshot.exterior_lane_trunk_states:
         if not trunk_state.active or not trunk_state.trunk_cells:
             continue
         if not _trunk_is_single_component(trunk_state.trunk_cells):
             issues.append(ISSUE_CODE_EXTERIOR_LANE_TRUNK_NOT_SHARED)
 
-    trunk_by_lane = {state.lane_id: state for state in commit_result.exterior_lane_trunk_states}
-    for evidence in commit_result.exterior_lane_route_evidence:
+    trunk_by_lane = {
+        state.lane_id: state for state in lane_commit_snapshot.exterior_lane_trunk_states
+    }
+    for evidence in lane_commit_snapshot.exterior_lane_route_evidence:
         if not evidence.branch_cells:
             continue
         anchors = frozenset(evidence.reused_trunk_cells) | frozenset(evidence.new_trunk_cells)

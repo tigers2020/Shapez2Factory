@@ -23,6 +23,7 @@ _ALLOWLIST_EXTRA: frozenset[str] = frozenset(
         "validation/catalog_layout_validation.py",
         "validation/layout_connectivity_validation.py",
         "commit/incremental_commit.py",
+        "routing/exterior_lane_capacity_planner.py",
     }
 )
 
@@ -126,6 +127,7 @@ def _forbidden_import_reason(rel: str, module: str) -> str | None:
             "pipeline.py",
             "replay_sink.py",
             "validation/layout_connectivity_validation.py",
+            "routing/exterior_lane_capacity_planner.py",
         }:
             return "services import outside allowlist"
         return None

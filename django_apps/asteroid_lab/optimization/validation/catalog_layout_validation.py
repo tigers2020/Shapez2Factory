@@ -12,9 +12,11 @@ from django_apps.asteroid_lab.contracts.catalog_validation import (
     CatalogValidationResult,
     ValidationSeverity,
 )
-from django_apps.asteroid_lab.contracts.exterior_lane_capacity import ExteriorLaneCapacityPlan
+from django_apps.asteroid_lab.contracts.exterior_lane_capacity import (
+    ExteriorLaneCapacityPlan,
+    ExteriorLaneCommitValidationSnapshot,
+)
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
-from django_apps.asteroid_lab.optimization.commit.incremental_commit import CommitResult
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.rttp_solver_summary import RttpAlgorithmStepId
@@ -37,7 +39,7 @@ def validate_pipeline_layout(
     inp: OptimizationInput,
     catalog_mode: CatalogValidationMode,
     trunk_mask_cells: frozenset[Coord] | None = None,
-    commit_result: CommitResult | None = None,
+    lane_commit_snapshot: ExteriorLaneCommitValidationSnapshot | None = None,
     exterior_lane_plan: ExteriorLaneCapacityPlan | None = None,
 ) -> tuple[bool, CatalogValidationResult | None, tuple[str, ...]]:
     connectivity_issues = validate_layout_connectivity_issues(
@@ -48,10 +50,10 @@ def validate_pipeline_layout(
         inp=inp,
     )
     lane_issues: tuple[str, ...] = ()
-    if commit_result is not None and exterior_lane_plan is not None:
+    if lane_commit_snapshot is not None and exterior_lane_plan is not None:
         lane_issues = validate_exterior_lane_contract_issues(
             committed_ids=committed_ids,
-            commit_result=commit_result,
+            lane_commit_snapshot=lane_commit_snapshot,
             candidates_by_id=candidates_by_id,
             exterior_lane_plan=exterior_lane_plan,
         )

@@ -26,6 +26,7 @@ from django_apps.asteroid_lab.contracts.deferred_retry_execute import (
 from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
 from django_apps.asteroid_lab.contracts.exterior_lane_capacity import (
     ExteriorLaneCapacityPlan,
+    ExteriorLaneCommitValidationSnapshot,
 )
 from django_apps.asteroid_lab.contracts.ga_evolution_shadow import GaEvolutionShadowConfig
 from django_apps.asteroid_lab.contracts.selection_mode import SelectionMode
@@ -439,6 +440,18 @@ def _exterior_lane_plan_for_pipeline(
     )
 
 
+def _exterior_lane_commit_validation_snapshot(
+    commit_result: CommitResult,
+) -> ExteriorLaneCommitValidationSnapshot:
+    return ExteriorLaneCommitValidationSnapshot(
+        exterior_lane_assignments=commit_result.exterior_lane_assignments,
+        exterior_lane_assignment_state=commit_result.exterior_lane_assignment_state,
+        exterior_lane_activations=commit_result.exterior_lane_activations,
+        exterior_lane_trunk_states=commit_result.exterior_lane_trunk_states,
+        exterior_lane_route_evidence=commit_result.exterior_lane_route_evidence,
+    )
+
+
 def _coord_pair_json(coord: Coord | None) -> list[int] | None:
     if coord is None:
         return None
@@ -693,7 +706,7 @@ def _run_v01_rttp_pipeline(
         inp=inp,
         catalog_mode=catalog_mode,
         trunk_mask_cells=skeleton.trunk_mask_cells,
-        commit_result=commit_result,
+        lane_commit_snapshot=_exterior_lane_commit_validation_snapshot(commit_result),
         exterior_lane_plan=exterior_lane_plan,
     )
 

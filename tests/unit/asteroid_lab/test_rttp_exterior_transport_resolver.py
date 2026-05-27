@@ -46,7 +46,10 @@ def test_tier1_fluid_space_pipe_max_is_345600(imported_game_data_batch_module: o
 
 
 @pytest.mark.django_db
-def test_missing_db_row_raises_configuration_error() -> None:
+def test_missing_db_row_raises_configuration_error(
+    imported_game_data_batch_module: object,
+) -> None:
+    _ = imported_game_data_batch_module
     active = ExteriorShapeTransportCapacity.objects.get(speed_tier=1, is_active=True)
     active.is_active = False
     active.save(update_fields=["is_active"])

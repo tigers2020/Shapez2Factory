@@ -81,10 +81,22 @@ class ExteriorLaneActivationEvidence:
     activation_reason: str
 
 
+@dataclass(frozen=True, slots=True)
+class ExteriorLaneCommitValidationSnapshot:
+    """ELCP commit evidence for read-only validation (contracts-only boundary)."""
+
+    exterior_lane_assignments: tuple[dict[str, object], ...] = ()
+    exterior_lane_assignment_state: tuple[ExteriorLaneAssignmentState, ...] = ()
+    exterior_lane_activations: tuple[ExteriorLaneActivationEvidence, ...] = ()
+    exterior_lane_trunk_states: tuple[ExteriorLaneTrunkState, ...] = ()
+    exterior_lane_route_evidence: tuple[ExteriorLaneRouteEvidence, ...] = ()
+
+
 __all__ = [
     "ACTIVATION_REASON_CAPACITY_EXHAUSTED",
     "ExteriorLaneActivationEvidence",
     "ExteriorLaneAssignmentState",
+    "ExteriorLaneCommitValidationSnapshot",
     "ExteriorLaneCapacityPlan",
     "ExteriorLaneRouteEvidence",
     "ExteriorLaneTrunkState",

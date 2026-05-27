@@ -10,6 +10,7 @@ from django_apps.asteroid_lab.contracts.exterior_lane_capacity import (
     ExteriorLaneActivationEvidence,
     ExteriorLaneAssignmentState,
     ExteriorLaneCapacityPlan,
+    ExteriorLaneCommitValidationSnapshot,
     ExteriorLaneRouteEvidence,
     ExteriorLaneTrunkState,
     ExteriorTransportLane,
@@ -111,6 +112,16 @@ def _base_commit_result(**kwargs: object) -> CommitResult:
     return replace(base, **kwargs)
 
 
+def _lane_snapshot(commit_result: CommitResult) -> ExteriorLaneCommitValidationSnapshot:
+    return ExteriorLaneCommitValidationSnapshot(
+        exterior_lane_assignments=commit_result.exterior_lane_assignments,
+        exterior_lane_assignment_state=commit_result.exterior_lane_assignment_state,
+        exterior_lane_activations=commit_result.exterior_lane_activations,
+        exterior_lane_trunk_states=commit_result.exterior_lane_trunk_states,
+        exterior_lane_route_evidence=commit_result.exterior_lane_route_evidence,
+    )
+
+
 def test_missing_lane_assignment_emits_issue() -> None:
     plan = _plan()
     commit_result = CommitResult(
@@ -121,7 +132,7 @@ def test_missing_lane_assignment_emits_issue() -> None:
     )
     issues = validate_exterior_lane_contract_issues(
         committed_ids=("c1",),
-        commit_result=commit_result,
+        lane_commit_snapshot=_lane_snapshot(commit_result),
         candidates_by_id={},
         exterior_lane_plan=plan,
     )
@@ -150,7 +161,7 @@ def test_over_capacity_emits_issue() -> None:
     )
     issues = validate_exterior_lane_contract_issues(
         committed_ids=("c1",),
-        commit_result=commit_result,
+        lane_commit_snapshot=_lane_snapshot(commit_result),
         candidates_by_id={},
         exterior_lane_plan=plan,
     )
@@ -168,7 +179,7 @@ def test_validation_does_not_mutate_commit_result() -> None:
     before = commit_result.reserved_route_cells
     validate_exterior_lane_contract_issues(
         committed_ids=(),
-        commit_result=commit_result,
+        lane_commit_snapshot=_lane_snapshot(commit_result),
         candidates_by_id={},
         exterior_lane_plan=plan,
     )
@@ -209,14 +220,15 @@ def test_validation_does_not_mutate_commit_result_tm_fields() -> None:
         exterior_lane_route_evidence=(evidence,),
         exterior_lane_activations=(activation,),
     )
-    snapshot = replace(commit_result)
+    snapshot = _lane_snapshot(commit_result)
+    snapshot_before = replace(snapshot)
     validate_exterior_lane_contract_issues(
         committed_ids=("c1",),
-        commit_result=commit_result,
+        lane_commit_snapshot=snapshot,
         candidates_by_id={"c1": _shape_belt_candidate("c1")},
         exterior_lane_plan=plan,
     )
-    assert commit_result == snapshot
+    assert snapshot == snapshot_before
 
 
 def test_premature_activation_bad_evidence() -> None:
@@ -233,7 +245,7 @@ def test_premature_activation_bad_evidence() -> None:
     commit_result = _base_commit_result(exterior_lane_activations=(activation,))
     issues = validate_exterior_lane_contract_issues(
         committed_ids=("c1",),
-        commit_result=commit_result,
+        lane_commit_snapshot=_lane_snapshot(commit_result),
         candidates_by_id={"c1": _shape_belt_candidate("c1")},
         exterior_lane_plan=plan,
     )
@@ -254,7 +266,7 @@ def test_premature_activation_when_capacity_not_exhausted() -> None:
     commit_result = _base_commit_result(exterior_lane_activations=(activation,))
     issues = validate_exterior_lane_contract_issues(
         committed_ids=("c1",),
-        commit_result=commit_result,
+        lane_commit_snapshot=_lane_snapshot(commit_result),
         candidates_by_id={"c1": _shape_belt_candidate("c1")},
         exterior_lane_plan=plan,
     )
@@ -275,7 +287,7 @@ def test_valid_capacity_exhausted_no_premature() -> None:
     commit_result = _base_commit_result(exterior_lane_activations=(activation,))
     issues = validate_exterior_lane_contract_issues(
         committed_ids=("c1",),
-        commit_result=commit_result,
+        lane_commit_snapshot=_lane_snapshot(commit_result),
         candidates_by_id={"c1": _shape_belt_candidate("c1")},
         exterior_lane_plan=plan,
     )
@@ -295,7 +307,7 @@ def test_disconnected_trunk_emits_issue() -> None:
     commit_result = _base_commit_result(exterior_lane_trunk_states=(trunk,))
     issues = validate_exterior_lane_contract_issues(
         committed_ids=("c1",),
-        commit_result=commit_result,
+        lane_commit_snapshot=_lane_snapshot(commit_result),
         candidates_by_id={"c1": _shape_belt_candidate("c1")},
         exterior_lane_plan=plan,
     )
@@ -317,7 +329,7 @@ def test_branch_not_connected_emits_issue() -> None:
     commit_result = _base_commit_result(exterior_lane_route_evidence=(evidence,))
     issues = validate_exterior_lane_contract_issues(
         committed_ids=("c1",),
-        commit_result=commit_result,
+        lane_commit_snapshot=_lane_snapshot(commit_result),
         candidates_by_id={"c1": _shape_belt_candidate("c1")},
         exterior_lane_plan=plan,
     )
@@ -350,7 +362,7 @@ def test_valid_branch_with_reused_trunk_no_tm_issue() -> None:
     )
     issues = validate_exterior_lane_contract_issues(
         committed_ids=("c1",),
-        commit_result=commit_result,
+        lane_commit_snapshot=_lane_snapshot(commit_result),
         candidates_by_id={"c1": _shape_belt_candidate("c1")},
         exterior_lane_plan=plan,
     )

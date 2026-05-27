@@ -537,9 +537,7 @@ def build_elcp_primary_mirror_ledger(
 
         route_cells = outcome.route_cells
         route_delta_committed = (
-            outcome.committed_route_delta
-            if outcome.committed_route_delta
-            else route_cells
+            outcome.committed_route_delta if outcome.committed_route_delta else route_cells
         )
         committed_ids.append(candidate_id)
         committed_occupied = frozenset(committed_occupied | candidate.occupied_cells)

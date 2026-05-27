@@ -426,9 +426,7 @@ def _attempt_commit_one(
         )
     route_cells = merged_route_cells
     cells_for_overlap = (
-        overlap_reservation_cells
-        if overlap_reservation_cells is not None
-        else route_cells
+        overlap_reservation_cells if overlap_reservation_cells is not None else route_cells
     )
     private_overlap = _private_route_cell_overlap(
         cells_for_overlap,
@@ -460,9 +458,7 @@ def _attempt_commit_one(
             ),
         )
     committed_delta = (
-        overlap_reservation_cells
-        if overlap_reservation_cells is not None
-        else route_cells
+        overlap_reservation_cells if overlap_reservation_cells is not None else route_cells
     )
     return CommitAttemptOutcome(
         committed=True,
@@ -717,9 +713,7 @@ def incremental_commit(
             committed_fixed_output_transport_cells | {fixed_output_transport_cell(candidate)}
         )
         route_delta_committed = (
-            outcome.committed_route_delta
-            if outcome.committed_route_delta
-            else route_cells
+            outcome.committed_route_delta if outcome.committed_route_delta else route_cells
         )
         committed_route_cells = frozenset(committed_route_cells | route_delta_committed)
         trunk_mask_cells = frozenset(trunk_mask_cells | route_delta_committed)

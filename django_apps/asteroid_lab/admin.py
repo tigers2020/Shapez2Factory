@@ -17,6 +17,10 @@ from django_apps.asteroid_lab.genetic_sample_mini_map import genetic_sample_mini
 from django_apps.asteroid_lab.reconstruction.display_map import (
     reconstruction_summary_from_decoded_json,
 )
+from django_apps.asteroid_lab.services.reconstructed_map_thumbnail_service import (
+    clear_admin_list_thumbnail,
+    sync_admin_list_thumbnail,
+)
 
 
 class ReplayFrameInline(admin.TabularInline):
@@ -287,6 +291,10 @@ class GeneticSampleAdmin(admin.ModelAdmin):
 
 @admin.register(m.ReconstructedAsteroidMap)
 class ReconstructedAsteroidMapAdmin(admin.ModelAdmin):
+    actions = [
+        "regenerate_admin_list_thumbnails",
+        "clear_admin_list_thumbnails",
+    ]
     list_display = (
         "id",
         "mini_map_list",
@@ -333,6 +341,39 @@ class ReconstructedAsteroidMapAdmin(admin.ModelAdmin):
         (None, {"fields": ("created_at", "updated_at")}),
     )
 
+    def get_queryset(self, request):  # type: ignore[no-untyped-def]
+        qs = super().get_queryset(request)
+        if request.resolver_match and request.resolver_match.url_name.endswith("_changelist"):
+            return qs.defer("decoded_json", "original_decoded_json")
+        return qs
+
+    def save_model(self, request, obj, form, change):  # type: ignore[no-untyped-def]
+        super().save_model(request, obj, form, change)
+        row = m.ReconstructedAsteroidMap.objects.get(pk=int(obj.pk))
+        sync_admin_list_thumbnail(row)
+
+    @admin.action(description="Regenerate admin list thumbnails")
+    def regenerate_admin_list_thumbnails(self, request, queryset):  # type: ignore[no-untyped-def]
+        pks = list(queryset.values_list("pk", flat=True))
+        qs = m.ReconstructedAsteroidMap.objects.filter(pk__in=pks).only(
+            "pk",
+            "decoded_json",
+            "admin_list_thumbnail",
+            "admin_list_thumbnail_hash",
+            "admin_list_thumbnail_renderer_version",
+        )
+        count = 0
+        for row in qs.iterator():
+            if sync_admin_list_thumbnail(row, force=True):
+                count += 1
+        self.message_user(request, f"Regenerated thumbnails for {count} row(s).")
+
+    @admin.action(description="Clear admin list thumbnails")
+    def clear_admin_list_thumbnails(self, request, queryset):  # type: ignore[no-untyped-def]
+        for pk in queryset.values_list("pk", flat=True):
+            clear_admin_list_thumbnail(int(pk))
+        self.message_user(request, "Cleared admin list thumbnails.")
+
     @admin.display(description="원본 디코드 JSON")
     def original_decoded_json_pretty(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:
         if not obj.original_decoded_json:
@@ -373,7 +414,20 @@ class ReconstructedAsteroidMapAdmin(admin.ModelAdmin):
 
     @admin.display(description="맵")
     def mini_map_list(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:
-        return genetic_sample_mini_map_html(obj.decoded_json, for_list=True)
+        if obj.admin_list_thumbnail:
+            truncated = " …" if obj.admin_list_thumbnail_truncated else ""
+            return format_html(
+                '<img src="{}" alt="" width="120" height="120" loading="lazy" '
+                'style="object-fit:contain;background:#020617;border-radius:6px;" />'
+                '<span style="font-size:10px;color:#94a3b8;">{} cells{}</span>',
+                obj.admin_list_thumbnail.url,
+                obj.admin_list_thumbnail_cell_count,
+                truncated,
+            )
+        return format_html(
+            '<span style="color:#64748b;font-size:11px;">{}</span>',
+            "no thumbnail",
+        )
 
     @admin.display(description="미니맵")
     def mini_map_preview(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:

@@ -3,8 +3,9 @@
 ``throughput_target_percent`` run-config key is a **legacy alias** for
 ``placement_target_percent`` (placement coverage %, not throughput /min alone).
 
-``DEFAULT_MAX_PLACEMENT_GOAL_COUNT`` / ``legacy_configured_max_placement_goal`` are
-**diagnostic only** — they must never clamp ``placement_goal_count``.
+``legacy_configured_max_placement_goal`` records the resolved run-config max
+(field cells × ``placement_target_percent`` floor when unset). It must never
+clamp ``placement_goal_count``.
 """
 
 from __future__ import annotations
@@ -27,9 +28,6 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
 )
 
 MIN_MAX_PLACEMENT_GOAL_COUNT = 1
-MAX_MAX_PLACEMENT_GOAL_COUNT = 128
-# Deprecated product clamp default; parse helper only — never use in placement_goal_count.
-DEFAULT_MAX_PLACEMENT_GOAL_COUNT = 32
 
 
 class ThroughputShortfallReason(StrEnum):
@@ -63,7 +61,7 @@ class PlacementGoalPlan:
 
     @property
     def configured_max_placement_goal(self) -> int:
-        """Backward-compatible alias for diagnostic legacy max (not product goal)."""
+        """Resolved run-config max (>= placement coverage floor; not a hard 32 cap)."""
 
         return self.legacy_configured_max_placement_goal
 
@@ -97,18 +95,60 @@ def compute_placement_goal_count(
 
 
 def parse_max_placement_goal_count(config: Mapping[str, Any]) -> int:
-    raw = config.get(
-        SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY,
-        DEFAULT_MAX_PLACEMENT_GOAL_COUNT,
-    )
+    """Parse explicit run-config override when the key is present.
+
+    No default of 32. Full floor vs field cells is enforced by
+    ``resolve_max_placement_goal_count`` at solver runtime.
+    """
+    key = SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY
+    if key not in config:
+        msg = "max_placement_goal_count is required when validating an explicit override"
+        raise ValueError(msg)
+    raw = config[key]
     if isinstance(raw, bool) or not isinstance(raw, int):
         msg = "max_placement_goal_count must be an integer"
         raise ValueError(msg)
-    if raw < MIN_MAX_PLACEMENT_GOAL_COUNT or raw > MAX_MAX_PLACEMENT_GOAL_COUNT:
+    if raw < MIN_MAX_PLACEMENT_GOAL_COUNT:
+        msg = f"max_placement_goal_count must be at least {MIN_MAX_PLACEMENT_GOAL_COUNT}"
+        raise ValueError(msg)
+    return int(raw)
+
+
+def resolve_max_placement_goal_count(
+    config: Mapping[str, Any],
+    *,
+    asteroid_field_cell_count: int,
+    placement_target_percent: int,
+) -> int:
+    """Product max placement goal: default = ``placement_target_percent`` of field cells.
+
+    No arbitrary 32 default. Explicit override must be >= that floor and <= field cells.
+    """
+    floor = compute_placement_goal_count(
+        asteroid_field_cell_count=asteroid_field_cell_count,
+        placement_target_percent=placement_target_percent,
+    )
+    key = SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY
+    if key not in config:
+        return floor
+    raw = config[key]
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        msg = "max_placement_goal_count must be an integer"
+        raise ValueError(msg)
+    if raw < floor:
         msg = (
-            f"max_placement_goal_count must be between "
-            f"{MIN_MAX_PLACEMENT_GOAL_COUNT} and {MAX_MAX_PLACEMENT_GOAL_COUNT}"
+            f"max_placement_goal_count must be at least {floor} "
+            f"({placement_target_percent}% of {asteroid_field_cell_count} field cells)"
         )
+        raise ValueError(msg)
+    if asteroid_field_cell_count > 0 and raw > asteroid_field_cell_count:
+        msg = (
+            f"max_placement_goal_count must not exceed asteroid field cell count "
+            f"({asteroid_field_cell_count})"
+        )
+        raise ValueError(msg)
+    if raw < MIN_MAX_PLACEMENT_GOAL_COUNT:
+        msg = f"max_placement_goal_count must be at least {MIN_MAX_PLACEMENT_GOAL_COUNT}"
         raise ValueError(msg)
     return int(raw)
 
@@ -239,8 +279,6 @@ def attribute_throughput_shortfall(
 
 
 __all__ = [
-    "DEFAULT_MAX_PLACEMENT_GOAL_COUNT",
-    "MAX_MAX_PLACEMENT_GOAL_COUNT",
     "MIN_MAX_PLACEMENT_GOAL_COUNT",
     "PlacementGoalPlan",
     "ThroughputShortfallReason",
@@ -248,4 +286,5 @@ __all__ = [
     "build_placement_goal_plan",
     "compute_placement_goal_count",
     "parse_max_placement_goal_count",
+    "resolve_max_placement_goal_count",
 ]

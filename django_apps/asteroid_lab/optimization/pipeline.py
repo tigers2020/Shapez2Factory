@@ -160,6 +160,16 @@ def _selection_goal_for_pipeline(
             )
             return max(coverage_goal, skeleton_capacity_goals), None
         return max(0, skeleton_capacity_goals), None
+    from django_apps.asteroid_lab.services.placement_goal import (
+        compute_placement_goal_count,
+    )
+
+    resolved_max = config.max_placement_goal_count
+    if resolved_max <= 0 and asteroid_field_cells > 0 and config.placement_target_percent > 0:
+        resolved_max = compute_placement_goal_count(
+            asteroid_field_cell_count=asteroid_field_cells,
+            placement_target_percent=config.placement_target_percent,
+        )
     plan = build_placement_goal_plan(
         normal_candidates=normal_candidates,
         transport_kind=transport_kind,
@@ -167,7 +177,7 @@ def _selection_goal_for_pipeline(
         placement_target_percent=config.placement_target_percent,
         target_throughput_per_min=config.target_throughput_per_min,
         skeleton_capacity_goals=skeleton_capacity_goals,
-        legacy_configured_max_placement_goal=config.max_placement_goal_count,
+        legacy_configured_max_placement_goal=resolved_max,
     )
     return plan.placement_goal_count, plan
 

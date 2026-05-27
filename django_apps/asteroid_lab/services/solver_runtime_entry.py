@@ -64,6 +64,9 @@ from django_apps.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
     mineable_field_kind_by_coord,
 )
+from django_apps.asteroid_lab.reconstruction.field_cells import (
+    asteroid_field_cell_count_for_placement,
+)
 from django_apps.asteroid_lab.services.committed_throughput_summary import (
     build_actual_committed_output_per_min_from_factors,
 )
@@ -86,7 +89,7 @@ from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
 )
 from django_apps.asteroid_lab.services.placement_goal import (
     attribute_throughput_shortfall,
-    parse_max_placement_goal_count,
+    resolve_max_placement_goal_count,
 )
 from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     persist_reconstructed_asteroid_map,
@@ -339,11 +342,12 @@ def _rttp_pipeline_config_from_run_config(
     shadow = _deferred_retry_shadow_config_from_run_config(config)
     ga_shadow = _ga_evolution_shadow_config_from_run_config(config)
     selection_mode = _selection_mode_from_run_config(config)
-    resolved_max_goal = (
-        max_placement_goal_count
-        if max_placement_goal_count is not None
-        else parse_max_placement_goal_count(config)
-    )
+    if max_placement_goal_count is not None:
+        resolved_max_goal = max_placement_goal_count
+    elif SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY in config:
+        resolved_max_goal = int(config[SOLVER_RUN_CONFIG_MAX_PLACEMENT_GOAL_COUNT_KEY])
+    else:
+        resolved_max_goal = 0
     return RttpPipelineConfig(
         macro_only_mode=macro_only,
         max_macro_candidates=max_macro,
@@ -590,7 +594,15 @@ def _run_rttp_solver_for_map_input(
             message=str(exc),
         )
     try:
-        max_placement_goal = parse_max_placement_goal_count(run_config)
+        field_cell_count = asteroid_field_cell_count_for_placement(
+            complete_map,
+            opt_inp.transport_kind,
+        )
+        max_placement_goal = resolve_max_placement_goal_count(
+            run_config,
+            asteroid_field_cell_count=field_cell_count,
+            placement_target_percent=throughput_percent,
+        )
     except ValueError as exc:
         return _failure_result(
             int(project_id),

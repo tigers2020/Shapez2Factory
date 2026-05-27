@@ -10,9 +10,9 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import Bund
 from django_apps.asteroid_lab.optimization.candidates.pattern_library import build_pattern_library
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 from django_apps.asteroid_lab.services.placement_goal import (
-    DEFAULT_MAX_PLACEMENT_GOAL_COUNT,
     build_placement_goal_plan,
     parse_max_placement_goal_count,
+    resolve_max_placement_goal_count,
 )
 
 
@@ -51,9 +51,40 @@ def _candidate(
     )
 
 
-def test_parse_max_placement_goal_defaults_to_32() -> None:
-    assert parse_max_placement_goal_count({}) == DEFAULT_MAX_PLACEMENT_GOAL_COUNT
-    assert DEFAULT_MAX_PLACEMENT_GOAL_COUNT == 32
+def test_parse_max_placement_goal_requires_explicit_key() -> None:
+    with pytest.raises(ValueError, match="required"):
+        parse_max_placement_goal_count({})
+
+
+def test_resolve_max_placement_goal_defaults_to_field_coverage_floor() -> None:
+    assert (
+        resolve_max_placement_goal_count(
+            {},
+            asteroid_field_cell_count=583,
+            placement_target_percent=80,
+        )
+        == 467
+    )
+
+
+def test_resolve_max_placement_goal_rejects_below_eighty_percent_floor() -> None:
+    with pytest.raises(ValueError, match="at least 467"):
+        resolve_max_placement_goal_count(
+            {"max_placement_goal_count": 32},
+            asteroid_field_cell_count=583,
+            placement_target_percent=80,
+        )
+
+
+def test_resolve_max_placement_goal_accepts_explicit_above_floor() -> None:
+    assert (
+        resolve_max_placement_goal_count(
+            {"max_placement_goal_count": 500},
+            asteroid_field_cell_count=583,
+            placement_target_percent=80,
+        )
+        == 500
+    )
 
 
 def test_parse_max_placement_goal_rejects_0() -> None:
@@ -61,14 +92,13 @@ def test_parse_max_placement_goal_rejects_0() -> None:
         parse_max_placement_goal_count({"max_placement_goal_count": 0})
 
 
-def test_parse_max_placement_goal_rejects_129() -> None:
-    with pytest.raises(ValueError, match="128"):
-        parse_max_placement_goal_count({"max_placement_goal_count": 129})
-
-
 def test_parse_max_placement_goal_rejects_bool() -> None:
     with pytest.raises(ValueError, match="integer"):
         parse_max_placement_goal_count({"max_placement_goal_count": True})
+
+
+def test_parse_max_placement_goal_allows_above_legacy_128_cap() -> None:
+    assert parse_max_placement_goal_count({"max_placement_goal_count": 467}) == 467
 
 
 def test_reference_slug_plan_factor4_only(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -94,12 +124,12 @@ def test_reference_slug_plan_factor4_only(monkeypatch: pytest.MonkeyPatch) -> No
         placement_target_percent=100,
         target_throughput_per_min=Decimal("1536"),
         skeleton_capacity_goals=1,
-        legacy_configured_max_placement_goal=32,
+        legacy_configured_max_placement_goal=13,
     )
     assert plan.best_bundle_throughput_per_min == Decimal("120")
     assert plan.bundles_needed_for_target == 13
     assert plan.placement_goal_count == 13
-    assert plan.legacy_configured_max_placement_goal == 32
+    assert plan.legacy_configured_max_placement_goal == 13
 
 
 def test_plan_uses_factor16_when_reachable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -128,7 +158,7 @@ def test_plan_uses_factor16_when_reachable(monkeypatch: pytest.MonkeyPatch) -> N
         placement_target_percent=100,
         target_throughput_per_min=Decimal("1536"),
         skeleton_capacity_goals=1,
-        legacy_configured_max_placement_goal=32,
+        legacy_configured_max_placement_goal=2,
     )
     assert plan.best_bundle_throughput_per_min == Decimal("480")
     assert plan.bundles_needed_for_target == 4

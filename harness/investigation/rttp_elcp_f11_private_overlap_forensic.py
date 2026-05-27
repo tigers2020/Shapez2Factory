@@ -219,8 +219,7 @@ def evaluate_f12_nomination(
         )
 
     fixable_counts = [
-        (cause, root_cause_counts.get(cause.value, 0))
-        for cause in _FIXABLE_CAUSES_ORDERED
+        (cause, root_cause_counts.get(cause.value, 0)) for cause in _FIXABLE_CAUSES_ORDERED
     ]
     fixable_counts.sort(
         key=lambda item: (-item[1], _FIXABLE_CAUSES_ORDERED.index(item[0])),
@@ -314,9 +313,7 @@ def compute_f11_overlap_partitions(
     o_spine_stub = frozenset(c for c in overlap_o if c in spine_stub_union)
     branch_set = branch_cells
     o_branch_only = frozenset(
-        c
-        for c in overlap_o
-        if c in branch_set and c not in o_trunk_mask and c not in o_spine_stub
+        c for c in overlap_o if c in branch_set and c not in o_trunk_mask and c not in o_spine_stub
     )
     overlap_undercoverage = frozenset(c for c in undercoverage_cells if c in overlap_o)
     o_delta_only = frozenset(c for c in overlap_o if c in committed_route_delta)
@@ -424,9 +421,7 @@ def _f11_evidence_from_attempt(
     )
     stub = candidate.output_stub
     stub_adjacent = frozenset(
-        c
-        for c in _stub_neighbor_coords(stub)
-        if c in committed_route_cells and c != stub
+        c for c in _stub_neighbor_coords(stub) if c in committed_route_cells and c != stub
     )
 
     return compute_f11_overlap_partitions(
@@ -557,8 +552,7 @@ def build_f11_overlap_evidence_cache(
             )
             committed_occupied = frozenset(committed_occupied | candidate.occupied_cells)
             committed_fixed_output_transport_cells = frozenset(
-                committed_fixed_output_transport_cells
-                | {fixed_output_transport_cell(candidate)}
+                committed_fixed_output_transport_cells | {fixed_output_transport_cell(candidate)}
             )
             committed_route_cells = frozenset(committed_route_cells | route_delta)
             assignment_state = increment_assignment_state(

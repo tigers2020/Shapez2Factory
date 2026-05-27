@@ -120,6 +120,8 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 **CLOSED (2026-05-27):** **P1-ELCP-RF-D0** — stale_candidate_reachable drift (`RESERVATION_DRIFT_DOMINANT`, 34/34 `post_probe_reservation_block`, Gate A overlap-pack). Report: [`2026-05-27-rttp-elcp-rf-d0-stale-candidate-reachable-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-d0-stale-candidate-reachable-report.md). **P1-ELCP-RF** remains REOPENED.
 
+**CLOSED (2026-05-27):** **P1-ELCP-RF-E0** — post-probe reservation mechanism (`ROUTE_CELL_RESERVATION_CONFLICT_DOMINANT`, `private_route_overlap` 23/34; bounded B-spec nominated). Report: [`2026-05-27-rttp-elcp-rf-e0-post-probe-reservation-mechanism-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-e0-post-probe-reservation-mechanism-report.md). **P1-ELCP-RF** remains REOPENED; `lane_capacity_shortfall` B-spec **BLOCKED**.
+
 **ACTIVE (parallel) — RTTP v0.2 Core Algorithm Recovery** — **Gate B** throughput / A4-2 selection toward `placement_goal_count`. Recovery: [`2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md) §13.
 
 **CLOSED (2026-05-30):** **Track B Task 6 — Lab pass_capable badge** — PR [#102](https://github.com/tigers2020/Shapez2Factory/pull/102) on `master` (`093a2143`).

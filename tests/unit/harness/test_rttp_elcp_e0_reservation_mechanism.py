@@ -15,12 +15,8 @@ from harness.investigation.rttp_elcp_e0_reservation_mechanism import (
 
 
 def test_is_unattributed_prefix() -> None:
-    assert is_unattributed_mechanism_class(
-        ElcpE0MechanismClass.UNATTRIBUTED_ROUTE_CELL_MECHANISM
-    )
-    assert not is_unattributed_mechanism_class(
-        ElcpE0MechanismClass.PRIVATE_ROUTE_OVERLAP
-    )
+    assert is_unattributed_mechanism_class(ElcpE0MechanismClass.UNATTRIBUTED_ROUTE_CELL_MECHANISM)
+    assert not is_unattributed_mechanism_class(ElcpE0MechanismClass.PRIVATE_ROUTE_OVERLAP)
 
 
 def test_classify_private_route_overlap() -> None:

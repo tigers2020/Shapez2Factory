@@ -103,9 +103,7 @@ class ElcpE0MechanismClass(StrEnum):
 class ElcpE0Verdict(StrEnum):
     ROUTE_CELL_RESERVATION_CONFLICT_DOMINANT = "route_cell_reservation_conflict_dominant"
     INLET_SHARED_TRANSPORT_POLICY_DOMINANT = "inlet_shared_transport_policy_dominant"
-    SPLIT_RESERVATION_POLICY_NEEDS_DECOMPOSITION = (
-        "split_reservation_policy_needs_decomposition"
-    )
+    SPLIT_RESERVATION_POLICY_NEEDS_DECOMPOSITION = "split_reservation_policy_needs_decomposition"
     INCONCLUSIVE_NEEDS_TELEMETRY = "inconclusive_needs_telemetry"
 
 
@@ -136,9 +134,7 @@ _INLET_MECHANISMS: frozenset[ElcpE0MechanismClass] = frozenset(
 )
 
 MECHANISM_OWNER_MODULE: dict[ElcpE0MechanismClass, str] = {
-    ElcpE0MechanismClass.PRIVATE_ROUTE_OVERLAP: (
-        "incremental_commit._private_route_cell_overlap"
-    ),
+    ElcpE0MechanismClass.PRIVATE_ROUTE_OVERLAP: ("incremental_commit._private_route_cell_overlap"),
     ElcpE0MechanismClass.SHAREABLE_TRUNK_UNDERCOVERAGE: (
         "exterior_lane_trunk.shareable_trunk_cells"
     ),
@@ -317,11 +313,7 @@ def _dominant_mechanism_class(
 
 
 def _shared_owner_in_family(classes: Sequence[ElcpE0MechanismClass]) -> str | None:
-    owners = {
-        MECHANISM_OWNER_MODULE[c]
-        for c in classes
-        if not is_unattributed_mechanism_class(c)
-    }
+    owners = {MECHANISM_OWNER_MODULE[c] for c in classes if not is_unattributed_mechanism_class(c)}
     owners.discard("unattributed")
     if len(owners) == 1:
         return next(iter(owners))
@@ -355,9 +347,7 @@ def evaluate_b_spec_nomination(
 
     if verdict is ElcpE0Verdict.ROUTE_CELL_RESERVATION_CONFLICT_DOMINANT:
         family = _ROUTE_CELL_MECHANISMS
-        title = (
-            "Bounded B-spec: route-cell reservation / shareable trunk / private overlap"
-        )
+        title = "Bounded B-spec: route-cell reservation / shareable trunk / private overlap"
     elif verdict is ElcpE0Verdict.INLET_SHARED_TRANSPORT_POLICY_DOMINANT:
         family = _INLET_MECHANISMS
         title = "Bounded B-spec: inlet_on_shared_transport / stub-vs-shared-route policy"
@@ -410,9 +400,7 @@ def _mechanism_signals_from_route_bundle(
     stub = candidate.output_stub
     output_stub_in_committed_route = stub in committed_route_cells
     adjacent = frozenset(
-        c
-        for c in _stub_neighbor_coords(stub)
-        if c in committed_route_cells and c != stub
+        c for c in _stub_neighbor_coords(stub) if c in committed_route_cells and c != stub
     )
 
     if not probe.reachable:
@@ -450,9 +438,7 @@ def _mechanism_signals_from_route_bundle(
     )
     overlap_all = merged & committed_route_cells
     undercoverage = frozenset(
-        c
-        for c in overlap_all
-        if c not in lane_shareable and c in current_domain.trunk_mask_cells
+        c for c in overlap_all if c not in lane_shareable and c in current_domain.trunk_mask_cells
     )
     spine_augment = frozenset(augmented - path_cells)
     probe_merged_diff = frozenset((merged - path_cells) | (path_cells - merged))
@@ -562,8 +548,7 @@ def build_stale_replay_signal_cache(
             route_cells = outcome.route_cells or frozenset()
             committed_occupied = frozenset(committed_occupied | candidate.occupied_cells)
             committed_fixed_output_transport_cells = frozenset(
-                committed_fixed_output_transport_cells
-                | {fixed_output_transport_cell(candidate)}
+                committed_fixed_output_transport_cells | {fixed_output_transport_cell(candidate)}
             )
             committed_route_cells = frozenset(committed_route_cells | route_cells)
             assignment_state = increment_assignment_state(
@@ -691,9 +676,7 @@ def build_reservation_class_appendix_aggregate(
     ledger: Sequence[ElcpAttemptLedgerRow],
 ) -> AppendixAggregate:
     reservation_rows = [
-        r
-        for r in ledger
-        if r.commit_conflict_reason in RESERVATION_CONFLICT_REASONS
+        r for r in ledger if r.commit_conflict_reason in RESERVATION_CONFLICT_REASONS
     ]
     stale_res = [
         r

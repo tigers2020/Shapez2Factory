@@ -70,9 +70,7 @@ EXPECTED_MINER_SEED_GENE_KEYS: tuple[str, ...] = tuple(
 # Back-compat alias (18 canonical keys after m3e_10 collapse).
 EXPECTED_19_GENE_KEYS: tuple[str, ...] = EXPECTED_MINER_SEED_GENE_KEYS
 
-MINER_SEED_SCHEMAS_PURGEABLE: frozenset[str] = frozenset(
-    {MINER_SEED_SCHEMA, MINER_SEED_SCHEMA_V2}
-)
+MINER_SEED_SCHEMAS_PURGEABLE: frozenset[str] = frozenset({MINER_SEED_SCHEMA, MINER_SEED_SCHEMA_V2})
 
 
 def gene_key_for_pattern_id(pattern_id: str) -> str:

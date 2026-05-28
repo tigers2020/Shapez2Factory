@@ -43,11 +43,7 @@ _GOLDEN_SCORES: dict[str, int] = {
 
 
 def test_golden_difficulty_rank_order() -> None:
-    lines = [
-        ln.strip()
-        for ln in _BOOTSTRAP.read_text(encoding="utf-8").splitlines()
-        if ln.strip()
-    ]
+    lines = [ln.strip() for ln in _BOOTSTRAP.read_text(encoding="utf-8").splitlines() if ln.strip()]
     scored: list[tuple[str, IntrinsicDifficultyResult]] = []
     for pattern_id, line in zip(EXPECTED_PATTERN_IDS, lines, strict=True):
         root = decode_copy_string(line).root
@@ -74,11 +70,7 @@ def test_difficulty_score_is_int_for_m0e() -> None:
 
 
 def test_linear_m3e_01_tier_four() -> None:
-    lines = [
-        ln.strip()
-        for ln in _BOOTSTRAP.read_text(encoding="utf-8").splitlines()
-        if ln.strip()
-    ]
+    lines = [ln.strip() for ln in _BOOTSTRAP.read_text(encoding="utf-8").splitlines() if ln.strip()]
     idx = EXPECTED_PATTERN_IDS.index("m3e_01")
     root = decode_copy_string(lines[idx]).root
     assert_miner_seed_layout_strict(root)

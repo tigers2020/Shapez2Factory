@@ -112,16 +112,13 @@ class Command(BaseCommand):  # type: ignore[misc]
         rel_source_file = str(path).replace("\\", "/")
         parsed = self._parse_bootstrap(lines)
 
-        scored = [
-            (seed.pattern_id, intrinsic_difficulty_from_root(seed.root)) for seed in parsed
-        ]
+        scored = [(seed.pattern_id, intrinsic_difficulty_from_root(seed.root)) for seed in parsed]
         if options["strict_rank_ambiguity"]:
             self._raise_on_rank_ambiguity(scored)
 
         ranked = assign_difficulty_ranks(scored)
         difficulty_by_pattern = {
-            pattern_id: (result, difficulty_rank)
-            for pattern_id, result, difficulty_rank in ranked
+            pattern_id: (result, difficulty_rank) for pattern_id, result, difficulty_rank in ranked
         }
 
         if options["dry_run"]:

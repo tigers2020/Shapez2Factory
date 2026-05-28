@@ -1,5 +1,7 @@
 # Current plan
 
+**CLOSED (2026-05-28):** Miner seed intrinsic difficulty rank — branch `feat/miner-seed-difficulty-rank`. **Spec:** [`docs/superpowers/specs/2026-05-28-miner-seed-difficulty-rank-design.md`](../../docs/superpowers/specs/2026-05-28-miner-seed-difficulty-rank-design.md) · **Plan:** [`docs/superpowers/plans/2026-05-28-miner-seed-difficulty-rank.md`](../../docs/superpowers/plans/2026-05-28-miner-seed-difficulty-rank.md). Catalog `seed_rank` unchanged; `difficulty_rank` / `difficulty_score` at ingest; `search_priority_rank` deferred Phase 5.
+
 **CLOSED (2026-05-27, merged to `master`):** Reconstruction complete-map decontamination — PR [#117](https://github.com/tigers2020/Shapez2Factory/pull/117). **Spec:** [`docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) · **Plan:** [`docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md`](../../docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md)
 
 | Queue | State |

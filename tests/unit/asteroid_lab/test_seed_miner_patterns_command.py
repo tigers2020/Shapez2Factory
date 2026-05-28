@@ -105,8 +105,7 @@ def test_difficulty_ranks_are_permutation_1_to_18() -> None:
     ranks = [int(row.metadata_json["difficulty_rank"]) for row in rows]
     assert sorted(ranks) == list(range(1, 19))
     by_rank = {
-        int(row.metadata_json["difficulty_rank"]): row.metadata_json["pattern_id"]
-        for row in rows
+        int(row.metadata_json["difficulty_rank"]): row.metadata_json["pattern_id"] for row in rows
     }
     assert [by_rank[i] for i in range(1, 19)] == list(EXPECTED_DIFFICULTY_RANK_ORDER)
 

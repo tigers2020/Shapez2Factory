@@ -171,8 +171,7 @@ def assign_difficulty_ranks(
 
     ordered = sorted(items, key=sort_key)
     return [
-        (pattern_id, result, rank)
-        for rank, (pattern_id, result) in enumerate(ordered, start=1)
+        (pattern_id, result, rank) for rank, (pattern_id, result) in enumerate(ordered, start=1)
     ]
 
 

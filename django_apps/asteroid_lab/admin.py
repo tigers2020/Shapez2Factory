@@ -205,7 +205,9 @@ class GeneticSampleAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import MINER_SEED_SCHEMA_V2
+        from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
+            MINER_SEED_SCHEMA_V2,
+        )
 
         qs = super().get_queryset(request)
         return qs.filter(

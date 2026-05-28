@@ -1,10 +1,18 @@
 # Current plan
 
-**Status (2026-05-27) — P0 AUTHORITATIVE:** **Reconstruction complete-map decontamination (C+D)** — Asteroid Lab retains reconstruction product slice only; RTTP runtime removal. **Spec:** [`docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) · **Plan:** [`docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md`](../../docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md) · **Execution:** Subagent-Driven (Task 0+).
+**CLOSED (2026-05-27, branch-local):** Reconstruction complete-map decontamination — branch `feat/decontamination-recon-complete-map-pr-b` (PR pending). **Spec:** [`docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) · **Plan:** [`docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md`](../../docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md)
+
+**PR-B branch-local gate evidence:**
+
+- `optimization/` absent gate pass · `catalog/` absent gate pass
+- `run_solver` fail-closed reconstruction replay stub pass
+- `scripts/test_full.ps1`: **1359 passed**, collection 0 errors
+- `ruff check .` pass
+- `mypy django_apps config src`: red on existing repository baseline debt (outside PR-B scope)
 
 | Queue | State |
 |-------|--------|
-| P0 Decontamination (this spec) | **ACTIVE** — PR-A/B merged on branch; Task 5–6 doc/gates WIP |
+| P0 Decontamination (this spec) | **CLOSED (2026-05-27, branch-local)** — await merge PR |
 | RTTP MEG-C2 | **BLOCKED** by decontamination |
 | v0.2 core algorithm recovery | **BLOCKED** — superseded by decontamination surgery |
 | MEG contract spec | **FROZEN** reference — [`2026-05-27-rttp-mining-equipment-goal-contract-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md) |

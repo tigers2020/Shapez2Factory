@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> **Status:** READY — spec approved 2026-05-27 (Decontamination Release Lead)  
+> **Status:** **CLOSED (2026-05-27, branch-local)** — PR-B complete on `feat/decontamination-recon-complete-map-pr-b`; merge PR pending  
 > **Spec:** [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md)  
 > **Forbidden during this plan:** MEG-C2, RTTP feature work, v0.2 core algorithm recovery implementation  
 > **Branch:** `feat/decontamination-recon-complete-map` (dedicated worktree recommended)
@@ -555,7 +555,7 @@ python -m mypy django_apps config src
 python -m black --check .
 ```
 
-- [ ] **Step 2: `current_plan.md` P0 CLOSED**
+- [x] **Step 2: `current_plan.md` P0 CLOSED**
 
 After PR-B merge, under P0 banner:
 
@@ -563,11 +563,11 @@ After PR-B merge, under P0 banner:
 **CLOSED (YYYY-MM-DD):** Reconstruction complete-map decontamination — PR #___
 ```
 
-- [ ] **Step 3: MEG remains FROZEN**
+- [x] **Step 3: MEG remains FROZEN**
 
 Confirm `2026-05-27-rttp-mining-equipment-goal-contract-design.md` status unchanged.
 
-- [ ] **Step 4: Decontamination spec status**
+- [x] **Step 4: Decontamination spec status**
 
 Set design spec to **CLOSED (implementation YYYY-MM-DD)** with PR link.
 

@@ -1,11 +1,11 @@
 # Asteroid Lab — Reconstruction Complete-Map Decontamination — Design Spec
 
 **Document type:** Canonical repository surgery / DTO meaning cleanup  
-**Status:** **Approved (Architecture Governance Lead 2026-05-27)** — spec + plan approved; implementation gated on protocol step 4  
+**Status:** **CLOSED (implementation 2026-05-27, branch-local)** — PR-B on `feat/decontamination-recon-complete-map-pr-b`; merge PR link TBD  
 **Implementation plan:** [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md`](../plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md)  
 **Work classification:** contract change · implementation change · documentation change  
 **Scope:** `django_apps/asteroid_lab/` only — **`shapez_solver` and recipe-graph UI are OUT OF SCOPE**  
-**Queue authority:** [`documents/ai/current_plan.md`](../../../documents/ai/current_plan.md) — this spec is **P0 authoritative** until CLOSED  
+**Queue authority:** [`documents/ai/current_plan.md`](../../../documents/ai/current_plan.md) — P0 **CLOSED (2026-05-27, branch-local)**  
 
 **Extends:** [`2026-05-22-strip-solver-keep-recon-complete-design.md`](2026-05-22-strip-solver-keep-recon-complete-design.md) (extraction order, GATE-1–7 pattern)  
 **Normative DTO semantics:** [`2026-05-26-reconstruction-complete-map-dto-design.md`](2026-05-26-reconstruction-complete-map-dto-design.md) (unchanged — enforced by decontamination)  

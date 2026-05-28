@@ -1,7 +1,7 @@
 # Asteroid Lab — Reconstruction Complete-Map Decontamination — Design Spec
 
 **Document type:** Canonical repository surgery / DTO meaning cleanup  
-**Status:** **CLOSED (implementation 2026-05-27, branch-local)** — PR-B on `feat/decontamination-recon-complete-map-pr-b`; merge PR link TBD  
+**Status:** **CLOSED (implementation 2026-05-27, branch-local)** — PR-B [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) on `feat/decontamination-recon-complete-map-pr-b`  
 **Implementation plan:** [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md`](../plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md)  
 **Work classification:** contract change · implementation change · documentation change  
 **Scope:** `django_apps/asteroid_lab/` only — **`shapez_solver` and recipe-graph UI are OUT OF SCOPE**  

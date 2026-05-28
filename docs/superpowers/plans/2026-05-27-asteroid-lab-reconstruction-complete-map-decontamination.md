@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> **Status:** **CLOSED (2026-05-27, branch-local)** — PR-B complete on `feat/decontamination-recon-complete-map-pr-b`; merge PR pending  
+> **Status:** **CLOSED (2026-05-27, branch-local)** — PR-B [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) on `feat/decontamination-recon-complete-map-pr-b`  
 > **Spec:** [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md)  
 > **Forbidden during this plan:** MEG-C2, RTTP feature work, v0.2 core algorithm recovery implementation  
 > **Branch:** `feat/decontamination-recon-complete-map` (dedicated worktree recommended)
@@ -560,7 +560,7 @@ python -m black --check .
 After PR-B merge, under P0 banner:
 
 ```markdown
-**CLOSED (YYYY-MM-DD):** Reconstruction complete-map decontamination — PR #___
+**CLOSED (2026-05-27):** Reconstruction complete-map decontamination — PR [#117](https://github.com/tigers2020/Shapez2Factory/pull/117)
 ```
 
 - [x] **Step 3: MEG remains FROZEN**

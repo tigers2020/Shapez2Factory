@@ -141,7 +141,17 @@ def test_lab_run_summary_layer_summaries_ordered_l1_through_l5() -> None:
     assert summaries[0]["layer_slug"] == LAYER_01_RECONSTRUCTION
     assert summaries[0]["layer_index"] == 1
     assert summaries[0]["outcome"] == "completed"
-    assert any(h["label"] == "Quality tier" for h in summaries[0]["highlights"])
+    l1_labels = [h["label"] for h in summaries[0]["highlights"]]
+    assert "Quality tier" not in l1_labels
+    assert "Confidence" not in l1_labels
+    assert "Shape field cells" in l1_labels
+    assert any(h["label"] == "Max throughput" for h in summaries[0]["highlights"])
+    l2_labels = [h["label"] for h in summaries[1]["highlights"]]
+    assert "External space belts" in l2_labels
+    assert "Required normal lines" in l2_labels
+    assert "Capacity basis" not in l2_labels
+    assert "Rule source" not in l2_labels
+    assert "Shape max throughput" not in l2_labels
     assert summaries[4]["layer_slug"] == LAYER_05_COMMIT_VALIDATE
     assert summaries[4]["outcome"] == "completed"
     assert row["stack_run_status"] == "success"
@@ -193,10 +203,9 @@ def test_lab_run_summary_nested_capacity_from_solver_summary() -> None:
     assert row["capacity"]["primary_resource_kind"] == "shape"
     assert row["capacity"]["fluid_platform_count"] == 0
     assert row["reconstruction"]["display_cell_count"] == 120
-    assert row["reconstruction"]["asteroid_field_cell_count"] == 8
-    assert row["reconstruction"]["shape_field_cell_count"] == 8
-    assert row["reconstruction"]["fluid_field_cell_count"] == 0
-    assert row["reconstruction"]["quality_tier_short"] == "HIGH"
+    assert row["reconstruction"]["field_cell_count"] == 8
+    assert row["reconstruction"]["primary_resource_kind"] == "shape"
+    assert row["capacity"]["external_connector_count"] == 1
     assert row["rttp"]["confirmed_count"] == 1
     assert row["rttp"]["actual_output_status"] == "pending_pr_2b"
 
@@ -426,5 +435,5 @@ def test_lab_capacity_uses_complete_map_even_when_overlay_is_sparse() -> None:
         },
     )
     assert row["capacity"]["platform_upper_bound"] == shape_platform
-    assert row["reconstruction"]["asteroid_field_cell_count"] == complete_fields
-    assert row["reconstruction"]["shape_field_cell_count"] == complete.shape_field_cell_count
+    assert row["reconstruction"]["field_cell_count"] == complete_fields
+    assert row["reconstruction"]["primary_resource_kind"] == cap["primary_resource_kind"]

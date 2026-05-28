@@ -12,8 +12,12 @@ from django_apps.game_data.models.exterior_transport_capacity import (
     ExteriorShapeTransportCapacity,
 )
 from django_apps.game_data.services.exterior_transport_capacity import (
+    exterior_connector_count_for_throughput,
+    exterior_line_count_for_throughput,
     get_active_exterior_fluid_transport_capacity,
     get_active_exterior_shape_transport_capacity,
+    line_throughput_per_min_from_row,
+    space_belt_connector_capacity_per_min_from_row,
     space_belt_max_per_min_from_row,
     space_pipe_max_per_min_from_row,
 )
@@ -39,6 +43,8 @@ def test_unique_active_shape_row_per_speed_tier() -> None:
             speed_tier=1,
             mini_unit_output_per_min=Decimal("15"),
             buildings_per_regular_belt=4,
+            lanes_per_line=12,
+            lines_per_space_belt=12,
             space_belt_full_belt_count=48,
             is_active=True,
         )
@@ -50,7 +56,42 @@ def test_shape_tier1_space_belt_max_is_2880_from_db() -> None:
     assert row.source_kind == ExteriorShapeTransportCapacity.SourceKind.EVTC_CANON
     regular = row.mini_unit_output_per_min * Decimal(row.buildings_per_regular_belt)
     assert regular == Decimal("60")
+    assert line_throughput_per_min_from_row(row) == Decimal("720")
+    assert space_belt_connector_capacity_per_min_from_row(row) == Decimal("8640")
     assert space_belt_max_per_min_from_row(row) == Decimal("2880")
+
+
+@pytest.mark.django_db
+def test_exterior_connector_count_ceil_shape_throughput() -> None:
+    assert (
+        exterior_connector_count_for_throughput(
+            Decimal("960"),
+            resource_kind="shape",
+        )
+        == 1
+    )
+    assert (
+        exterior_connector_count_for_throughput(
+            Decimal("8641"),
+            resource_kind="shape",
+        )
+        == 2
+    )
+    assert (
+        exterior_connector_count_for_throughput(
+            Decimal("69960"),
+            resource_kind="shape",
+        )
+        == 9
+    )
+    assert (
+        exterior_line_count_for_throughput(
+            Decimal("69960"),
+            resource_kind="shape",
+        )
+        == 98
+    )
+    assert exterior_connector_count_for_throughput(Decimal("0"), resource_kind="shape") == 0
 
 
 @pytest.mark.django_db

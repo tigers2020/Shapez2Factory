@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
@@ -18,19 +19,6 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
 
 _PLACEHOLDER = "—"
 
-_QUALITY_TIER_SHORT: dict[str, str] = {
-    "CONFIDENT_RECONSTRUCTION": "HIGH",
-    "PARTIAL_RECONSTRUCTION": "MED",
-    "PROVISIONAL_RECONSTRUCTION": "LOW",
-    "FAILED_RECONSTRUCTION": "FAIL",
-}
-
-
-def _quality_tier_short(tier: str) -> str:
-    if tier == _PLACEHOLDER or not tier:
-        return _PLACEHOLDER
-    return _QUALITY_TIER_SHORT.get(tier, tier)
-
 
 def _obs_field_count(obs: dict[str, Any], *keys: str) -> Any:
     for key in keys:
@@ -39,49 +27,113 @@ def _obs_field_count(obs: dict[str, Any], *keys: str) -> Any:
     return _PLACEHOLDER
 
 
+def _primary_resource_kind(raw: Any) -> str:
+    if raw in (None, "", _PLACEHOLDER):
+        return "shape"
+    return str(raw)
+
+
+def _primary_field_cell_count(obs: dict[str, Any], *, primary: str) -> Any:
+    if primary == "fluid":
+        return _obs_field_count(
+            obs,
+            "fluid_field_cell_count",
+            "fluid_confirmed_cell_count",
+            "asteroid_field_cell_count",
+            "confirmed_cell_count",
+            "mineable_cell_count",
+        )
+    return _obs_field_count(
+        obs,
+        "shape_field_cell_count",
+        "shape_confirmed_cell_count",
+        "asteroid_field_cell_count",
+        "confirmed_cell_count",
+        "mineable_cell_count",
+    )
+
+
+def _primary_field_cells_label(primary: str) -> str:
+    if primary == "fluid":
+        return "Fluid field cells"
+    return "Shape field cells"
+
+
+def _external_connector_label(primary: str) -> str:
+    if primary == "fluid":
+        return "External space pipes"
+    return "External space belts"
+
+
 def _section_reconstruction(obs: dict[str, Any] | None) -> dict[str, Any]:
     keys = (
         "cell_count",
         "display_cell_count",
-        "asteroid_field_cell_count",
-        "shape_field_cell_count",
-        "fluid_field_cell_count",
         "primary_resource_kind",
+        "field_cell_count",
         "ambiguous_cell_count",
         "external_void_cell_count",
-        "quality_tier",
-        "confidence_score",
-        "quality_tier_short",
     )
     if not obs:
         return dict.fromkeys(keys, _PLACEHOLDER)
-    tier = str(obs.get("quality_tier", _PLACEHOLDER))
+    primary = _primary_resource_kind(obs.get("primary_resource_kind"))
     return {
         "cell_count": obs.get("cell_count", _PLACEHOLDER),
         "display_cell_count": obs.get("display_cell_count", _PLACEHOLDER),
-        "asteroid_field_cell_count": _obs_field_count(
-            obs,
-            "asteroid_field_cell_count",
-            "confirmed_cell_count",
-            "mineable_cell_count",
-        ),
-        "shape_field_cell_count": _obs_field_count(
-            obs,
-            "shape_field_cell_count",
-            "shape_confirmed_cell_count",
-        ),
-        "fluid_field_cell_count": _obs_field_count(
-            obs,
-            "fluid_field_cell_count",
-            "fluid_confirmed_cell_count",
-        ),
-        "primary_resource_kind": obs.get("primary_resource_kind", _PLACEHOLDER),
+        "primary_resource_kind": primary,
+        "field_cell_count": _primary_field_cell_count(obs, primary=primary),
         "ambiguous_cell_count": obs.get("ambiguous_cell_count", _PLACEHOLDER),
         "external_void_cell_count": obs.get("external_void_cell_count", _PLACEHOLDER),
-        "quality_tier": tier,
-        "confidence_score": obs.get("confidence_score", _PLACEHOLDER),
-        "quality_tier_short": _quality_tier_short(tier),
     }
+
+
+def _parse_decimal_throughput(value: Any) -> Decimal | None:
+    if value in (None, "", _PLACEHOLDER):
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _external_line_count(*, max_throughput_per_min: Any, primary: str) -> int | str:
+    throughput = _parse_decimal_throughput(max_throughput_per_min)
+    if throughput is None:
+        return _PLACEHOLDER
+    if primary != "shape":
+        return _PLACEHOLDER
+    from django_apps.game_data.services.exterior_transport_capacity import (
+        exterior_line_count_for_throughput,
+    )
+
+    try:
+        return exterior_line_count_for_throughput(
+            throughput,
+            resource_kind=primary,
+        )
+    except (LookupError, ValueError):
+        return _PLACEHOLDER
+
+
+def _external_connector_count(
+    *,
+    max_throughput_per_min: Any,
+    primary: str,
+) -> int | str:
+    throughput = _parse_decimal_throughput(max_throughput_per_min)
+    if throughput is None:
+        return _PLACEHOLDER
+    from django_apps.game_data.services.exterior_transport_capacity import (
+        exterior_connector_count_for_throughput,
+    )
+
+    try:
+        return exterior_connector_count_for_throughput(
+            throughput,
+            resource_kind=primary,
+        )
+    except LookupError:
+        return _PLACEHOLDER
 
 
 def _section_capacity(cap: dict[str, Any] | None) -> dict[str, Any]:
@@ -94,16 +146,17 @@ def _section_capacity(cap: dict[str, Any] | None) -> dict[str, Any]:
         "fluid_platform_count": _PLACEHOLDER,
         "reconstruction_max_throughput_per_min": _PLACEHOLDER,
         "primary_resource_kind": _PLACEHOLDER,
+        "primary_output_unit": _PLACEHOLDER,
         "platform_upper_bound": _PLACEHOLDER,
-        "capacity_basis": _PLACEHOLDER,
-        "extraction_rule_source": _PLACEHOLDER,
+        "external_connector_count": _PLACEHOLDER,
+        "external_line_count": _PLACEHOLDER,
     }
     if not cap:
         return empty
     by = dict(cap.get("by_resource") or {})
     shape = dict(by.get("shape") or {})
     fluid = dict(by.get("fluid") or {})
-    primary = str(cap.get("primary_resource_kind", "shape"))
+    primary = _primary_resource_kind(cap.get("primary_resource_kind"))
     shape_max = shape.get("max_throughput_per_min", _PLACEHOLDER)
     primary_row = shape if primary == "shape" else fluid
     headline_max = primary_row.get("max_throughput_per_min", _PLACEHOLDER)
@@ -116,12 +169,19 @@ def _section_capacity(cap: dict[str, Any] | None) -> dict[str, Any]:
         "fluid_platform_count": fluid.get("capacity_upper_bound_platform_count", _PLACEHOLDER),
         "reconstruction_max_throughput_per_min": headline_max,
         "primary_resource_kind": primary,
+        "primary_output_unit": primary_row.get("output_unit", _PLACEHOLDER),
         "platform_upper_bound": primary_row.get(
             "capacity_upper_bound_platform_count",
             _PLACEHOLDER,
         ),
-        "capacity_basis": cap.get("capacity_basis", _PLACEHOLDER),
-        "extraction_rule_source": shape.get("source_kind", _PLACEHOLDER),
+        "external_connector_count": _external_connector_count(
+            max_throughput_per_min=headline_max,
+            primary=primary,
+        ),
+        "external_line_count": _external_line_count(
+            max_throughput_per_min=headline_max,
+            primary=primary,
+        ),
     }
 
 
@@ -279,7 +339,7 @@ def _build_layer_summaries(
     failed_raw = solver_summary.get("failed_layer_slug")
     failed_layer_slug = str(failed_raw) if failed_raw not in (None, "") else None
 
-    rec_has_data = reconstruction.get("quality_tier") not in (None, _PLACEHOLDER, "")
+    rec_has_data = reconstruction.get("field_cell_count") not in (None, _PLACEHOLDER, "")
     l1_legacy = "completed" if rec_has_data else "pending"
     l5_legacy = (
         "completed"
@@ -300,12 +360,10 @@ def _build_layer_summaries(
 
     pct = throughput_target.get("throughput_target_percent", _PLACEHOLDER)
     target_tp = throughput_target.get("target_throughput_per_min", _PLACEHOLDER)
-    primary = capacity.get("primary_resource_kind", _PLACEHOLDER)
-    headline = (
-        capacity.get("fluid_max_throughput_per_min", _PLACEHOLDER)
-        if primary == "fluid"
-        else capacity.get("reconstruction_max_throughput_per_min", _PLACEHOLDER)
-    )
+    primary = _primary_resource_kind(capacity.get("primary_resource_kind"))
+    headline = capacity.get("reconstruction_max_throughput_per_min", _PLACEHOLDER)
+    field_cells_label = _primary_field_cells_label(primary)
+    connector_label = _external_connector_label(primary)
 
     opt = optimization_goal or {}
     macro = macro_commit_summary or {}
@@ -317,13 +375,12 @@ def _build_layer_summaries(
             "Reconstruction",
             outcome(LAYER_01_RECONSTRUCTION, l1_legacy),
             [
-                _highlight("Quality tier", reconstruction.get("quality_tier_short")),
-                _highlight("Confidence", reconstruction.get("confidence_score")),
                 _highlight("Primary resource", reconstruction.get("primary_resource_kind")),
-                _highlight("Asteroid field cells", reconstruction.get("asteroid_field_cell_count")),
-                _highlight("Shape field cells", reconstruction.get("shape_field_cell_count")),
-                _highlight("Fluid field cells", reconstruction.get("fluid_field_cell_count")),
-                _highlight("Map cells (display)", reconstruction.get("display_cell_count")),
+                _highlight(field_cells_label, reconstruction.get("field_cell_count")),
+                _highlight(
+                    "Max throughput",
+                    headline,
+                ),
             ],
         ),
         (
@@ -333,13 +390,16 @@ def _build_layer_summaries(
             outcome(LAYER_02_EXTERIOR_TRANSPORT, "pending"),
             [
                 _highlight("Terrain upper bound", headline),
-                _highlight("Shape max throughput", capacity.get("shape_max_throughput_per_min")),
-                _highlight("Fluid max throughput", capacity.get("fluid_max_throughput_per_min")),
+                _highlight(
+                    "Required normal lines",
+                    capacity.get("external_line_count")
+                    if primary == "shape"
+                    else _PLACEHOLDER,
+                ),
+                _highlight(connector_label, capacity.get("external_connector_count")),
                 _highlight("Platform upper bound", capacity.get("platform_upper_bound")),
                 _highlight("Target percent", pct if pct == _PLACEHOLDER else f"{pct}%"),
                 _highlight("Planning target", target_tp),
-                _highlight("Capacity basis", capacity.get("capacity_basis")),
-                _highlight("Rule source", capacity.get("extraction_rule_source")),
             ],
         ),
         (

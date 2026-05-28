@@ -20,7 +20,15 @@ class ExteriorShapeTransportCapacity(models.Model):
         decimal_places=4,
     )
     buildings_per_regular_belt = models.PositiveSmallIntegerField()
-    space_belt_full_belt_count = models.PositiveSmallIntegerField()
+    lanes_per_line = models.PositiveSmallIntegerField(
+        help_text="Regular-belt groups per exterior line (tier-1 CANON: 12 → 720 shapes/min line).",
+    )
+    lines_per_space_belt = models.PositiveSmallIntegerField(
+        help_text="Exterior lines per Space Belt building (tier-1 CANON: 12 → 8640 shapes/min belt).",
+    )
+    space_belt_full_belt_count = models.PositiveSmallIntegerField(
+        help_text="Wiki saturated regular-belt equivalents per full belt (48 → 2880/min); not per-building cap.",
+    )
     output_unit = models.CharField(max_length=64, default="shapes_per_min")
     source_kind = models.CharField(
         max_length=32,

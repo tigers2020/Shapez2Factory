@@ -1061,6 +1061,8 @@ class ExteriorShapeTransportCapacityAdmin(admin.ModelAdmin):
         "speed_tier",
         "mini_unit_output_per_min",
         "buildings_per_regular_belt",
+        "lanes_per_line",
+        "lines_per_space_belt",
         "space_belt_full_belt_count",
         "source_kind",
         "is_active",

@@ -2051,14 +2051,21 @@
           ? formatCompactNumber(cap.fluid_max_throughput_per_min)
           : formatCompactNumber(cap.shape_max_throughput_per_min);
       const committed = rttp.confirmed_count != null ? String(rttp.confirmed_count) : dash;
-      const tier = rec.quality_tier_short != null ? String(rec.quality_tier_short) : dash;
+      const fieldCells =
+        rec.field_cell_count != null && rec.field_cell_count !== dash
+          ? String(rec.field_cell_count)
+          : dash;
       const theorPart =
         theor !== dash ? theor + "/min " + (typeof shapezUiT === "function" ? shapezUiT("theor.") : "theor.") : dash;
       const committedPart =
         committed !== dash
           ? committed + " " + (typeof shapezUiT === "function" ? shapezUiT("committed") : "committed")
           : dash;
-      return theorPart + " | " + committedPart + " | " + (tier !== dash ? tier : dash);
+      const cellsPart =
+        fieldCells !== dash
+          ? fieldCells + " " + (typeof shapezUiT === "function" ? shapezUiT("cells") : "cells")
+          : dash;
+      return theorPart + " | " + committedPart + " | " + cellsPart;
     }
 
     function layerOutcomeBadgeClass(outcome) {

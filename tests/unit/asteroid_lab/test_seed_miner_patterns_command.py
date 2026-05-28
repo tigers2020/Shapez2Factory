@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 
 from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
+    EXHAUSTIVE_GENERATOR_STALE,
+    EXPECTED_DIFFICULTY_RANK_ORDER,
     EXPECTED_MINER_SEED_GENE_KEYS,
     EXPECTED_PATTERN_IDS,
-    EXHAUSTIVE_GENERATOR_STALE,
     MINER_SEED_SCHEMA_V2,
     gene_key_for_pattern_id,
 )
@@ -75,6 +77,55 @@ def test_stored_code_matches_bootstrap_bytes() -> None:
         row = GeneticSample.objects.get(gene_key=gene_key_for_pattern_id(pattern_id))
         assert row.code == line
         assert row.metadata_json["pattern_id"] == pattern_id
+
+
+@pytest.mark.django_db
+def test_seed_miner_patterns_writes_difficulty_metadata() -> None:
+    call_command("seed_miner_patterns")
+    row = GeneticSample.objects.get(gene_key="miner_seed_m3e_01")
+    meta = row.metadata_json
+    assert meta["difficulty_rank"] == 7
+    assert meta["difficulty_score"] == 337
+    assert isinstance(meta["difficulty_score"], int)
+    assert meta["difficulty_tier"] == 4
+    assert meta["search_priority_rank"] is None
+    assert meta["search_priority_source"] == "deferred_phase5"
+    assert "compactness_approx" in meta["rank_reason"]
+    assert "coverage_approx" not in meta["rank_reason"]
+    assert meta["seed_rank"] == EXPECTED_PATTERN_IDS.index("m3e_01") + 1
+
+
+@pytest.mark.django_db
+def test_difficulty_ranks_are_permutation_1_to_18() -> None:
+    call_command("seed_miner_patterns")
+    rows = GeneticSample.objects.filter(
+        metadata_json__schema=MINER_SEED_SCHEMA_V2,
+        metadata_json__is_seed=True,
+    )
+    ranks = [int(row.metadata_json["difficulty_rank"]) for row in rows]
+    assert sorted(ranks) == list(range(1, 19))
+    by_rank = {
+        int(row.metadata_json["difficulty_rank"]): row.metadata_json["pattern_id"]
+        for row in rows
+    }
+    assert [by_rank[i] for i in range(1, 19)] == list(EXPECTED_DIFFICULTY_RANK_ORDER)
+
+
+@pytest.mark.django_db
+def test_dry_run_prints_difficulty_table(capsys: pytest.CaptureFixture[str]) -> None:
+    call_command("seed_miner_patterns", dry_run=True)
+    out = capsys.readouterr().out
+    assert "difficulty_rank  pattern_id" in out
+    assert "m0e_01" in out
+    assert "dry-run: validated 18 seeds" in out
+
+
+@pytest.mark.django_db
+def test_strict_rank_ambiguity_flags_m3e_score_tie() -> None:
+    """m3e_02 and m3e_04 share pre-pattern_id key; pattern_id resolves in default ingest."""
+
+    with pytest.raises(CommandError, match="m3e_02.*m3e_04"):
+        call_command("seed_miner_patterns", dry_run=True, strict_rank_ambiguity=True)
 
 
 @pytest.mark.django_db

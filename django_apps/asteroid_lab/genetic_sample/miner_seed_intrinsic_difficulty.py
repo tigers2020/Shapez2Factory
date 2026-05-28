@@ -124,6 +124,34 @@ def intrinsic_difficulty_from_root(root: dict[str, Any]) -> IntrinsicDifficultyR
     return IntrinsicDifficultyResult(score=score, tier=tier, reason=reason)
 
 
+def pre_pattern_id_sort_key(result: IntrinsicDifficultyResult) -> tuple[int, int, float, int]:
+    """Sort key before final ``pattern_id`` tie-break (for strict ambiguity checks)."""
+
+    return (
+        result.tier,
+        result.score,
+        float(result.reason["compactness_approx"]),
+        int(result.reason["throughput_factor"]),
+    )
+
+
+def find_rank_ambiguity(
+    items: list[tuple[str, IntrinsicDifficultyResult]],
+) -> list[tuple[str, str, tuple[int, int, float, int]]]:
+    """Return (pattern_id_a, pattern_id_b, shared_key) for colliding pre-pattern_id keys."""
+
+    by_key: dict[tuple[int, int, float, int], str] = {}
+    collisions: list[tuple[str, str, tuple[int, int, float, int]]] = []
+    for pattern_id, result in items:
+        key = pre_pattern_id_sort_key(result)
+        prior = by_key.get(key)
+        if prior is not None and prior != pattern_id:
+            collisions.append((prior, pattern_id, key))
+        else:
+            by_key[key] = pattern_id
+    return collisions
+
+
 def assign_difficulty_ranks(
     items: list[tuple[str, IntrinsicDifficultyResult]],
 ) -> list[tuple[str, IntrinsicDifficultyResult, int]]:
@@ -151,5 +179,7 @@ def assign_difficulty_ranks(
 __all__ = [
     "IntrinsicDifficultyResult",
     "assign_difficulty_ranks",
+    "find_rank_ambiguity",
     "intrinsic_difficulty_from_root",
+    "pre_pattern_id_sort_key",
 ]

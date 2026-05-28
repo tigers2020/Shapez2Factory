@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,12 @@ from django_apps.asteroid_lab.genetic_sample.miner_seed_equivalence import (
     assert_miner_seed_layout_strict,
     equivalence_signature_from_decoded_root,
 )
+from django_apps.asteroid_lab.genetic_sample.miner_seed_intrinsic_difficulty import (
+    IntrinsicDifficultyResult,
+    assign_difficulty_ranks,
+    find_rank_ambiguity,
+    intrinsic_difficulty_from_root,
+)
 from django_apps.asteroid_lab.genetic_sample.miner_seed_topology import (
     count_extensions,
     throughput_factor_for_extension_count,
@@ -33,6 +40,18 @@ from django_apps.asteroid_lab.models import GeneticSample
 
 _DEFAULT_BOOTSTRAP_PATH = "var/default_miner_pattern.txt"
 _EXPECTED_LINE_COUNT = len(EXPECTED_PATTERN_IDS)
+_SEARCH_PRIORITY_SOURCE_DEFERRED = "deferred_phase5"
+
+
+@dataclass(frozen=True)
+class _ParsedSeed:
+    catalog_rank: int
+    pattern_id: str
+    code: str
+    root: dict[str, Any]
+    equivalence_signature: str
+    topology_signature: str
+    extension_count: int
 
 
 class Command(BaseCommand):  # type: ignore[misc]
@@ -50,7 +69,15 @@ class Command(BaseCommand):  # type: ignore[misc]
         parser.add_argument(
             "--dry-run",
             action="store_true",
-            help="Validate bootstrap file only; do not write to the database.",
+            help="Validate bootstrap, compute difficulty ranks, print table; no DB writes.",
+        )
+        parser.add_argument(
+            "--strict-rank-ambiguity",
+            action="store_true",
+            help=(
+                "Fail when two pattern_ids share the same pre-pattern_id sort key "
+                "(tier, score, compactness_approx, throughput_factor)."
+            ),
         )
         parser.add_argument(
             "--replace-stale",
@@ -83,72 +110,49 @@ class Command(BaseCommand):  # type: ignore[misc]
 
         file_sha = hashlib.sha256(path.read_bytes()).hexdigest()
         rel_source_file = str(path).replace("\\", "/")
-        topo_sigs: set[str] = set()
-        equiv_sigs: set[str] = set()
+        parsed = self._parse_bootstrap(lines)
 
-        pairs = zip(EXPECTED_PATTERN_IDS, lines, strict=True)
-        for rank, (pattern_id, code) in enumerate(pairs, start=1):
-            dto = decode_copy_string(code)
-            try:
-                assert_miner_seed_layout_strict(dto.root)
-            except MinerSeedLayoutValidationError as exc:
-                raise CommandError(
-                    f"strict layout validation failed for {pattern_id} (line {rank}): {exc}",
-                ) from exc
+        scored = [
+            (seed.pattern_id, intrinsic_difficulty_from_root(seed.root)) for seed in parsed
+        ]
+        if options["strict_rank_ambiguity"]:
+            self._raise_on_rank_ambiguity(scored)
 
-            topo_sig = topology_signature_from_decoded_root(dto.root)
-            if topo_sig in topo_sigs:
-                raise CommandError(
-                    f"duplicate topology_signature at seed rank {rank} ({pattern_id})",
-                )
-            topo_sigs.add(topo_sig)
-
-            equiv_sig = equivalence_signature_from_decoded_root(dto.root)
-            if equiv_sig in equiv_sigs:
-                raise CommandError(
-                    f"duplicate equivalence_signature at seed rank {rank} ({pattern_id})",
-                )
-            equiv_sigs.add(equiv_sig)
-            ext = count_extensions(dto.root)
-            meta = {
-                "schema": MINER_SEED_SCHEMA_V2,
-                "is_seed": True,
-                "seed_rank": rank,
-                "pattern_id": pattern_id,
-                "source": {
-                    "file": rel_source_file,
-                    "line_no": rank,
-                    "file_sha256": file_sha,
-                },
-                "equivalence_signature": equiv_sig,
-                "topology_signature": topo_sig,
-                "extension_count": ext,
-                "throughput_factor": throughput_factor_for_extension_count(ext),
-                "resource_kind_stored": "shape",
-                "layout_types": list(MINER_LAYOUT_TYPES_SHAPE),
-            }
-            if options["dry_run"]:
-                continue
-
-            gkey = gene_key_for_pattern_id(pattern_id)
-            obj, _created = GeneticSample.objects.update_or_create(
-                gene_key=gkey,
-                defaults={
-                    "name": f"Seed {pattern_id} ext={ext}",
-                    "code": code,
-                    "metadata_json": meta,
-                    "project": None,
-                },
-            )
-            obj.save()
+        ranked = assign_difficulty_ranks(scored)
+        difficulty_by_pattern = {
+            pattern_id: (result, difficulty_rank)
+            for pattern_id, result, difficulty_rank in ranked
+        }
 
         if options["dry_run"]:
+            self._print_difficulty_rank_table(parsed, difficulty_by_pattern)
             self.stdout.write(
                 self.style.NOTICE(
                     f"dry-run: validated {_EXPECTED_LINE_COUNT} seeds; no database writes.",
                 ),
             )
             return
+
+        for seed in parsed:
+            difficulty, difficulty_rank = difficulty_by_pattern[seed.pattern_id]
+            meta = self._build_metadata(
+                seed=seed,
+                rel_source_file=rel_source_file,
+                file_sha=file_sha,
+                difficulty=difficulty,
+                difficulty_rank=difficulty_rank,
+            )
+            gkey = gene_key_for_pattern_id(seed.pattern_id)
+            obj, _created = GeneticSample.objects.update_or_create(
+                gene_key=gkey,
+                defaults={
+                    "name": f"Seed {seed.pattern_id} ext={seed.extension_count}",
+                    "code": seed.code,
+                    "metadata_json": meta,
+                    "project": None,
+                },
+            )
+            obj.save()
 
         if options["replace_stale"]:
             deleted, _detail = GeneticSample.objects.filter(
@@ -173,6 +177,116 @@ class Command(BaseCommand):  # type: ignore[misc]
         self.stdout.write(
             self.style.SUCCESS(f"miner_seed_v2 GeneticSample rows: {seed_count}"),
         )
+
+    def _parse_bootstrap(self, lines: list[str]) -> list[_ParsedSeed]:
+        topo_sigs: set[str] = set()
+        equiv_sigs: set[str] = set()
+        parsed: list[_ParsedSeed] = []
+        for catalog_rank, (pattern_id, code) in enumerate(
+            zip(EXPECTED_PATTERN_IDS, lines, strict=True),
+            start=1,
+        ):
+            dto = decode_copy_string(code)
+            try:
+                assert_miner_seed_layout_strict(dto.root)
+            except MinerSeedLayoutValidationError as exc:
+                raise CommandError(
+                    f"strict layout validation failed for {pattern_id} "
+                    f"(catalog rank {catalog_rank}): {exc}",
+                ) from exc
+
+            topo_sig = topology_signature_from_decoded_root(dto.root)
+            if topo_sig in topo_sigs:
+                raise CommandError(
+                    f"duplicate topology_signature at catalog rank {catalog_rank} "
+                    f"({pattern_id})",
+                )
+            topo_sigs.add(topo_sig)
+
+            equiv_sig = equivalence_signature_from_decoded_root(dto.root)
+            if equiv_sig in equiv_sigs:
+                raise CommandError(
+                    f"duplicate equivalence_signature at catalog rank {catalog_rank} "
+                    f"({pattern_id})",
+                )
+            equiv_sigs.add(equiv_sig)
+            parsed.append(
+                _ParsedSeed(
+                    catalog_rank=catalog_rank,
+                    pattern_id=pattern_id,
+                    code=code,
+                    root=dto.root,
+                    equivalence_signature=equiv_sig,
+                    topology_signature=topo_sig,
+                    extension_count=count_extensions(dto.root),
+                ),
+            )
+        return parsed
+
+    def _build_metadata(
+        self,
+        *,
+        seed: _ParsedSeed,
+        rel_source_file: str,
+        file_sha: str,
+        difficulty: IntrinsicDifficultyResult,
+        difficulty_rank: int,
+    ) -> dict[str, Any]:
+        ext = seed.extension_count
+        return {
+            "schema": MINER_SEED_SCHEMA_V2,
+            "is_seed": True,
+            "seed_rank": seed.catalog_rank,
+            "pattern_id": seed.pattern_id,
+            "difficulty_score": difficulty.score,
+            "difficulty_rank": difficulty_rank,
+            "difficulty_tier": difficulty.tier,
+            "rank_reason": difficulty.reason,
+            "search_priority_rank": None,
+            "search_priority_source": _SEARCH_PRIORITY_SOURCE_DEFERRED,
+            "source": {
+                "file": rel_source_file,
+                "line_no": seed.catalog_rank,
+                "file_sha256": file_sha,
+            },
+            "equivalence_signature": seed.equivalence_signature,
+            "topology_signature": seed.topology_signature,
+            "extension_count": ext,
+            "throughput_factor": throughput_factor_for_extension_count(ext),
+            "resource_kind_stored": "shape",
+            "layout_types": list(MINER_LAYOUT_TYPES_SHAPE),
+        }
+
+    def _raise_on_rank_ambiguity(
+        self,
+        scored: list[tuple[str, IntrinsicDifficultyResult]],
+    ) -> None:
+        collisions = find_rank_ambiguity(scored)
+        if not collisions:
+            return
+        a, b, key = collisions[0]
+        raise CommandError(
+            f"rank ambiguity between {a!r} and {b!r} for pre-pattern_id sort key {key}",
+        )
+
+    def _print_difficulty_rank_table(
+        self,
+        parsed: list[_ParsedSeed],
+        difficulty_by_pattern: dict[str, tuple[IntrinsicDifficultyResult, int]],
+    ) -> None:
+        self.stdout.write(
+            "difficulty_rank  pattern_id   tier  score  catalog_rank",
+        )
+        rows = sorted(
+            parsed,
+            key=lambda s: difficulty_by_pattern[s.pattern_id][1],
+        )
+        for seed in rows:
+            difficulty, difficulty_rank = difficulty_by_pattern[seed.pattern_id]
+            self.stdout.write(
+                f"{difficulty_rank:>15}  {seed.pattern_id:<11}  "
+                f"{difficulty.tier:>4}  {difficulty.score:>5}  {seed.catalog_rank:>12}",
+            )
 
     def _purge_stale_miner_seed_rows(self) -> int:
         expected = set(EXPECTED_MINER_SEED_GENE_KEYS)

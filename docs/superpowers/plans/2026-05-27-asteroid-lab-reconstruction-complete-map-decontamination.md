@@ -305,14 +305,14 @@ python -m pytest tests/unit/asteroid_lab/test_solver_decontamination_stub.py tes
 
 ### Task 4a: Delete packages
 
-- [ ] **Step 1: Delete directories**
+- [x] **Step 1: Delete directories**
 
 ```text
 django_apps/asteroid_lab/optimization/
 django_apps/asteroid_lab/catalog/
 ```
 
-- [ ] **Step 2: Delete RTTP contracts** (examples — verify with rg before rm)
+- [x] **Step 2: Delete RTTP contracts** (examples — verify with rg before rm)
 
 ```text
 django_apps/asteroid_lab/contracts/catalog_candidate.py
@@ -324,7 +324,7 @@ django_apps/asteroid_lab/contracts/ga_evolution_shadow.py
 
 Keep: `contracts/game_data_snapshot.py`, `game_data_snapshot_provenance.py`.
 
-- [ ] **Step 3: Delete RTTP adapters**
+- [x] **Step 3: Delete RTTP adapters**
 
 ```text
 django_apps/asteroid_lab/adapters/catalog_*.py
@@ -349,7 +349,7 @@ django_apps/asteroid_lab/services/mining_equipment_goal.py
 django_apps/asteroid_lab/services/required_external_connectors.py
 ```
 
-- [ ] **Trim** `lab_replay_timeline_payload.py`, `solver_run_lab_summary.py` — remove optimization imports and RTTP-only code paths; keep reconstruction timeline.
+- [x] **Trim** `lab_replay_timeline_payload.py`, `solver_run_lab_summary.py` — remove optimization imports and RTTP-only code paths; keep reconstruction timeline.
 
 ### Task 4c: Management commands
 
@@ -364,7 +364,7 @@ django_apps/asteroid_lab/management/commands/scan_rttp_slug_certification.py
 
 ### Task 4d: Tests and harness
 
-- [ ] **Step 1: Delete test files**
+- [x] **Step 1: Delete test files**
 
 ```powershell
 Get-ChildItem -Recurse tests -Filter "*rttp*" | Select-Object FullName
@@ -373,7 +373,7 @@ Get-ChildItem -Recurse tests -Filter "*optimization*" | Select-Object FullName
 
 Delete all unit/integration/investigation RTTP tests. Update `tests/unit/architecture/quarantine_registry.py` per [`2026-05-30-test-cleanup-aggressive-decontamination-design.md`](../specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md) if entries block collection.
 
-- [ ] **Step 2: Delete harness**
+- [x] **Step 2: Delete harness**
 
 ```text
 harness/investigation/rttp_*.py
@@ -413,7 +413,7 @@ git commit -m "feat(asteroid_lab): PR-B remove optimization catalog RTTP runtime
 
 **Files:** `docs/superpowers/**`, `documents/archive/asteroid_lab_rttp_retired_2026-05/`
 
-- [ ] **Step 1: Hard-delete active RTTP specs**
+- [x] **Step 1: Hard-delete active RTTP specs**
 
 Delete all `docs/superpowers/specs/*rttp*` **except** keep:
 
@@ -423,11 +423,11 @@ Delete all `docs/superpowers/specs/*rttp*` **except** keep:
 
 Delete: `2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`, all ELCP/MEG/GA specs, etc.
 
-- [ ] **Step 2: Hard-delete ACTIVE/recovery RTTP plans**
+- [x] **Step 2: Hard-delete ACTIVE/recovery RTTP plans**
 
 Delete `docs/superpowers/plans/*rttp*` with ACTIVE/recovery/evidence recapture in title or body `NEXT:`.
 
-- [ ] **Step 3: Archive ≤10 closed milestone plans**
+- [x] **Step 3: Archive ≤10 closed milestone plans**
 
 Create `documents/archive/asteroid_lab_rttp_retired_2026-05/plans/` and move e.g.:
 
@@ -445,20 +445,20 @@ superseded_by: docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-com
 ---
 ```
 
-- [ ] **Step 4: Reports — default delete**
+- [x] **Step 4: Reports — default delete**
 
 ```powershell
 Remove-Item docs/superpowers/reports/*rttp* -Recurse -Force  # review list first; keep 0-3 summaries only
 ```
 
-- [ ] **Step 5: Archive README + evidence_summary**
+- [x] **Step 5: Archive README + evidence_summary**
 
 Create:
 
 - `documents/archive/asteroid_lab_rttp_retired_2026-05/README.md` — why RTTP removed, pointer to decontamination spec
 - `documents/archive/asteroid_lab_rttp_retired_2026-05/evidence_summary.md` — 1-page forensic summary (no large JSON)
 
-- [ ] **Step 6: MEG spec/plan remain FROZEN** — do not delete `2026-05-27-rttp-mining-equipment-goal-contract-design.md`
+- [x] **Step 6: MEG spec/plan remain FROZEN** — do not delete `2026-05-27-rttp-mining-equipment-goal-contract-design.md`
 
 - [ ] **Step 7: Commit**
 
@@ -476,7 +476,7 @@ git commit -m "docs: RTTP hard-delete and selective archive (Hybrid C)"
 - Modify: `scripts/test_optimization_contamination.ps1` → rename or replace with `scripts/test_reconstruction_decontamination.ps1`
 - Modify: `tests/unit/architecture/test_optimization_contamination_gates.py` — delete or replace
 
-- [ ] **Step 1: Write architecture tests**
+- [x] **Step 1: Write architecture tests**
 
 ```python
 # tests/unit/architecture/test_reconstruction_decontamination_gates.py
@@ -510,7 +510,7 @@ def test_no_run_rttp_pipeline_outside_archive():
     assert proc.returncode == 1, proc.stdout  # rg exit 1 = no matches
 ```
 
-- [ ] **Step 2: PowerShell gate owner**
+- [x] **Step 2: PowerShell gate owner**
 
 Create `scripts/test_reconstruction_decontamination.ps1`:
 
@@ -524,11 +524,11 @@ if ($LASTEXITCODE -eq 0) { throw "run_rttp_pipeline still referenced" }
 exit 0
 ```
 
-- [ ] **Step 3: Update `current_plan.md` standing gates**
+- [x] **Step 3: Update `current_plan.md` standing gates**
 
 Replace PR-B optimization contamination owner with `test_reconstruction_decontamination.ps1`.
 
-- [ ] **Step 4: Run gates**
+- [x] **Step 4: Run gates**
 
 ```powershell
 powershell -File scripts/test_reconstruction_decontamination.ps1

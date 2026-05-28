@@ -1,3 +1,9 @@
+---
+status: RETIRED_ARCHIVE
+do_not_execute: true
+superseded_by: docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md
+---
+
 # Strip Solver — Keep Reconstruction Complete — Implementation Plan
 
 > **Status:** Executed 2026-05-22  

@@ -1,3 +1,9 @@
+---
+status: RETIRED_ARCHIVE
+do_not_execute: true
+superseded_by: docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md
+---
+
 # Reconstruction Complete Map DTO — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

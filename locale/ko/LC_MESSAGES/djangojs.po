@@ -5,12 +5,6 @@ msgstr ""
 "Language: ko\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 
-msgid " (expected on diagnostic canon)"
-msgstr " (expected on diagnostic canon)"
-
-msgid " (regression on pass-capable slug)"
-msgstr " (regression on pass-capable slug)"
-
 msgid "(read-only)"
 msgstr "(읽기 전용)"
 

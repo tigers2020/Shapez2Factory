@@ -198,9 +198,6 @@ msgstr "목표 처리량"
 msgid "% of theoretical max"
 msgstr "이론 최대치 대비 %"
 
-msgid "RTTP ops slug class"
-msgstr "RTTP ops slug class"
-
 msgid "shapez2 planner"
 msgstr "shapez2 planner"
 

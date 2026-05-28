@@ -571,7 +571,7 @@ Confirm `2026-05-27-rttp-mining-equipment-goal-contract-design.md` status unchan
 
 Set design spec to **CLOSED (implementation YYYY-MM-DD)** with PR link.
 
-- [ ] **Step 5: `rg rttp` smoke (human)**
+- [x] **Step 5: `rg rttp` smoke (G4 doc hygiene — `test_doc_rttp_retired.ps1`)**
 
 ```powershell
 rg "rttp" docs/superpowers --glob "!documents/archive/**" -c

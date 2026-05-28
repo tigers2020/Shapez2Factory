@@ -20,23 +20,25 @@ This file is the entry point that new AI sessions, subagents, and Cursor work re
 - `REPORT` is observation and log analysis; it is not design authority.
 - `ARCHIVED` and `SUPERSEDED` are for historical reference only. Do not use them for implementation decisions.
 
-## Asteroid Lab / RTTP work
+## Asteroid Lab (reconstruction slice — post P0 decontamination)
 
-1. [`current_plan.md`](current_plan.md) — active runtime paths and queue
+1. [`current_plan.md`](current_plan.md) — runtime (`SOLVER_NOT_AVAILABLE`) and standing gates
 2. [`../index/document_inventory.md`](../index/document_inventory.md) — **§ Asteroid Lab authority by topic**
 3. [`contamination_policy.md`](contamination_policy.md) — forbidden patterns and PR playbook
-4. Topic authority from inventory row (`docs/superpowers/specs/` or `documents/Algorithm/asteroid_lab_*.md`)
-5. Code: `django_apps/asteroid_lab/` + `tests/unit/asteroid_lab/`
+4. Normative specs: [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md), [`2026-05-26-reconstruction-complete-map-dto-design.md`](../../docs/superpowers/specs/2026-05-26-reconstruction-complete-map-dto-design.md)
+5. Code: `django_apps/asteroid_lab/reconstruction/`, `cleanup/`, `replay/`, `services/solver_runtime_entry.py` + `tests/unit/asteroid_lab/` (reconstruction narrow gates)
 
-The following contracts take precedence over older plans/reports (when the topic row is more specific, **row wins**):
+**Active contracts (reconstruction):**
 
-- Placement ≠ Commit; route probe at candidate creation
-- validation read-only; replay/artifacts output-only
-- single `RouteDomainSnapshotBuilder` owner
+- `ReconstructionCompleteMap` is terrain/capacity SoT at pipeline boundaries
+- Replay/artifacts are output-only (not algorithm inputs)
+- `run_solver` is fail-closed stub only — **no RTTP pipeline**
+
+**Forbidden:** Do not implement from RTTP queue rows, `documents/archive/asteroid_lab_rttp_retired_2026-05/` (except FROZEN MEG contract read-only), or retired `documents/Algorithm/asteroid_lab_01`–`08` / `solver_runtime/` archives.
 
 **Forbidden:** Do not use `documents/plans/asteroid_lab_optimization/` as implementation authority.
 
-**Forbidden:** Do not use `django_apps.shapez_asteroid`, `tests/unit/shapez_asteroid` as current work paths.
+**Forbidden:** Do not use `django_apps.shapez_asteroid`, `django_apps/asteroid_lab/optimization/`, `tests/unit/shapez_asteroid` as current work paths.
 
 ## Forbidden
 

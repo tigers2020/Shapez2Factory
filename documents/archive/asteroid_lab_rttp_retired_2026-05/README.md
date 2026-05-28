@@ -12,12 +12,15 @@ RTTP optimization runtime (`django_apps/asteroid_lab/optimization/`, `catalog/`,
 ## What lives here
 
 - `plans/` — selected **closed** milestone plans from the RTTP era (historical only; `do_not_execute: true`).
+- `superpowers/` — retired RTTP specs/plans/reports moved from active `docs/superpowers/` (G4 hygiene 2026-05-27).
+- `algorithm/` — legacy `asteroid_lab_01`–`08`, `solver_runtime/` phase series.
+- [`current_plan_rttp_historical.md`](current_plan_rttp_historical.md) — full RTTP queue + closed forensic rows (extracted from `current_plan.md`).
 - [`evidence_summary.md`](evidence_summary.md) — one-page forensic summary (no large JSON artifacts).
 
-## Frozen references (not deleted)
+## Frozen references (active tree — read-only)
 
 - [`docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md) — **FROZEN**; do not implement MEG-C2 until RTTP is explicitly re-opened.
-- [`docs/superpowers/plans/2026-05-27-rttp-mining-equipment-goal.md`](../../docs/superpowers/plans/2026-05-27-rttp-mining-equipment-goal.md) — **DO NOT EXECUTE** (historical).
+- [`superpowers/plans/2026-05-27-rttp-mining-equipment-goal.md`](superpowers/plans/2026-05-27-rttp-mining-equipment-goal.md) — **DO NOT EXECUTE** (archived plan).
 
 ## Do not
 

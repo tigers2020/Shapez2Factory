@@ -7,16 +7,16 @@ from typing import Any, cast
 from django.db.models import Count, Prefetch, Q
 
 from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack, SolverRun
-from django_apps.asteroid_lab.optimization.replay_track_keys import (
-    RTTP_OPTIMIZATION_TRACK_SUFFIX,
-    RTTP_TRACK_KEY_PREFIX,
-)
 from django_apps.asteroid_lab.replay import replay_limits
 from django_apps.asteroid_lab.replay.lab_timeline_adapter import (
     LabTimelineAdapterError,
     lab_replay_row_to_timeline_frame,
 )
 from django_apps.asteroid_lab.replay.projection_context import ReplayProjectionContext
+from django_apps.asteroid_lab.replay.replay_track_keys import (
+    RTTP_OPTIMIZATION_TRACK_SUFFIX,
+    RTTP_TRACK_KEY_PREFIX,
+)
 from django_apps.asteroid_lab.replay.timeline_composer import compose_replay_timeline
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayTimelineFrame
 from django_apps.asteroid_lab.replay.timeline_serialization import (
@@ -24,10 +24,6 @@ from django_apps.asteroid_lab.replay.timeline_serialization import (
     replay_timeline_frame_to_json_dict,
 )
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO
-from django_apps.asteroid_lab.services.lab_rttp_snapshot_compose import (
-    interleave_rttp_snapshot_frames,
-    load_rttp_compose_rows_for_project,
-)
 from django_apps.asteroid_lab.services.lab_timeline_rim_enrichment import (
     enrich_lab_timeline_frames_with_terrain_rim,
 )
@@ -248,17 +244,14 @@ def build_lab_replay_frames_for_project(
     lab_frames = _lab_timeline_frames_for_project(pid)
     if run is not None:
         runtime_frames = _solver_runtime_timeline_frames_for_run(run)
-        rttp_rows = load_rttp_compose_rows_for_project(pid, run_key=str(run.run_key))
     else:
         runtime_frames = _solver_runtime_timeline_frames_for_project(pid)
-        rttp_rows = load_rttp_compose_rows_for_project(pid)
 
     combined = compose_replay_timeline(
         lab_frames=(*lab_frames, *runtime_frames),
         max_frames=replay_limits.MAX_LAB_REPLAY_TIMELINE_FRAMES,
     )
     serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
-    serialized = interleave_rttp_snapshot_frames(serialized, rttp_rows)
     serialized, frozen_rim_wire = enrich_lab_timeline_frames_with_terrain_rim(serialized)
     diagnostic = _lab_replay_diagnostic_reason(pid, composed_count=len(serialized))
     metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)

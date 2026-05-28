@@ -32,13 +32,9 @@ from django_apps.asteroid_lab.services.lab_map_reset_service import (
     LabMapResetErrorCode,
     reset_project_map_to_inspection_clean,
 )
-from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
-    build_lab_optimization_milestone_frames_for_project,
-)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
-from django_apps.asteroid_lab.services.placement_goal import parse_max_placement_goal_count
 from django_apps.asteroid_lab.services.project_service import (
     resolve_or_create_project_slug_for_copy_code,
 )
@@ -50,7 +46,6 @@ from django_apps.asteroid_lab.services.solver_runtime_entry import (
     entry_result_to_json_dict,
     run_solver_runtime_for_project,
 )
-from django_apps.asteroid_lab.services.throughput_target import parse_throughput_target_percent
 from django_apps.game_data.snapshots.errors import SnapshotBuildError
 from django_apps.shapez_core.services.lab_sprite_identifier_service import (
     build_lab_identifier_sprite_relpath_map,
@@ -233,11 +228,17 @@ def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> di
     if track is not None and track.project_id is not None:
         project_id = int(track.project_id)
         frames, track_metrics = build_lab_replay_frames_for_project(project_id)
-        # 3B v0: Section B binds to latest SolverRun on project (not inspection track_id).
-        milestone_frames, milestone_metrics = build_lab_optimization_milestone_frames_for_project(
-            project_id,
-            run_key=None,
-        )
+        milestone_frames: list[dict[str, Any]] = []
+        milestone_metrics = {
+            "track_key": None,
+            "frame_count": 0,
+            "event_types": [],
+            "replay_truncated": False,
+            "truncation_reason": None,
+            "dropped_frame_count": None,
+            "diagnostic_reason": None,
+            "source_solver_run_id": None,
+        }
         initial = dict(frames[0]) if frames else {}
     n = len(frames)
     fi = int(frames[0]["frame_index"]) if frames else 0
@@ -285,32 +286,6 @@ def asteroid_miner_layout_project(request: HttpRequest, slug: str) -> HttpRespon
     )
 
 
-def _validate_throughput_target_percent(config: dict[str, Any]) -> JsonResponse | None:
-    if "throughput_target_percent" not in config:
-        return None
-    try:
-        parse_throughput_target_percent(config)
-    except ValueError:
-        return JsonResponse(
-            {"ok": False, "error": "invalid_throughput_target_percent"},
-            status=400,
-        )
-    return None
-
-
-def _validate_max_placement_goal_count(config: dict[str, Any]) -> JsonResponse | None:
-    if "max_placement_goal_count" not in config:
-        return None
-    try:
-        parse_max_placement_goal_count(config)
-    except ValueError:
-        return JsonResponse(
-            {"ok": False, "error": "invalid_max_placement_goal_count"},
-            status=400,
-        )
-    return None
-
-
 def _run_solver_request_config(request: HttpRequest) -> tuple[dict[str, Any], JsonResponse | None]:
     """Parse optional JSON POST body into runtime ``config`` (PR-K)."""
 
@@ -327,14 +302,7 @@ def _run_solver_request_config(request: HttpRequest) -> tuple[dict[str, Any], Js
     if not isinstance(parsed, dict):
         err = JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
         return {}, err
-    config = dict(parsed)
-    percent_err = _validate_throughput_target_percent(config)
-    if percent_err is not None:
-        return {}, percent_err
-    max_goal_err = _validate_max_placement_goal_count(config)
-    if max_goal_err is not None:
-        return {}, max_goal_err
-    return config, None
+    return dict(parsed), None
 
 
 @require_POST

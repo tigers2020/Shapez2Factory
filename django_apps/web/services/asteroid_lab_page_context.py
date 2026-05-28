@@ -7,9 +7,6 @@ from typing import Any, cast
 from django.db.models import Count, Prefetch
 
 from django_apps.asteroid_lab.models import GeneticSample, ReplayFrame, ReplayTrack
-from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
-    build_lab_optimization_milestone_frames_for_project,
-)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
     get_latest_lab_replay_track_for_project,
@@ -177,12 +174,6 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
 
     track = get_latest_lab_replay_track_for_project(int(project_id))
     frames_json, track_metrics = build_lab_replay_frames_for_project(int(project_id))
-    milestone_frames, milestone_metrics = build_lab_optimization_milestone_frames_for_project(
-        int(project_id)
-    )
-    ctx["lab_optimization_milestone_frames_json"] = milestone_frames
-    ctx["lab_optimization_milestone_track_metrics"] = milestone_metrics
-
     if not frames_json:
         if track is not None:
             ctx["lab_replay_track_id"] = int(track.pk)

@@ -1,6 +1,3 @@
-"""Investigation probes — re-export unit fixtures (no nested pytest_plugins)."""
+"""Investigation probes — RTTP-era fixtures removed in P0 decontamination."""
 
-from tests.unit.asteroid_lab.conftest import (  # noqa: F401
-    catalog_slice_minimal,
-    greenfield_optimization_input,
-)
+# No re-exports from tests.unit.asteroid_lab.conftest (catalog_slice_minimal removed).

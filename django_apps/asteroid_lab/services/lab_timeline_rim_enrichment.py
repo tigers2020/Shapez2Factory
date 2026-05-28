@@ -17,12 +17,25 @@ from django_apps.asteroid_lab.reconstruction.rim_highlight import (
 from django_apps.asteroid_lab.replay.event_types import EVENT_TYPE_RECONSTRUCTION_MAP_COMPLETE
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.services.lab_rttp_snapshot_compose import frame_has_renderable_map
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
 LAB_PHASE_RECONSTRUCTION = "reconstruction"
 METRICS_KEY = "terrain_rim_highlight"
+
+
+def frame_has_renderable_map(frame: dict[str, Any]) -> bool:
+    mv = frame.get("map_view")
+    if not isinstance(mv, dict):
+        return False
+    full_cells = mv.get("full_cells")
+    if isinstance(full_cells, list) and len(full_cells) > 0:
+        return True
+    cell_delta = mv.get("cell_delta")
+    if isinstance(cell_delta, list) and len(cell_delta) > 0:
+        return True
+    overlay = mv.get("overlay_cells")
+    return isinstance(overlay, list) and len(overlay) > 0
 
 _COMPLETE_EVENT_TYPES = frozenset(
     {

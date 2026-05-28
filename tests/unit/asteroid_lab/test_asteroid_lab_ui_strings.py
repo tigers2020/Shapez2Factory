@@ -96,7 +96,6 @@ def test_lab_exterior_connector_overlay_contract() -> None:
     assert (
         "lab-planned-exterior-connector" in built_css
     ), "run npm run build:css — Lab L2 marker styles missing from app.css"
-    assert "lab-planned-exterior-connector" in built_css
     assert "inset" in built_css
 
 

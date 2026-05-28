@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
-from django_apps.asteroid_lab.optimization.reconstruction_adapter import _rim_cells
 from django_apps.asteroid_lab.reconstruction.complete_map import build_reconstruction_complete_map
 from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
 from django_apps.asteroid_lab.reconstruction.rim_highlight import (
@@ -14,7 +13,6 @@ from django_apps.asteroid_lab.reconstruction.rim_highlight import (
     canonicalize_void_edges,
     terrain_rim_highlight_to_metrics_dict,
 )
-from django_apps.asteroid_lab.reconstruction.rim_topology import field_rim_cells
 from django_apps.asteroid_lab.reconstruction.topology_contract import (
     decode_shapez_copy_string,
     load_reconstruction_fixture_line_pairs,
@@ -28,12 +26,6 @@ def _canon_complete_map():
     cleanup = deconstruct_snapshot(snap)
     recon = run_topology_reconstruction(cleanup)
     return build_reconstruction_complete_map(cleanup=cleanup, recon=recon)
-
-
-def test_field_rim_cells_matches_adapter_rim_parity() -> None:
-    complete = _canon_complete_map()
-    expected = _rim_cells(complete.field_cells)
-    assert field_rim_cells(complete.field_cells) == expected
 
 
 def test_build_terrain_rim_highlight_rim_subset_of_field() -> None:

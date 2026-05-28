@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import subprocess
+import re
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[3]
@@ -19,34 +19,39 @@ _CANON_AUTHORITY_FILES = (
     "documents/Algorithm/asteroid_lab_13_replay_payload_scalability.md",
 )
 
+_OPTIMIZATION_RUNTIME_RE = re.compile(
+    r"django_apps/asteroid_lab/optimization/(?!.*\b(removed|deleted|absent|RETIRED|Forbidden)\b)"
+)
 
-def _rg_hits(pattern: str, paths: tuple[str, ...]) -> str:
-    proc = subprocess.run(
-        ["rg", "-n", pattern, *paths, "--glob", "!documents/archive/**"],
-        cwd=_REPO,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
-    if proc.returncode == 1:
-        return ""
-    return proc.stdout.strip()
+
+def _scan_hits(
+    pattern: str | re.Pattern[str],
+    paths: tuple[str, ...],
+) -> str:
+    """Return ripgrep-style `path:line:content` hits (stdlib only; CI has no `rg`)."""
+    hits: list[str] = []
+    for rel in paths:
+        path = _REPO / rel
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            if isinstance(pattern, re.Pattern):
+                if pattern.search(line):
+                    hits.append(f"{rel}:{line_no}:{line}")
+            elif pattern in line:
+                hits.append(f"{rel}:{line_no}:{line}")
+    return "\n".join(hits)
 
 
 def test_no_rttp_hybrid_c_on_canon_authority_files() -> None:
-    out = _rg_hits("RTTP Hybrid C", _CANON_AUTHORITY_FILES)
+    out = _scan_hits("RTTP Hybrid C", _CANON_AUTHORITY_FILES)
     assert not out, f"RTTP Hybrid C on canon authority files:\n{out}"
 
 
 def test_no_active_optimization_runtime_on_canon_authority_files() -> None:
     """Allow 'optimization/ removed' forbids; forbid live runtime pointers."""
-    out = _rg_hits(
-        r"django_apps/asteroid_lab/optimization/(?!.*\b(removed|deleted|absent|RETIRED|Forbidden)\b)",
-        _CANON_AUTHORITY_FILES,
-    )
-    # rg lacks PCRE lookahead on all platforms — filter lines manually
+    out = _scan_hits(_OPTIMIZATION_RUNTIME_RE, _CANON_AUTHORITY_FILES)
     if out:
         bad = [
             line

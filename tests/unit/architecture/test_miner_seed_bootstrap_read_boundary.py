@@ -8,12 +8,7 @@ _REPO = Path(__file__).resolve().parents[3]
 _DJANGO_APPS = _REPO / "django_apps"
 _BOOTSTRAP_NAME = "default_miner_pattern.txt"
 _ALLOWED_READERS = {
-    _REPO
-    / "django_apps"
-    / "asteroid_lab"
-    / "management"
-    / "commands"
-    / "seed_miner_patterns.py",
+    _REPO / "django_apps" / "asteroid_lab" / "management" / "commands" / "seed_miner_patterns.py",
 }
 
 

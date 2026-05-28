@@ -460,7 +460,7 @@ Create:
 
 - [x] **Step 6: MEG spec/plan remain FROZEN** — do not delete `2026-05-27-rttp-mining-equipment-goal-contract-design.md`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A docs documents/archive
@@ -546,7 +546,7 @@ python -m ruff check django_apps/asteroid_lab/reconstruction django_apps/asteroi
 
 ## Task 7: Closeout
 
-- [ ] **Step 1: Full gate (pre-merge)**
+- [x] **Step 1: Full gate (pre-merge)**
 
 ```powershell
 powershell -File scripts/test_full.ps1

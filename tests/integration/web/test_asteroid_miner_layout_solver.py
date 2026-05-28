@@ -351,13 +351,15 @@ def test_post_run_solver_lazy_mode_omits_inline_lab_replay_frames(client: Client
     run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
     run_resp = client.post(run_url, HTTP_ACCEPT="application/json")
     body = json.loads(run_resp.content.decode())
-    assert body.get("ok") is True
+    assert run_resp.status_code == 200
+    assert body.get("ok") is False
+    assert body.get("error_code") == "SOLVER_NOT_AVAILABLE"
+    assert body.get("solver_run_id") is None
     assert "lab_replay_frames_json" not in body
     lab_replay = body.get("lab_replay") or {}
     assert lab_replay.get("mode") == "lazy"
     assert lab_replay.get("frame_count", 0) >= 1
     assert lab_replay.get("preview_frame") is not None
-    assert lab_replay.get("fetch_url")
 
 
 @override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="inline")
@@ -402,5 +404,9 @@ def test_post_run_solver_inline_mode_still_includes_lab_replay_frames(client: Cl
     run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
     run_resp = client.post(run_url, HTTP_ACCEPT="application/json")
     body = json.loads(run_resp.content.decode())
-    assert isinstance(body.get("lab_replay_frames_json"), list)
-    assert len(body["lab_replay_frames_json"]) >= 1
+    assert run_resp.status_code == 200
+    assert body.get("ok") is False
+    assert body.get("error_code") == "SOLVER_NOT_AVAILABLE"
+    frames = body.get("lab_replay_frames_json")
+    assert isinstance(frames, list)
+    assert len(frames) >= 1

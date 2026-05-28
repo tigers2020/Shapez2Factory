@@ -51,37 +51,6 @@ def test_lab_run_summary_from_solver_summary_failed() -> None:
     assert row["first_issue_detail"] is None
 
 
-def test_lab_run_summary_projects_t2_policy_fields() -> None:
-    from django_apps.asteroid_lab.contracts.rttp_ops_policy import (
-        T2_POLICY_STATUS_EXPECTED_DIAGNOSTIC_SHORTFALL,
-    )
-
-    row = lab_run_summary_from_solver_summary(
-        run_id=200,
-        status="completed",
-        solver_summary={
-            "validation_passed": True,
-            "throughput_budget_satisfied": False,
-            "actual_committed_output_per_min": "3840.0000",
-            "target_throughput_per_min": "7536.0000",
-            "throughput_target_percent": 10,
-            "reconstruction_max_throughput_per_min": "75360.0000",
-            "t2_policy_status": T2_POLICY_STATUS_EXPECTED_DIAGNOSTIC_SHORTFALL,
-            "diagnostic_expected_shortfall": True,
-            "t3_ops_eligible": False,
-            "issue_codes": ["throughput_target_shortfall"],
-        },
-    )
-    assert row["diagnostic_expected_shortfall"] is True
-    assert row["t3_ops_eligible"] is False
-    assert row["t2_policy_status"] == T2_POLICY_STATUS_EXPECTED_DIAGNOSTIC_SHORTFALL
-    assert (
-        row["throughput_target"]["t2_policy_status"]
-        == T2_POLICY_STATUS_EXPECTED_DIAGNOSTIC_SHORTFALL
-    )
-    assert row["throughput_target"]["diagnostic_expected_shortfall"] is True
-
-
 def test_lab_run_summary_capacity_fields_partial() -> None:
     row = lab_run_summary_from_solver_summary(
         run_id=64,

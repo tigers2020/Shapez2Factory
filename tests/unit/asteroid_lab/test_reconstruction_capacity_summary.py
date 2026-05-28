@@ -147,6 +147,7 @@ def test_observability_snapshot_fields() -> None:
     obs = build_reconstruction_observability(recon=recon, complete_map=complete)
     assert obs["cell_count"] == 5
     assert obs["asteroid_field_cell_count"] == 5
+    assert obs["rim_cell_count"] == 5
     assert obs["shape_field_cell_count"] == 5
     assert "mineable_cell_count" not in obs
     assert "confirmed_cell_count" not in obs

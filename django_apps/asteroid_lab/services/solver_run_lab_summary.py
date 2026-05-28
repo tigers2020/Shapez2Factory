@@ -71,6 +71,7 @@ def _section_reconstruction(obs: dict[str, Any] | None) -> dict[str, Any]:
         "display_cell_count",
         "primary_resource_kind",
         "field_cell_count",
+        "rim_cell_count",
         "ambiguous_cell_count",
         "external_void_cell_count",
     )
@@ -82,6 +83,7 @@ def _section_reconstruction(obs: dict[str, Any] | None) -> dict[str, Any]:
         "display_cell_count": obs.get("display_cell_count", _PLACEHOLDER),
         "primary_resource_kind": primary,
         "field_cell_count": _primary_field_cell_count(obs, primary=primary),
+        "rim_cell_count": obs.get("rim_cell_count", _PLACEHOLDER),
         "ambiguous_cell_count": obs.get("ambiguous_cell_count", _PLACEHOLDER),
         "external_void_cell_count": obs.get("external_void_cell_count", _PLACEHOLDER),
     }
@@ -285,6 +287,33 @@ def _section_rttp(solver_summary: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _rim_route_candidate_count(
+    reconstruction: dict[str, Any],
+    solver_summary: dict[str, Any],
+) -> Any:
+    """Outer-rim field cells = mining bundle install slots (layer 3 route candidates)."""
+
+    for source in (
+        reconstruction.get("rim_cell_count"),
+        (solver_summary.get("reconstruction_observability") or {}).get("rim_cell_count"),
+        solver_summary.get("rim_cell_count"),
+        solver_summary.get("route_candidate_count"),
+    ):
+        if source not in (None, "", _PLACEHOLDER):
+            return source
+    return _PLACEHOLDER
+
+
+def _installed_over_route_candidates(*, installed: Any, route_candidates: Any) -> str:
+    if installed in (None, "", _PLACEHOLDER) and route_candidates in (None, "", _PLACEHOLDER):
+        return _PLACEHOLDER
+    left = _PLACEHOLDER if installed in (None, "", _PLACEHOLDER) else str(installed)
+    right = (
+        _PLACEHOLDER if route_candidates in (None, "", _PLACEHOLDER) else str(route_candidates)
+    )
+    return f"{left} / {right}"
+
+
 def _highlight(label: str, value: Any) -> dict[str, str]:
     if value is None or value == "":
         text = _PLACEHOLDER
@@ -365,8 +394,9 @@ def _build_layer_summaries(
     field_cells_label = _primary_field_cells_label(primary)
     connector_label = _external_connector_label(primary)
 
-    opt = optimization_goal or {}
     macro = macro_commit_summary or {}
+    route_candidates = _rim_route_candidate_count(reconstruction, solver_summary)
+    installed = confirmed if confirmed not in (None, "", _PLACEHOLDER) else _PLACEHOLDER
 
     layers: list[tuple[int, str, str, str, list[dict[str, str]]]] = [
         (
@@ -409,16 +439,15 @@ def _build_layer_summaries(
             outcome(LAYER_03_RIM_MINING_BUNDLES, "pending"),
             [
                 _highlight("Target placements", target_placement),
-                _highlight("Route candidates", rttp.get("candidate_count")),
+                _highlight("Route candidates", route_candidates),
+                _highlight(
+                    "Installed / Route candidates",
+                    _installed_over_route_candidates(
+                        installed=installed,
+                        route_candidates=route_candidates,
+                    ),
+                ),
                 _highlight("Capacity deficit", capacity_deficit_count),
-                _highlight(
-                    "Mining equipment shortfall",
-                    opt.get("shortfall") if opt.get("passed") is False else _PLACEHOLDER,
-                ),
-                _highlight(
-                    "Confirmed mining cells",
-                    opt.get("confirmed_passed_mining_equipment_cells"),
-                ),
             ],
         ),
         (

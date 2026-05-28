@@ -334,6 +334,35 @@ def test_solver_runs_for_lab_project_orders_newest_first() -> None:
     assert lab_run_summary_from_orm(older)["status"] == "failed"
 
 
+def test_lab_layer3_rim_route_candidates_and_installed_ratio() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=50,
+        status="partial",
+        solver_summary={
+            "validation_passed": False,
+            "confirmed_count": 12,
+            "normal_candidate_count": 999,
+            "reconstruction_observability": {
+                "shape_field_cell_count": 467,
+                "rim_cell_count": 84,
+                "primary_resource_kind": "shape",
+            },
+            "optimization_goal": {
+                "passed": False,
+                "shortfall": 455,
+                "confirmed_passed_mining_equipment_cells": 12,
+                "target_mining_equipment_cells": 467,
+            },
+        },
+    )
+    layer3 = row["layer_summaries"][2]
+    labels = {h["label"]: h["value"] for h in layer3["highlights"]}
+    assert labels["Route candidates"] == "84"
+    assert labels["Installed / Route candidates"] == "12 / 84"
+    assert "Mining equipment shortfall" not in labels
+    assert "Confirmed mining cells" not in labels
+
+
 def test_lab_run_summary_from_solver_summary_exposes_meg_fields() -> None:
     row = lab_run_summary_from_solver_summary(
         run_id=42,

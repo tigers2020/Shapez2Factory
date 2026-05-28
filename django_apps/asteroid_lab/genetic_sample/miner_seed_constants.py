@@ -4,7 +4,6 @@ from __future__ import annotations
 
 MINER_SEED_SCHEMA = "miner_seed_v1"
 EXHAUSTIVE_GENERATOR_STALE = "exhaustive_sample_gene_v1"
-DEFAULT_BOOTSTRAP_PATH = "var/default_miner_pattern.txt"
 
 MINER_LAYOUT_TYPES_SHAPE = (
     "Layout_ShapeMiner",
@@ -27,7 +26,6 @@ def gene_key_for_rank(rank: int) -> str:
 
 
 __all__ = [
-    "DEFAULT_BOOTSTRAP_PATH",
     "EXHAUSTIVE_GENERATOR_STALE",
     "LAYOUT_TYPE_SHAPE_TO_FLUID",
     "MINER_LAYOUT_TYPES_SHAPE",

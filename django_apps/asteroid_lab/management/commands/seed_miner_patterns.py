@@ -11,7 +11,6 @@ from django.db import transaction
 
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
-    DEFAULT_BOOTSTRAP_PATH,
     EXHAUSTIVE_GENERATOR_STALE,
     MINER_LAYOUT_TYPES_SHAPE,
     MINER_SEED_SCHEMA,
@@ -24,6 +23,8 @@ from django_apps.asteroid_lab.genetic_sample.miner_seed_topology import (
 )
 from django_apps.asteroid_lab.models import GeneticSample
 
+_DEFAULT_BOOTSTRAP_PATH = "var/default_miner_pattern.txt"
+
 
 class Command(BaseCommand):  # type: ignore[misc]
     help = (
@@ -34,7 +35,7 @@ class Command(BaseCommand):  # type: ignore[misc]
     def add_arguments(self, parser: Any) -> None:
         parser.add_argument(
             "--file",
-            default=DEFAULT_BOOTSTRAP_PATH,
+            default=_DEFAULT_BOOTSTRAP_PATH,
             help="Bootstrap copy-string file (default: var/default_miner_pattern.txt).",
         )
         parser.add_argument(

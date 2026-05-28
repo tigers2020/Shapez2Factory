@@ -1,4 +1,4 @@
-# Narrow RTTP macro track gate (lab web + runtime + pipeline).
+# Post-decontamination lab smoke (reconstruction slice + layer stack gates).
 # Full-repo ruff/mypy/black remains in ci.yml (hygiene track).
 name: rttp-lab-macro-smoke
 
@@ -25,13 +25,10 @@ jobs:
       - name: Install dev dependencies
         run: pip install -e ".[dev]"
 
-      - name: RTTP macro smoke (lab)
+      - name: Lab reconstruction smoke
         run: |
           python -m pytest \
-            tests/unit/web/test_asteroid_lab_page_context.py \
-            tests/integration/asteroid_lab/test_rttp_run_solver_macro_integration.py \
-            tests/unit/asteroid_lab/test_rttp_pipeline_macro_greenfield.py \
-            tests/unit/asteroid_lab/test_macro_commit_hud.py \
-            tests/unit/asteroid_lab/test_run_solver_management_command.py \
-            tests/integration/asteroid_lab/test_rttp_macro_real_map_e2e.py \
-            tests/integration/web/test_asteroid_run_solver.py -k "macro"
+            tests/unit/asteroid_lab/layers/ \
+            tests/unit/architecture/test_reconstruction_decontamination_gates.py \
+            tests/unit/asteroid_lab/test_solver_decontamination_stub.py \
+            tests/unit/asteroid_lab/test_run_solver_management_command.py

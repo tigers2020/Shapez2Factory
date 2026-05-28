@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[3]
@@ -27,21 +26,11 @@ def test_reconstruction_imports_no_optimization() -> None:
 
 def test_no_run_rttp_pipeline_in_runtime_code() -> None:
     """GATE-R3 (code): no RTTP pipeline symbol in django_apps/harness/src Python."""
-    proc = subprocess.run(
-        [
-            "rg",
-            "run_rttp_pipeline",
-            "django_apps",
-            "harness",
-            "src",
-            "-g",
-            "*.py",
-        ],
-        cwd=_REPO,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
-    assert proc.returncode == 1, proc.stdout  # rg exit 1 = no matches
+    needle = "run_rttp_pipeline"
+    for root_name in ("django_apps", "harness", "src"):
+        root = _REPO / root_name
+        if not root.exists():
+            continue
+        for path in root.rglob("*.py"):
+            text = path.read_text(encoding="utf-8-sig")
+            assert needle not in text, f"{path} contains {needle!r}"

@@ -234,6 +234,114 @@
     return layer;
   }
 
+  function clearPlannedExteriorConnectorHighlight(el) {
+    if (!el) return;
+    const marker = el.querySelector("[data-lab-exterior-connector-marker]");
+    if (marker) {
+      marker.remove();
+    }
+  }
+
+  function plannedConnectorCoordKey(x, y) {
+    return String(x) + "," + String(y);
+  }
+
+  /** Paint cells from ``metrics.exterior_connector_plan`` (SoT), not overlay_cells alone. */
+  function plannedConnectorCellsFromWire(wire) {
+    if (!wire || typeof wire !== "object") {
+      return [];
+    }
+    const list = wire.planned_connectors;
+    if (!Array.isArray(list)) {
+      return [];
+    }
+    const out = [];
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!item || typeof item !== "object") {
+        continue;
+      }
+      const vc = item.void_coord;
+      let x = null;
+      let y = null;
+      if (vc && typeof vc === "object") {
+        x = vc.x;
+        y = vc.y;
+      } else {
+        x = item.x;
+        y = item.y;
+      }
+      if (x == null || y == null) {
+        continue;
+      }
+      out.push({
+        x: x,
+        y: y,
+        overlay_role: "planned_exterior_connector",
+        tile_type: item.layout_t != null ? String(item.layout_t) : "",
+        rotation: item.rotation,
+        connector_id: item.connector_id != null ? String(item.connector_id) : "",
+      });
+    }
+    return out;
+  }
+
+  function plannedConnectorCoordKeySet(wire) {
+    const keys = new Set();
+    const cells = plannedConnectorCellsFromWire(wire);
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i];
+      keys.add(plannedConnectorCoordKey(c.x, c.y));
+    }
+    return keys;
+  }
+
+  function applyPlannedExteriorConnectorWhiteHighlight(el) {
+    if (!el) return;
+    clearPlannedExteriorConnectorHighlight(el);
+    el.style.zIndex = "2";
+    el.style.border = "";
+    el.style.backgroundColor = "rgba(255, 255, 255, 0.12)";
+    el.style.boxShadow = "inset 0 0 0 2px rgba(255, 255, 255, 0.92)";
+    el.style.outline = "none";
+  }
+
+  function renderPlannedExteriorConnectorHighlights(
+    frame,
+    baseClasses,
+    domCells,
+    resolveCellIndex,
+    trackMetrics,
+  ) {
+    const wire = resolveExteriorConnectorPlanWire(frame, trackMetrics);
+    let cells = plannedConnectorCellsFromWire(wire);
+    if (!cells.length) {
+      const mapView = frame && frame.map_view;
+      const ov =
+        mapView && typeof mapView === "object" && Array.isArray(mapView.overlay_cells)
+          ? mapView.overlay_cells
+          : [];
+      for (let i = 0; i < ov.length; i++) {
+        const raw = ov[i];
+        if (!raw || typeof raw !== "object") continue;
+        if (String(raw.overlay_role || "") !== "planned_exterior_connector") continue;
+        const mapped = overlayCellsFromMapView({ overlay_cells: [raw] });
+        if (mapped[0]) cells.push(mapped[0]);
+      }
+    }
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      if (!cell || typeof cell !== "object") continue;
+      const idx = resolveCellIndex(cell);
+      if (idx == null || idx < 0 || idx >= domCells.length) continue;
+      const el = domCells[idx];
+      el.className = LAB_CELL_BASE + " lab-planned-exterior-connector";
+      applyLabCellHudAttributes(el, cell, "planned_exterior_connector");
+      applyLabCellSprite(el, cell);
+      applyPlannedExteriorConnectorWhiteHighlight(el);
+    }
+  }
+
   function clearLabCellSprite(el) {
     const layer = el.querySelector("[data-lab-sprite-layer]");
     if (layer) {
@@ -596,15 +704,51 @@
     return out;
   }
 
-  function overlayCellsFromMapView(mapView) {
+  function sortOverlayCellsForPaint(cells) {
+    if (!Array.isArray(cells) || cells.length < 2) return cells;
+    const regular = [];
+    const planned = [];
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      if (!cell || typeof cell !== "object") {
+        regular.push(cell);
+        continue;
+      }
+      if (String(cell.overlay_role || "") === "planned_exterior_connector") {
+        planned.push(cell);
+      } else {
+        regular.push(cell);
+      }
+    }
+    return regular.concat(planned);
+  }
+
+  function overlayCellsFromMapView(mapView, options) {
     if (!mapView || typeof mapView !== "object") return [];
     const ov = mapView.overlay_cells;
     if (!Array.isArray(ov) || !ov.length) return [];
+    const skipPlanned =
+      options && typeof options === "object" && options.skipPlannedExteriorConnectors === true;
+    const plannedCoordKeys =
+      options && typeof options === "object" && options.plannedConnectorCoordKeys
+        ? options.plannedConnectorCoordKeys
+        : null;
     const out = [];
     for (let i = 0; i < ov.length; i++) {
       const c = ov[i];
       if (!c || typeof c !== "object") continue;
-      out.push({
+      if (skipPlanned && String(c.overlay_role || "") === "planned_exterior_connector") {
+        continue;
+      }
+      if (
+        plannedCoordKeys &&
+        c.x != null &&
+        c.y != null &&
+        plannedCoordKeys.has(plannedConnectorCoordKey(c.x, c.y))
+      ) {
+        continue;
+      }
+      const row = {
         x: c.x,
         y: c.y,
         cell_kind: c.kind != null ? c.kind : c.cell_kind,
@@ -612,7 +756,14 @@
         tile_type: c.tile_type != null ? String(c.tile_type) : "",
         sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
         rotation: c.rotation,
-      });
+      };
+      if (c.overlay_role != null && String(c.overlay_role) !== "") {
+        row.overlay_role = String(c.overlay_role);
+      }
+      if (c.connector_id != null && String(c.connector_id) !== "") {
+        row.connector_id = String(c.connector_id);
+      }
+      out.push(row);
     }
     return out;
   }
@@ -831,10 +982,18 @@
     if (r === "decode") {
       return "lab-decode-cell-tone";
     }
+    if (r === "planned_exterior_connector") {
+      return "lab-planned-exterior-connector relative";
+    }
     return "ring-1 ring-inset ring-violet-400/35 bg-violet-950/15";
   }
 
   function toneForFullMapCell(cell) {
+    const overlayRole =
+      cell && cell.overlay_role != null ? String(cell.overlay_role) : "";
+    if (overlayRole === "planned_exterior_connector") {
+      return "lab-planned-exterior-connector relative";
+    }
     const ck = cell && cell.cell_kind != null ? String(cell.cell_kind) : "";
     const routeTone = toneForRouteOverlayKind(ck);
     if (routeTone) return routeTone;
@@ -1019,6 +1178,9 @@
   }
 
   const LAB_TERRAIN_RIM_STORAGE_KEY = "lab-terrain-rim-highlight";
+  const LAB_EXTERIOR_CONNECTOR_ROLE = "planned_exterior_connector";
+  const LAB_EXTERIOR_CONNECTOR_METRICS_KEY = "exterior_connector_plan";
+  const LAB_FROZEN_EXTERIOR_CONNECTOR_PLAN_KEY = "frozen_exterior_connector_plan";
 
   function isTerrainRimHighlightEnabled() {
     const toggle = document.getElementById("lab-terrain-rim-highlight-toggle");
@@ -1057,6 +1219,25 @@
     }
     const tm = trackMetrics && typeof trackMetrics === "object" ? trackMetrics : {};
     const frozen = tm.frozen_terrain_rim_highlight;
+    if (frozen && typeof frozen === "object") {
+      return frozen;
+    }
+    return null;
+  }
+
+  function resolveExteriorConnectorPlanWire(frame, trackMetrics) {
+    if (!frame || typeof frame !== "object") {
+      return null;
+    }
+    const fm =
+      frame.metrics && typeof frame.metrics === "object"
+        ? frame.metrics[LAB_EXTERIOR_CONNECTOR_METRICS_KEY]
+        : null;
+    if (fm && typeof fm === "object") {
+      return fm;
+    }
+    const tm = trackMetrics && typeof trackMetrics === "object" ? trackMetrics : {};
+    const frozen = tm[LAB_FROZEN_EXTERIOR_CONNECTOR_PLAN_KEY];
     if (frozen && typeof frozen === "object") {
       return frozen;
     }
@@ -1185,8 +1366,12 @@
   function resetGridBase(domCells, baseClasses) {
     for (let i = 0; i < domCells.length; i++) {
       clearLabCellBundleBridges(domCells[i]);
+      clearPlannedExteriorConnectorHighlight(domCells[i]);
       domCells[i].className = baseClasses[i] || "";
       domCells[i].style.boxShadow = "";
+      domCells[i].style.backgroundColor = "";
+      domCells[i].style.border = "";
+      domCells[i].style.zIndex = "";
       domCells[i].removeAttribute("data-cell-kind");
       domCells[i].removeAttribute("data-overlay-role");
       domCells[i].removeAttribute("data-tile-type");
@@ -1232,7 +1417,12 @@
     const fm = fullMapCellsFromFrame(frame);
     if (!fm.length) return false;
     renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
-    const ovCells = overlayCellsFromMapView(frame.map_view);
+    const planWire = resolveExteriorConnectorPlanWire(frame, trackMetrics);
+    const plannedCoordKeys = plannedConnectorCoordKeySet(planWire);
+    const ovCells = overlayCellsFromMapView(frame.map_view, {
+      skipPlannedExteriorConnectors: true,
+      plannedConnectorCoordKeys: plannedCoordKeys,
+    });
     if (ovCells.length) {
       renderFullMapCells(baseClasses, domCells, ovCells, resolveCellIndex);
     }
@@ -1242,6 +1432,13 @@
     }
     renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
     applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
+    renderPlannedExteriorConnectorHighlights(
+      frame,
+      baseClasses,
+      domCells,
+      resolveCellIndex,
+      trackMetrics,
+    );
     if (isTerrainRimHighlightEnabled() && rimDrawCtx && rimDrawCtx.layout) {
       const rimWire = resolveTerrainRimHighlightWire(frame, trackMetrics);
       if (rimWire) {
@@ -2051,372 +2248,144 @@
           ? formatCompactNumber(cap.fluid_max_throughput_per_min)
           : formatCompactNumber(cap.shape_max_throughput_per_min);
       const committed = rttp.confirmed_count != null ? String(rttp.confirmed_count) : dash;
-      const tier = rec.quality_tier_short != null ? String(rec.quality_tier_short) : dash;
+      const fieldCells =
+        rec.field_cell_count != null && rec.field_cell_count !== dash
+          ? String(rec.field_cell_count)
+          : dash;
       const theorPart =
         theor !== dash ? theor + "/min " + (typeof shapezUiT === "function" ? shapezUiT("theor.") : "theor.") : dash;
       const committedPart =
         committed !== dash
           ? committed + " " + (typeof shapezUiT === "function" ? shapezUiT("committed") : "committed")
           : dash;
-      return theorPart + " | " + committedPart + " | " + (tier !== dash ? tier : dash);
+      const cellsPart =
+        fieldCells !== dash
+          ? fieldCells + " " + (typeof shapezUiT === "function" ? shapezUiT("cells") : "cells")
+          : dash;
+      return theorPart + " | " + committedPart + " | " + cellsPart;
     }
 
-    function updateLabStatCards(run) {
+    function layerOutcomeBadgeClass(outcome) {
+      if (outcome === "completed") {
+        return "text-emerald-400 border-emerald-800/80";
+      }
+      if (outcome === "failed") {
+        return "text-rose-400 border-rose-800/80";
+      }
+      if (outcome === "skipped_budget") {
+        return "text-amber-400 border-amber-800/80";
+      }
+      return "text-slate-500 border-slate-700";
+    }
+
+    function formatLayerOutcomeLabel(outcome) {
       const dash = labUiDash();
-      const set = function (id, text) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = text != null ? String(text) : dash;
+      if (outcome == null || outcome === "" || outcome === dash) {
+        return dash;
+      }
+      const key = String(outcome);
+      const msgidByOutcome = {
+        completed: "completed",
+        failed: "failed",
+        skipped_budget: "skipped (budget)",
+        pending: "pending",
       };
-      if (!run || typeof run !== "object") {
-        set("lab-card-theoretical-max-value", dash);
-        set("lab-card-resource-capacity-value", dash);
-        set("lab-card-footprint-value", dash);
-        set("lab-card-reconstruction-quality-value", dash);
-        set("lab-card-rttp-committed-value", dash);
-        set("lab-card-rttp-committed-sub", dash);
-        return;
-      }
-      const cap = run.capacity && typeof run.capacity === "object" ? run.capacity : {};
-      const rec =
-        run.reconstruction && typeof run.reconstruction === "object" ? run.reconstruction : {};
-      const rttp = run.rttp && typeof run.rttp === "object" ? run.rttp : {};
-      const primary =
-        cap.primary_resource_kind != null && cap.primary_resource_kind !== dash
-          ? String(cap.primary_resource_kind)
-          : rec.primary_resource_kind != null && rec.primary_resource_kind !== dash
-            ? String(rec.primary_resource_kind)
-            : "shape";
-      const headline =
-        primary === "fluid"
-          ? formatCompactNumber(cap.fluid_max_throughput_per_min)
-          : formatCompactNumber(cap.reconstruction_max_throughput_per_min);
-      set("lab-card-theoretical-max-value", headline);
-      const primaryLabel =
-        primary === "fluid"
-          ? typeof shapezUiT === "function"
-            ? shapezUiT("terrain upper bound (fluid)")
-            : "terrain upper bound (fluid)"
-          : typeof shapezUiT === "function"
-            ? shapezUiT("terrain upper bound (shape)")
-            : "terrain upper bound (shape)";
-      set("lab-card-theoretical-max-sub", primaryLabel);
-      const shapeN = formatCompactNumber(cap.shape_max_throughput_per_min);
-      const fluidN = formatCompactNumber(cap.fluid_max_throughput_per_min);
-      const shapePlatforms = cap.shape_platform_count;
-      const fluidPlatforms = cap.fluid_platform_count;
-      const shapeLabel = typeof shapezUiT === "function" ? shapezUiT("Shape") : "Shape";
-      const fluidLabel = typeof shapezUiT === "function" ? shapezUiT("Fluid") : "Fluid";
-      const resourceLines = [];
-      if (shapeN !== dash) {
-        resourceLines.push(
-          shapeLabel + " " + shapeN + " (" + String(shapePlatforms != null ? shapePlatforms : 0) + ")",
-        );
-      }
-      if (fluidPlatforms === 0 || fluidPlatforms === "0") {
-        resourceLines.push(fluidLabel + " 0");
-      } else if (fluidN !== dash) {
-        resourceLines.push(fluidLabel + " " + fluidN + " (" + String(fluidPlatforms) + ")");
-      }
-      set("lab-card-resource-capacity-value", resourceLines.length ? resourceLines.join(" · ") : dash);
-      const fieldCells =
-        rec.asteroid_field_cell_count != null
-          ? rec.asteroid_field_cell_count
-          : rec.confirmed_cell_count != null
-            ? rec.confirmed_cell_count
-            : rec.mineable_cell_count;
-      const displayCells = rec.display_cell_count;
-      set(
-        "lab-card-footprint-value",
-        fieldCells !== dash && displayCells !== dash && fieldCells != null && displayCells != null
-          ? String(fieldCells) + " / " + String(displayCells)
-          : dash,
-      );
-      const tierShort = rec.quality_tier_short;
-      const conf = rec.confidence_score;
-      set(
-        "lab-card-reconstruction-quality-value",
-        tierShort != null && tierShort !== dash
-          ? String(tierShort) + " · " + (conf != null ? String(conf) : dash)
-          : dash,
-      );
-      const tt =
-        run.throughput_target && typeof run.throughput_target === "object"
-          ? run.throughput_target
-          : {};
-      const count = rttp.confirmed_count;
-      const placementLabel =
-        typeof shapezUiT === "function" ? shapezUiT("placement(s)") : "placement(s)";
-      const perMinLabel = typeof shapezUiT === "function" ? shapezUiT("/min") : "/min";
-      const actualAvailable =
-        rttp.actual_output_status === "available" && rttp.actual_committed_output_per_min != null;
-      const actualRate = actualAvailable
-        ? formatCompactNumber(rttp.actual_committed_output_per_min)
-        : dash;
-      const budgetStatus =
-        tt.budget_status != null && tt.budget_status !== dash ? String(tt.budget_status) : "";
-      const hasBudgetChip = budgetStatus === "satisfied" || budgetStatus === "shortfall";
-      if (actualAvailable) {
-        set("lab-card-rttp-committed-value", actualRate + perMinLabel);
-      } else {
-        set(
-          "lab-card-rttp-committed-value",
-          count != null && count !== dash ? String(count) + " " + placementLabel : dash,
-        );
-      }
-      if (hasBudgetChip) {
-        const pct =
-          tt.throughput_target_percent != null && tt.throughput_target_percent !== dash
-            ? String(tt.throughput_target_percent)
-            : dash;
-        const targetTp =
-          tt.target_throughput_per_min != null && tt.target_throughput_per_min !== dash
-            ? formatCompactNumber(tt.target_throughput_per_min)
-            : dash;
-        const targetLabel =
-          typeof shapezUiT === "function" ? shapezUiT("Target") : "Target";
-        const subLine =
-          targetLabel +
-          " " +
-          pct +
-          "% · " +
-          actualRate +
-          " / " +
-          targetTp +
-          perMinLabel;
-        set("lab-card-rttp-committed-sub", subLine);
-      } else if (rttp.actual_output_status === "pending_pr_2b") {
-        set(
-          "lab-card-rttp-committed-sub",
-          typeof shapezUiT === "function"
-            ? shapezUiT("actual output pending")
-            : "actual output pending",
-        );
-      } else if (actualAvailable) {
-        set("lab-card-rttp-committed-sub", actualRate + perMinLabel);
-      } else {
-        const unavailableLabel =
-          typeof shapezUiT === "function"
-            ? shapezUiT("actual output unavailable")
-            : "actual output unavailable";
-        set("lab-card-rttp-committed-sub", unavailableLabel);
-      }
-      const chipEl = document.getElementById("lab-card-rttp-committed-chip");
-      if (chipEl) {
-        if (budgetStatus === "satisfied") {
-          chipEl.textContent =
-            typeof shapezUiT === "function" ? shapezUiT("Target satisfied") : "Target satisfied";
-          chipEl.className = "mt-1 text-xs font-medium text-emerald-400";
-          chipEl.classList.remove("hidden");
-        } else if (budgetStatus === "shortfall") {
-          const shortfall =
-            tt.throughput_shortfall_per_min != null && tt.throughput_shortfall_per_min !== dash
-              ? formatCompactNumber(tt.throughput_shortfall_per_min)
-              : dash;
-          const shortLabel =
-            typeof shapezUiT === "function" ? shapezUiT("Short by") : "Short by";
-          chipEl.textContent = shortLabel + " " + shortfall + perMinLabel;
-          chipEl.className = "mt-1 text-xs font-medium text-amber-400";
-          chipEl.classList.remove("hidden");
+      const msgid = msgidByOutcome[key] || key.replace(/_/g, " ");
+      return typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
+    }
+
+    function renderLabLayerSummaries(run) {
+      const root = document.getElementById("lab-layer-summaries");
+      const stackEl = document.getElementById("lab-detail-stack-status");
+      const dash = labUiDash();
+      if (stackEl) {
+        const stackStatus =
+          run && run.stack_run_status != null && run.stack_run_status !== dash
+            ? String(run.stack_run_status)
+            : "";
+        if (stackStatus) {
+          stackEl.textContent = "stack: " + stackStatus;
+          stackEl.classList.remove("hidden");
         } else {
-          chipEl.textContent = "";
-          chipEl.classList.add("hidden");
+          stackEl.textContent = "";
+          stackEl.classList.add("hidden");
         }
       }
-    }
-
-    function updateLabDetailPanels(run) {
-      const dash = labUiDash();
-      const set = function (id, text) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = text != null ? String(text) : dash;
-      };
-      if (!run || typeof run !== "object") {
-        [
-          "lab-detail-rec-quality",
-          "lab-detail-rec-confidence",
-          "lab-detail-rec-primary",
-          "lab-detail-rec-display-cells",
-          "lab-detail-rec-field-total",
-          "lab-detail-rec-shape-field",
-          "lab-detail-rec-fluid-field",
-          "lab-detail-rec-ambiguous",
-          "lab-detail-rec-void",
-          "lab-detail-cap-shape",
-          "lab-detail-cap-fluid",
-          "lab-detail-cap-platform",
-          "lab-detail-cap-source",
-          "lab-detail-cap-basis",
-          "lab-detail-rttp-confirmed",
-          "lab-detail-rttp-validation",
-          "lab-detail-rttp-candidates",
-          "lab-detail-rttp-commit-order",
-          "lab-detail-rttp-output",
-          "lab-detail-tt-percent",
-          "lab-detail-tt-target",
-          "lab-detail-tt-utilization",
-          "lab-detail-tt-budget",
-          "lab-detail-tt-shortfall",
-          "lab-detail-first-issue",
-          "lab-detail-issue-coord",
-          "lab-detail-issue-candidate",
-          "lab-detail-issue-reservation",
-          "lab-detail-issue-message",
-        ].forEach(function (id) {
-          set(id, dash);
-        });
+      if (!root) return;
+      root.replaceChildren();
+      if (!run || !Array.isArray(run.layer_summaries) || !run.layer_summaries.length) {
+        const empty = document.createElement("p");
+        empty.id = "lab-layer-summaries-placeholder";
+        empty.className = "text-sm text-slate-500";
+        empty.textContent = dash;
+        root.appendChild(empty);
         return;
       }
-      const rec =
-        run.reconstruction && typeof run.reconstruction === "object" ? run.reconstruction : {};
-      const cap = run.capacity && typeof run.capacity === "object" ? run.capacity : {};
-      const rttp = run.rttp && typeof run.rttp === "object" ? run.rttp : {};
-      const tt =
-        run.throughput_target && typeof run.throughput_target === "object"
-          ? run.throughput_target
-          : {};
-      set("lab-detail-rec-quality", rec.quality_tier);
-      set("lab-detail-rec-confidence", rec.confidence_score);
-      set("lab-detail-rec-primary", rec.primary_resource_kind);
-      set("lab-detail-rec-display-cells", rec.display_cell_count);
-      set(
-        "lab-detail-rec-field-total",
-        rec.asteroid_field_cell_count != null
-          ? rec.asteroid_field_cell_count
-          : rec.confirmed_cell_count != null
-            ? rec.confirmed_cell_count
-            : rec.mineable_cell_count,
-      );
-      set(
-        "lab-detail-rec-shape-field",
-        rec.shape_field_cell_count != null
-          ? rec.shape_field_cell_count
-          : rec.shape_confirmed_cell_count,
-      );
-      set(
-        "lab-detail-rec-fluid-field",
-        rec.fluid_field_cell_count != null
-          ? rec.fluid_field_cell_count
-          : rec.fluid_confirmed_cell_count,
-      );
-      set("lab-detail-rec-ambiguous", rec.ambiguous_cell_count);
-      set("lab-detail-rec-void", rec.external_void_cell_count);
-      set(
-        "lab-detail-cap-shape",
-        formatThroughputDetail(cap.shape_max_throughput_per_min, cap.shape_output_unit),
-      );
-      set(
-        "lab-detail-cap-fluid",
-        formatThroughputDetail(cap.fluid_max_throughput_per_min, cap.fluid_output_unit),
-      );
-      set(
-        "lab-detail-cap-platform",
-        (cap.shape_platform_count != null ? "shape " + cap.shape_platform_count : "") +
-          (cap.fluid_platform_count != null
-            ? " · fluid " + cap.fluid_platform_count
-            : ""),
-      );
-      set("lab-detail-cap-source", cap.extraction_rule_source);
-      set("lab-detail-cap-basis", cap.capacity_basis);
-      set("lab-detail-rttp-confirmed", rttp.confirmed_count);
-      set(
-        "lab-detail-rttp-validation",
-        rttp.validation_passed === true ? "passed" : rttp.validation_passed === false ? "failed" : dash,
-      );
-      set("lab-detail-rttp-candidates", rttp.candidate_count);
-      set("lab-detail-rttp-commit-order", rttp.commit_order_preview);
-      set(
-        "lab-detail-rttp-output",
-        rttp.actual_output_status === "pending_pr_2b"
-          ? typeof shapezUiT === "function"
-            ? shapezUiT("actual output pending")
-            : "actual output pending"
-          : rttp.actual_committed_output_per_min != null
-            ? String(rttp.actual_committed_output_per_min)
-            : dash,
-      );
-      const pctVal =
-        tt.throughput_target_percent != null && tt.throughput_target_percent !== dash
-          ? String(tt.throughput_target_percent) + "%"
-          : dash;
-      set("lab-detail-tt-percent", pctVal);
-      set(
-        "lab-detail-tt-target",
-        tt.target_throughput_per_min != null && tt.target_throughput_per_min !== dash
-          ? String(tt.target_throughput_per_min)
-          : dash,
-      );
-      const actualUtil =
-        tt.actual_utilization_ratio != null && tt.actual_utilization_ratio !== dash
-          ? tt.actual_utilization_ratio
-          : dash;
-      const maxTp =
-        tt.reconstruction_max_throughput_per_min != null &&
-        tt.reconstruction_max_throughput_per_min !== dash
-          ? tt.reconstruction_max_throughput_per_min
-          : cap.reconstruction_max_throughput_per_min;
-      const actualOut =
-        tt.actual_committed_output_per_min != null && tt.actual_committed_output_per_min !== dash
-          ? tt.actual_committed_output_per_min
-          : rttp.actual_committed_output_per_min;
-      if (actualOut != null && actualOut !== dash && maxTp != null && maxTp !== dash) {
-        set(
-          "lab-detail-tt-utilization",
-          String(actualOut) + " / " + String(maxTp) + " (" + String(actualUtil) + ")",
-        );
-      } else {
-        set("lab-detail-tt-utilization", dash);
-      }
-      const budgetStatus =
-        tt.budget_status != null && tt.budget_status !== dash ? String(tt.budget_status) : dash;
-      set("lab-detail-tt-budget", budgetStatus);
-      if (budgetStatus === "shortfall") {
-        set(
-          "lab-detail-tt-shortfall",
-          tt.throughput_shortfall_per_min != null && tt.throughput_shortfall_per_min !== dash
-            ? String(tt.throughput_shortfall_per_min)
-            : dash,
-        );
-      } else {
-        set("lab-detail-tt-shortfall", dash);
-      }
-      const firstIssueRaw =
-        run.first_issue_code != null && run.first_issue_code !== ""
-          ? String(run.first_issue_code)
-          : Array.isArray(run.issue_codes) && run.issue_codes.length
-            ? String(run.issue_codes[0])
-            : "";
-      set(
-        "lab-detail-first-issue",
-        firstIssueRaw !== "" ? formatLabIssueCodeLabel(firstIssueRaw, run) : dash,
-      );
-      const detail = run.first_issue_detail;
-      if (detail && typeof detail === "object") {
-        set(
-          "lab-detail-issue-coord",
-          detail.coord != null && Array.isArray(detail.coord)
-            ? "[" + detail.coord.join(", ") + "]"
-            : dash,
-        );
-        set(
-          "lab-detail-issue-candidate",
-          detail.candidate_id != null && detail.candidate_id !== "" ? String(detail.candidate_id) : dash,
-        );
-        set(
-          "lab-detail-issue-reservation",
-          detail.route_reservation_id != null && detail.route_reservation_id !== ""
-            ? String(detail.route_reservation_id)
-            : dash,
-        );
-        set(
-          "lab-detail-issue-message",
-          detail.message != null && detail.message !== "" ? String(detail.message) : dash,
-        );
-      } else {
-        set("lab-detail-issue-coord", dash);
-        set("lab-detail-issue-candidate", dash);
-        set("lab-detail-issue-reservation", dash);
-        set("lab-detail-issue-message", dash);
-      }
+      run.layer_summaries.forEach(function (layer) {
+        if (!layer || typeof layer !== "object") return;
+        const card = document.createElement("article");
+        card.className = "rounded-xl border border-slate-800 bg-slate-900/80 p-3";
+        card.setAttribute("role", "listitem");
+        if (layer.layer_slug) {
+          card.setAttribute("data-lab-layer-slug", String(layer.layer_slug));
+        }
+
+        const head = document.createElement("div");
+        head.className = "flex items-start justify-between gap-2";
+
+        const titleWrap = document.createElement("div");
+        titleWrap.className = "min-w-0";
+        const title = document.createElement("h3");
+        title.className = "text-sm font-medium text-slate-100";
+        const layerIndex = layer.layer_index != null ? String(layer.layer_index) : "?";
+        const layerTitle = layer.title != null ? String(layer.title) : dash;
+        title.textContent = "L" + layerIndex + " · " + layerTitle;
+        titleWrap.appendChild(title);
+        if (layer.layer_slug) {
+          const slugLine = document.createElement("p");
+          slugLine.className = "mt-0.5 truncate font-mono text-xs text-slate-500";
+          slugLine.textContent = String(layer.layer_slug);
+          titleWrap.appendChild(slugLine);
+        }
+
+        const badge = document.createElement("span");
+        const outcome = layer.outcome != null ? String(layer.outcome) : dash;
+        badge.className =
+          "shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium " +
+          layerOutcomeBadgeClass(outcome);
+        badge.textContent = formatLayerOutcomeLabel(outcome);
+
+        head.appendChild(titleWrap);
+        head.appendChild(badge);
+        card.appendChild(head);
+
+        const highlights = Array.isArray(layer.highlights) ? layer.highlights : [];
+        const dl = document.createElement("dl");
+        dl.className = "mt-2 space-y-1 text-sm";
+        highlights.forEach(function (row) {
+          if (!row || typeof row !== "object") return;
+          let val = row.value != null ? String(row.value) : dash;
+          if (row.label === "First issue" && val !== dash) {
+            val = formatLabIssueCodeLabel(val, run);
+          }
+          if (val === dash) return;
+          const line = document.createElement("div");
+          line.className = "flex justify-between gap-3 text-slate-400";
+          const dt = document.createElement("dt");
+          dt.className = "min-w-0 truncate";
+          dt.textContent = row.label != null ? String(row.label) : "";
+          const dd = document.createElement("dd");
+          dd.className = "shrink-0 text-right text-slate-100";
+          dd.textContent = val;
+          line.appendChild(dt);
+          line.appendChild(dd);
+          dl.appendChild(line);
+        });
+        if (dl.childElementCount > 0) {
+          card.appendChild(dl);
+        }
+        root.appendChild(card);
+      });
     }
 
     function setRunDetail(run) {
@@ -2427,8 +2396,7 @@
         const statusEl = document.getElementById("lab-detail-status");
         if (statusEl) statusEl.textContent = dash;
         updateOpsSlugBadge(null);
-        updateLabStatCards(null);
-        updateLabDetailPanels(null);
+        renderLabLayerSummaries(null);
         return;
       }
       const statusEl = document.getElementById("lab-detail-status");
@@ -2438,8 +2406,7 @@
       if (title) {
         title.textContent = run.id != null ? "Run #" + String(run.id) : dash;
       }
-      updateLabStatCards(run);
-      updateLabDetailPanels(run);
+      renderLabLayerSummaries(run);
     }
 
     function evolutionRunButtonClasses(run, selected) {

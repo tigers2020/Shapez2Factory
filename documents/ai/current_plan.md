@@ -1,437 +1,57 @@
 # Current plan
 
-**CLOSED (2026-05-27, merged to `master`):** Reconstruction complete-map decontamination — PR [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) · `master` @ `dd78cdbe`. **Spec:** [`docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) · **Plan:** [`docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md`](../../docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md)
-
-**PR-B branch-local gate evidence:**
-
-- `optimization/` absent gate pass · `catalog/` absent gate pass
-- `run_solver` fail-closed reconstruction replay stub pass
-- `scripts/test_full.ps1`: **1359 passed**, collection 0 errors
-- `ruff check .` pass
-- `mypy django_apps config src`: red on existing repository baseline debt (outside PR-B scope)
+**CLOSED (2026-05-27, merged to `master`):** Reconstruction complete-map decontamination — PR [#117](https://github.com/tigers2020/Shapez2Factory/pull/117). **Spec:** [`docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) · **Plan:** [`docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md`](../../docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md)
 
 | Queue | State |
 |-------|--------|
-| P0 Decontamination (this spec) | **CLOSED (2026-05-27, merged)** — [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) on `master` |
-| RTTP MEG-C2 | **BLOCKED** by decontamination |
-| v0.2 core algorithm recovery | **BLOCKED** — superseded by decontamination surgery |
-| MEG contract spec | **FROZEN** reference — [`2026-05-27-rttp-mining-equipment-goal-contract-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md) |
+| P0 Decontamination | **CLOSED** — [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) |
+| RTTP / v0.2 recovery / MEG-C2 implementation | **RETIRED** — do not implement |
+| MEG contract | **FROZEN** — [`2026-05-27-rttp-mining-equipment-goal-contract-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md) (reference only) |
 
-**Runtime target (post-decontamination):** reconstruction → `build_reconstruction_complete_map` → persist → replay; `run_solver` → `SOLVER_NOT_AVAILABLE`. **`shapez_solver` out of scope.**
+**Runtime (authoritative):** decode → cleanup → reconstruction → `ReconstructionCompleteMap` → persist → Lab reconstruction replay. `run_solver` / `solver_runtime_entry` → **`SOLVER_NOT_AVAILABLE`** (`ASTEROID_LAB_RTTP_ENABLED` ignored). **`shapez_solver` out of scope.**
 
-**Legacy queue rule:** Rows below marked **`BLOCKED (decontamination P0)`** are historical — **do not implement** until P0 CLOSED and RTTP is explicitly re-opened. Only the P0 decontamination plan is authoritative.
-
----
-
-**Historical banner (2026-05-30 — superseded for implementation queue):** Roadmap v0.2 — ops canon (Track C) + test decontamination F-series (Track F) + standing gates (Track G) + Algorithm Stabilization (v0.2A Core Recovery). **v0.1 CLOSED.** Board: [`docs/superpowers/2026-05-24-asteroid-lab-catalog-rttp-roadmap.md`](../../docs/superpowers/2026-05-24-asteroid-lab-catalog-rttp-roadmap.md). Recovery canon (historical): [`docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md) — **do not implement until decontamination CLOSED and RTTP explicitly re-opened.**
-
-**This section is historical/pre-decontamination and is superseded by the P0 decontamination banner above.**
-
-**Runtime baseline (v0.1, on `master`)**: **RTTP Hybrid C** + **3B-S** Lab replay compose. Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
-
-**Runtime (code authority):**
-
-- **Post-P0 (target):** `solver_runtime_entry` / `run_solver` always return **200** + `SOLVER_NOT_AVAILABLE`; `ASTEROID_LAB_RTTP_ENABLED` is **ignored** (no `run_rttp_pipeline`).
-- **Pre-P0 (historical):** RTTP Hybrid C + replay sink when flag enabled — removed by decontamination PR-B.
-
-**Surgery (history):** [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md) · execution record: [`docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md`](../../docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md)
+**RTTP historical queue:** **hard-deleted** (2026-05-28) — git history only; **do not implement**.
 
 ## Authority precedence
 
-No global precedence rule between Algorithm vs superpowers on document conflicts — follow [`document_inventory.md`](../index/document_inventory.md) **§ Asteroid Lab authority by topic** rows.
+Follow [`document_inventory.md`](../index/document_inventory.md) **§ Asteroid Lab authority by topic**.
 
-1. Code + tests: `django_apps/asteroid_lab/{reconstruction,optimization,contracts}/`, `tests/unit/asteroid_lab/`
-2. This file — active queue and runtime pointer
-3. `docs/superpowers/specs/` — merged RTTP/B2 specs (per topic row)
-4. `documents/Algorithm/asteroid_lab_*.md` — stable DTO / route / validation / replay semantics
-5. `document_inventory.md` — doc status and topic routing
-6. `documents/plans/asteroid_lab_optimization/` — **QUARANTINE** (historical snapshots only; `do_not_use_as_authority`)
-7. `documents/Algorithm/solver_runtime/` — historical Phase A–M unless this file promotes a subsection
-8. `REPORT`, `documents/debug/`, `documents/archive/` — observation only
-
-Operational rules: [`contamination_policy.md`](contamination_policy.md). Design: [`docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md`](../../docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md).
+1. Code: `django_apps/asteroid_lab/reconstruction/`, `cleanup/`, `replay/`, `contracts/game_data_snapshot*.py`, `services/solver_runtime_entry.py`
+2. This file — runtime + standing gates
+3. Active superpowers specs (decontamination, complete-map DTO, capacity C-GATE, rim, B-CS4)
+4. `documents/Algorithm/asteroid_lab_00_overview.md`, `09_replay_timeline.md`, `12_runtime_replay_wiring.md`
+5. `documents/archive/` — **not** implementation authority
 
 ## ACTIVE code paths
 
-**Pre-decontamination (current tree until PR-B merge):**
-
 ```text
-django_apps/asteroid_lab/reconstruction/     ← KEEP (target: sole algorithm slice)
-django_apps/asteroid_lab/optimization/       ← DELETE in PR-B
-django_apps/asteroid_lab/contracts/          ← game_data snapshot KEEP; RTTP contracts DELETE in PR-B
-django_apps/asteroid_lab/genetic_sample/     ← KEEP (admin; non-runtime)
-django_apps/asteroid_lab/services/solver_runtime_entry.py  ← PR-A: stub SOLVER_NOT_AVAILABLE only
-django_apps/asteroid_lab/services/lab_rttp_snapshot_compose.py  ← DELETE in PR-B
+django_apps/asteroid_lab/reconstruction/          ← sole algorithm slice
+django_apps/asteroid_lab/cleanup/
+django_apps/asteroid_lab/replay/
+django_apps/asteroid_lab/contracts/               ← game_data snapshot only
+django_apps/asteroid_lab/genetic_sample/          ← admin templates (non-runtime)
+django_apps/asteroid_lab/services/solver_runtime_entry.py  ← SOLVER_NOT_AVAILABLE stub
 ```
 
-## ARCHIVED (documents · history)
-
-- Pre strip-solver monolith optimization / shadow·RD gate — **CANCELLED**
-- `solver_runtime/` Phase A–M — [`documents/Algorithm/solver_runtime/README.md`](../Algorithm/solver_runtime/README.md)
-- `docs/superpowers/specs/2026-05-22-*commit*`, `*shadow*` — **CANCELLED** (replaced by strip spec)
+**Absent (GATE-R1):** `optimization/`, `catalog/`, `lab_rttp_snapshot_compose.py`, RTTP tests.
 
 ## Verification (narrow)
 
-**RTTP (paused macro track):**
-
-```bash
-python -m pytest tests/unit/asteroid_lab/ -k rttp
-python -m ruff check django_apps/asteroid_lab/optimization django_apps/asteroid_lab/services/lab_rttp_snapshot_compose.py django_apps/asteroid_lab/services/solver_runtime_entry.py
-```
-
-**Reconstruction replay · topology · island_bbox (separate track):**
-
 ```powershell
 powershell -File scripts/test_reconstruction_narrow.ps1
+powershell -File scripts/test_reconstruction_decontamination.ps1
+powershell -File scripts/test_capacity_sot.ps1
 ```
-
-Or pytest only:
-
-```bash
-powershell -File scripts/test_reconstruction_narrow.ps1
-```
-
-Or pytest only (seven modules — includes B-CS4 boundary; **no** `test_rttp_replay_*`):
-
-```bash
-python -m pytest tests/unit/asteroid_lab/test_reconstruction_fixture_contract.py tests/unit/asteroid_lab/test_reconstruction_persist_full_map_bbox.py tests/unit/asteroid_lab/test_reconstruction_replay_merge.py tests/unit/asteroid_lab/test_island_bbox.py tests/unit/asteroid_lab/test_persistence_does_not_read_replay_frames.py tests/unit/asteroid_lab/test_replay_snapshot_contract.py tests/unit/asteroid_lab/test_b_cs4_reconstruction_replay_boundary.py
-python -m ruff check django_apps/asteroid_lab/reconstruction django_apps/asteroid_lab/replay django_apps/asteroid_lab/snapshots/island_bbox.py django_apps/asteroid_lab/services/reconstructed_map_persist_builder.py
-```
-
-Coverage: fixture topology·export, replay `reconstruction_final` merge + `step4_10` parity, persist bbox vs replay complete, `full_map_island_bbox` read-compat (meta·BP·legacy server ignore), persist path does not reference replay ORM (`filter`/`get`/`all` sentinels in B-CS4), initial replay full_map contract, AST boundaries for reconstruction + audited replay modules (B-CS4).
 
 ## Maintenance / Standing Gates
 
-- **Replay contract narrow gate owner:** `powershell -File scripts/test_reconstruction_narrow.ps1`
-  - Includes `test_b_cs4_reconstruction_replay_boundary.py`; **excludes** `test_rttp_replay_*`
-  - Failure after B-CS4 CLOSED = maintenance regression track (reopen B-CS3/B-CS4 only if original closure evidence was invalid)
-
-- **P0 reconstruction decontamination gate owner:** `powershell -File scripts/test_reconstruction_decontamination.ps1`
-  - Or: `python -m pytest tests/unit/architecture/test_reconstruction_decontamination_gates.py -v --tb=short`
-  - **Not** included in `test_reconstruction_narrow.ps1` (reconstruction-only)
-
-- **PR-D quarantine registry gate owner:** `powershell -File scripts/test_quarantine_registry.ps1`
-
-- **Capacity C-GATE (complete-map SoT) gate owner:** `powershell -File scripts/test_capacity_sot.ps1`
-  - Architecture: `test_capacity_complete_map_sot_gates.py` (G1 import + G2 semantic token)
-  - **Not** included in `test_reconstruction_narrow.ps1` or `test_reconstruction_decontamination.ps1`
+- **Replay narrow:** `scripts/test_reconstruction_narrow.ps1`
+- **P0 decontamination:** `scripts/test_reconstruction_decontamination.ps1`
+- **Capacity C-GATE:** `scripts/test_capacity_sot.ps1`
+- **Quarantine registry:** `scripts/test_quarantine_registry.ps1`
 
 Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
-## Next focus
+## Next focus (implementation queue)
 
-**Authoritative NEXT (implementation queue):** P0 [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md`](../../docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md) only (Task 1+). All RTTP/EVTC/ELCP recovery rows below are **historical**.
-
-**BLOCKED (decontamination P0) / historical:** was **EVTC (2026-05-26)** — Spec · Plan (links above). **EVTC-1a/1b CLOSED.** **EVTC-2–7 CLOSED** (code + narrow RTTP/EVTC + `test_fast.ps1` + evidence recapture). **OPEN PR:** [#104](https://github.com/tigers2020/Shapez2Factory/pull/104) on `feat/decontamination-pr-f2-asteroid-lab` (12 commits incl. placement-goal wire + test_map fixture). **Narrow:** `pytest -k "rttp or evtc or exterior_connector or route_probe"` — 232 passed. **Fast gate:** `scripts/test_fast.ps1` — 1597 passed. **Evidence:** [`after-evtc.json`](../../docs/superpowers/reports/2026-05-30-rttp-core-recovery-evidence-after-evtc.json) — `committed_extractor_count=22`, `validation_passed=true`, `gate_a_passed=false` (diagnostic). **A5 baseline 24→22:** EVTC weighted exterior-void probing prioritizes capacity-aligned exterior connector routes over legacy ring-port candidates; layout passes validation with 22 committed extractors; Gate A remains a diagnostic failure as expected. **EVTC-6b DEFERRED:** `route_not_shortest_feasible` — diagnostic code exists; validation wiring and enforcement are **not** part of this release. **Merge:** await CI (`test_full`, ruff, mypy per workflow); A2–A6 parallel WIP stashed locally — not in PR #104.
-
-**BLOCKED (decontamination P0):** **Decontamination PR-F3** (`game_data` human/package review) — superseded for queue priority by P0 recon complete-map decontamination. Plan: [`docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md`](../../docs/superpowers/plans/2026-05-30-test-cleanup-aggressive-decontamination-pr-f.md).
-
-**BLOCKED (decontamination P0):** was **ACTIVE — Sequence 13C — Lab replay lazy-load (POST slimming)** — Run Solver POST omits inline `lab_replay_frames_json`; preview + GET `/p/<slug>/solver-runs/<run_id>/lab-replay/`. SSR slimming deferred (13D-SSR). Spec: [`2026-05-30-lab-replay-lazy-load-post-slimming-design.md`](../../docs/superpowers/specs/2026-05-30-lab-replay-lazy-load-post-slimming-design.md) · plan: [`2026-05-30-lab-replay-lazy-load-post-slimming.md`](../../docs/superpowers/plans/2026-05-30-lab-replay-lazy-load-post-slimming.md). **Tasks 0–9 complete** — implementation complete pending PR.
-
-**BLOCKED (decontamination P0) / historical:** was **CLOSED (2026-05-30, merged): S2b-1** — Opposite-arm extension topology synthesis — PR [#105](https://github.com/tigers2020/Shapez2Factory/pull/105). Evidence: [`after-s2b1.json`](../../docs/superpowers/reports/2026-05-30-rttp-core-recovery-evidence-after-s2b1.json). Former follow-ups (**Gate B OPEN**, v0.2A program close) — **do not implement** under P0 decontamination.
-
-**P1 follow-up (non-blocking):** `test_run_solver_management_command.py` — deferred-retry tests expect `SystemExit`; `scripts/test_changed.ps1` reports 2 failures (527 passed). Not S2b-1 regression; fix in separate PR.
-
-**BLOCKED (decontamination P0):** was **ACTIVE — ELCP** — Exterior Lane Capacity Planner (EVTC extension: capacity-bearing exterior lanes + commit-time `route_probe` nearest merge). **NEXT: Task 1** DTO/helpers. Spec: [`2026-05-30-rttp-exterior-lane-capacity-planner-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-exterior-lane-capacity-planner-design.md) · plan: [`2026-05-30-rttp-exterior-lane-capacity-planner.md`](../../docs/superpowers/plans/2026-05-30-rttp-exterior-lane-capacity-planner.md).
-
-**BLOCKED (decontamination P0):** was **ACTIVE — ELCP-TM** — Exterior lane trunk merge (fill-first activation + per-lane shared trunk; supersedes nearest-lane assignment when plan present). **NEXT: Task 1** TM DTOs. Spec: [`2026-05-30-rttp-exterior-lane-trunk-merge-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-exterior-lane-trunk-merge-design.md) · plan: [`2026-05-30-rttp-exterior-lane-trunk-merge.md`](../../docs/superpowers/plans/2026-05-30-rttp-exterior-lane-trunk-merge.md). Depends on ELCP Tasks 1–7.
-
-**CLOSED (2026-05-27):** **LNS ELCP propagation** — Run #238 wiring bug: LNS retry preserves ELCP context + replacement guard. Spec: [`2026-05-27-rttp-lns-elcp-propagation-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-lns-elcp-propagation-design.md) · plan: [`2026-05-27-rttp-lns-elcp-propagation.md`](../../docs/superpowers/plans/2026-05-27-rttp-lns-elcp-propagation.md). PR [#110](https://github.com/tigers2020/Shapez2Factory/pull/110). Regression: Run #239–241 — 3 committed / 3 assignments, validation_passed, no `route_without_lane_assignment` (P0 closed); throughput shortfall remains P1.
-
-**BLOCKED (decontamination P0) / historical:** was **REOPENED (2026-05-27):** **P1-ELCP-RF** — Layer 2 commit-order forensics complete; B-spec **BLOCKED**. Report: [`2026-05-27-rttp-elcp-primary-reprobe-failure-investigation-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-primary-reprobe-failure-investigation-report.md).
-
-**CLOSED (2026-05-27):** **P1-ELCP-RF-A2** — Layer 1 selection attrition (`356→59`, Gate A). Report: [`2026-05-27-rttp-elcp-rf-a2-selection-universe-attrition-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-a2-selection-universe-attrition-report.md). **P1-ELCP-RF** remains REOPENED; `lane_capacity_shortfall` B-spec **BLOCKED**.
-
-**CLOSED (2026-05-27):** **P1-ELCP-RF-B1** — Overlap packing selection (`59→67` Gate A, opt-in `GREEDY_REGRET_OVERLAP_PACK`). Report: [`2026-05-27-rttp-elcp-rf-b1-overlap-packing-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-b1-overlap-packing-report.md). **P1-ELCP-RF** remains REOPENED; `lane_capacity_shortfall` B-spec **BLOCKED**.
-
-**CLOSED (2026-05-27):** **P1-ELCP-RF-C0** — Post-B1 commit-layer re-gate (`3→7` primary committed, overlap-pack; `lane_capacity_shortfall` B-spec **BLOCKED** — `stale_candidate_reachable` dominant). Report: [`2026-05-27-rttp-elcp-rf-c0-post-b1-commit-regate-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-c0-post-b1-commit-regate-report.md). **P1-ELCP-RF** remains REOPENED.
-
-**CLOSED (2026-05-27):** **P1-ELCP-RF-D0** — stale_candidate_reachable drift (`RESERVATION_DRIFT_DOMINANT`, 34/34 `post_probe_reservation_block`, Gate A overlap-pack). Report: [`2026-05-27-rttp-elcp-rf-d0-stale-candidate-reachable-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-d0-stale-candidate-reachable-report.md). **P1-ELCP-RF** remains REOPENED.
-
-**CLOSED (2026-05-27):** **P1-ELCP-RF-E0** — post-probe reservation mechanism (`ROUTE_CELL_RESERVATION_CONFLICT_DOMINANT`, `private_route_overlap` 23/34; bounded B-spec nominated). Report: [`2026-05-27-rttp-elcp-rf-e0-post-probe-reservation-mechanism-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-e0-post-probe-reservation-mechanism-report.md). **P1-ELCP-RF** remains REOPENED; `lane_capacity_shortfall` B-spec **BLOCKED**.
-
-**BLOCKED (decontamination P0):** was **ACTIVE (2026-05-27):** **P1-ELCP-RF-F1** — private route overlap / shareable trunk reservation policy (F1a/F1b/F1c **implemented**; G1 **PARTIAL** 20/23 private_overlap rows, target ≤11). Report: [`2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy-report.md) · spec: [`2026-05-27-rttp-elcp-rf-f0-private-route-overlap-reservation-policy-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-elcp-rf-f0-private-route-overlap-reservation-policy-design.md) · plan: [`2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy.md`](../../docs/superpowers/plans/2026-05-27-rttp-elcp-rf-f1-private-route-overlap-reservation-policy.md). **F1.1 forensic CLOSED** → [`2026-05-27-rttp-elcp-rf-f1.1-private-route-overlap-forensic-report.md`](../../docs/superpowers/reports/2026-05-27-rttp-elcp-rf-f1.1-private-route-overlap-forensic-report.md) (20/20 `trunk_evidence_missing`; F1.2a nominated). PR: [#114](https://github.com/tigers2020/Shapez2Factory/pull/114) (F1) · [#115](https://github.com/tigers2020/Shapez2Factory/pull/115) (F1.1 stack).
-
-**CLOSED (2026-05-27):** **P1-ELCP-RF-F1.1** — private_route_overlap 20-row read-only forensic. Spec: [`2026-05-27-rttp-elcp-rf-f1.1-private-route-overlap-forensic-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-elcp-rf-f1.1-private-route-overlap-forensic-design.md) · plan: [`2026-05-27-rttp-elcp-rf-f1.1-private-route-overlap-forensic.md`](../../docs/superpowers/plans/2026-05-27-rttp-elcp-rf-f1.1-private-route-overlap-forensic.md).
-
-**BLOCKED (decontamination P0) / historical:** was **PARTIAL (2026-05-27):** **P1-ELCP-RF-F1.2a** — shareable trunk evidence alignment Phase A. Former **F1.2a′ READY** — **do not open** under P0 decontamination.
-
-**CANCELLED (2026-05-27):** **P1-ELCP-RF-CC** (commit-collapse evidence gate + conflict forensic) — duplicate of v0.2 A0/A1 + P1-ELCP-RF + manual [`2026-05-27-rttp-test-map-commit-forensic.md`](../../docs/superpowers/reports/2026-05-27-rttp-test-map-commit-forensic.md); spec/plans deleted; **no code landed**. Do not recreate as a separate program track.
-
-**BLOCKED (decontamination P0) / historical:** was **CLOSED (2026-05-27):** **MEG-C1/C2** — measurement landed on tree; spec/plan now **FROZEN** — **MEG-C3 and further MEG work forbidden** until RTTP re-opened post-decontamination.
-
-**BLOCKED (decontamination P0):** was **ACTIVE (parallel) — RTTP v0.2 Core Algorithm Recovery** — **Gate B** throughput / A4-2 selection toward `placement_goal_count`. Recovery: [`2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md) §13.
-
-**CLOSED (2026-05-30):** **Track B Task 6 — Lab pass_capable badge** — PR [#102](https://github.com/tigers2020/Shapez2Factory/pull/102) on `master` (`093a2143`).
-
-**CLOSED (2026-05-30):** **Decontamination PR-F2** — `asteroid_lab` human review; 0 deletions; 2 `INTENT_UNKNOWN` → `PROTECTED_CONTRACT`. Branch: `feat/decontamination-pr-f2-asteroid-lab`. Inventory: [`docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md`](../../docs/superpowers/reports/2026-05-30-test-decontamination-inventory.md).
-
-**CLOSED (2026-05-30):** **Track B — pass-capable slug certified** — PR [#101](https://github.com/tigers2020/Shapez2Factory/pull/101). `rttp-cert-candidate-tiny-passable-v2`; **borderline T2** (`actual=target=480`); `slug_class=pass_capable`. **Track A not opened.**
-
-**BLOCKED (decontamination P0):** was **ACTIVE (follow-on):** **Decontamination PR-F3–F5** — gated deletes only via `PR_F_*` registry. F1 **SKIP** (0 mechanical rows). Standing gate: `scripts/test_quarantine_registry.ps1`. Spec: [`docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md`](../../docs/superpowers/specs/2026-05-30-test-cleanup-aggressive-decontamination-design.md).
-
-**BLOCKED (decontamination P0) / historical:** was **OPEN PR:** **D-PR — T2 diagnostic canon observability** — PR [#99](https://github.com/tigers2020/Shapez2Factory/pull/99). **Do not merge or continue** under P0 decontamination (RTTP runtime removal).
-
-**CLOSED (2026-05-30):** **D-GOV — Track D throughput policy design (approach C)** — diagnostic canon T2 shortfall = expected policy; no forced T2 PASS on `copy-import-495e552c`. Spec approved.
-
-**CLOSED (2026-05-30, merged):** **FL-06 output-stub / route-reservation alignment** — H1a fix in `incremental_commit`; canon T1b PASS (Run 109, 30 commits). Spec: [`docs/superpowers/specs/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment-design.md) · plan: [`docs/superpowers/plans/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment.md`](../../docs/superpowers/plans/2026-05-30-rttp-fl06-output-stub-route-reservation-alignment.md) · notes: [`docs/superpowers/reports/2026-05-30-rttp-fl06-route-reservation-investigation-notes.md`](../../docs/superpowers/reports/2026-05-30-rttp-fl06-route-reservation-investigation-notes.md).
-
-**CLOSED (2026-05-30):** **E — T1b pipeline layout validation investigation** (read-only) — primary **FL-06** on `copy-import-495e552c`; catalog audit pass confirmed. Spec: [`docs/superpowers/specs/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-design.md) · plan: [`docs/superpowers/plans/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation.md`](../../docs/superpowers/plans/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation.md) · report: [`docs/superpowers/reports/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-report.md`](../../docs/superpowers/reports/2026-05-30-rttp-t1b-pipeline-layout-validation-investigation-report.md).
-
-**BLOCKED (decontamination P0) / historical:** Macro unpause **PAUSED** (child-pool fixture spec first). PR-GA-2 / CC-3B C-track CLOSED — do not reopen under P0 decontamination.
-
-**CLOSED (2026-05-30):** RTTP **CC-3B ops authority tier** (C track) — T0/T1a/T1b/T2/T3 taxonomy; `copy-import-495e552c` = diagnostic canon — governance on `master` (`32c55473`). Post-FL-06: T0/T1a/T1b pass; **T2 expected shortfall** on diagnostic canon per Track D spec (not merge blocker); **pass-capable reference slug** now Track B (`rttp-cert-candidate-tiny-passable-v2`). Spec: [`docs/superpowers/specs/2026-05-30-rttp-ops-authority-tier-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-ops-authority-tier-design.md). Supersedes CC-3B “throughput-only” framing in [`2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md) §3.3.
-
-**CLOSED (2026-05-30):** RTTP GA evolution **PR-GA-2** — config-gated `selection.mode` (evolution primary) — PR [#97](https://github.com/tigers2020/Shapez2Factory/pull/97) squash-merged to `master` (`e43e197b`). Governance close: [`docs/superpowers/specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md`](../../docs/superpowers/specs/2026-05-30-rttp-ga-evolution-pr-ga-2-governance-close-design.md) (CC-3A selection-path ops; CC-3B → ops tier spec). Plan: [`docs/superpowers/plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution-pr-ga-2.md) · design: [`docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md) §5.
-
-**CLOSED (2026-05-29):** RTTP GA evolution **PR-GA-1** — observe-only shadow (`rttp.ga_evolution_shadow`; greedy remains commit authority) — PR [#95](https://github.com/tigers2020/Shapez2Factory/pull/95) squash-merged to `master` (`5b7ead43`). Default `ga_evolution_shadow.enabled=false`; `observe_only: false` rejected until PR-GA-2. Spec: [`2026-05-29-rttp-ga-evolution-design.md`](../../docs/superpowers/specs/2026-05-29-rttp-ga-evolution-design.md) · plan: [`2026-05-29-rttp-ga-evolution.md`](../../docs/superpowers/plans/2026-05-29-rttp-ga-evolution.md).
-
-**CLOSED (2026-05-29):** Capacity C-GATE — complete-map SoT architecture gates — PR [#94](https://github.com/tigers2020/Shapez2Factory/pull/94) squash-merged to `master` (`ec1b6a26`). G1/G2 import + semantic token gates; G3/G4 complete-map regression + Lab sparse-overlay capacity contract; standing `scripts/test_capacity_sot.ps1`. No production solver semantics change. Spec: [`2026-05-29-reconstruction-capacity-c-gate-design.md`](../../docs/superpowers/specs/2026-05-29-reconstruction-capacity-c-gate-design.md) · plan: [`2026-05-29-reconstruction-capacity-c-gate.md`](../../docs/superpowers/plans/2026-05-29-reconstruction-capacity-c-gate.md).
-
-**Tombstoned plans (do not execute checklists):** [`2026-05-25-reconstruction-field-cell-capacity-contract.md`](../../docs/superpowers/plans/2026-05-25-reconstruction-field-cell-capacity-contract.md) (`OBSOLETE` — use [`2026-05-26-reconstruction-complete-map-dto.md`](../../docs/superpowers/plans/2026-05-26-reconstruction-complete-map-dto.md) for complete-map SoT); [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md) (`PAUSED / DO NOT EXECUTE` — macro unpause requires new spec + ACTIVE row). Evidence: PR [#90](https://github.com/tigers2020/Shapez2Factory/pull/90) (`64d90603`).
-
-**BLOCKED (macro PR-B follow-up):** Macro-only 4×4 / narrow-corridor fixtures admit **≤2** catalog `normal_candidates` under `OUTSIDE_MINEABLE`; MacroBundleT3 needs **≥3** non-overlapping children → `macro_normal_count=0`. Unskip macro tests only after a dedicated **macro child-pool fixture** spec (do not weaken FOT guards). Macro track remains **PAUSE** per 2026-05-24 unless explicitly unpaused.
-
-**CLOSED (2026-05-28):** Roadmap drift cleanup — tombstone stale executable plans — PR [#90](https://github.com/tigers2020/Shapez2Factory/pull/90) squash-merged to `master` (`64d90603`). Removed `recon.cells` capacity checklist and macro PR-A→H execution checklist; preserved complete-map + macro PAUSE contracts.
-
-**CLOSED (2026-05-28):** RTTP FOT PR-2 — outward rim / void attach / platform probe fallback — PR [#89](https://github.com/tigers2020/Shapez2Factory/pull/89) squash-merged to `master` (`75c5ad08`). Normal RTTP runtime `OUTWARD_FROM_RIM`; macro-only runtime stays `OUTSIDE_MINEABLE` until PR-B. Spec: [`2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md`](../../docs/superpowers/specs/2026-05-28-rttp-fot-pr2-outward-rim-void-probe-design.md) · plan: [`2026-05-28-rttp-fot-pr2-outward-rim-void-probe.md`](../../docs/superpowers/plans/2026-05-28-rttp-fot-pr2-outward-rim-void-probe.md).
-
-**CLOSED (2026-05-28):** RTTP FOT outside mineable PR-1 — PR [#88](https://github.com/tigers2020/Shapez2Factory/pull/88) squash-merged to `master` (`ebde4c2c`). `OUTSIDE_MINEABLE` default on generator + pipeline; commit/validation FOT defense. Plan: [`2026-05-28-rttp-fot-outside-mineable-pr1.md`](../../docs/superpowers/plans/2026-05-28-rttp-fot-outside-mineable-pr1.md). Macro PR-B fixture skips deferred.
-
-**CLOSED (implementation scope):** Sequence 1A·1B domain DTO + reconstruction adapter — covered by `tests/unit/asteroid_lab/test_optimization_input_adapter.py`, `test_optimization_input_coord_frame.py`; plan [`documents/ai/plans/asteroid_lab_optimization_sequence_1a_1b.md`](plans/asteroid_lab_optimization_sequence_1a_1b.md) is historical scope only.
-
-**CLOSED (2026-05-27):** RTTP FOT cross-commit hotfix (PR1.5) — `committed_fixed_output_transport_cells` across incremental commit — on `master` (`04bf7b4f`). Spec: [`docs/superpowers/specs/2026-05-27-rttp-commit-fot-cross-commit-hotfix.md`](../../docs/superpowers/specs/2026-05-27-rttp-commit-fot-cross-commit-hotfix.md) · plan: [`docs/superpowers/plans/2026-05-27-rttp-commit-fot-cross-commit-hotfix.md`](../../docs/superpowers/plans/2026-05-27-rttp-commit-fot-cross-commit-hotfix.md).
-
-**CLOSED (2026-05-25):** ReconstructionCompleteMap terrain SoT + RTTP placement replay overlay (PR-1) — PR [#83](https://github.com/tigers2020/Shapez2Factory/pull/83) squash-merged to `master` (`7d07394b`). Lab replay: bundle footprints; `asteroid_fluid_field` → `Layout_FluidMiner`. Spec: [`docs/superpowers/specs/2026-05-26-rttp-confirmed-placement-footprint-design.md`](../../docs/superpowers/specs/2026-05-26-rttp-confirmed-placement-footprint-design.md) · plan: [`docs/superpowers/plans/2026-05-25-rttp-confirmed-placement-footprint.md`](../../docs/superpowers/plans/2026-05-25-rttp-confirmed-placement-footprint.md). PR-1b route tile synthesis · PR-2 island materializer **deferred**.
-
-**CLOSED (2026-05-25):** PR-2d throughput-aware placement goals + shortfall attribution — PR [#81](https://github.com/tigers2020/Shapez2Factory/pull/81) squash-merged to `master` (`75dd5e8b`). Ops: `copy-import-495e552c` @ 10% → 13 commits, 1560/min ≥ 1536 target (`solver_run_id` 76). Spec: [`docs/superpowers/specs/2026-05-24-throughput-target-selection-pr2d-design.md`](../../docs/superpowers/specs/2026-05-24-throughput-target-selection-pr2d-design.md).
-
-**CLOSED (2026-05-25):** PR-2c throughput target % (10–80) + Lab budget UI — merged to `master` locally (`36c36bbf`); PR [#80](https://github.com/tigers2020/Shapez2Factory/pull/80). Spec: [`docs/superpowers/specs/2026-05-24-throughput-target-percent-pr2c-design.md`](../../docs/superpowers/specs/2026-05-24-throughput-target-percent-pr2c-design.md).
-
-**CLOSED (2026-05-25):** PR-2a+2b reconstruction max + actual committed throughput — PR [#79](https://github.com/tigers2020/Shapez2Factory/pull/79) squash-merged to `master` (`58214a01`).
-
-**Priority:** **v0.1 next track selection** (GA / macro unpause / capacity — new spec each). **Commit survivability arc CLOSED** (v0.1 deferred retry scope). **Deferred commit retry slice 1–4 CLOSED** on `master`. **PR-4 ops smoke CLOSED** (`64473a87`, PR #76). **PR-3 bounded execution CLOSED** (`d3de9645`, PR #75). **PR-2 policy wiring CLOSED** (`a5cfca87`, PR #73). **PR-1 shadow observe-only CLOSED** (`1e021f20`, PR #72). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
-
-- Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
-- **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
-- **CLOSED (2026-05-23):** RTTP v1 MacroBundleT3 **PR-A..J** on `master` — historical plan tombstoned PR #90: [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md) (**PAUSED / DO NOT EXECUTE**; runtime macro code remains)
-- **CLOSED (2026-05-23):** PR-K web `run-solver` POST → `run_solver_runtime_for_project(config=...)` (`macro_only_mode`, `rttp_record_replay`; invalid JSON → 400).
-- **CLOSED (2026-05-23):** PR-L Lab UI macro-only checkbox + `fetch` body (`5b06d705`); OPS trial: checkbox + macro commit on real slug.
-- **CLOSED (2026-05-23):** GitHub Actions `rttp-lab-macro-smoke` on `master` push/PR.
-- **CLOSED (2026-05-23):** HUD `macro_commit_summary` (`#lab-macro-commit-hud`; output-only).
-- **CLOSED (2026-05-23):** `manage.py run_solver --slug` + `scripts/run_solver.ps1` (same runtime path as HTTP).
-- **CLOSED (2026-05-24):** Real-map macro E2E — `tests/fixtures/asteroid_lab/macro_e2e_copy.code` + `test_rttp_macro_real_map_e2e.py` (no monkeypatch).
-- **PAUSE (2026-05-24):** macro track — no additional solver/macro/E2E work. Do not commit local `app.css` / `solver_runtime/*.md` / `migration 0012_*` without separate intent confirmation.
-- **CLOSED (2026-05-24):** reconstruction replay·topology narrow gate — `scripts/test_reconstruction_narrow.ps1` + tightened `test_island_bbox` / `test_reconstruction_replay_merge`.
-- **CLOSED (2026-05-24):** Ops smoke A — real lab slug `copy-import-495e552c`
-  - `python manage.py run_solver --slug copy-import-495e552c` exit 0
-  - `game_data_snapshot_provenance` v2 persisted with 10 keys
-  - `catalog_slice_hash` parsed successfully
-  - RTTP default transport resolved to `SHAPE_BELT`
-  - `ok: true`, `validation_passed: true`, `issue_codes: []`
-  - Note: `solver_summary_stack` file exists; latest run stack entry depends on stack-log env.
-- **CLOSED (2026-05-24):** Ops smoke B — existing transport on real slug `copy-import-495e552c` (post B2-T2 PR #62)
-  - `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 45)
-  - `game_data_snapshot_provenance` v2 (10 keys); `catalog_slice_hash` present
-  - `ok: true`, `validation_passed: true`, `issue_codes: []`
-  - `rttp.route_domain`: `mismatched_existing_transport_count` 0 (B2-T3 metrics; no `CATALOG_TRANSPORT_UNRESOLVED`)
-- **CLOSED (2026-05-24):** Ops smoke C — B2-T3 mixed transport partition gate
-  - `python -m pytest tests/unit/asteroid_lab/test_rttp_transport_kind_route_domain.py tests/unit/asteroid_lab/test_optimization_input_adapter.py::test_mixed_existing_transport_partitions_for_shape_run` — pass
-  - Proves wrong-kind existing transport excluded from trunk + `mismatched_existing_transport_*` metrics (`fluid_pipe` mismatch path)
-  - Note: OPS slug `copy-import-495e552c` has `transport_component_count` 0 pre-reconstruction; topology strips top-level transport before adapter — mixed-kind **real-map `run_solver` observation is not possible with the current map class**. Real-map regression is smoke B + narrow RTTP tests.
-- RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
-- ~~`asteroid_lab_10` Sequence 2–7 checkboxes~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync section
-
-## Closed
-
-- Track A — GameDataSnapshotProvenance gate
-  - Status: CLOSED
-  - Merged into master: `1c4baecd`
-  - PR: #57 / integration via B2 master fast-forward
-
-- Track B2 — BuildingCatalogSlice first consumption
-  - Status: CLOSED
-  - Merged into master: `1c4baecd`
-  - Plan: [`docs/superpowers/plans/2026-05-24-building-catalog-slice-first-consumption.md`](../../docs/superpowers/plans/2026-05-24-building-catalog-slice-first-consumption.md)
-  - Ops smoke A: CLOSED (`copy-import-495e552c`, 2026-05-24)
-
-- B2-T2 — Per-cell catalog transport resolution
-  - Status: CLOSED
-  - Merged into master: `94027496`
-  - PR: #62
-  - Plan: [`docs/superpowers/plans/2026-05-24-b2-t2-per-cell-transport-resolution.md`](../../docs/superpowers/plans/2026-05-24-b2-t2-per-cell-transport-resolution.md)
-  - Spec: [`docs/superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md`](../../docs/superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md)
-  - Ops smoke B: CLOSED (`copy-import-495e552c`, 2026-05-24)
-
-- B2-T3 — Transport-aware route domain
-  - Status: CLOSED
-  - Merged into master: `38042eed`
-  - PR: #61
-  - Plan: [`docs/superpowers/plans/2026-05-24-b2-t3-transport-aware-route-domain.md`](../../docs/superpowers/plans/2026-05-24-b2-t3-transport-aware-route-domain.md)
-  - Spec: [`docs/superpowers/specs/2026-05-24-b2-t3-transport-aware-route-domain-design.md`](../../docs/superpowers/specs/2026-05-24-b2-t3-transport-aware-route-domain-design.md)
-  - Ops smoke C: CLOSED (pytest partition + route-domain metrics gate, 2026-05-24)
-
-- Ops smoke A — provenance v2 + catalog slice on real slug
-  - Status: CLOSED
-  - Slug: `copy-import-495e552c`
-  - Evidence: `manage.py run_solver` exit 0; provenance 10 keys; `SHAPE_BELT`; validation passed
-
-- Ops smoke B — existing transport + catalog registry on real slug
-  - Status: CLOSED
-  - Slug: `copy-import-495e552c`
-  - Evidence: `manage.py run_solver` exit 0 post PR #62; provenance 10 keys; validation passed; route-domain mismatch metrics present (0 mismatch on shape run)
-
-- Ops smoke C — B2-T3 mixed transport partition
-  - Status: CLOSED
-  - Gate: `test_rttp_transport_kind_route_domain.py` + `test_mixed_existing_transport_partitions_for_shape_run`
-  - Evidence: pytest pass; `mismatched_existing_transport_by_kind` includes `fluid_pipe` on shape-active runs
-
-- Track D — Catalog footprint & connector slice (v2)
-  - Status: CLOSED
-  - Merged into master: `f781d7df`
-  - PR: #63
-  - Plan: [`docs/superpowers/plans/2026-05-24-track-d-catalog-footprint-connector.md`](../../docs/superpowers/plans/2026-05-24-track-d-catalog-footprint-connector.md)
-  - Spec: [`docs/superpowers/specs/2026-05-24-track-d-catalog-footprint-connector-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-catalog-footprint-connector-design.md)
-  - Ops smoke D: CLOSED (`copy-import-495e552c`, 2026-05-24)
-    - `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 47)
-    - `catalog_slice_version`: `building_catalog_slice_v2`; provenance 10 keys
-    - `rttp.catalog_slice` metrics: variant_geometry_count 131, footprint_cell_count 362, connector_count 314
-    - `ok: true`, `validation_passed: true`, `issue_codes: []`
-
-- Ops smoke D — Track D catalog v2 on real slug
-  - Status: CLOSED
-  - Slug: `copy-import-495e552c`
-  - Evidence: see Track D entry above
-
-- PR-A — Repo decontamination authority repair
-  - Status: CLOSED
-  - Merged into master: `cd364b84`
-  - PR: #64
-  - Plan: [`docs/superpowers/plans/2026-05-24-repo-decontamination-authority-pr-a.md`](../../docs/superpowers/plans/2026-05-24-repo-decontamination-authority-pr-a.md)
-  - Spec: [`docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md`](../../docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md)
-  - Gate: grep acceptance + `tests/unit/architecture/` (docs-only; no runtime change)
-
-- Track D+ PR-2 — Mapped fail-closed catalog placement validation
-  - Status: **CLOSED**
-  - Merged into master: `d676286f`
-  - PR: #65
-  - Plan: [`docs/superpowers/plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md)
-  - Spec: [`docs/superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md)
-  - Ops smoke E4: `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 51, `run_key` `rttp-71d2b0725d54`)
-  - Evidence: `catalog_validation_mode` `mapped_fail_closed`; `validation_passed` / `run_success` true; `issue_codes` `[]`; one `rttp.catalog_placement_validation` step; `catalog_warning_codes` `['catalog_variant_mapping_missing']` (unmapped synthetic, non-failing); `catalog_error_issue_codes` `[]`
-  - Includes B-CS1 regression pack restored: `tests/unit/asteroid_lab/test_rttp_commit_survivability.py` (prerequisite gate; not on `master` at PR-1 base)
-  - Forbidden preserved: no validation repair; unmapped fail-closed; read-only validation; `final_validation.py` untouched
-
-- Track D+ PR-3 — Catalog-native candidate generation
-  - Status: **CLOSED**
-  - Merged into master: `dfbda7b8`
-  - PR: #66
-  - Plan: [`docs/superpowers/plans/2026-05-24-track-d-plus-pr3-catalog-native-generator.md`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr3-catalog-native-generator.md)
-  - Spec: [`docs/superpowers/specs/2026-05-24-track-d-plus-pr3-catalog-native-generator-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-pr3-catalog-native-generator-design.md)
-  - Ops smoke E5: `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 54)
-  - Evidence: `normal_count` 127; `unmapped_candidate_count` 0; `validation_passed` true; `catalog_placement_ref` on all normal candidates; `lin_*` test-only
-
-- B-CS4 — Reconstruction / Lab replay boundary audit
-  - Status: **CLOSED**
-  - Spec: [`docs/superpowers/specs/2026-05-24-b-cs4-reconstruction-replay-boundary-design.md`](../../docs/superpowers/specs/2026-05-24-b-cs4-reconstruction-replay-boundary-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-24-b-cs4-reconstruction-replay-boundary.md`](../../docs/superpowers/plans/2026-05-24-b-cs4-reconstruction-replay-boundary.md)
-  - Evidence: `powershell -File scripts/test_reconstruction_narrow.ps1` — 55 PASS; `test_b_cs4_reconstruction_replay_boundary.py` — 31 PASS
-  - PR-C: reconstruction/replay contamination portion absorbed (B-CS4-9); validation portion remains B-CS3
-  - No production reconstruction/replay code changes
-
-- B-CS3 — Validation gate boundary audit
-  - Status: **CLOSED**
-  - Spec: [`docs/superpowers/specs/2026-05-24-b-cs3-validation-gate-audit-design.md`](../../docs/superpowers/specs/2026-05-24-b-cs3-validation-gate-audit-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-24-b-cs3-validation-gate-audit.md`](../../docs/superpowers/plans/2026-05-24-b-cs3-validation-gate-audit.md)
-  - Evidence: `python -m pytest tests/unit/asteroid_lab/test_b_cs3_validation_gate_boundary.py` — 11 PASS; B-CS1 + `test_validation_readonly_guards` + narrow RTTP (`-k "rttp and not macro_real_map"`) PASS
-  - PR-C: validation/replay contamination portion absorbed (B-CS3-9); broader PR-B/D/E not closed here
-  - No production solver code changes
-
-- B-CS2 — Trunk-connected commit ops smoke (real slug)
-  - Status: **CLOSED**
-  - Slug: `copy-import-495e552c`
-  - Spec: [`docs/superpowers/specs/2026-05-24-b-cs2-trunk-ops-smoke-design.md`](../../docs/superpowers/specs/2026-05-24-b-cs2-trunk-ops-smoke-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-24-b-cs2-trunk-ops-smoke.md`](../../docs/superpowers/plans/2026-05-24-b-cs2-trunk-ops-smoke.md)
-  - Evidence: `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 55, `run_key` `rttp-3afe34cb62c4`)
-  - `confirmed_count` 1; `commit_order` length 1; `rttp.commit` passed with non-empty `committed_ids`; `conflict_count` 0
-  - `rttp.route_domain`: `skeleton_id` `e2af30c1ea51d853`; `mismatched_existing_transport_count` 0
-  - `validation_passed` / `run_success` true; `issue_codes` `[]`; B-CS2-17 step order verified (catalog_slice → route_domain → … → commit → catalog_placement_validation)
-  - Prerequisite: B-CS1 `test_rttp_commit_survivability.py`; not a substitute for E5
-
-- Decontamination PR-B — Optimization contamination gates
-  - Status: **CLOSED** (master)
-  - Merged into master: `e56ff048`
-  - PR: #69
-  - Spec: [`docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md)
-  - Evidence: `test_reconstruction_decontamination_gates.py` PASS; standing `scripts/test_reconstruction_decontamination.ps1`
-  - Entry Gate A (2026-05-24): master @ `28c7261e` pre-merge; post-merge PR-B standing gate green on `e56ff048`
-  - No production solver behaviour change
-
-- Decontamination PR-D — Quarantine & stale path isolation
-  - Status: **CLOSED** (master)
-  - Merged into master: `08320666`
-  - PR: #70
-  - Spec: [`docs/superpowers/specs/2026-05-24-decontamination-pr-d-quarantine-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-d-quarantine-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-d-quarantine.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-d-quarantine.md)
-  - Evidence: `test_quarantined_paths_do_not_leak.py` 5 PASS; standing `scripts/test_quarantine_registry.ps1`; plans snapshot front matter; `PR_E_DELETE_CANDIDATES` declared (no deletion in PR-D)
-  - No production solver behaviour change
-
-- Deferred commit retry PR-1 — Observe-only shadow (primary pass, before LNS)
-  - Status: **CLOSED** (master)
-  - Merged into master: `1e021f20`
-  - PR: #72
-  - Spec: [`docs/superpowers/specs/2026-05-24-deferred-commit-retry-shadow-pr1-design.md`](../../docs/superpowers/specs/2026-05-24-deferred-commit-retry-shadow-pr1-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-24-deferred-commit-retry-shadow-pr1.md`](../../docs/superpowers/plans/2026-05-24-deferred-commit-retry-shadow-pr1.md)
-  - Evidence: `test_deferred_commit_retry_shadow.py` 9 PASS; step `rttp.deferred_commit_retry_shadow`; standing gates green on master (2026-05-24)
-  - No retry execution; no commit/LNS/validation behaviour change
-
-- Deferred commit retry PR-2 — Runtime policy wiring (`config_json` → pipeline config)
-  - Status: **CLOSED** (master)
-  - Merged into master: `a5cfca87`
-  - PR: #73 (head `1f50fc3c`)
-  - Spec: [`docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr2-policy-design.md`](../../docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr2-policy-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr2-policy.md`](../../docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr2-policy.md)
-  - Evidence: `test_deferred_commit_retry_pr2_policy.py` 11 PASS; fail-closed mapper; disabled → shadow step `candidate_count=0`; CI `ci` + `rttp-lab-macro-smoke` success (2026-05-24)
-  - No retry execution; no commit/LNS/validation behaviour change
-
-- Deferred commit retry PR-3 — Bounded execution (`observe_only=false`)
-  - Status: **CLOSED** (master)
-  - Merged into master: `d3de9645`
-  - PR: #75
-  - Spec: [`docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr3-bounded-execution-design.md`](../../docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr3-bounded-execution-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr3-bounded-execution.md`](../../docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr3-bounded-execution.md)
-  - Evidence: `test_deferred_commit_retry_pr3_execute.py` 9 PASS; `test_deferred_commit_retry_shadow.py` + `test_deferred_commit_retry_pr2_policy.py` + `test_rttp_commit.py` + `test_rttp_commit_survivability.py` PASS; step `rttp.deferred_commit_retry_execute`; `scripts/test_full.ps1` 1526 passed; CI `ci` + `rttp-lab-macro-smoke` success (2026-05-24)
-  - LNS receives merged `CommitResult` when execution runs; PR-2 shadow envelope unchanged
-
-- Deferred commit retry PR-4 — Real-map ops smoke (`--deferred-retry-execute`)
-  - Status: **CLOSED** (master)
-  - Merged into master: `64473a87`
-  - PR: #76
-  - Spec: [`docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr4-ops-smoke-design.md`](../../docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr4-ops-smoke-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr4-ops-smoke.md`](../../docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr4-ops-smoke.md)
-  - Ops evidence: `python manage.py run_solver --slug copy-import-495e552c --deferred-retry-execute` exit 0 (`solver_run_id` 57, `run_key` `rttp-c49cc31fa973`)
-  - Config readback: `deferred_retry_shadow.enabled` true, `observe_only` false
-  - Steps present: `rttp.deferred_commit_retry_shadow`, `rttp.deferred_commit_retry_execute`; order indices shadow(5) < execute(6) < commit(7) < catalog(8)
-  - Execute metrics (informational): `deferred_retry_recovered_count` 0, `deferred_retry_eligible_count` 0, `deferred_retry_rounds_executed` 0
-  - `validation_passed` / `run_success` true; `issue_codes` `[]`
-  - PR-4-15 note: final `rttp.commit` step is post-LNS snapshot (not before shadow)
-- **CLOSED (2026-05-24):** Commit survivability arc (v0.1) — PR-1 shadow + PR-2 policy + PR-3 bounded execute + PR-4 real-map ops; B-CS1 pytest + B-CS2 ops; full GA / macro / capacity / multi-round retry **out of scope**
-
-- Decontamination PR-F0 — Aggressive test inventory (no deletions)
-  - Status: **CLOSED** (master, PR #100 `b5aa58fc`)
-  - Follow-on: **F1 SKIP** · **F2 CLOSED** (branch `feat/decontamination-pr-f2-asteroid-lab`, 0 deletes) · **F3–F5 READY**
-  - Spec/plan/inventory: same paths as PR-F series
-
-- Decontamination PR-F2 — asteroid_lab human review
-  - Status: **CLOSED** (branch pending merge)
-  - Outcome: 2 `INTENT_UNKNOWN` → `PROTECTED_CONTRACT`; no `PR_F_APPROVED_DELETIONS`
-
-- Decontamination PR-E — Dead code deletion
-  - Status: **CLOSED** (master)
-  - Merged into master: `64a8fee9`
-  - PR: #71
-  - Spec: [`docs/superpowers/specs/2026-05-24-decontamination-pr-e-dead-code-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-e-dead-code-design.md)
-  - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-e-dead-code.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-e-dead-code.md)
-  - Evidence: `PR_E_DELETE_CANDIDATES` empty; `PR_E_APPLIED_DELETIONS` (3); quarantine gate 9 PASS on master; collect 1493→1495 (deletions −2, applied-only gate tests +4); [`docs/superpowers/reports/2026-05-24-test-cleanup-audit.md`](../../docs/superpowers/reports/2026-05-24-test-cleanup-audit.md) (evidence-only)
-  - No production solver behaviour change
+When opening new work, start from [`document_inventory.md`](../index/document_inventory.md) — **no RTTP rows**. Candidate tracks (non-RTTP): Capacity C-GATE maintenance, Lab replay lazy-load (if not merged), PR-F test cleanup follow-ons.

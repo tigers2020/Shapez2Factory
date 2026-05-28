@@ -1,18 +1,22 @@
 # Document Inventory
 
-As of: 2026-05-24  
+As of: 2026-05-27 (post P0 decontamination)  
 Scope: Major design · plan · research · report · archive documents under `documents/`. Not a full file listing — an authority map for AI context selection.
 
 Status enum follows [`document_lifecycle.md`](document_lifecycle.md).
 
-## Hot path (Asteroid Lab / RTTP)
+## Hot path (Asteroid Lab — reconstruction slice only)
 
-1. Code + tests → [`documents/ai/current_plan.md`](../ai/current_plan.md)
-2. **Topic row** in § Asteroid Lab authority by topic (below) — **conflict resolver**
-3. Row-designated spec or Algorithm doc
+1. Code + tests → `django_apps/asteroid_lab/reconstruction/`, `cleanup/`, `replay/`, `services/solver_runtime_entry.py`
+2. [`documents/ai/current_plan.md`](../ai/current_plan.md) — runtime + standing gates
+3. **Topic row** in § Asteroid Lab authority by topic (below)
 4. [`documents/ai/contamination_policy.md`](../ai/contamination_policy.md)
+5. Normative superpowers: decontamination + complete-map DTO specs (see table)
 
-**QUARANTINE (never implementation authority):** [`documents/plans/asteroid_lab_optimization/`](../plans/asteroid_lab_optimization/)
+**QUARANTINE / ARCHIVE (never implementation authority):**
+
+- RTTP retirement tree — **hard-deleted** 2026-05-28 (`documents/archive/asteroid_lab_rttp_retired_2026-05/`); git history only
+- [`documents/plans/asteroid_lab_optimization/`](../plans/asteroid_lab_optimization/) — pre-strip-solver snapshots (if present)
 
 There is no separate `authority_index.md`; this file is the sole authority map.
 
@@ -36,35 +40,33 @@ There is no separate `authority_index.md`; this file is the sole authority map.
 
 | Document | Status | Kind | Canonical | Notes |
 |------|------|------|-----------|------|
-| [`documents/ai/current_plan.md`](../ai/current_plan.md) | `ACTIVE` | work queue | NO | Current work flow |
+| [`documents/ai/current_plan.md`](../ai/current_plan.md) | `ACTIVE` | work queue | NO | Post-P0 runtime + gates; RTTP queue in archive |
 | [`documents/ai/checklist.md`](../ai/checklist.md) | `ACTIVE` | checklist | NO | Progress state and verification gates |
-| [`documents/plans/`](../plans/) | `ACTIVE` | plans/backlog | NO | Plans with unconfirmed completion evidence. **Exception:** `plans/asteroid_lab_optimization/` = **QUARANTINE** — see § Asteroid Lab authority by topic |
+| [`documents/plans/`](../plans/) | `ACTIVE` | plans/backlog | NO | Plans with unconfirmed completion evidence |
 | [`documents/ai/plans/`](../ai/plans/) | `ACTIVE` | scoped plans | NO | Scope-limited plans |
-| [`documents/Algorithm/solver_runtime/`](../Algorithm/solver_runtime/) | `HISTORICAL` | solver button pipeline | NO | Phase A–M orchestration archive. **RTTP runtime ≠ this series** — [`current_plan.md`](../ai/current_plan.md) is canonical |
-| [`documents/Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md`](../Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md) | `ACTIVE` | post-v0 roadmap | NO | 2026-05-18 spec · checklist not started baseline; **do not compare** against v0 completion — [`current_plan.md`](../ai/current_plan.md) takes precedence |
+| [`documents/Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md`](../Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md) | `ACTIVE` | post-v0 roadmap | NO | Not started baseline; **`current_plan.md` wins** |
 
-## Asteroid Lab authority by topic
+## Asteroid Lab authority by topic (post-decontamination)
 
-When two documents disagree on Asteroid Lab / RTTP implementation, resolve by this table. **Do not merge competing specs.**
+When two documents disagree on Asteroid Lab implementation, resolve by this table. **Do not merge competing specs.** RTTP / optimization runtime is **retired** — see archive README.
 
 | Topic | `authority_for_implementation` | Inventory status | Notes |
 |-------|-------------------------------|------------------|-------|
-| Runtime entry / config gate | [`current_plan.md`](../ai/current_plan.md) + `django_apps/asteroid_lab/services/solver_runtime_entry.py` | CANON → code | `ASTEROID_LAB_RTTP_ENABLED`; strip removed monolith only |
-| RTTP Hybrid C pipeline | [`docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md`](../../docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md) + `django_apps/asteroid_lab/optimization/` | ACTIVE spec | Merged baseline on `master` |
-| Macro bundle T3 | [`docs/superpowers/specs/2026-05-23-rttp-v1-macrobundle-t3-design.md`](../../docs/superpowers/specs/2026-05-23-rttp-v1-macrobundle-t3-design.md) | ACTIVE spec | **PAUSE** per `current_plan` — no new macro work |
-| B2 catalog slice / transport T2 | [`docs/superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md`](../../docs/superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md) | CLOSED | PR #62; tests ground truth |
-| B2 transport-aware route domain T3 | [`docs/superpowers/specs/2026-05-24-b2-t3-transport-aware-route-domain-design.md`](../../docs/superpowers/specs/2026-05-24-b2-t3-transport-aware-route-domain-design.md) | CLOSED | PR #61 |
-| Track D footprint/connector | [`docs/superpowers/specs/2026-05-24-track-d-catalog-footprint-connector-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-catalog-footprint-connector-design.md) | CLOSED | PR #63 |
-| Track D+ catalog placement validation | [`docs/superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md) + [`asteroid_lab_08_validation.md`](../Algorithm/asteroid_lab_08_validation.md) § Track D+ | CLOSED (PR-2 2026-05-24) | PR-1 observe-only [`3208f67e`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr1-catalog-placement-audit.md); PR-2 mapped fail-closed [`2026-05-24-track-d-plus-pr2-catalog-placement-validation.md`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md) |
-| OptimizationInput / adapter | [`documents/Algorithm/asteroid_lab_01_optimization_input.md`](../Algorithm/asteroid_lab_01_optimization_input.md) | CANON | **Not** `plans/asteroid_lab_optimization/01` |
-| Route probe / candidate pool | [`documents/Algorithm/asteroid_lab_04_route_probe.md`](../Algorithm/asteroid_lab_04_route_probe.md) | CANON | Probe at creation |
-| Validation read-only | [`documents/Algorithm/asteroid_lab_08_validation.md`](../Algorithm/asteroid_lab_08_validation.md) + [`documents/adr/ADR-003-final-validation-assertion-gate.md`](../adr/ADR-003-final-validation-assertion-gate.md) | CANON | |
-| Replay timeline / 3B-S | [`documents/Algorithm/asteroid_lab_09_replay_timeline.md`](../Algorithm/asteroid_lab_09_replay_timeline.md) + [`docs/superpowers/specs/2026-05-23-sequence-3b-s-rttp-full-snapshot-replay-design.md`](../../docs/superpowers/specs/2026-05-23-sequence-3b-s-rttp-full-snapshot-replay-design.md) | CANON + ACTIVE spec | Output-only product replay |
-| Development sequence | [`documents/Algorithm/asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) + `current_plan` RTTP gate sync | ACTIVE doc | Checkbox state may lag; gate sync note wins |
-| Pre-RTTP plans tree | [`documents/plans/asteroid_lab_optimization/`](../plans/asteroid_lab_optimization/) | **QUARANTINE** (`ARCHIVED`) | `do_not_use_as_authority: true` |
-| Solver runtime Phase A–M | [`documents/Algorithm/solver_runtime/`](../Algorithm/solver_runtime/) | **HISTORICAL** | Orchestration archive; RTTP ≠ this series |
-| Mining layout solver (removed) | git history only | **REMOVED** | No START_HERE table |
-| Lab replay wiring | [`documents/Algorithm/asteroid_lab_12_runtime_replay_wiring.md`](../Algorithm/asteroid_lab_12_runtime_replay_wiring.md) | CANON | Distinct from optimization search |
+| Product slice / surgery | [`docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) | **CLOSED** | PR #117; `optimization/` deleted |
+| Complete-map DTO semantics | [`docs/superpowers/specs/2026-05-26-reconstruction-complete-map-dto-design.md`](../../docs/superpowers/specs/2026-05-26-reconstruction-complete-map-dto-design.md) | CANON | Field-cell SoT |
+| Runtime entry / Run Solver | [`current_plan.md`](../ai/current_plan.md) + `solver_runtime_entry.py` | CANON → code | Always `SOLVER_NOT_AVAILABLE`; flag ignored |
+| Reconstruction topology | `django_apps/asteroid_lab/reconstruction/` + [`asteroid_lab_00_overview.md`](../Algorithm/asteroid_lab_00_overview.md) | CANON → code | Coordinates · prohibitions |
+| Replay timeline (Lab) | [`asteroid_lab_09_replay_timeline.md`](../Algorithm/asteroid_lab_09_replay_timeline.md) | CANON | Reconstruction replay only |
+| Lab replay wiring | [`asteroid_lab_12_runtime_replay_wiring.md`](../Algorithm/asteroid_lab_12_runtime_replay_wiring.md) | CANON | Output-only product replay |
+| Capacity / mineable SoT | [`docs/superpowers/specs/2026-05-29-reconstruction-capacity-c-gate-design.md`](../../docs/superpowers/specs/2026-05-29-reconstruction-capacity-c-gate-design.md) | ACTIVE | C-GATE on complete map |
+| Terrain rim highlight | [`docs/superpowers/specs/2026-05-25-reconstruction-complete-terrain-rim-highlight-design.md`](../../docs/superpowers/specs/2026-05-25-reconstruction-complete-terrain-rim-highlight-design.md) | CLOSED | UI enrichment from complete map |
+| Replay boundary | [`docs/superpowers/specs/2026-05-24-b-cs4-reconstruction-replay-boundary-design.md`](../../docs/superpowers/specs/2026-05-24-b-cs4-reconstruction-replay-boundary-design.md) | CLOSED | Reconstruction vs replay |
+| Game data snapshot | `django_apps/asteroid_lab/contracts/game_data_snapshot*.py` | CANON → code | Not RTTP catalog contracts |
+| MEG contract (frozen) | [`docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md) | **FROZEN** | Do not implement until RTTP re-opened |
+| RTTP / optimization / routing / commit / GA | git history only | **REMOVED** | No `optimization/` package; archive tree deleted 2026-05-28 |
+| Legacy Algorithm 01–08 · solver_runtime phases | git history only | **REMOVED** | Hard-deleted with RTTP archive |
+| Mining layout solver (removed) | git history only | **REMOVED** | — |
+| `shapez_solver` (factory graph) | `django_apps/shapez_solver/` | OUT OF SCOPE | Not Asteroid Lab decontamination |
 
 **Operational label QUARANTINE:** Maps to lifecycle enum `ARCHIVED` or `SUPERSEDED` plus `do_not_use_as_authority: true` in front matter (see [`document_lifecycle.md`](document_lifecycle.md)).
 
@@ -78,7 +80,7 @@ When two documents disagree on Asteroid Lab / RTTP implementation, resolve by th
 | [`documents/reports/README.md`](../reports/README.md) | `REPORT` | report index | NO | Report bundle routing. Not a canonical contract |
 | [`documents/debug/`](../debug/) | `REPORT` | debug report | NO | Log/copy analysis |
 | [`documents/notes/`](../notes/) | `REPORT` | notes | NO | Long-term memos. Not canonical |
-| [`documents/Algorithm/README.md`](../Algorithm/README.md) | `RESEARCH` | algorithm memos index | NO | Asteroid Lab optimization series · drafts (`drafts/`). Entry README. Implementation canonical is code · CANON first |
+| [`documents/Algorithm/README.md`](../Algorithm/README.md) | `CANON` | algorithm index | YES | Post-P0 reconstruction-first index |
 
 ## Archive · Completed Documents
 
@@ -99,5 +101,6 @@ When two documents disagree on Asteroid Lab / RTTP implementation, resolve by th
 ## Structure Notes
 
 - `django_apps.shapez_asteroid` and `tests/unit/shapez_asteroid*` have been removed.
-- Mining layout solver canonical step spec (`documents/Algorithm/mining_solver_cursor_sessions/`) and related archive/plan bulk cleanup remain in **git history** only.
-- `documents/plans/asteroid_lab_optimization/` tree is a pre-strip-solver plan snapshot. **QUARANTINE** — not implementation canonical. RTTP runtime is `django_apps/asteroid_lab/optimization/` + [`current_plan.md`](../ai/current_plan.md).
+- `django_apps/asteroid_lab/optimization/` and `catalog/` **removed** (P0 decontamination PR #117).
+- Mining layout solver (`documents/Algorithm/mining_solver_cursor_sessions/`) — **git history only**.
+- RTTP superpowers specs/plans — were under `documents/archive/asteroid_lab_rttp_retired_2026-05/superpowers/`; **hard-deleted** 2026-05-28 (git history).

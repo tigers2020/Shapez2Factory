@@ -1,61 +1,45 @@
 # Algorithm Documentation
 
-Collects algorithm and Lab contract notes. **Implementation authority** takes precedence: code, `CANON` in [`documents/index/document_inventory.md`](../index/document_inventory.md), and [`documents/ai/START_HERE.md`](../ai/START_HERE.md).
+**Post-P0 (2026-05-27):** Asteroid Lab **reconstruction slice only**. RTTP / optimization docs were **hard-deleted** from the repo (2026-05-28); use git history if needed.
 
-## Implementation baseline (2026-05-22)
+**Implementation authority:** code, [`documents/index/document_inventory.md`](../index/document_inventory.md), [`documents/ai/START_HERE.md`](../ai/START_HERE.md).
 
-| Layer | Status | Code |
+## Implementation baseline
+
+| Layer | Status | Code / doc |
 |--------|------|------|
 | **Reconstruction** | **ACTIVE** | `django_apps/asteroid_lab/reconstruction/`, `cleanup/`, Lab persist·replay |
-| **Optimization / Solver runtime** | **REMOVED** | `django_apps/asteroid_lab/optimization/` deleted; `solver_runtime_entry` is `SOLVER_NOT_AVAILABLE` stub only |
+| **Complete-map DTO** | **ACTIVE** | [`docs/superpowers/specs/2026-05-26-reconstruction-complete-map-dto-design.md`](../../docs/superpowers/specs/2026-05-26-reconstruction-complete-map-dto-design.md) |
+| **Optimization / RTTP** | **RETIRED** | Archive only — no `optimization/` package |
+| **Run Solver** | **STUB** | `SOLVER_NOT_AVAILABLE` — solver_runtime docs removed (git history) |
 | **Genetic sample (admin)** | **ACTIVE** | `django_apps/asteroid_lab/genetic_sample/` |
-| **Game data snapshot** | **ACTIVE** | `django_apps/asteroid_lab/contracts/game_data_snapshot.py` |
 
-**Surgery spec:** [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md)
-
-## Solver Runtime (ARCHIVED)
-
-**Status:** Removed 2026-05-22. Phase C–M and PR3–7 contracts are historical archive.
-
-- **Index:** [`solver_runtime/README.md`](solver_runtime/README.md) (`status: ARCHIVED`)
-- **Reconciliation (historical):** [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md)
-- **HTTP entry (stub):** [`solver_runtime/01_entry_point.md`](solver_runtime/01_entry_point.md) → `run_solver_runtime_for_project` → `SOLVER_NOT_AVAILABLE`
+**Surgery specs:** [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) · [`2026-05-22-strip-solver-keep-recon-complete-design.md`](../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md)
 
 ## Reading order (reconstruction-first)
 
-1. [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md) — overview, coordinates, prohibitions
-2. Reconstruction·cleanup·topology — `reconstruction/` code + [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) (Lab replay **ACTIVE**)
-3. **Legacy optimization series** `asteroid_lab_01`–`08` — `RESEARCH` / historical reference only (implementation deleted)
-4. [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md) — sequence checklist (many items not yet updated)
-5. **Deleted solver button:** `solver_runtime/phase_*` — all `ARCHIVED`
-6. **Miner·extension (authority realignment):** [`asteroid_lab_mining_installation/README.md`](asteroid_lab_mining_installation/README.md) → `00` → `01` → `02` → `03` (DB cross-reference); `04` (installation guide)
+1. [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md) — coordinates, prohibitions
+2. Reconstruction code + [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md)
+3. [`asteroid_lab_12_runtime_replay_wiring.md`](asteroid_lab_12_runtime_replay_wiring.md) — Lab JSON wiring
+4. **Retired optimization series** — removed from repo (`asteroid_lab_01`–`08`, `10`, `solver_runtime/`, `mining_installation/`); git history only
 
-## File list
+## Active files (this directory)
 
 | File | Status | Description |
 |------|------|------|
-| `asteroid_lab_00_overview.md` | `RESEARCH` | Lab·coordinate principles |
-| `asteroid_lab_01`–`08` | `ARCHIVED` | Optimization layer (no code) |
-| `asteroid_lab_09_replay_timeline.md` | `ACTIVE` | Lab Step Replay Timeline |
-| `asteroid_lab_09_replay_debug.md` | `ARCHIVED` | dual-track history |
-| `asteroid_lab_10`–`13` | `RESEARCH` | roadmap·wiring |
-| [`solver_runtime/`](solver_runtime/) | `ARCHIVED` | Solver button Phase A–M (removed 2026-05-22) |
-| [`plans/asteroid_lab_optimization/`](plans/asteroid_lab_optimization/README.md) | `ARCHIVED` | Pre-2026-05 optimization plan copies |
-| [`asteroid_lab_mining_installation/`](asteroid_lab_mining_installation/) | `AUDIT` | Miner·extension authority·contradiction table·drift·installation guide (D2) |
+| `asteroid_lab_00_overview.md` | `CANON` | Lab·coordinate principles |
+| `asteroid_lab_09_replay_timeline.md` | `CANON` | Lab Step Replay Timeline |
+| `asteroid_lab_10_development_sequence.md` | `RETIRED` | removed — git history only |
+| `asteroid_lab_11_future_execution_plan_post_sequence.md` | `ACTIVE` | Post-sequence roadmap (not started) |
+| `asteroid_lab_12_runtime_replay_wiring.md` | `CANON` | Runtime replay wiring |
+| `asteroid_lab_13_replay_payload_scalability.md` | `ACTIVE` | Payload / lazy-load contracts |
+| [`asteroid_lab_mining_installation/`](asteroid_lab_mining_installation/) | `AUDIT` | Miner·extension authority tables |
 
 ## Drafts (`drafts/`)
 
-| File | Status | Description |
-|------|------|------|
-| [`drafts/Asteroid Mining Page Rebuild.txt`](drafts/Asteroid%20Mining%20Page%20Rebuild.txt) | `DRAFT` | Page rebuild design draft |
-| [`drafts/asteroid_lab_development_plan.txt`](drafts/asteroid_lab_development_plan.txt) | `DRAFT` | Start-to-end development plan draft |
+Non-canonical memos only. Do not use for implementation.
 
-> **Note:** If a memo with the former name `Branch · Asteroid Mining Page Rebuild.txt` (UI debug notes, modal JSX, etc.) existed, place similar memos under `drafts/` or move them to a separate issue.
+## Path notes
 
-## Path·package notes
-
-- **`django_apps/shapez_asteroid`** · **`asteroid_lab/optimization/`** — removed from repository. Document references are historical.
-- Gene template·coord: **`genetic_sample/`** · grid: **`snapshots/grid_contract.py`**
-- Cross-check: [`documents/refactor_audit/00_global_summary.md`](../refactor_audit/00_global_summary.md)
-
-Add new algorithm authority after updating `documents/ai/` plans and `document_inventory.md`.
+- `django_apps/shapez_asteroid` · `asteroid_lab/optimization/` · `catalog/` — **removed**
+- Cross-check: [`documents/index/document_inventory.md`](../index/document_inventory.md)

@@ -24,6 +24,10 @@ from django_apps.asteroid_lab.replay.timeline_serialization import (
     replay_timeline_frame_to_json_dict,
 )
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO
+from django_apps.asteroid_lab.services.lab_layer02_timeline import resolve_l2_complete_frame_index
+from django_apps.asteroid_lab.services.lab_timeline_exterior_connector_enrichment import (
+    enrich_lab_timeline_frames_with_exterior_connector_plan,
+)
 from django_apps.asteroid_lab.services.lab_timeline_rim_enrichment import (
     enrich_lab_timeline_frames_with_terrain_rim,
 )
@@ -224,6 +228,24 @@ def _track_metrics_from_serialized_frames(
     }
 
 
+def _exterior_connector_plan_wire_for_run(run: SolverRun | None) -> dict[str, Any] | None:
+    if run is None:
+        return None
+
+    config = dict(run.config_json or {})
+    wire = config.get("exterior_connector_plan")
+    if isinstance(wire, dict):
+        return wire
+
+    summary = config.get("solver_summary")
+    if isinstance(summary, dict):
+        nested = summary.get("exterior_connector_plan")
+        if isinstance(nested, dict):
+            return nested
+
+    return None
+
+
 def build_lab_replay_frames_for_project(
     project_id: int,
     *,
@@ -253,10 +275,19 @@ def build_lab_replay_frames_for_project(
     )
     serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
     serialized, frozen_rim_wire = enrich_lab_timeline_frames_with_terrain_rim(serialized)
+    plan_wire = _exterior_connector_plan_wire_for_run(run)
+    l2_start = resolve_l2_complete_frame_index(serialized)
+    serialized, frozen_connector_wire = enrich_lab_timeline_frames_with_exterior_connector_plan(
+        serialized,
+        plan_wire=plan_wire,
+        l2_complete_frame_index=l2_start,
+    )
     diagnostic = _lab_replay_diagnostic_reason(pid, composed_count=len(serialized))
     metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
     if frozen_rim_wire is not None:
         metrics["frozen_terrain_rim_highlight"] = frozen_rim_wire
+    if frozen_connector_wire is not None:
+        metrics["frozen_exterior_connector_plan"] = frozen_connector_wire
     return serialized, metrics
 
 
@@ -264,6 +295,7 @@ __all__ = [
     "DIAGNOSTIC_NO_REPLAY_FRAMES",
     "DIAGNOSTIC_RTTP_TRACK_BLOCKED_LAB_TIMELINE",
     "REPLAY_DIAGNOSTIC_REASON_KEY",
+    "_exterior_connector_plan_wire_for_run",
     "build_lab_replay_frames_for_project",
     "get_latest_lab_replay_track_for_project",
     "resolve_replay_projection_context_for_project",

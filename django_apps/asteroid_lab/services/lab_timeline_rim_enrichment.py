@@ -37,6 +37,7 @@ def frame_has_renderable_map(frame: dict[str, Any]) -> bool:
     overlay = mv.get("overlay_cells")
     return isinstance(overlay, list) and len(overlay) > 0
 
+
 _COMPLETE_EVENT_TYPES = frozenset(
     {
         ReplayEventType.RECONSTRUCTION_COMPLETED.value,

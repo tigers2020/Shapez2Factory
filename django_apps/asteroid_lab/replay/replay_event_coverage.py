@@ -17,6 +17,7 @@ SUPPORTED_BY_9B_LAB_ADAPTER: frozenset[ReplayEventType] = frozenset(
 # Solver runtime recorder (v0 pipeline — no evolutionary search loop).
 SUPPORTED_BY_SOLVER_RUNTIME_RECORDER: frozenset[ReplayEventType] = frozenset(
     {
+        ReplayEventType.EXTERIOR_TRANSPORT_COMPLETED,
         ReplayEventType.OPTIMIZATION_INPUT_LOADED,
         ReplayEventType.CAPACITY_PLAN_CREATED,
         ReplayEventType.ROUTE_GOAL_GENERATED,

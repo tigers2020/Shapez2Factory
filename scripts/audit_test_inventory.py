@@ -14,13 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-DEFERRED_MACRO_FILES = frozenset(
-    {
-        "test_rttp_macro_bundle_t3.py",
-        "test_rttp_pipeline_macro_greenfield.py",
-        "test_rttp_db_macro_integration.py",
-    }
-)
+DEFERRED_MACRO_FILES: frozenset[str] = frozenset()
 DEFERRED_G3 = frozenset({"test_coordinate_frame_equivalence.py"})
 # Resolved PR-F2 (2026-05-30): both promoted to PROTECTED_CONTRACT in registry.
 INTENT_UNKNOWN_FILES: frozenset[str] = frozenset()

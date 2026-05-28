@@ -14,6 +14,7 @@ from django_apps.asteroid_lab.reconstruction.field_cells import (
     detect_primary_resource_kind,
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
+from django_apps.asteroid_lab.reconstruction.rim_topology import field_rim_cells
 from django_apps.game_data.services.mining_extraction_rules import (
     effective_mini_units,
     get_active_rule,
@@ -94,9 +95,11 @@ def build_reconstruction_observability(
 ) -> dict[str, Any]:
     topo = acceptance_topology_from_complete_map(complete_map)
     field_total = len(complete_map.field_cells)
+    rim_cell_count = len(field_rim_cells(complete_map.field_cells))
     obs: dict[str, Any] = {
         "cell_count": len(recon.cells),
         "display_cell_count": len(complete_map.cells),
+        "rim_cell_count": rim_cell_count,
         "asteroid_field_cell_count": field_total,
         "shape_field_cell_count": complete_map.shape_field_cell_count,
         "fluid_field_cell_count": complete_map.fluid_field_cell_count,

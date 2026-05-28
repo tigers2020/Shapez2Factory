@@ -175,6 +175,13 @@
     stroke-linecap: round;
   }
 
+  /* Layer 02: subtle white ring at void_coord (spec §3.3 White marker; inset — viewport contain:paint). */
+  .lab-planned-exterior-connector {
+    z-index: 2;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92);
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+
   /* RTTP ops slug class badge (pass_capable registry slugs). */
   .lab-ops-slug-badge--pass-capable {
     color: rgb(103 232 249);

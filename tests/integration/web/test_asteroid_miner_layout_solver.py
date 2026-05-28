@@ -76,11 +76,11 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     g_overlay = content.index('id="lab-optimization-overlay-layer"', g_stage)
     assert g_grid < g_overlay
     map_footer = content.index('id="lab-map-footer"')
-    stat_card = content.index('id="lab-card-theoretical-max"')
-    replay_timeline = content.index("Replay Timeline")
+    replay_meta = content.index('id="lab-replay-metadata"', map_footer)
     assert map_footer > g_grid
-    assert stat_card > map_footer
-    assert stat_card > replay_timeline
+    assert replay_meta > map_footer
+    assert 'id="lab-layer-summaries"' in content
+    assert 'id="lab-card-theoretical-max"' not in content
 
 
 def test_asteroid_miner_layout_ignores_code_query_string() -> None:
@@ -352,9 +352,8 @@ def test_post_run_solver_lazy_mode_omits_inline_lab_replay_frames(client: Client
     run_resp = client.post(run_url, HTTP_ACCEPT="application/json")
     body = json.loads(run_resp.content.decode())
     assert run_resp.status_code == 200
-    assert body.get("ok") is False
-    assert body.get("error_code") == "SOLVER_NOT_AVAILABLE"
-    assert body.get("solver_run_id") is None
+    assert body.get("ok") is True
+    assert body.get("solver_run_id") is not None
     assert "lab_replay_frames_json" not in body
     lab_replay = body.get("lab_replay") or {}
     assert lab_replay.get("mode") == "lazy"
@@ -405,8 +404,8 @@ def test_post_run_solver_inline_mode_still_includes_lab_replay_frames(client: Cl
     run_resp = client.post(run_url, HTTP_ACCEPT="application/json")
     body = json.loads(run_resp.content.decode())
     assert run_resp.status_code == 200
-    assert body.get("ok") is False
-    assert body.get("error_code") == "SOLVER_NOT_AVAILABLE"
+    assert body.get("ok") is True
+    assert body.get("solver_run_id") is not None
     frames = body.get("lab_replay_frames_json")
     assert isinstance(frames, list)
     assert len(frames) >= 1

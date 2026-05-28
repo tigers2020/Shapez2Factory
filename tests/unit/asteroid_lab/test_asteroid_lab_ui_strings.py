@@ -8,8 +8,8 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[3]
 TEMPLATE = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
-STAT_PARTIAL = (
-    REPO / "django_apps" / "web" / "templates" / "web" / "partials" / "lab_stat_cards.html"
+LAYER_SUMMARIES_PARTIAL = (
+    REPO / "django_apps" / "web" / "templates" / "web" / "partials" / "lab_layer_summaries.html"
 )
 
 FORBIDDEN = (
@@ -51,25 +51,53 @@ def test_lab_js_pass_capable_badge_contract() -> None:
     assert diag_use < pc_use, "diagnostic shortfall copy must win over pass_capable status"
 
 
-def test_lab_footprint_subtitle_documents_field_cells() -> None:
-    text = TEMPLATE.read_text(encoding="utf-8") + STAT_PARTIAL.read_text(encoding="utf-8")
-    assert "field cells / map cells" in text
+def test_lab_selected_run_detail_uses_layer_summaries_partial() -> None:
+    template = TEMPLATE.read_text(encoding="utf-8")
+    partial = LAYER_SUMMARIES_PARTIAL.read_text(encoding="utf-8")
+    assert "lab_layer_summaries.html" in template
+    assert 'id="lab-layer-summaries"' in partial
+    assert "lab_stat_cards.html" not in template
+    assert "lab_run_detail_panels.html" not in template
+    assert 'id="lab-card-theoretical-max"' not in template
 
 
-def test_lab_detail_panel_uses_asteroid_field_terminology() -> None:
-    detail = (
-        REPO
-        / "django_apps"
-        / "web"
-        / "templates"
-        / "web"
-        / "partials"
-        / "lab_run_detail_panels.html"
+def test_lab_js_renders_layer_summaries_from_run_payload() -> None:
+    js = (
+        REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
     ).read_text(encoding="utf-8")
-    assert "Asteroid field cells" in detail
-    assert "lab-detail-rec-field-total" in detail
-    assert "Mineable cells" not in detail
-    assert "Confirmed total" not in detail
+    assert "renderLabLayerSummaries" in js
+    assert "run.layer_summaries" in js
+    assert "updateLabStatCards" not in js
+    assert "updateLabDetailPanels" not in js
+
+
+def test_lab_exterior_connector_overlay_contract() -> None:
+    js = (
+        REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
+    css = (REPO / "assets" / "css" / "input.css").read_text(encoding="utf-8")
+    assert "planned_exterior_connector" in js
+    assert "exterior_connector_plan" in js
+    assert "frozen_exterior_connector_plan" in js
+    assert "lab-planned-exterior-connector" in css
+    assert "lab-planned-exterior-connector" in js
+    assert "applyPlannedExteriorConnectorWhiteHighlight" in js
+    assert "renderPlannedExteriorConnectorHighlights" in js
+    assert "plannedConnectorCellsFromWire" in js
+    assert "plannedConnectorCoordKeys" in js
+    assert "skipPlannedExteriorConnectors" in js
+    assert "overlay_role" in js
+    assert "row.overlay_role = String(c.overlay_role)" in js
+    assert "sortOverlayCellsForPaint" in js
+    assert "contain: layout paint" in css
+    built_css = (REPO / "django_apps" / "web" / "static" / "web" / "css" / "app.css").read_text(
+        encoding="utf-8",
+    )
+    assert (
+        "lab-planned-exterior-connector" in built_css
+    ), "run npm run build:css — Lab L2 marker styles missing from app.css"
+    assert "lab-planned-exterior-connector" in built_css
+    assert "inset" in built_css
 
 
 def test_lab_terrain_rim_highlight_toggle_and_css_contract() -> None:
@@ -109,5 +137,5 @@ def test_throughput_target_slider_in_extractor_constraints_not_header() -> None:
 
 @pytest.mark.parametrize("needle", FORBIDDEN)
 def test_lab_solver_template_forbids_placeholder_card_copy(needle: str) -> None:
-    text = TEMPLATE.read_text(encoding="utf-8") + STAT_PARTIAL.read_text(encoding="utf-8")
+    text = TEMPLATE.read_text(encoding="utf-8")
     assert needle not in text, f"forbidden placeholder {needle!r} still in Lab templates"

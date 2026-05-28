@@ -6,6 +6,10 @@ import pytest
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
+from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_01_RECONSTRUCTION,
+    LAYER_05_COMMIT_VALIDATE,
+)
 from django_apps.asteroid_lab.reconstruction.complete_map import (
     build_reconstruction_complete_map,
     overlay_field_cell_count,
@@ -86,6 +90,76 @@ def test_lab_run_summary_capacity_fields_partial() -> None:
     assert row["placed"] == 6
 
 
+def test_lab_run_summary_layer_summaries_ordered_l1_through_l5() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=99,
+        status="completed",
+        solver_summary={
+            "validation_passed": True,
+            "confirmed_count": 1,
+            "reconstruction_observability": {
+                "display_cell_count": 120,
+                "asteroid_field_cell_count": 8,
+                "shape_field_cell_count": 8,
+                "fluid_field_cell_count": 0,
+                "primary_resource_kind": "shape",
+                "quality_tier": "CONFIDENT_RECONSTRUCTION",
+                "confidence_score": "0.9400",
+            },
+            "reconstruction_capacity": {
+                "capacity_basis": "terrain_upper_bound",
+                "primary_resource_kind": "shape",
+                "by_resource": {
+                    "shape": {
+                        "max_throughput_per_min": "960.0000",
+                        "output_unit": "shapes_per_min",
+                        "capacity_upper_bound_platform_count": 8,
+                        "source_kind": "CANON_MANUAL",
+                    },
+                    "fluid": {
+                        "max_throughput_per_min": "0.0000",
+                        "output_unit": "L_per_min",
+                        "capacity_upper_bound_platform_count": 0,
+                        "source_kind": "CANON_MANUAL",
+                    },
+                },
+            },
+            "actual_committed_output_per_min": "480.0000",
+            "throughput_target_percent": 60,
+            "target_throughput_per_min": "576.0000",
+            "throughput_budget_satisfied": True,
+            "stack_run_status": "success",
+            "completed_layer_slugs": [
+                LAYER_01_RECONSTRUCTION,
+                LAYER_05_COMMIT_VALIDATE,
+            ],
+            "failed_layer_slug": None,
+        },
+    )
+    summaries = row["layer_summaries"]
+    assert len(summaries) == 5
+    assert summaries[0]["layer_slug"] == LAYER_01_RECONSTRUCTION
+    assert summaries[0]["layer_index"] == 1
+    assert summaries[0]["outcome"] == "completed"
+    l1_labels = [h["label"] for h in summaries[0]["highlights"]]
+    assert "Quality tier" not in l1_labels
+    assert "Confidence" not in l1_labels
+    assert "Shape field cells" in l1_labels
+    assert any(h["label"] == "Max throughput" for h in summaries[0]["highlights"])
+    l2_labels = [h["label"] for h in summaries[1]["highlights"]]
+    assert "Required connectors" in l2_labels
+    assert "Planned connectors" in l2_labels
+    assert "Reference belts @100% terrain" in l2_labels
+    assert "Required normal lines" in l2_labels
+    assert "External space belts" not in l2_labels
+    assert "Capacity basis" not in l2_labels
+    assert "Rule source" not in l2_labels
+    assert "Shape max throughput" not in l2_labels
+    assert summaries[4]["layer_slug"] == LAYER_05_COMMIT_VALIDATE
+    assert summaries[4]["outcome"] == "completed"
+    assert row["stack_run_status"] == "success"
+
+
 def test_lab_run_summary_nested_capacity_from_solver_summary() -> None:
     row = lab_run_summary_from_solver_summary(
         run_id=99,
@@ -132,10 +206,9 @@ def test_lab_run_summary_nested_capacity_from_solver_summary() -> None:
     assert row["capacity"]["primary_resource_kind"] == "shape"
     assert row["capacity"]["fluid_platform_count"] == 0
     assert row["reconstruction"]["display_cell_count"] == 120
-    assert row["reconstruction"]["asteroid_field_cell_count"] == 8
-    assert row["reconstruction"]["shape_field_cell_count"] == 8
-    assert row["reconstruction"]["fluid_field_cell_count"] == 0
-    assert row["reconstruction"]["quality_tier_short"] == "HIGH"
+    assert row["reconstruction"]["field_cell_count"] == 8
+    assert row["reconstruction"]["primary_resource_kind"] == "shape"
+    assert row["capacity"]["external_connector_count"] == 1
     assert row["rttp"]["confirmed_count"] == 1
     assert row["rttp"]["actual_output_status"] == "pending_pr_2b"
 
@@ -264,6 +337,35 @@ def test_solver_runs_for_lab_project_orders_newest_first() -> None:
     assert lab_run_summary_from_orm(older)["status"] == "failed"
 
 
+def test_lab_layer3_rim_route_candidates_and_installed_ratio() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=50,
+        status="partial",
+        solver_summary={
+            "validation_passed": False,
+            "confirmed_count": 12,
+            "normal_candidate_count": 999,
+            "reconstruction_observability": {
+                "shape_field_cell_count": 467,
+                "rim_cell_count": 84,
+                "primary_resource_kind": "shape",
+            },
+            "optimization_goal": {
+                "passed": False,
+                "shortfall": 455,
+                "confirmed_passed_mining_equipment_cells": 12,
+                "target_mining_equipment_cells": 467,
+            },
+        },
+    )
+    layer3 = row["layer_summaries"][2]
+    labels = {h["label"]: h["value"] for h in layer3["highlights"]}
+    assert labels["Route candidates"] == "84"
+    assert labels["Installed / Route candidates"] == "12 / 84"
+    assert "Mining equipment shortfall" not in labels
+    assert "Confirmed mining cells" not in labels
+
+
 def test_lab_run_summary_from_solver_summary_exposes_meg_fields() -> None:
     row = lab_run_summary_from_solver_summary(
         run_id=42,
@@ -365,5 +467,5 @@ def test_lab_capacity_uses_complete_map_even_when_overlay_is_sparse() -> None:
         },
     )
     assert row["capacity"]["platform_upper_bound"] == shape_platform
-    assert row["reconstruction"]["asteroid_field_cell_count"] == complete_fields
-    assert row["reconstruction"]["shape_field_cell_count"] == complete.shape_field_cell_count
+    assert row["reconstruction"]["field_cell_count"] == complete_fields
+    assert row["reconstruction"]["primary_resource_kind"] == cap["primary_resource_kind"]

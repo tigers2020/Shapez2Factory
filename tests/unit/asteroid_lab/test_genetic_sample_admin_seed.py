@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import Client
 from django.urls import reverse
 
@@ -80,6 +81,18 @@ def test_genetic_sample_admin_seed_dry_run_no_write(staff_client: Client) -> Non
     assert GeneticSample.objects.count() == before
     messages = [str(m) for m in response.context["messages"]]
     assert any("dry-run" in m for m in messages)
+
+
+@pytest.mark.django_db
+def test_genetic_sample_changelist_shows_difficulty_columns(staff_client: Client) -> None:
+    call_command("seed_miner_patterns")
+    url = reverse("admin:asteroid_lab_geneticsample_changelist")
+    response = staff_client.get(url)
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert "Catalog rank" in html
+    assert "Difficulty" in html
+    assert "Score" in html
 
 
 @pytest.mark.django_db

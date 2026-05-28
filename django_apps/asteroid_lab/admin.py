@@ -198,14 +198,14 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         info = self.model._meta.app_label, self.model._meta.model_name
         return [
             path(
-                "seed-exhaustive-samples/",
-                self.admin_site.admin_view(self.seed_exhaustive_samples_view),
-                name=f"{info[0]}_{info[1]}_seed_exhaustive_samples",
+                "seed-miner-patterns/",
+                self.admin_site.admin_view(self.seed_miner_patterns_view),
+                name=f"{info[0]}_{info[1]}_seed_miner_patterns",
             ),
             *super().get_urls(),
         ]
 
-    def seed_exhaustive_samples_view(self, request):
+    def seed_miner_patterns_view(self, request):
         changelist_url = reverse("admin:asteroid_lab_geneticsample_changelist")
         if not self.has_change_permission(request):
             raise PermissionDenied
@@ -213,13 +213,13 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         if request.method != "POST":
             self.message_user(
                 request,
-                "목록 상단 버튼으로 전수 샘플 시드를 실행하세요.",
+                "목록 상단 버튼으로 miner seed 패턴 시드를 실행하세요.",
                 level=messages.INFO,
             )
             return redirect(changelist_url)
 
         dry_run = request.POST.get("dry_run") == "on"
-        delete_stale = request.POST.get("delete_stale_generated") == "on"
+        replace_stale = request.POST.get("replace_stale") == "on"
         out = StringIO()
         cmd_kwargs: dict[str, object] = {
             "verbosity": 1,
@@ -227,11 +227,11 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         }
         if dry_run:
             cmd_kwargs["dry_run"] = True
-        if delete_stale:
-            cmd_kwargs["delete_stale_generated"] = True
+        if replace_stale:
+            cmd_kwargs["replace_stale"] = True
 
         try:
-            call_command("seed_exhaustive_sample_genes", **cmd_kwargs)
+            call_command("seed_miner_patterns", **cmd_kwargs)
         except CommandError as exc:
             self.message_user(request, str(exc), level=messages.ERROR)
             return redirect(changelist_url)
@@ -247,9 +247,9 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         else:
             tail = output.splitlines()[-1] if output else "시드 완료."
             self.message_user(request, tail, level=messages.SUCCESS)
-            if delete_stale and "deleted stale" in output:
+            if replace_stale and "deleted stale exhaustive" in output:
                 for line in output.splitlines():
-                    if "deleted stale" in line:
+                    if "deleted stale exhaustive" in line:
                         self.message_user(request, line.strip(), level=messages.WARNING)
         return redirect(changelist_url)
 

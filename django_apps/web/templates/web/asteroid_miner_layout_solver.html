@@ -138,7 +138,7 @@
     </div>
 
     <main class="grid gap-5 p-6 xl:grid-cols-[320px_1fr_360px]">
-      <section class="space-y-5">
+      <section class="flex min-h-0 flex-col gap-5 xl:min-h-[calc(100dvh-10rem)]">
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
           <div class="p-4">
             <div class="flex items-center justify-between">
@@ -282,6 +282,39 @@
             </div>
           </div>
         </div>
+
+        <div class="mt-auto rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
+          <div class="p-4">
+            <div class="flex items-center justify-between">
+              <h2 class="font-semibold">Evolution Runs</h2>
+              <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+              </svg>
+            </div>
+            <div id="lab-evolution-runs-list" class="mt-4 max-h-64 space-y-3 overflow-y-auto">
+              {% for r in runs %}
+                <button
+                  type="button"
+                  data-lab-run-id="{{ r.id }}"
+                  class="w-full rounded-xl border p-3 text-left transition {% if r.status == 'failed' %}{% if forloop.first %}border-rose-500/80 bg-rose-950/40{% else %}border-rose-800/80 bg-rose-950/20 hover:border-rose-700{% endif %}{% elif forloop.first %}border-cyan-500 bg-cyan-500/10{% else %}border-slate-800 bg-slate-900 hover:border-slate-700{% endif %}"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="font-medium">Run #{{ r.id }}</div>
+                    <div class="text-sm {% if r.status == 'failed' %}text-rose-300{% else %}text-cyan-300{% endif %} lab-run-list-headline">
+                      {% if r.status == 'failed' %}validation failed{% else %}Run #{{ r.id }}{% endif %}
+                    </div>
+                  </div>
+                  <div class="mt-2 text-xs text-slate-400 lab-run-list-subtitle" data-lab-run-subtitle-id="{{ r.id }}">—</div>
+                  {% if r.first_issue_code %}
+                    <p class="mt-2 truncate text-xs text-rose-300/90" title="{{ r.first_issue_code }}">{{ r.first_issue_code }}</p>
+                  {% endif %}
+                </button>
+              {% empty %}
+                <p class="text-sm text-slate-500">No runs</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="space-y-5">
@@ -404,46 +437,12 @@
                 </div>
                 <div class="font-mono text-cyan-300" id="lab-computation-cycle">computation_cycle #{{ initial_frame }}</div>
               </div>
-              {% include "web/partials/lab_stat_cards.html" %}
             </div>
           </div>
         </div>
       </section>
 
       <section class="space-y-5">
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-          <div class="p-4">
-            <div class="flex items-center justify-between">
-              <h2 class="font-semibold">Evolution Runs</h2>
-              <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-              </svg>
-            </div>
-            <div id="lab-evolution-runs-list" class="mt-4 space-y-3">
-              {% for r in runs %}
-                <button
-                  type="button"
-                  data-lab-run-id="{{ r.id }}"
-                  class="w-full rounded-xl border p-3 text-left transition {% if r.status == 'failed' %}{% if forloop.first %}border-rose-500/80 bg-rose-950/40{% else %}border-rose-800/80 bg-rose-950/20 hover:border-rose-700{% endif %}{% elif forloop.first %}border-cyan-500 bg-cyan-500/10{% else %}border-slate-800 bg-slate-900 hover:border-slate-700{% endif %}"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="font-medium">Run #{{ r.id }}</div>
-                    <div class="text-sm {% if r.status == 'failed' %}text-rose-300{% else %}text-cyan-300{% endif %} lab-run-list-headline">
-                      {% if r.status == 'failed' %}validation failed{% else %}Run #{{ r.id }}{% endif %}
-                    </div>
-                  </div>
-                  <div class="mt-2 text-xs text-slate-400 lab-run-list-subtitle" data-lab-run-subtitle-id="{{ r.id }}">—</div>
-                  {% if r.first_issue_code %}
-                    <p class="mt-2 truncate text-xs text-rose-300/90" title="{{ r.first_issue_code }}">{{ r.first_issue_code }}</p>
-                  {% endif %}
-                </button>
-              {% empty %}
-                <p class="text-sm text-slate-500">No runs</p>
-              {% endfor %}
-            </div>
-          </div>
-        </div>
-
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
           <div class="p-4">
             <div class="flex items-center gap-2">
@@ -455,9 +454,9 @@
               </svg>
               <h2 class="font-semibold">Selected Run Detail</h2>
             </div>
-            <div class="mt-4 rounded-xl bg-slate-900 p-4">
+            <div class="mt-4 space-y-3">
               <div class="flex flex-wrap items-center gap-2">
-                <div id="lab-detail-run-id" class="text-sm font-medium">
+                <div id="lab-detail-run-id" class="text-sm font-medium text-slate-100">
                   {% if initial_lab_run %}Run #{{ initial_lab_run.id }}{% else %}—{% endif %}
                 </div>
                 <span
@@ -465,12 +464,14 @@
                   class="hidden"
                   aria-label="{% trans 'RTTP ops slug class' %}"
                 ></span>
+                <span
+                  id="lab-detail-status"
+                  class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300"
+                >—</span>
               </div>
-              <div class="mt-3 space-y-2 text-sm text-slate-400">
-                <div class="flex justify-between"><span>Status</span><span id="lab-detail-status" class="text-slate-100">—</span></div>
-              </div>
+              <p id="lab-detail-stack-status" class="hidden font-mono text-xs text-cyan-300/90"></p>
             </div>
-            {% include "web/partials/lab_run_detail_panels.html" %}
+            {% include "web/partials/lab_layer_summaries.html" %}
           </div>
         </div>
       </section>

@@ -6,6 +6,10 @@ import pytest
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
+from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_01_RECONSTRUCTION,
+    LAYER_05_COMMIT_VALIDATE,
+)
 from django_apps.asteroid_lab.reconstruction.complete_map import (
     build_reconstruction_complete_map,
     overlay_field_cell_count,
@@ -84,6 +88,63 @@ def test_lab_run_summary_capacity_fields_partial() -> None:
     assert row["capacity_deficit_count"] == 78
     assert row["throughput_deficit_count"] == 0
     assert row["placed"] == 6
+
+
+def test_lab_run_summary_layer_summaries_ordered_l1_through_l5() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=99,
+        status="completed",
+        solver_summary={
+            "validation_passed": True,
+            "confirmed_count": 1,
+            "reconstruction_observability": {
+                "display_cell_count": 120,
+                "asteroid_field_cell_count": 8,
+                "shape_field_cell_count": 8,
+                "fluid_field_cell_count": 0,
+                "primary_resource_kind": "shape",
+                "quality_tier": "CONFIDENT_RECONSTRUCTION",
+                "confidence_score": "0.9400",
+            },
+            "reconstruction_capacity": {
+                "capacity_basis": "terrain_upper_bound",
+                "primary_resource_kind": "shape",
+                "by_resource": {
+                    "shape": {
+                        "max_throughput_per_min": "960.0000",
+                        "output_unit": "shapes_per_min",
+                        "capacity_upper_bound_platform_count": 8,
+                        "source_kind": "CANON_MANUAL",
+                    },
+                    "fluid": {
+                        "max_throughput_per_min": "0.0000",
+                        "output_unit": "L_per_min",
+                        "capacity_upper_bound_platform_count": 0,
+                        "source_kind": "CANON_MANUAL",
+                    },
+                },
+            },
+            "actual_committed_output_per_min": "480.0000",
+            "throughput_target_percent": 60,
+            "target_throughput_per_min": "576.0000",
+            "throughput_budget_satisfied": True,
+            "stack_run_status": "success",
+            "completed_layer_slugs": [
+                LAYER_01_RECONSTRUCTION,
+                LAYER_05_COMMIT_VALIDATE,
+            ],
+            "failed_layer_slug": None,
+        },
+    )
+    summaries = row["layer_summaries"]
+    assert len(summaries) == 5
+    assert summaries[0]["layer_slug"] == LAYER_01_RECONSTRUCTION
+    assert summaries[0]["layer_index"] == 1
+    assert summaries[0]["outcome"] == "completed"
+    assert any(h["label"] == "Quality tier" for h in summaries[0]["highlights"])
+    assert summaries[4]["layer_slug"] == LAYER_05_COMMIT_VALIDATE
+    assert summaries[4]["outcome"] == "completed"
+    assert row["stack_run_status"] == "success"
 
 
 def test_lab_run_summary_nested_capacity_from_solver_summary() -> None:

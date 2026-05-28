@@ -2061,362 +2061,127 @@
       return theorPart + " | " + committedPart + " | " + (tier !== dash ? tier : dash);
     }
 
-    function updateLabStatCards(run) {
-      const dash = labUiDash();
-      const set = function (id, text) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = text != null ? String(text) : dash;
-      };
-      if (!run || typeof run !== "object") {
-        set("lab-card-theoretical-max-value", dash);
-        set("lab-card-resource-capacity-value", dash);
-        set("lab-card-footprint-value", dash);
-        set("lab-card-reconstruction-quality-value", dash);
-        set("lab-card-rttp-committed-value", dash);
-        set("lab-card-rttp-committed-sub", dash);
-        return;
+    function layerOutcomeBadgeClass(outcome) {
+      if (outcome === "completed") {
+        return "text-emerald-400 border-emerald-800/80";
       }
-      const cap = run.capacity && typeof run.capacity === "object" ? run.capacity : {};
-      const rec =
-        run.reconstruction && typeof run.reconstruction === "object" ? run.reconstruction : {};
-      const rttp = run.rttp && typeof run.rttp === "object" ? run.rttp : {};
-      const primary =
-        cap.primary_resource_kind != null && cap.primary_resource_kind !== dash
-          ? String(cap.primary_resource_kind)
-          : rec.primary_resource_kind != null && rec.primary_resource_kind !== dash
-            ? String(rec.primary_resource_kind)
-            : "shape";
-      const headline =
-        primary === "fluid"
-          ? formatCompactNumber(cap.fluid_max_throughput_per_min)
-          : formatCompactNumber(cap.reconstruction_max_throughput_per_min);
-      set("lab-card-theoretical-max-value", headline);
-      const primaryLabel =
-        primary === "fluid"
-          ? typeof shapezUiT === "function"
-            ? shapezUiT("terrain upper bound (fluid)")
-            : "terrain upper bound (fluid)"
-          : typeof shapezUiT === "function"
-            ? shapezUiT("terrain upper bound (shape)")
-            : "terrain upper bound (shape)";
-      set("lab-card-theoretical-max-sub", primaryLabel);
-      const shapeN = formatCompactNumber(cap.shape_max_throughput_per_min);
-      const fluidN = formatCompactNumber(cap.fluid_max_throughput_per_min);
-      const shapePlatforms = cap.shape_platform_count;
-      const fluidPlatforms = cap.fluid_platform_count;
-      const shapeLabel = typeof shapezUiT === "function" ? shapezUiT("Shape") : "Shape";
-      const fluidLabel = typeof shapezUiT === "function" ? shapezUiT("Fluid") : "Fluid";
-      const resourceLines = [];
-      if (shapeN !== dash) {
-        resourceLines.push(
-          shapeLabel + " " + shapeN + " (" + String(shapePlatforms != null ? shapePlatforms : 0) + ")",
-        );
+      if (outcome === "failed") {
+        return "text-rose-400 border-rose-800/80";
       }
-      if (fluidPlatforms === 0 || fluidPlatforms === "0") {
-        resourceLines.push(fluidLabel + " 0");
-      } else if (fluidN !== dash) {
-        resourceLines.push(fluidLabel + " " + fluidN + " (" + String(fluidPlatforms) + ")");
+      if (outcome === "skipped_budget") {
+        return "text-amber-400 border-amber-800/80";
       }
-      set("lab-card-resource-capacity-value", resourceLines.length ? resourceLines.join(" · ") : dash);
-      const fieldCells =
-        rec.asteroid_field_cell_count != null
-          ? rec.asteroid_field_cell_count
-          : rec.confirmed_cell_count != null
-            ? rec.confirmed_cell_count
-            : rec.mineable_cell_count;
-      const displayCells = rec.display_cell_count;
-      set(
-        "lab-card-footprint-value",
-        fieldCells !== dash && displayCells !== dash && fieldCells != null && displayCells != null
-          ? String(fieldCells) + " / " + String(displayCells)
-          : dash,
-      );
-      const tierShort = rec.quality_tier_short;
-      const conf = rec.confidence_score;
-      set(
-        "lab-card-reconstruction-quality-value",
-        tierShort != null && tierShort !== dash
-          ? String(tierShort) + " · " + (conf != null ? String(conf) : dash)
-          : dash,
-      );
-      const tt =
-        run.throughput_target && typeof run.throughput_target === "object"
-          ? run.throughput_target
-          : {};
-      const count = rttp.confirmed_count;
-      const placementLabel =
-        typeof shapezUiT === "function" ? shapezUiT("placement(s)") : "placement(s)";
-      const perMinLabel = typeof shapezUiT === "function" ? shapezUiT("/min") : "/min";
-      const actualAvailable =
-        rttp.actual_output_status === "available" && rttp.actual_committed_output_per_min != null;
-      const actualRate = actualAvailable
-        ? formatCompactNumber(rttp.actual_committed_output_per_min)
-        : dash;
-      const budgetStatus =
-        tt.budget_status != null && tt.budget_status !== dash ? String(tt.budget_status) : "";
-      const hasBudgetChip = budgetStatus === "satisfied" || budgetStatus === "shortfall";
-      if (actualAvailable) {
-        set("lab-card-rttp-committed-value", actualRate + perMinLabel);
-      } else {
-        set(
-          "lab-card-rttp-committed-value",
-          count != null && count !== dash ? String(count) + " " + placementLabel : dash,
-        );
-      }
-      if (hasBudgetChip) {
-        const pct =
-          tt.throughput_target_percent != null && tt.throughput_target_percent !== dash
-            ? String(tt.throughput_target_percent)
-            : dash;
-        const targetTp =
-          tt.target_throughput_per_min != null && tt.target_throughput_per_min !== dash
-            ? formatCompactNumber(tt.target_throughput_per_min)
-            : dash;
-        const targetLabel =
-          typeof shapezUiT === "function" ? shapezUiT("Target") : "Target";
-        const subLine =
-          targetLabel +
-          " " +
-          pct +
-          "% · " +
-          actualRate +
-          " / " +
-          targetTp +
-          perMinLabel;
-        set("lab-card-rttp-committed-sub", subLine);
-      } else if (rttp.actual_output_status === "pending_pr_2b") {
-        set(
-          "lab-card-rttp-committed-sub",
-          typeof shapezUiT === "function"
-            ? shapezUiT("actual output pending")
-            : "actual output pending",
-        );
-      } else if (actualAvailable) {
-        set("lab-card-rttp-committed-sub", actualRate + perMinLabel);
-      } else {
-        const unavailableLabel =
-          typeof shapezUiT === "function"
-            ? shapezUiT("actual output unavailable")
-            : "actual output unavailable";
-        set("lab-card-rttp-committed-sub", unavailableLabel);
-      }
-      const chipEl = document.getElementById("lab-card-rttp-committed-chip");
-      if (chipEl) {
-        if (budgetStatus === "satisfied") {
-          chipEl.textContent =
-            typeof shapezUiT === "function" ? shapezUiT("Target satisfied") : "Target satisfied";
-          chipEl.className = "mt-1 text-xs font-medium text-emerald-400";
-          chipEl.classList.remove("hidden");
-        } else if (budgetStatus === "shortfall") {
-          const shortfall =
-            tt.throughput_shortfall_per_min != null && tt.throughput_shortfall_per_min !== dash
-              ? formatCompactNumber(tt.throughput_shortfall_per_min)
-              : dash;
-          const shortLabel =
-            typeof shapezUiT === "function" ? shapezUiT("Short by") : "Short by";
-          chipEl.textContent = shortLabel + " " + shortfall + perMinLabel;
-          chipEl.className = "mt-1 text-xs font-medium text-amber-400";
-          chipEl.classList.remove("hidden");
-        } else {
-          chipEl.textContent = "";
-          chipEl.classList.add("hidden");
-        }
-      }
+      return "text-slate-500 border-slate-700";
     }
 
-    function updateLabDetailPanels(run) {
+    function formatLayerOutcomeLabel(outcome) {
       const dash = labUiDash();
-      const set = function (id, text) {
-        const el = document.getElementById(id);
-        if (el) el.textContent = text != null ? String(text) : dash;
+      if (outcome == null || outcome === "" || outcome === dash) {
+        return dash;
+      }
+      const key = String(outcome);
+      const msgidByOutcome = {
+        completed: "completed",
+        failed: "failed",
+        skipped_budget: "skipped (budget)",
+        pending: "pending",
       };
-      if (!run || typeof run !== "object") {
-        [
-          "lab-detail-rec-quality",
-          "lab-detail-rec-confidence",
-          "lab-detail-rec-primary",
-          "lab-detail-rec-display-cells",
-          "lab-detail-rec-field-total",
-          "lab-detail-rec-shape-field",
-          "lab-detail-rec-fluid-field",
-          "lab-detail-rec-ambiguous",
-          "lab-detail-rec-void",
-          "lab-detail-cap-shape",
-          "lab-detail-cap-fluid",
-          "lab-detail-cap-platform",
-          "lab-detail-cap-source",
-          "lab-detail-cap-basis",
-          "lab-detail-rttp-confirmed",
-          "lab-detail-rttp-validation",
-          "lab-detail-rttp-candidates",
-          "lab-detail-rttp-commit-order",
-          "lab-detail-rttp-output",
-          "lab-detail-tt-percent",
-          "lab-detail-tt-target",
-          "lab-detail-tt-utilization",
-          "lab-detail-tt-budget",
-          "lab-detail-tt-shortfall",
-          "lab-detail-first-issue",
-          "lab-detail-issue-coord",
-          "lab-detail-issue-candidate",
-          "lab-detail-issue-reservation",
-          "lab-detail-issue-message",
-        ].forEach(function (id) {
-          set(id, dash);
-        });
+      const msgid = msgidByOutcome[key] || key.replace(/_/g, " ");
+      return typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
+    }
+
+    function renderLabLayerSummaries(run) {
+      const root = document.getElementById("lab-layer-summaries");
+      const stackEl = document.getElementById("lab-detail-stack-status");
+      const dash = labUiDash();
+      if (stackEl) {
+        const stackStatus =
+          run && run.stack_run_status != null && run.stack_run_status !== dash
+            ? String(run.stack_run_status)
+            : "";
+        if (stackStatus) {
+          stackEl.textContent = "stack: " + stackStatus;
+          stackEl.classList.remove("hidden");
+        } else {
+          stackEl.textContent = "";
+          stackEl.classList.add("hidden");
+        }
+      }
+      if (!root) return;
+      root.replaceChildren();
+      if (!run || !Array.isArray(run.layer_summaries) || !run.layer_summaries.length) {
+        const empty = document.createElement("p");
+        empty.id = "lab-layer-summaries-placeholder";
+        empty.className = "text-sm text-slate-500";
+        empty.textContent = dash;
+        root.appendChild(empty);
         return;
       }
-      const rec =
-        run.reconstruction && typeof run.reconstruction === "object" ? run.reconstruction : {};
-      const cap = run.capacity && typeof run.capacity === "object" ? run.capacity : {};
-      const rttp = run.rttp && typeof run.rttp === "object" ? run.rttp : {};
-      const tt =
-        run.throughput_target && typeof run.throughput_target === "object"
-          ? run.throughput_target
-          : {};
-      set("lab-detail-rec-quality", rec.quality_tier);
-      set("lab-detail-rec-confidence", rec.confidence_score);
-      set("lab-detail-rec-primary", rec.primary_resource_kind);
-      set("lab-detail-rec-display-cells", rec.display_cell_count);
-      set(
-        "lab-detail-rec-field-total",
-        rec.asteroid_field_cell_count != null
-          ? rec.asteroid_field_cell_count
-          : rec.confirmed_cell_count != null
-            ? rec.confirmed_cell_count
-            : rec.mineable_cell_count,
-      );
-      set(
-        "lab-detail-rec-shape-field",
-        rec.shape_field_cell_count != null
-          ? rec.shape_field_cell_count
-          : rec.shape_confirmed_cell_count,
-      );
-      set(
-        "lab-detail-rec-fluid-field",
-        rec.fluid_field_cell_count != null
-          ? rec.fluid_field_cell_count
-          : rec.fluid_confirmed_cell_count,
-      );
-      set("lab-detail-rec-ambiguous", rec.ambiguous_cell_count);
-      set("lab-detail-rec-void", rec.external_void_cell_count);
-      set(
-        "lab-detail-cap-shape",
-        formatThroughputDetail(cap.shape_max_throughput_per_min, cap.shape_output_unit),
-      );
-      set(
-        "lab-detail-cap-fluid",
-        formatThroughputDetail(cap.fluid_max_throughput_per_min, cap.fluid_output_unit),
-      );
-      set(
-        "lab-detail-cap-platform",
-        (cap.shape_platform_count != null ? "shape " + cap.shape_platform_count : "") +
-          (cap.fluid_platform_count != null
-            ? " · fluid " + cap.fluid_platform_count
-            : ""),
-      );
-      set("lab-detail-cap-source", cap.extraction_rule_source);
-      set("lab-detail-cap-basis", cap.capacity_basis);
-      set("lab-detail-rttp-confirmed", rttp.confirmed_count);
-      set(
-        "lab-detail-rttp-validation",
-        rttp.validation_passed === true ? "passed" : rttp.validation_passed === false ? "failed" : dash,
-      );
-      set("lab-detail-rttp-candidates", rttp.candidate_count);
-      set("lab-detail-rttp-commit-order", rttp.commit_order_preview);
-      set(
-        "lab-detail-rttp-output",
-        rttp.actual_output_status === "pending_pr_2b"
-          ? typeof shapezUiT === "function"
-            ? shapezUiT("actual output pending")
-            : "actual output pending"
-          : rttp.actual_committed_output_per_min != null
-            ? String(rttp.actual_committed_output_per_min)
-            : dash,
-      );
-      const pctVal =
-        tt.throughput_target_percent != null && tt.throughput_target_percent !== dash
-          ? String(tt.throughput_target_percent) + "%"
-          : dash;
-      set("lab-detail-tt-percent", pctVal);
-      set(
-        "lab-detail-tt-target",
-        tt.target_throughput_per_min != null && tt.target_throughput_per_min !== dash
-          ? String(tt.target_throughput_per_min)
-          : dash,
-      );
-      const actualUtil =
-        tt.actual_utilization_ratio != null && tt.actual_utilization_ratio !== dash
-          ? tt.actual_utilization_ratio
-          : dash;
-      const maxTp =
-        tt.reconstruction_max_throughput_per_min != null &&
-        tt.reconstruction_max_throughput_per_min !== dash
-          ? tt.reconstruction_max_throughput_per_min
-          : cap.reconstruction_max_throughput_per_min;
-      const actualOut =
-        tt.actual_committed_output_per_min != null && tt.actual_committed_output_per_min !== dash
-          ? tt.actual_committed_output_per_min
-          : rttp.actual_committed_output_per_min;
-      if (actualOut != null && actualOut !== dash && maxTp != null && maxTp !== dash) {
-        set(
-          "lab-detail-tt-utilization",
-          String(actualOut) + " / " + String(maxTp) + " (" + String(actualUtil) + ")",
-        );
-      } else {
-        set("lab-detail-tt-utilization", dash);
-      }
-      const budgetStatus =
-        tt.budget_status != null && tt.budget_status !== dash ? String(tt.budget_status) : dash;
-      set("lab-detail-tt-budget", budgetStatus);
-      if (budgetStatus === "shortfall") {
-        set(
-          "lab-detail-tt-shortfall",
-          tt.throughput_shortfall_per_min != null && tt.throughput_shortfall_per_min !== dash
-            ? String(tt.throughput_shortfall_per_min)
-            : dash,
-        );
-      } else {
-        set("lab-detail-tt-shortfall", dash);
-      }
-      const firstIssueRaw =
-        run.first_issue_code != null && run.first_issue_code !== ""
-          ? String(run.first_issue_code)
-          : Array.isArray(run.issue_codes) && run.issue_codes.length
-            ? String(run.issue_codes[0])
-            : "";
-      set(
-        "lab-detail-first-issue",
-        firstIssueRaw !== "" ? formatLabIssueCodeLabel(firstIssueRaw, run) : dash,
-      );
-      const detail = run.first_issue_detail;
-      if (detail && typeof detail === "object") {
-        set(
-          "lab-detail-issue-coord",
-          detail.coord != null && Array.isArray(detail.coord)
-            ? "[" + detail.coord.join(", ") + "]"
-            : dash,
-        );
-        set(
-          "lab-detail-issue-candidate",
-          detail.candidate_id != null && detail.candidate_id !== "" ? String(detail.candidate_id) : dash,
-        );
-        set(
-          "lab-detail-issue-reservation",
-          detail.route_reservation_id != null && detail.route_reservation_id !== ""
-            ? String(detail.route_reservation_id)
-            : dash,
-        );
-        set(
-          "lab-detail-issue-message",
-          detail.message != null && detail.message !== "" ? String(detail.message) : dash,
-        );
-      } else {
-        set("lab-detail-issue-coord", dash);
-        set("lab-detail-issue-candidate", dash);
-        set("lab-detail-issue-reservation", dash);
-        set("lab-detail-issue-message", dash);
-      }
+      run.layer_summaries.forEach(function (layer) {
+        if (!layer || typeof layer !== "object") return;
+        const card = document.createElement("article");
+        card.className = "rounded-xl border border-slate-800 bg-slate-900/80 p-3";
+        card.setAttribute("role", "listitem");
+        if (layer.layer_slug) {
+          card.setAttribute("data-lab-layer-slug", String(layer.layer_slug));
+        }
+
+        const head = document.createElement("div");
+        head.className = "flex items-start justify-between gap-2";
+
+        const titleWrap = document.createElement("div");
+        titleWrap.className = "min-w-0";
+        const title = document.createElement("h3");
+        title.className = "text-sm font-medium text-slate-100";
+        const layerIndex = layer.layer_index != null ? String(layer.layer_index) : "?";
+        const layerTitle = layer.title != null ? String(layer.title) : dash;
+        title.textContent = "L" + layerIndex + " · " + layerTitle;
+        titleWrap.appendChild(title);
+        if (layer.layer_slug) {
+          const slugLine = document.createElement("p");
+          slugLine.className = "mt-0.5 truncate font-mono text-xs text-slate-500";
+          slugLine.textContent = String(layer.layer_slug);
+          titleWrap.appendChild(slugLine);
+        }
+
+        const badge = document.createElement("span");
+        const outcome = layer.outcome != null ? String(layer.outcome) : dash;
+        badge.className =
+          "shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium " +
+          layerOutcomeBadgeClass(outcome);
+        badge.textContent = formatLayerOutcomeLabel(outcome);
+
+        head.appendChild(titleWrap);
+        head.appendChild(badge);
+        card.appendChild(head);
+
+        const highlights = Array.isArray(layer.highlights) ? layer.highlights : [];
+        const dl = document.createElement("dl");
+        dl.className = "mt-2 space-y-1 text-sm";
+        highlights.forEach(function (row) {
+          if (!row || typeof row !== "object") return;
+          let val = row.value != null ? String(row.value) : dash;
+          if (row.label === "First issue" && val !== dash) {
+            val = formatLabIssueCodeLabel(val, run);
+          }
+          if (val === dash) return;
+          const line = document.createElement("div");
+          line.className = "flex justify-between gap-3 text-slate-400";
+          const dt = document.createElement("dt");
+          dt.className = "min-w-0 truncate";
+          dt.textContent = row.label != null ? String(row.label) : "";
+          const dd = document.createElement("dd");
+          dd.className = "shrink-0 text-right text-slate-100";
+          dd.textContent = val;
+          line.appendChild(dt);
+          line.appendChild(dd);
+          dl.appendChild(line);
+        });
+        if (dl.childElementCount > 0) {
+          card.appendChild(dl);
+        }
+        root.appendChild(card);
+      });
     }
 
     function setRunDetail(run) {
@@ -2427,8 +2192,7 @@
         const statusEl = document.getElementById("lab-detail-status");
         if (statusEl) statusEl.textContent = dash;
         updateOpsSlugBadge(null);
-        updateLabStatCards(null);
-        updateLabDetailPanels(null);
+        renderLabLayerSummaries(null);
         return;
       }
       const statusEl = document.getElementById("lab-detail-status");
@@ -2438,8 +2202,7 @@
       if (title) {
         title.textContent = run.id != null ? "Run #" + String(run.id) : dash;
       }
-      updateLabStatCards(run);
-      updateLabDetailPanels(run);
+      renderLabLayerSummaries(run);
     }
 
     function evolutionRunButtonClasses(run, selected) {

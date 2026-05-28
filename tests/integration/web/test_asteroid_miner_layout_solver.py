@@ -76,11 +76,11 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     g_overlay = content.index('id="lab-optimization-overlay-layer"', g_stage)
     assert g_grid < g_overlay
     map_footer = content.index('id="lab-map-footer"')
-    stat_card = content.index('id="lab-card-theoretical-max"')
-    replay_timeline = content.index("Replay Timeline")
+    replay_meta = content.index('id="lab-replay-metadata"', map_footer)
     assert map_footer > g_grid
-    assert stat_card > map_footer
-    assert stat_card > replay_timeline
+    assert replay_meta > map_footer
+    assert 'id="lab-layer-summaries"' in content
+    assert 'id="lab-card-theoretical-max"' not in content
 
 
 def test_asteroid_miner_layout_ignores_code_query_string() -> None:

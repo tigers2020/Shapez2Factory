@@ -5,6 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_01_RECONSTRUCTION,
+    LAYER_02_EXTERIOR_TRANSPORT,
+    LAYER_03_RIM_MINING_BUNDLES,
+    LAYER_04_INNER_PATTERN_FILL,
+    LAYER_05_COMMIT_VALIDATE,
+)
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
@@ -218,6 +225,209 @@ def _section_rttp(solver_summary: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _highlight(label: str, value: Any) -> dict[str, str]:
+    if value is None or value == "":
+        text = _PLACEHOLDER
+    else:
+        text = str(value)
+    return {"label": label, "value": text}
+
+
+def _layer_outcome(
+    *,
+    layer_slug: str,
+    stack_run_status: str | None,
+    completed_layer_slugs: frozenset[str],
+    failed_layer_slug: str | None,
+    legacy_outcome: str,
+) -> str:
+    if failed_layer_slug == layer_slug:
+        return "failed"
+    if layer_slug in completed_layer_slugs:
+        return "completed"
+    if stack_run_status == "timeout_fail_closed":
+        return "skipped_budget"
+    if stack_run_status is not None:
+        return "pending"
+    return legacy_outcome
+
+
+def _build_layer_summaries(
+    *,
+    solver_summary: dict[str, Any],
+    reconstruction: dict[str, Any],
+    capacity: dict[str, Any],
+    rttp: dict[str, Any],
+    throughput_target: dict[str, Any],
+    validation_passed: bool,
+    target_placement: Any,
+    capacity_deficit_count: Any,
+    confirmed: Any,
+    issue_codes: list[str],
+    first_issue_code: str | None,
+    macro_commit_summary: dict[str, Any] | None,
+    optimization_goal: dict[str, Any],
+) -> list[dict[str, Any]]:
+    stack_run_status_raw = solver_summary.get("stack_run_status")
+    stack_run_status = (
+        str(stack_run_status_raw) if stack_run_status_raw not in (None, "") else None
+    )
+    completed_raw = solver_summary.get("completed_layer_slugs")
+    completed_layer_slugs = frozenset(
+        str(s) for s in (completed_raw if isinstance(completed_raw, list) else ())
+    )
+    failed_raw = solver_summary.get("failed_layer_slug")
+    failed_layer_slug = str(failed_raw) if failed_raw not in (None, "") else None
+
+    rec_has_data = reconstruction.get("quality_tier") not in (None, _PLACEHOLDER, "")
+    l1_legacy = "completed" if rec_has_data else "pending"
+    l5_legacy = (
+        "completed"
+        if validation_passed
+        else "failed"
+        if issue_codes or first_issue_code
+        else "pending"
+    )
+
+    def outcome(slug: str, legacy: str) -> str:
+        return _layer_outcome(
+            layer_slug=slug,
+            stack_run_status=stack_run_status,
+            completed_layer_slugs=completed_layer_slugs,
+            failed_layer_slug=failed_layer_slug,
+            legacy_outcome=legacy,
+        )
+
+    pct = throughput_target.get("throughput_target_percent", _PLACEHOLDER)
+    target_tp = throughput_target.get("target_throughput_per_min", _PLACEHOLDER)
+    primary = capacity.get("primary_resource_kind", _PLACEHOLDER)
+    headline = (
+        capacity.get("fluid_max_throughput_per_min", _PLACEHOLDER)
+        if primary == "fluid"
+        else capacity.get("reconstruction_max_throughput_per_min", _PLACEHOLDER)
+    )
+
+    opt = optimization_goal or {}
+    macro = macro_commit_summary or {}
+
+    layers: list[tuple[int, str, str, str, list[dict[str, str]]]] = [
+        (
+            1,
+            LAYER_01_RECONSTRUCTION,
+            "Reconstruction",
+            outcome(LAYER_01_RECONSTRUCTION, l1_legacy),
+            [
+                _highlight("Quality tier", reconstruction.get("quality_tier_short")),
+                _highlight("Confidence", reconstruction.get("confidence_score")),
+                _highlight("Primary resource", reconstruction.get("primary_resource_kind")),
+                _highlight("Asteroid field cells", reconstruction.get("asteroid_field_cell_count")),
+                _highlight("Shape field cells", reconstruction.get("shape_field_cell_count")),
+                _highlight("Fluid field cells", reconstruction.get("fluid_field_cell_count")),
+                _highlight("Map cells (display)", reconstruction.get("display_cell_count")),
+            ],
+        ),
+        (
+            2,
+            LAYER_02_EXTERIOR_TRANSPORT,
+            "Exterior transport",
+            outcome(LAYER_02_EXTERIOR_TRANSPORT, "pending"),
+            [
+                _highlight("Terrain upper bound", headline),
+                _highlight("Shape max throughput", capacity.get("shape_max_throughput_per_min")),
+                _highlight("Fluid max throughput", capacity.get("fluid_max_throughput_per_min")),
+                _highlight("Platform upper bound", capacity.get("platform_upper_bound")),
+                _highlight("Target percent", pct if pct == _PLACEHOLDER else f"{pct}%"),
+                _highlight("Planning target", target_tp),
+                _highlight("Capacity basis", capacity.get("capacity_basis")),
+                _highlight("Rule source", capacity.get("extraction_rule_source")),
+            ],
+        ),
+        (
+            3,
+            LAYER_03_RIM_MINING_BUNDLES,
+            "Rim mining bundles",
+            outcome(LAYER_03_RIM_MINING_BUNDLES, "pending"),
+            [
+                _highlight("Target placements", target_placement),
+                _highlight("Route candidates", rttp.get("candidate_count")),
+                _highlight("Capacity deficit", capacity_deficit_count),
+                _highlight(
+                    "Mining equipment shortfall",
+                    opt.get("shortfall") if opt.get("passed") is False else _PLACEHOLDER,
+                ),
+                _highlight(
+                    "Confirmed mining cells",
+                    opt.get("confirmed_passed_mining_equipment_cells"),
+                ),
+            ],
+        ),
+        (
+            4,
+            LAYER_04_INNER_PATTERN_FILL,
+            "Inner pattern fill",
+            outcome(LAYER_04_INNER_PATTERN_FILL, "pending"),
+            [
+                _highlight("Macro-only mode", solver_summary.get("macro_only_mode")),
+                _highlight(
+                    "Macro commits",
+                    macro.get("committed_macro_count")
+                    if macro
+                    else _PLACEHOLDER,
+                ),
+                _highlight(
+                    "Macro placements",
+                    macro.get("placement_count") if macro else _PLACEHOLDER,
+                ),
+            ],
+        ),
+        (
+            5,
+            LAYER_05_COMMIT_VALIDATE,
+            "Commit & validate",
+            outcome(LAYER_05_COMMIT_VALIDATE, l5_legacy),
+            [
+                _highlight("Confirmed placements", rttp.get("confirmed_count")),
+                _highlight(
+                    "Validation",
+                    "passed"
+                    if rttp.get("validation_passed") is True
+                    else "failed"
+                    if rttp.get("validation_passed") is False
+                    else _PLACEHOLDER,
+                ),
+                _highlight("Commit order", rttp.get("commit_order_preview")),
+                _highlight(
+                    "Actual output",
+                    rttp.get("actual_committed_output_per_min")
+                    if rttp.get("actual_output_status") == "available"
+                    else _PLACEHOLDER,
+                ),
+                _highlight("Budget status", throughput_target.get("budget_status")),
+                _highlight(
+                    "Throughput shortfall",
+                    throughput_target.get("throughput_shortfall_per_min")
+                    if throughput_target.get("budget_status") == "shortfall"
+                    else _PLACEHOLDER,
+                ),
+                _highlight(
+                    "First issue",
+                    first_issue_code if first_issue_code else _PLACEHOLDER,
+                ),
+            ],
+        ),
+    ]
+    return [
+        {
+            "layer_index": index,
+            "layer_slug": slug,
+            "title": title,
+            "outcome": layer_outcome,
+            "highlights": highlights,
+        }
+        for index, slug, title, layer_outcome, highlights in layers
+    ]
+
+
 def lab_run_summary_from_solver_summary(
     *,
     run_id: int,
@@ -245,7 +455,19 @@ def lab_run_summary_from_solver_summary(
     throughput_deficit_count = solver_summary.get("throughput_deficit_count", _PLACEHOLDER)
     algorithm_steps = list(solver_summary.get("algorithm_steps") or [])
     macro_only_mode = solver_summary.get("macro_only_mode")
-    macro_commit_summary = solver_summary.get("macro_commit_summary")
+    macro_commit_summary_raw = solver_summary.get("macro_commit_summary")
+    macro_commit_summary = (
+        dict(macro_commit_summary_raw)
+        if isinstance(macro_commit_summary_raw, dict)
+        else None
+    )
+    optimization_goal = dict(solver_summary.get("optimization_goal") or {})
+    reconstruction = _section_reconstruction(
+        solver_summary.get("reconstruction_observability")
+    )
+    capacity = _section_capacity(solver_summary.get("reconstruction_capacity"))
+    rttp = _section_rttp(solver_summary)
+    throughput_target = _section_throughput_target(solver_summary)
     row: dict[str, Any] = {
         "id": str(run_id),
         "status": status,
@@ -276,19 +498,33 @@ def lab_run_summary_from_solver_summary(
         "belts": _PLACEHOLDER,
         "pipes": _PLACEHOLDER,
         "extension_cap": _PLACEHOLDER,
-        "reconstruction": _section_reconstruction(
-            solver_summary.get("reconstruction_observability")
-        ),
-        "capacity": _section_capacity(solver_summary.get("reconstruction_capacity")),
-        "rttp": _section_rttp(solver_summary),
-        "throughput_target": _section_throughput_target(solver_summary),
+        "reconstruction": reconstruction,
+        "capacity": capacity,
+        "rttp": rttp,
+        "throughput_target": throughput_target,
         "throughput_goal": dict(solver_summary.get("throughput_goal") or {}),
-        "optimization_goal": dict(solver_summary.get("optimization_goal") or {}),
+        "optimization_goal": optimization_goal,
         "run_status": solver_summary.get("run_status"),
         "structural_validation_passed": solver_summary.get("structural_validation_passed"),
+        "stack_run_status": solver_summary.get("stack_run_status", _PLACEHOLDER),
+        "layer_summaries": _build_layer_summaries(
+            solver_summary=solver_summary,
+            reconstruction=reconstruction,
+            capacity=capacity,
+            rttp=rttp,
+            throughput_target=throughput_target,
+            validation_passed=validation_passed,
+            target_placement=target_placement,
+            capacity_deficit_count=capacity_deficit_count,
+            confirmed=confirmed,
+            issue_codes=issue_codes,
+            first_issue_code=issue_codes[0] if issue_codes else None,
+            macro_commit_summary=macro_commit_summary,
+            optimization_goal=optimization_goal,
+        ),
     }
-    if isinstance(macro_commit_summary, dict) and macro_commit_summary:
-        row["macro_commit_summary"] = dict(macro_commit_summary)
+    if macro_commit_summary:
+        row["macro_commit_summary"] = macro_commit_summary
     return row
 
 

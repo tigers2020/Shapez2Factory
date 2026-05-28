@@ -413,7 +413,7 @@
                     <p id="lab-macro-commit-hud" class="mt-1 hidden font-mono text-xs text-emerald-300/90">—</p>
                     <p id="lab-gene-catalog-hud" class="mt-1 font-mono text-xs text-slate-500">
                       {% if gene_template_catalog.needs_seed %}
-                        genes: DB empty — run seed_exhaustive_sample_genes
+                        genes: DB empty — run seed_miner_patterns
                       {% else %}
                         genes: DB {{ gene_template_catalog.db_gene_count }} ({{ gene_template_catalog.generator_version }})
                       {% endif %}

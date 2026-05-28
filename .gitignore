@@ -27,6 +27,7 @@ lib64/
 parts/
 sdist/
 var/
+!var/default_miner_pattern.txt
 wheels/
 share/python-wheels/
 *.egg-info/

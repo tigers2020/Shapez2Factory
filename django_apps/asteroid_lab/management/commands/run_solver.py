@@ -1,4 +1,4 @@
-"""CLI entry for RTTP solver runtime (same service path as HTTP run-solver)."""
+"""CLI entry for solver runtime stub (same service path as HTTP run-solver)."""
 
 from __future__ import annotations
 
@@ -25,16 +25,12 @@ from django_apps.asteroid_lab.services.solver_runtime_entry import (
     run_solver_runtime_for_project,
 )
 from django_apps.asteroid_lab.services.throughput_target import parse_throughput_target_percent
-from django_apps.game_data.snapshots.errors import SnapshotBuildError
-from django_apps.web.services.asteroid_game_data_snapshot import (
-    build_asteroid_game_data_snapshot_with_provenance,
-)
 
 
 class Command(BaseCommand):  # type: ignore[misc]
     help = (
-        "Run RTTP solver for one Asteroid Lab project slug "
-        "(mirrors POST run-solver; output-only summary on stdout)."
+        "Invoke solver runtime entry for one Asteroid Lab project slug "
+        "(PR-A stub: always SOLVER_NOT_AVAILABLE; mirrors POST run-solver)."
     )
 
     def add_arguments(self, parser: Any) -> None:
@@ -108,11 +104,6 @@ class Command(BaseCommand):  # type: ignore[misc]
         if inp is None:
             raise CommandError(f"Project {slug!r} has no map input.")
 
-        try:
-            game_data_build = build_asteroid_game_data_snapshot_with_provenance()
-        except SnapshotBuildError as exc:
-            raise CommandError(f"game_data snapshot failed: {exc.code.value}") from exc
-
         config: dict[str, Any] = {}
         selection_mode = options.get("selection_mode")
         if options["macro_only"] and options["deferred_retry_execute"]:
@@ -172,9 +163,6 @@ class Command(BaseCommand):  # type: ignore[misc]
             int(project.pk),
             run_key=str(run_key).strip() if run_key else None,
             config=config or None,
-            game_data_snapshot=game_data_build.snapshot,
-            game_data_provenance=game_data_build.provenance,
-            catalog_slice=game_data_build.catalog_slice,
         )
         body = entry_result_to_json_dict(result)
 

@@ -1,4 +1,4 @@
-"""POST run_solver — RTTP disabled stub or RTTP run (HTTP 200, never 500)."""
+"""POST run_solver — PR-A stub (HTTP 200 + SOLVER_NOT_AVAILABLE, never 500)."""
 
 from __future__ import annotations
 
@@ -23,6 +23,10 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
 from django_apps.asteroid_lab.services.solver_runtime_entry import SolverRuntimeEntryErrorCode
 
 pytestmark = pytest.mark.django_db
+
+_PR_A_RTTP_HTTP_STUB = pytest.mark.skip(
+    reason="PR-A decontamination: run_solver HTTP is stub-only until PR-B",
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -64,6 +68,7 @@ def _project_slug_via_create() -> str:
     return str(proj.slug)
 
 
+@_PR_A_RTTP_HTTP_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_run_solver_post_persists_provenance_on_solver_run(client: Client) -> None:
     proj = m.AsteroidProject.objects.create(name="ProvInt", slug="prov-int")
@@ -113,17 +118,21 @@ def test_run_solver_post_returns_solver_not_available_when_rttp_disabled(client:
 
 
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
-def test_run_solver_post_rttp_does_not_return_solver_not_available(client: Client) -> None:
+def test_run_solver_post_returns_solver_not_available_even_when_rttp_flag_true(
+    client: Client,
+) -> None:
     proj = m.AsteroidProject.objects.create(name="RunSolverRttp", slug="run-solver-rttp")
     create_copy_code_map_input(proj, _minimal_valid_copy())
     url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": proj.slug})
     response = client.post(url)
     assert response.status_code == 200
     data = response.json()
-    assert data.get("error_code") != SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE.value
-    assert data.get("solver_run_id") is not None
+    assert data["ok"] is False
+    assert data.get("error_code") == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE.value
+    assert data.get("solver_run_id") is None
 
 
+@_PR_A_RTTP_HTTP_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_run_solver_post_forwards_macro_only_config_json(client: Client) -> None:
     proj = m.AsteroidProject.objects.create(name="RunSolverMacro", slug="run-solver-macro-k")
@@ -148,6 +157,7 @@ def test_run_solver_post_forwards_macro_only_config_json(client: Client) -> None
     assert run.config_json.get(SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY) is True
 
 
+@_PR_A_RTTP_HTTP_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_run_solver_post_without_body_keeps_default_non_macro_config(client: Client) -> None:
     proj = m.AsteroidProject.objects.create(name="RunSolverDefault", slug="run-solver-default-k")

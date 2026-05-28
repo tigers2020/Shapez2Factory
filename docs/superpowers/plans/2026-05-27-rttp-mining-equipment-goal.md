@@ -1,5 +1,7 @@
 # RTTP Mining Equipment Goal — MEG-C1/C2 Implementation Plan
 
+> **DO NOT EXECUTE** — **SUSPENDED** by [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md). Historical reference only. MEG-C2 forbidden until RTTP runtime is explicitly re-opened by a new approved spec.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Implement honest mining equipment goal accounting (measurement + validation split). **MEG-C1/C2 success does not mean reaching 467** — it means a recovery-map run with ~25 pass-qualified equipment cells reports `optimization_goal.passed=false`, `validation_passed=false`, `run_status=partial_success`, and `shortfall` visible outside `layout_connectivity_issue_codes`.
@@ -8,8 +10,8 @@
 
 **Tech Stack:** Python 3.12+, Django `asteroid_lab`, pytest, ruff, mypy (`django_apps`).
 
-**Status:** **APPROVED (Plan Review Lead 2026-05-27)** — amendments below locked before implementation  
-**Execution mode:** **Subagent-Driven** (see [Execution phases](#execution-phases-subagent-driven))  
+**Status:** **SUSPENDED** — was APPROVED 2026-05-27; **DO NOT EXECUTE** (decontamination P0). Historical reference only.  
+**Execution mode:** **Subagent-Driven** (frozen — do not run until RTTP re-opened)  
 **Work classification:** contract change · implementation change  
 **Spec:** [`docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md`](../specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md)  
 **Scope:** **MEG-C1 + MEG-C2 only** (MEG-C3/C4 out of scope — do not start)  

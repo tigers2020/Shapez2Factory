@@ -27,6 +27,10 @@ from django_apps.asteroid_lab.services.solver_runtime_entry import SolverRuntime
 
 pytestmark = pytest.mark.django_db
 
+_PR_A_RTTP_CLI_STUB = pytest.mark.skip(
+    reason="PR-A decontamination: run_solver CLI is stub-only until PR-B",
+)
+
 
 @pytest.fixture(scope="module", autouse=True)
 def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
@@ -51,6 +55,7 @@ def _minimal_valid_copy() -> str:
     return f"SHAPEZ2-4-{b64}"
 
 
+@_PR_A_RTTP_CLI_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_run_solver_command_prints_summary_for_slug() -> None:
     proj = m.AsteroidProject.objects.create(name="CliRun", slug="cli-run-solver")
@@ -67,6 +72,7 @@ def test_run_solver_command_prints_summary_for_slug() -> None:
     assert run.config_json.get(SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY) is not True
 
 
+@_PR_A_RTTP_CLI_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_run_solver_command_macro_only_sets_config() -> None:
     proj = m.AsteroidProject.objects.create(name="CliMacro", slug="cli-run-macro")
@@ -89,6 +95,7 @@ def test_run_solver_command_macro_only_sets_config() -> None:
     assert (run.config_json or {}).get("solver_summary")
 
 
+@_PR_A_RTTP_CLI_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_run_solver_deferred_retry_execute_sets_config() -> None:
     proj = m.AsteroidProject.objects.create(name="CliDefer", slug="cli-run-defer-exec")
@@ -111,6 +118,7 @@ def test_run_solver_deferred_retry_execute_sets_config() -> None:
     assert run.config_json.get(SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY) is not True
 
 
+@_PR_A_RTTP_CLI_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_run_solver_deferred_retry_execute_json_stdout() -> None:
     proj = m.AsteroidProject.objects.create(name="CliDeferJson", slug="cli-run-defer-json")
@@ -132,6 +140,7 @@ def test_run_solver_deferred_retry_execute_json_stdout() -> None:
     assert "solver_summary" in body
 
 
+@_PR_A_RTTP_CLI_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_run_solver_selection_mode_evolution_sets_config() -> None:
     proj = m.AsteroidProject.objects.create(name="CliGa2", slug="cli-run-ga2-evolution")
@@ -245,6 +254,14 @@ def test_run_solver_command_unknown_slug_raises() -> None:
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=False)
 def test_run_solver_command_solver_not_available_raises() -> None:
     proj = m.AsteroidProject.objects.create(name="CliStub", slug="cli-run-stub")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    with pytest.raises(CommandError, match="SOLVER_NOT_AVAILABLE"):
+        call_command("run_solver", slug=proj.slug, stderr=StringIO())
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_run_solver_command_solver_not_available_raises_when_rttp_flag_true() -> None:
+    proj = m.AsteroidProject.objects.create(name="CliStubOn", slug="cli-run-stub-on")
     create_copy_code_map_input(proj, _minimal_valid_copy())
     with pytest.raises(CommandError, match="SOLVER_NOT_AVAILABLE"):
         call_command("run_solver", slug=proj.slug, stderr=StringIO())

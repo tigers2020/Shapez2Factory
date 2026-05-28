@@ -1,4 +1,4 @@
-"""Solver runtime entry — RTTP wire + disabled stub."""
+"""Solver runtime entry — stub path + historical RTTP tests (skipped post PR-A)."""
 
 from __future__ import annotations
 
@@ -38,6 +38,10 @@ from tests.unit.asteroid_lab._runtime_game_data import run_solver_runtime_with_p
 
 pytestmark = pytest.mark.django_db
 
+_PR_A_RTTP_ENTRY_STUB = pytest.mark.skip(
+    reason="PR-A: solver_runtime_entry stub-only until PR-B removes RTTP package",
+)
+
 
 def _minimal_valid_copy() -> str:
     payload = json.dumps(
@@ -62,6 +66,16 @@ def test_solver_runtime_entry_requires_map_input() -> None:
     result = run_solver_runtime_for_project(int(proj.pk))
     assert result.ok is False
     assert result.error_code == SolverRuntimeEntryErrorCode.NO_MAP_INPUT
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_solver_runtime_entry_returns_solver_not_available_even_when_rttp_flag_true() -> None:
+    proj = m.AsteroidProject.objects.create(name="Lab", slug="entry-stub-flag")
+    m.AsteroidMapInput.objects.create(project=proj, copy_code="SHAPEZ2-4-e30=")
+    result = run_solver_runtime_for_project(int(proj.pk), config={"rttp_enabled": True})
+    assert result.ok is False
+    assert result.error_code == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE
+    assert result.message == SOLVER_NOT_AVAILABLE_MESSAGE
 
 
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=False)
@@ -96,6 +110,7 @@ def _require_game_data_import_batch(imported_game_data_batch_module: object) -> 
     return imported_game_data_batch_module
 
 
+@_PR_A_RTTP_ENTRY_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_solver_runtime_entry_rttp_returns_solver_run_id() -> None:
     proj = m.AsteroidProject.objects.create(name="Rttp", slug="entry-rttp")
@@ -105,6 +120,7 @@ def test_solver_runtime_entry_rttp_returns_solver_run_id() -> None:
     assert result.error_code != SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE
 
 
+@_PR_A_RTTP_ENTRY_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_solver_runtime_entry_rttp_emits_catalog_footprint_metrics() -> None:
     proj = m.AsteroidProject.objects.create(name="FootprintMetrics", slug="entry-fp-metrics")
@@ -136,6 +152,7 @@ _SUMMARY_COMPARE_KEYS = (
 )
 
 
+@_PR_A_RTTP_ENTRY_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_rttp_runtime_solver_summary_unchanged_when_replay_persisted() -> None:
     """RTTP-RB1: DB replay frames must not change solver_summary scalars."""
@@ -167,6 +184,7 @@ def test_rttp_runtime_solver_summary_unchanged_when_replay_persisted() -> None:
     assert m.ReplayFrame.objects.filter(replay_track_id=lab_track.id).count() == 0
 
 
+@_PR_A_RTTP_ENTRY_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_entry_result_json_includes_optimization_milestone_section() -> None:
     proj = m.AsteroidProject.objects.create(name="MileJson", slug="mile-json")
@@ -196,6 +214,7 @@ def test_entry_result_json_includes_optimization_milestone_section() -> None:
     assert map_types.isdisjoint(RTTP_MILESTONE_EVENT_TYPES)
 
 
+@_PR_A_RTTP_ENTRY_STUB
 @pytest.mark.django_db
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_rttp_validation_failure_still_returns_optimization_milestones_section(
@@ -236,6 +255,7 @@ def test_rttp_validation_failure_still_returns_optimization_milestones_section(
     }
 
 
+@_PR_A_RTTP_ENTRY_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_rttp_run_persists_game_data_snapshot_provenance() -> None:
     build = build_asteroid_game_data_snapshot_with_provenance()
@@ -255,6 +275,7 @@ def test_rttp_run_persists_game_data_snapshot_provenance() -> None:
     assert parsed == build.provenance
 
 
+@_PR_A_RTTP_ENTRY_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_rttp_run_without_provenance_returns_provenance_incomplete() -> None:
     build = build_asteroid_game_data_snapshot_with_provenance()
@@ -271,6 +292,7 @@ def test_rttp_run_without_provenance_returns_provenance_incomplete() -> None:
     assert result.solver_run_id is None
 
 
+@_PR_A_RTTP_ENTRY_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_rttp_run_without_catalog_slice_returns_catalog_slice_required() -> None:
     build = build_asteroid_game_data_snapshot_with_provenance()
@@ -287,6 +309,7 @@ def test_rttp_run_without_catalog_slice_returns_catalog_slice_required() -> None
     assert result.solver_run_id is None
 
 
+@_PR_A_RTTP_ENTRY_STUB
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_rttp_run_catalog_slice_hash_mismatch() -> None:
     from dataclasses import replace

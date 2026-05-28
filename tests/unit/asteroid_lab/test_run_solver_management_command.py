@@ -36,7 +36,10 @@ def _minimal_valid_copy() -> str:
     return f"SHAPEZ2-4-{b64}"
 
 
-@override_settings(ASTEROID_LAB_RTTP_ENABLED=False)
+@override_settings(
+    ASTEROID_LAB_RTTP_ENABLED=False,
+    ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=False,
+)
 def test_run_solver_command_solver_not_available_raises() -> None:
     proj = m.AsteroidProject.objects.create(name="CliStub", slug="cli-run-stub")
     create_copy_code_map_input(proj, _minimal_valid_copy())
@@ -44,7 +47,10 @@ def test_run_solver_command_solver_not_available_raises() -> None:
         call_command("run_solver", slug=proj.slug, stderr=StringIO())
 
 
-@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+@override_settings(
+    ASTEROID_LAB_RTTP_ENABLED=True,
+    ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=False,
+)
 def test_run_solver_command_solver_not_available_raises_when_rttp_flag_true() -> None:
     proj = m.AsteroidProject.objects.create(name="CliStubOn", slug="cli-run-stub-on")
     create_copy_code_map_input(proj, _minimal_valid_copy())
@@ -52,7 +58,10 @@ def test_run_solver_command_solver_not_available_raises_when_rttp_flag_true() ->
         call_command("run_solver", slug=proj.slug, stderr=StringIO())
 
 
-@override_settings(ASTEROID_LAB_RTTP_ENABLED=False)
+@override_settings(
+    ASTEROID_LAB_RTTP_ENABLED=False,
+    ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=False,
+)
 def test_run_solver_command_json_stdout_includes_error_code() -> None:
     proj = m.AsteroidProject.objects.create(name="CliJson", slug="cli-run-json")
     create_copy_code_map_input(proj, _minimal_valid_copy())

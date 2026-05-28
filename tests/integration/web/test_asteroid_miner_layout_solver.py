@@ -352,9 +352,8 @@ def test_post_run_solver_lazy_mode_omits_inline_lab_replay_frames(client: Client
     run_resp = client.post(run_url, HTTP_ACCEPT="application/json")
     body = json.loads(run_resp.content.decode())
     assert run_resp.status_code == 200
-    assert body.get("ok") is False
-    assert body.get("error_code") == "SOLVER_NOT_AVAILABLE"
-    assert body.get("solver_run_id") is None
+    assert body.get("ok") is True
+    assert body.get("solver_run_id") is not None
     assert "lab_replay_frames_json" not in body
     lab_replay = body.get("lab_replay") or {}
     assert lab_replay.get("mode") == "lazy"
@@ -405,8 +404,8 @@ def test_post_run_solver_inline_mode_still_includes_lab_replay_frames(client: Cl
     run_resp = client.post(run_url, HTTP_ACCEPT="application/json")
     body = json.loads(run_resp.content.decode())
     assert run_resp.status_code == 200
-    assert body.get("ok") is False
-    assert body.get("error_code") == "SOLVER_NOT_AVAILABLE"
+    assert body.get("ok") is True
+    assert body.get("solver_run_id") is not None
     frames = body.get("lab_replay_frames_json")
     assert isinstance(frames, list)
     assert len(frames) >= 1

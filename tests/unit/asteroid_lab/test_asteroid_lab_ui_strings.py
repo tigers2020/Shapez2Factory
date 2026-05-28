@@ -93,10 +93,9 @@ def test_lab_exterior_connector_overlay_contract() -> None:
     built_css = (REPO / "django_apps" / "web" / "static" / "web" / "css" / "app.css").read_text(
         encoding="utf-8",
     )
-    assert "lab-planned-exterior-connector" in built_css, (
-        "run npm run build:css — Lab L2 marker styles missing from app.css"
-    )
-    assert "lab-planned-exterior-connector" in built_css
+    assert (
+        "lab-planned-exterior-connector" in built_css
+    ), "run npm run build:css — Lab L2 marker styles missing from app.css"
     assert "inset" in built_css
 
 

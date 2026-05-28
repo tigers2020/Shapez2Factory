@@ -87,7 +87,10 @@ def test_run_solver_post_persists_provenance_on_solver_run(client: Client) -> No
     assert len(prov.content_hash) == 64
 
 
-@override_settings(ASTEROID_LAB_RTTP_ENABLED=False)
+@override_settings(
+    ASTEROID_LAB_RTTP_ENABLED=False,
+    ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=False,
+)
 def test_run_solver_stub_still_reports_game_data_snapshot_ready(client: Client) -> None:
     proj = m.AsteroidProject.objects.create(name="StubProv", slug="stub-prov")
     create_copy_code_map_input(proj, _minimal_valid_copy())
@@ -104,7 +107,10 @@ def test_run_solver_stub_still_reports_game_data_snapshot_ready(client: Client) 
     assert "built_at_utc" not in repro
 
 
-@override_settings(ASTEROID_LAB_RTTP_ENABLED=False)
+@override_settings(
+    ASTEROID_LAB_RTTP_ENABLED=False,
+    ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=False,
+)
 def test_run_solver_post_returns_solver_not_available_when_rttp_disabled(client: Client) -> None:
     proj = m.AsteroidProject.objects.create(name="RunSolver", slug="run-solver-stub")
     m.AsteroidMapInput.objects.create(project=proj, copy_code="SHAPEZ2-4-e30=")
@@ -117,7 +123,10 @@ def test_run_solver_post_returns_solver_not_available_when_rttp_disabled(client:
     assert "reconstruction is still available" in data.get("message", "").lower()
 
 
-@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+@override_settings(
+    ASTEROID_LAB_RTTP_ENABLED=True,
+    ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=False,
+)
 def test_run_solver_post_returns_solver_not_available_even_when_rttp_flag_true(
     client: Client,
 ) -> None:

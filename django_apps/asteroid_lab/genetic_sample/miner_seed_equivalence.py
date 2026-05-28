@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections import deque
 from typing import Any
 
+from django_apps.asteroid_lab.genetic_sample.miner_seed_parent_tree import (
+    ISLAND_DIRS,
+    EquipmentNodes,
+    entries,
+    equipment_nodes,
+    parent_edges_bfs,
+)
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.copy_json_coords import (
     entry_island_raw_coord,
@@ -16,28 +22,15 @@ from django_apps.asteroid_lab.snapshots.copy_json_coords import (
 )
 from django_apps.asteroid_lab.snapshots.equipment_bundles import ports_compatible
 
-_MINER_T = frozenset({"Layout_ShapeMiner", "Layout_FluidMiner"})
-_EXT_T = frozenset({"Layout_ShapeMinerExtension", "Layout_FluidMinerExtension"})
 _BELT_T = frozenset({"SpaceBelt_Forward", "SpacePipe_Forward"})
-
-_ISLAND_DIRS: tuple[tuple[str, int, int], ...] = (
-    ("n", 0, -1),
-    ("e", 1, 0),
-    ("s", 0, 1),
-    ("w", -1, 0),
-)
 
 
 class MinerSeedLayoutValidationError(ValueError):
     """Strict ingest rejection for miner seed paste layout."""
 
 
-def _entries(root: dict[str, Any]) -> list[dict[str, Any]]:
-    bp = root.get("BP")
-    if not isinstance(bp, dict):
-        return []
-    raw = bp.get("Entries")
-    return [e for e in raw if isinstance(e, dict)] if isinstance(raw, list) else []
+def _layout_error(exc: ValueError) -> MinerSeedLayoutValidationError:
+    return MinerSeedLayoutValidationError(str(exc))
 
 
 def _island_direction_from_a_to_b(ax: int, ay: int, bx: int, by: int) -> str | None:
@@ -52,60 +45,21 @@ def _island_direction_from_a_to_b(ax: int, ay: int, bx: int, by: int) -> str | N
     return None
 
 
-_EquipmentNodes = dict[tuple[int, int], dict[str, Any]]
-
-
-def _equipment_nodes(root: dict[str, Any]) -> tuple[tuple[int, int], _EquipmentNodes]:
-    miner_xy: tuple[int, int] | None = None
-    nodes: dict[tuple[int, int], dict[str, Any]] = {}
-    for entry in _entries(root):
-        tile = str(entry.get("T", ""))
-        if tile in _BELT_T:
-            continue
-        if tile not in _MINER_T and tile not in _EXT_T:
-            continue
-        coord = entry_island_raw_coord(entry)
-        xy = (coord.x, coord.y)
-        if tile in _MINER_T:
-            if miner_xy is not None:
-                msg = "multiple miner entries"
-                raise MinerSeedLayoutValidationError(msg)
-            miner_xy = xy
-        nodes[xy] = entry
-    if miner_xy is None:
-        msg = "miner entry required"
-        raise MinerSeedLayoutValidationError(msg)
-    return miner_xy, nodes
+def _equipment_nodes(root: dict[str, Any]) -> tuple[tuple[int, int], EquipmentNodes]:
+    try:
+        return equipment_nodes(root)
+    except ValueError as exc:
+        raise _layout_error(exc) from exc
 
 
 def _parent_edges_bfs(
     miner_xy: tuple[int, int],
-    nodes: dict[tuple[int, int], dict[str, Any]],
+    nodes: EquipmentNodes,
 ) -> list[tuple[tuple[int, int], tuple[int, int]]]:
-    """Directed child→parent edges via BFS tree on 4-connected equipment cells."""
-
-    visited: set[tuple[int, int]] = {miner_xy}
-    parent_of: dict[tuple[int, int], tuple[int, int]] = {}
-    queue: deque[tuple[int, int]] = deque([miner_xy])
-    while queue:
-        current = queue.popleft()
-        cx, cy = current
-        for _d, dx, dy in _ISLAND_DIRS:
-            nb = (cx + dx, cy + dy)
-            if nb not in nodes or nb in visited:
-                continue
-            visited.add(nb)
-            parent_of[nb] = current
-            queue.append(nb)
-    ext_keys = [xy for xy in nodes if xy != miner_xy]
-    if len(visited) != len(nodes):
-        msg = "extension cells must be 4-connected to miner"
-        raise MinerSeedLayoutValidationError(msg)
-    edges = [(child, parent_of[child]) for child in ext_keys]
-    if len(edges) != len(ext_keys):
-        msg = "extension parent tree incomplete"
-        raise MinerSeedLayoutValidationError(msg)
-    return edges
+    try:
+        return parent_edges_bfs(miner_xy, nodes)
+    except ValueError as exc:
+        raise _layout_error(exc) from exc
 
 
 def _transform_xy(
@@ -145,8 +99,8 @@ def equivalence_signature_from_decoded_root(root: dict[str, Any]) -> str:
     from django_apps.asteroid_lab.genetic_sample.miner_seed_topology import count_extensions
 
     miner_xy, nodes = _equipment_nodes(root)
-    edges = _parent_edges_bfs(miner_xy, nodes)
-    variants = _d4_canonical_edges(miner_xy, edges)
+    edge_list = _parent_edges_bfs(miner_xy, nodes)
+    variants = _d4_canonical_edges(miner_xy, edge_list)
     best = min(variants)
     payload = {
         "extension_count": count_extensions(root),
@@ -176,7 +130,7 @@ def assert_miner_seed_layout_strict(root: dict[str, Any]) -> None:
     """Validate §5 strict rules; raise MinerSeedLayoutValidationError on failure."""
 
     miner_xy, nodes = _equipment_nodes(root)
-    belts = [e for e in _entries(root) if str(e.get("T", "")) in _BELT_T]
+    belts = [e for e in entries(root) if str(e.get("T", "")) in _BELT_T]
     if len(belts) != 1:
         msg = f"expected exactly one SpaceBelt_Forward, got {len(belts)}"
         raise MinerSeedLayoutValidationError(msg)
@@ -205,7 +159,7 @@ def assert_miner_seed_layout_strict(root: dict[str, Any]) -> None:
             continue
         cx, cy = child_xy
         facing: list[tuple[int, int]] = []
-        for _d, dx, dy in _ISLAND_DIRS:
+        for _d, dx, dy in ISLAND_DIRS:
             nb = (cx + dx, cy + dy)
             if nb not in nodes:
                 continue
@@ -218,14 +172,13 @@ def assert_miner_seed_layout_strict(root: dict[str, Any]) -> None:
             msg = f"extension at {child_xy} has no port-facing equipment neighbor"
             raise MinerSeedLayoutValidationError(msg)
 
-    edges = _parent_edges_bfs(miner_xy, nodes)
-    for _child_xy, parent_xy in edges:
+    edge_list = _parent_edges_bfs(miner_xy, nodes)
+    for _child_xy, parent_xy in edge_list:
         if str(nodes[parent_xy].get("T", "")) in _BELT_T:
             msg = "extension parent cannot be belt"
             raise MinerSeedLayoutValidationError(msg)
 
-    # acyclicity on BFS equipment tree (disconnected extensions fail in _parent_edges_bfs)
-    parent_map = {c: p for c, p in edges}
+    parent_map = {c: p for c, p in edge_list}
     for start in parent_map:
         seen: set[tuple[int, int]] = set()
         cur: tuple[int, int] | None = start

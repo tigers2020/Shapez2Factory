@@ -1,0 +1,155 @@
+"""Pattern-intrinsic difficulty scoring for miner seed catalog rows."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from django_apps.asteroid_lab.genetic_sample.miner_seed_parent_tree import (
+    EquipmentNodes,
+    equipment_nodes,
+    parent_edges_bfs,
+)
+from django_apps.asteroid_lab.genetic_sample.miner_seed_topology import (
+    count_extensions,
+    throughput_factor_for_extension_count,
+)
+from django_apps.asteroid_lab.snapshots.island_bbox import island_bbox_from_xy_dicts
+
+_LINEAR_CHAIN_BONUS = 15
+_THROUGHPUT_SOFT_CAP = 12
+
+ParentEdge = tuple[tuple[int, int], tuple[int, int]]
+SortKey = tuple[int, int, float, int, str]
+
+
+@dataclass(frozen=True)
+class IntrinsicDifficultyResult:
+    score: int
+    tier: int
+    reason: dict[str, Any]
+
+
+def _branch_count(edges: list[ParentEdge]) -> int:
+    children: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    for child, parent in edges:
+        children.setdefault(parent, []).append(child)
+    return sum(1 for parent, ch in children.items() if len(ch) > 1)
+
+
+def _turn_count(
+    miner_xy: tuple[int, int],
+    nodes: EquipmentNodes,
+    edges: list[ParentEdge],
+) -> int:
+    parent_map = {child: parent for child, parent in edges}
+    children: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    for child, parent in edges:
+        children.setdefault(parent, []).append(child)
+    leaves = [xy for xy in nodes if xy != miner_xy and xy not in children]
+    total_turns = 0
+    for leaf in leaves:
+        path: list[tuple[int, int]] = []
+        cur: tuple[int, int] | None = leaf
+        while cur is not None and cur != miner_xy:
+            path.append(cur)
+            cur = parent_map.get(cur)
+        path.append(miner_xy)
+        path.reverse()
+        for i in range(1, len(path) - 1):
+            a, b, c = path[i - 1], path[i], path[i + 1]
+            da = (b[0] - a[0], b[1] - a[1])
+            db = (c[0] - b[0], c[1] - b[1])
+            if da != db:
+                total_turns += 1
+    return total_turns
+
+
+def _difficulty_tier(extension_count: int, branch_count: int, turn_count: int) -> int:
+    if extension_count == 0:
+        return 0
+    if extension_count == 1:
+        return 1
+    if extension_count == 2:
+        return 2 if branch_count == 0 else 3
+    if extension_count == 3:
+        if branch_count == 0 and turn_count <= 1:
+            return 4
+        return 5
+    return 5
+
+
+def intrinsic_difficulty_from_root(root: dict[str, Any]) -> IntrinsicDifficultyResult:
+    miner_xy, nodes = equipment_nodes(root)
+    edges = parent_edges_bfs(miner_xy, nodes)
+    extension_count = count_extensions(root)
+    throughput_factor = throughput_factor_for_extension_count(extension_count)
+    occupied_cell_count = len(nodes)
+    bbox = island_bbox_from_xy_dicts([{"x": xy[0], "y": xy[1]} for xy in nodes]) or {}
+    bbox_width = int(bbox.get("width", 1))
+    bbox_height = int(bbox.get("height", 1))
+    bbox_area = bbox_width * bbox_height
+    max_span = max(bbox_width, bbox_height)
+    branches = _branch_count(edges)
+    turns = _turn_count(miner_xy, nodes, edges)
+    linear_chain = extension_count > 0 and branches == 0
+    linear_chain_bonus = _LINEAR_CHAIN_BONUS if linear_chain else 0
+    throughput_soft_penalty = min(throughput_factor * 2, _THROUGHPUT_SOFT_CAP)
+    compactness_approx = occupied_cell_count / bbox_area if bbox_area else 0.0
+    score = (
+        extension_count * 100
+        + occupied_cell_count * 8
+        + bbox_area * 5
+        + max_span * 3
+        + branches * 25
+        + turns * 10
+        - linear_chain_bonus
+        - throughput_soft_penalty
+    )
+    tier = _difficulty_tier(extension_count, branches, turns)
+    reason: dict[str, Any] = {
+        "extension_count": extension_count,
+        "occupied_cell_count": occupied_cell_count,
+        "bbox_width": bbox_width,
+        "bbox_height": bbox_height,
+        "bbox_area": bbox_area,
+        "max_span": max_span,
+        "branch_count": branches,
+        "turn_count": turns,
+        "linear_chain_bonus": linear_chain_bonus,
+        "throughput_factor": throughput_factor,
+        "throughput_soft_penalty": throughput_soft_penalty,
+        "compactness_approx": compactness_approx,
+    }
+    return IntrinsicDifficultyResult(score=score, tier=tier, reason=reason)
+
+
+def assign_difficulty_ranks(
+    items: list[tuple[str, IntrinsicDifficultyResult]],
+) -> list[tuple[str, IntrinsicDifficultyResult, int]]:
+    """Return (pattern_id, result, difficulty_rank) sorted easiest-first; ranks 1..N."""
+
+    def sort_key(item: tuple[str, IntrinsicDifficultyResult]) -> SortKey:
+        pattern_id, result = item
+        compactness = float(result.reason["compactness_approx"])
+        throughput = int(result.reason["throughput_factor"])
+        return (
+            result.tier,
+            result.score,
+            -compactness,
+            throughput,
+            pattern_id,
+        )
+
+    ordered = sorted(items, key=sort_key)
+    return [
+        (pattern_id, result, rank)
+        for rank, (pattern_id, result) in enumerate(ordered, start=1)
+    ]
+
+
+__all__ = [
+    "IntrinsicDifficultyResult",
+    "assign_difficulty_ranks",
+    "intrinsic_difficulty_from_root",
+]

@@ -44,8 +44,8 @@ def test_genetic_sample_admin_seed_button_runs_command(staff_client: Client) -> 
     ).exists()
 
     url = reverse("admin:asteroid_lab_geneticsample_seed_miner_patterns")
-    response = staff_client.post(url, follow=True)
-    assert response.status_code == 200
+    response = staff_client.post(url, follow=False)
+    assert response.status_code == 302
     assert (
         GeneticSample.objects.filter(
             metadata_json__schema=MINER_SEED_SCHEMA,

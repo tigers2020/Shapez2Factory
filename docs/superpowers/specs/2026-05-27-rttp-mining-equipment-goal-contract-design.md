@@ -1,8 +1,8 @@
 # RTTP Mining Equipment Goal Contract — Design Spec
 
 **Document type:** Canonical product / validation contract (RTTP Layer 4 + recovery)  
-**Status:** **Approved (Contract + Plan Review Lead 2026-05-27)** — MEG-C1/C2 implementation authorized  
-**Implementation plan:** [`2026-05-27-rttp-mining-equipment-goal.md`](../plans/2026-05-27-rttp-mining-equipment-goal.md) — **APPROVED**, Subagent-Driven execution  
+**Status:** **FROZEN (pending decontamination reconciliation)** — Contract approved 2026-05-27; **MEG-C2 implementation BLOCKED** until [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) completes and RTTP retain/bridge/remove is decided · **Amended 2026-05-27** (P3 normalized exterior-pass evidence; §A `target_ratio_percent`)  
+**Implementation plan:** [`2026-05-27-rttp-mining-equipment-goal.md`](../plans/2026-05-27-rttp-mining-equipment-goal.md) — **APPROVED HISTORICALLY, now SUSPENDED** by [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) — **DO NOT EXECUTE**  
 **Work classification:** contract change · implementation change (phased)  
 **Parent:** [`2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md`](2026-05-30-rttp-v0-2-core-algorithm-recovery-design.md) (amends §A4 placement goal semantics)  
 **Transport:** [`2026-05-26-rttp-external-void-transport-capacity-contract.md`](2026-05-26-rttp-external-void-transport-capacity-contract.md) (EVTC) · [`2026-05-30-rttp-exterior-lane-capacity-planner-design.md`](2026-05-30-rttp-exterior-lane-capacity-planner-design.md) (ELCP)  
@@ -10,6 +10,28 @@
 **Queue:** [`documents/ai/current_plan.md`](../../../documents/ai/current_plan.md)
 
 **Korean one-liner:** 467 = 외부 pass가 증명된 추출기+확장기 장비 셀 수; 벨트/파이프는 카운트하지 않고 pass 증거로만 쓴다.
+
+**Decision (Contract Review Lead 2026-05-27 — normative):**
+
+```text
+Decision: P3 uses normalized exterior-pass evidence. ELCP lane assignment is preferred but not exclusive.
+Legacy fallback can be pass-qualified only when it satisfies the same RouteGoal, reservation,
+shareable-trunk, and capacity-budget contract.
+```
+
+**Exterior-pass SoT (normative):**
+
+```text
+A committed bundle is exterior-pass-qualified if its confirmed reservation reaches a valid same-kind
+exterior RouteGoal (external margin, lane connector, existing trunk attachment, or equivalent exterior
+connector), and the route is backed by reserved cells, shareable-trunk policy, and capacity budget
+evidence.
+
+ELCP lane assignment is preferred evidence, but not the only acceptable evidence.
+Legacy fallback may count only if it can be normalized into the same exterior-pass evidence contract.
+```
+
+> **Governance (2026-05-27):** **Authoritative track = reconstruction complete-map decontamination (C+D).** This document is a **frozen reference contract** — **MUST NOT re-enter the implementation queue** (no MEG-C2, no partial aggregator wiring). Revival only after decontamination CLOSED and a new spec explicitly re-opens RTTP runtime. See decontamination design spec (link in Status).
 
 ---
 
@@ -19,7 +41,7 @@
 
 ```text
 target_mining_equipment_cells
-  = ceil(mineable_cell_count × placement_target_percent / 100)
+  = ceildiv(mineable_cell_count × target_ratio_percent, 100)
 
 confirmed_passed_mining_equipment_cells
   = Σ |mining_equipment_cells(bundle)|
@@ -83,26 +105,28 @@ from decimal import Decimal, ROUND_CEILING
 def target_mining_equipment_cells(
     *,
     mineable_cell_count: int,
-    placement_target_percent: int,
+    target_ratio_percent: int,
 ) -> int:
-    if mineable_cell_count <= 0 or placement_target_percent <= 0:
+    if mineable_cell_count <= 0 or target_ratio_percent <= 0:
         return 0
     product = (
-        Decimal(mineable_cell_count) * Decimal(placement_target_percent) / Decimal(100)
+        Decimal(mineable_cell_count) * Decimal(target_ratio_percent) / Decimal(100)
     )
     return int(product.to_integral_value(rounding=ROUND_CEILING))
 ```
 
-**Example (recovery test map):** `mineable_cell_count = 583`, `placement_target_percent = 80` → **467**.
+**Example (recovery test map):** `mineable_cell_count = 583`, `target_ratio_percent = 80` → **467**.
 
-**Rationale:** “At least 80%” → **ceil**, not floor (466) or round.
+**Rationale:** “At least 80%” → **ceil** (`ceildiv`), not floor (466) or round. Use `target_ratio_percent` (integer percent, e.g. `80` = 80%) — not `0.80`.
 
 **Backward compatibility:**
 
 ```text
-placement_goal_count  # JSON/replay legacy key
+placement_goal_count  # JSON/replay legacy key — deprecated alias for target_mining_equipment_cells
   MUST equal target_mining_equipment_cells
   MUST NOT mean "number of committed bundle IDs" in new code/docs
+  Means extractor+extension equipment cells, excluding transport cells. It is not a bundle count.
+  Production code MUST prefer target_mining_equipment_cells.
 ```
 
 ---
@@ -142,13 +166,25 @@ P1  Route reservation confirmed:
 
 P2  Same transport_kind throughout (shape belt vs fluid pipe)
 
-P3  Exterior reach:
-    When ExteriorLaneCapacityPlan is active for the run:
-      ∃ exterior_lane_assignment row for b with valid lane_id
-      AND commit-time probe reached that lane's connector_goal / ELCP goals
-    When plan is absent (legacy EVTC-only path):
-      route evidence reaches ≥1 RouteGoal(EXTERNAL_MARGIN) coord
-      AND layout connectivity does not emit missing_exterior_route
+P3  The confirmed route reaches a valid same-transport exterior RouteGoal.
+
+    Preferred evidence:
+      ELCP lane assignment + route evidence (reached_elcp_lane_id, connector_goal).
+
+    Allowed fallback evidence (normalized — same predicate envelope):
+      legacy probe/reprobe reached_goal evidence,
+      confirmed reservation path,
+      same-kind connectivity to external margin / existing exterior trunk / external connector,
+      shareable trunk policy pass,
+      capacity budget evidence or derived fallback capacity accounting.
+
+    Forbidden for numerator:
+      generic void reach without a valid exterior RouteGoal contract,
+      legacy fallback without normalized capacity accounting (may be structural-only),
+      stub/reservation missing.
+
+    Normative: ELCP lane assignment is preferred but not exclusive. Unlimited legacy pass without
+    the same RouteGoal + reservation + shareable-trunk + capacity-budget envelope is forbidden.
 
 P4  Merge-capable trunk (F0):
     ReservationCandidateCells overlap with CommittedRouteCells
@@ -165,19 +201,23 @@ P5  Lane capacity budget (when ELCP active):
 ```text
 467 is the target count of confirmed extractor + extension equipment cells placed on
 mineable asteroid cells. A cell contributes only if its owning bundle has a confirmed
-same-kind exterior pass through merge-capable space belt/pipe trunk within lane capacity
-when ELCP is active. Transport route cells and exterior connector cells are excluded
-from the 467 count but required as pass evidence.
+same-kind exterior pass through merge-capable space belt/pipe trunk with capacity budget
+evidence (ELCP lane assignment preferred; legacy fallback allowed only when normalized to the
+same exterior-pass evidence contract). Transport route cells and exterior connector cells are
+excluded from the 467 count but required as pass evidence.
 ```
 
-**ELCP vs legacy fallback (locked):**
+**Pass-qualified cases (locked — P3 option 2):**
 
-| Run mode | Pass-qualified for numerator |
-|----------|------------------------------|
-| ELCP plan active (`reconstruction_max_throughput_per_min` set) | **P3 ELCP path only** — legacy fallback commit may be structurally valid but **does not** increment `confirmed_passed_mining_equipment_cells` unless P3–P5 satisfied via real lane assignment |
-| ELCP plan absent | P3 legacy exterior reach + P4 as today |
+| Case | structural OK | pass-qualified numerator |
+|------|:-------------:|:------------------------:|
+| ELCP lane assignment + route evidence + capacity OK | yes | **count** |
+| Legacy fallback + same-kind exterior `RouteGoal` + reservation + shareable trunk + capacity accounting | yes | **count** |
+| Legacy fallback reaches exterior but **no** capacity accounting | yes possible | **do not count** |
+| Route reaches generic void only | no / issue | do not count |
+| Stub/reservation missing | no | do not count |
 
-Rationale: User contract requires `external_link lane` + `capacity budget satisfied`; bookkeeping-only lane rows without ELCP reach do not qualify.
+Rationale: P3 tests **exterior RouteGoal reach**, not “ELCP row exists.” P5 capacity budget stays normative; `legacy_elcp_fallback` is **not** a diagnostic label — it is a **normalized evidence row** that satisfies the same predicate envelope as ELCP assignment.
 
 ### §5.4 Exterior-pass evidence DTO (aggregator input — normative)
 
@@ -192,7 +232,11 @@ class ExteriorPassEvidence:
     reached_elcp_lane_id: str | None
     reached_external_margin: bool
     shareable_trunk_overlap_only: bool
-    lane_capacity_ok: bool
+    capacity_accounting_ok: bool
+    exterior_pass_evidence_kind: Literal[
+        "elcp_lane_assignment",
+        "legacy_normalized_exterior_pass",
+    ]
 ```
 
 **Field mapping to §5.3:**
@@ -201,27 +245,31 @@ class ExteriorPassEvidence:
 |-------|-----------|
 | `output_stub_reserved` | P1 |
 | `transport_kind` | P2 (caller supplies run kind; evidence must match) |
-| `reached_elcp_lane_id is not None` | P3 (ELCP active runs) |
-| `reached_external_margin` | P3 (legacy EVTC-only runs when ELCP plan absent) |
+| `reached_elcp_lane_id is not None` | P3 preferred (ELCP lane + route evidence) |
+| `reached_external_margin` | P3 fallback (same-kind exterior `RouteGoal`) |
 | `shareable_trunk_overlap_only` | P4 |
-| `lane_capacity_ok` | P5 (when ELCP active; MUST be `true` when plan absent — builder sets default `true`) |
+| `capacity_accounting_ok` | P5 — **required for numerator**; legacy without accounting → structural-only, `exterior_pass_evidence_kind` MUST NOT be `legacy_normalized_exterior_pass` |
+| `exterior_pass_evidence_kind` | `elcp_lane_assignment` (preferred) or `legacy_normalized_exterior_pass` (fallback envelope satisfied) |
+
+**Deprecated alias:** `lane_capacity_ok` → `capacity_accounting_ok` in new code (same semantics).
 
 ```python
-def has_confirmed_exterior_pass(
-    evidence: ExteriorPassEvidence,
-    *,
-    elcp_plan_active: bool,
-) -> bool:
+def has_confirmed_exterior_pass(evidence: ExteriorPassEvidence) -> bool:
     if not evidence.output_stub_reserved:
         return False
     if not evidence.shareable_trunk_overlap_only:
         return False
-    if elcp_plan_active:
-        return (
-            evidence.reached_elcp_lane_id is not None
-            and evidence.lane_capacity_ok
-        )
-    return evidence.reached_external_margin
+    exterior_route_goal_reached = (
+        evidence.reached_elcp_lane_id is not None or evidence.reached_external_margin
+    )
+    if not exterior_route_goal_reached:
+        return False
+    if not evidence.capacity_accounting_ok:
+        return False
+    return evidence.exterior_pass_evidence_kind in (
+        "elcp_lane_assignment",
+        "legacy_normalized_exterior_pass",
+    )
 ```
 
 **Builder ownership (MEG-C2):** one function after commit (e.g. `build_exterior_pass_evidence_for_committed_bundles(...)`) — sole writer of `ExteriorPassEvidence`; aggregator and validation consume it read-only.
@@ -236,12 +284,12 @@ def has_confirmed_exterior_pass(
 @dataclass(frozen=True)
 class MiningEquipmentGoalPlan:
     mineable_cell_count: int
-    placement_target_percent: int
+    target_ratio_percent: int  # integer percent, e.g. 80 = 80% (not 0.80)
     target_mining_equipment_cells: int
 
     @property
     def placement_goal_count(self) -> int:
-        """Deprecated alias — same value as target_mining_equipment_cells."""
+        """Deprecated JSON/replay alias — same value as target_mining_equipment_cells."""
         return self.target_mining_equipment_cells
 ```
 
@@ -364,7 +412,7 @@ Solver summary / replay / validation result MUST expose a dedicated block:
 Recovery spec §A4 stated:
 
 ```text
-placement_goal_count = ceil(asteroid_field_cell_count × placement_target_percent / 100)
+placement_goal_count = ceildiv(asteroid_field_cell_count × target_ratio_percent, 100)
 ```
 
 **Amendment:** The formula is unchanged; the **counted unit** is now explicitly **pass-qualified mining equipment cells**, not “bundles selected in genome” or “committed_ids length.”
@@ -384,6 +432,8 @@ Diagnostic caps (`route_feasible_candidate_cap`, `non_overlapping_anchor_cap`) r
 | T5 | `structural_validation_passed` true, `optimization_goal_passed` false → `validation_passed` false; `optimization_goal.issue_code == mining_equipment_goal_shortfall`; **not** in `layout_connectivity_issue_codes` |
 | T6 | Replay / solver summary include `optimization_goal` block with target and confirmed_passed |
 | T7 | One pass-qualified bundle: 1 extractor + 3 extensions → `confirmed_committed_bundle_count == 1`, `confirmed_passed_mining_equipment_cells == 4` |
+| T8 | Legacy exterior reach + reservation + shareable trunk, `capacity_accounting_ok=false` → structural may pass; `has_confirmed_exterior_pass` false; numerator **+0** |
+| T9 | `legacy_normalized_exterior_pass` + `capacity_accounting_ok=true` + same-kind `RouteGoal` → `has_confirmed_exterior_pass` true |
 
 ---
 
@@ -405,6 +455,7 @@ Diagnostic caps (`route_feasible_candidate_cap`, `non_overlapping_anchor_cap`) r
 |------|------|---------|
 | 2026-05-27 | Contract Architect | C locked; initial spec |
 | 2026-05-27 | Contract Review Lead | **Approved** — §5.4 `ExteriorPassEvidence`, §7.3 `optimization_goal` block, T7 bundle vs cells; MEG-C2 phase-1 exit = honest 25/467 fail |
+| 2026-05-27 | Contract Review Lead | **§A/C approved** — `target_ratio_percent`, `ceildiv`; **P3 option (2)** normalized exterior-pass; legacy fallback counts only with capacity accounting; unlimited legacy pass forbidden |
 
 **Root cause (review):** The product failure was not “467 is impossible” but “467 pass-qualified mining equipment cells were never enforced as the optimization goal.”
 
@@ -417,7 +468,8 @@ Diagnostic caps (`route_feasible_candidate_cap`, `non_overlapping_anchor_cap`) r
 | Placeholders | None |
 | Contradictions | ceil target vs floor(466) resolved — **ceil normative** |
 | Scope | MEG-C1/C2: measurement + gates only; 467 in C3 |
-| Ambiguity | Predicate inputs centralized in `ExteriorPassEvidence` |
+| Ambiguity | P3 = exterior `RouteGoal` reach, not ELCP-row-only; legacy normalized vs structural-only split explicit |
+| Predicate inputs | Centralized in `ExteriorPassEvidence`; `has_confirmed_exterior_pass` does not branch on `elcp_plan_active` for numerator denial |
 | Layout vs goal | Shortfall only in `optimization_goal` block |
 | Free-form issue strings | `mining_equipment_goal_shortfall` enum in implementation plan |
 

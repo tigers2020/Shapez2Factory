@@ -269,9 +269,7 @@ def test_quarantine_gate_separate_from_reconstruction_decontamination() -> None:
     """PR-D import scan is bounded; P0 absence gate owns optimization/** deletion."""
     opt_root = _repo_path("django_apps/asteroid_lab/optimization")
     assert not opt_root.exists(), "optimization/ removed — use reconstruction decontamination gates"
-    recon_gate = _repo_path(
-        "tests/unit/architecture/test_reconstruction_decontamination_gates.py"
-    )
+    recon_gate = _repo_path("tests/unit/architecture/test_reconstruction_decontamination_gates.py")
     pr_d_test = _repo_path("tests/unit/architecture/test_quarantined_paths_do_not_leak.py")
     assert recon_gate.is_file() and pr_d_test.is_file()
     assert recon_gate != pr_d_test

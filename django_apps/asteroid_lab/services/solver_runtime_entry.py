@@ -15,9 +15,7 @@ from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
 
-SOLVER_NOT_AVAILABLE_MESSAGE = (
-    "Solver runtime has been removed; reconstruction is still available."
-)
+SOLVER_NOT_AVAILABLE_MESSAGE = "Solver runtime has been removed; reconstruction is still available."
 
 
 class SolverRuntimeEntryErrorCode(StrEnum):

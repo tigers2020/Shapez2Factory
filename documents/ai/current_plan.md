@@ -1,6 +1,6 @@
 # Current plan
 
-**CLOSED (2026-05-27, branch-local):** Reconstruction complete-map decontamination — PR [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) (`feat/decontamination-recon-complete-map-pr-b`). **Spec:** [`docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) · **Plan:** [`docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md`](../../docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md)
+**CLOSED (2026-05-27, merged to `master`):** Reconstruction complete-map decontamination — PR [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) · `master` @ `dd78cdbe`. **Spec:** [`docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md) · **Plan:** [`docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md`](../../docs/superpowers/plans/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination.md)
 
 **PR-B branch-local gate evidence:**
 
@@ -12,7 +12,7 @@
 
 | Queue | State |
 |-------|--------|
-| P0 Decontamination (this spec) | **CLOSED (2026-05-27, branch-local)** — await merge PR |
+| P0 Decontamination (this spec) | **CLOSED (2026-05-27, merged)** — [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) on `master` |
 | RTTP MEG-C2 | **BLOCKED** by decontamination |
 | v0.2 core algorithm recovery | **BLOCKED** — superseded by decontamination surgery |
 | MEG contract spec | **FROZEN** reference — [`2026-05-27-rttp-mining-equipment-goal-contract-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md) |

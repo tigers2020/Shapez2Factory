@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> **Status:** **CLOSED (2026-05-27, branch-local)** — PR-B [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) on `feat/decontamination-recon-complete-map-pr-b`  
+> **Status:** **CLOSED (2026-05-27, merged to `master`)** — [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) · `dd78cdbe`  
 > **Spec:** [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md)  
 > **Forbidden during this plan:** MEG-C2, RTTP feature work, v0.2 core algorithm recovery implementation  
 > **Branch:** `feat/decontamination-recon-complete-map` (dedicated worktree recommended)

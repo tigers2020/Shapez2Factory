@@ -26,9 +26,7 @@ def exterior_connector_plan_to_metrics_dict(plan: ExteriorConnectionPlan) -> dic
     required_planned = sum(
         1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.REQUIRED
     )
-    spare_planned = sum(
-        1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.SPARE
-    )
+    spare_planned = sum(1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.SPARE)
 
     return {
         "exterior_connector_plan": {

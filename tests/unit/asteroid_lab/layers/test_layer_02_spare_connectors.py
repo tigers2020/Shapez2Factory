@@ -101,9 +101,7 @@ def test_partial_spare_placement_is_success_when_required_slots_fit(
     required_planned = sum(
         1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.REQUIRED
     )
-    spare_planned = sum(
-        1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.SPARE
-    )
+    spare_planned = sum(1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.SPARE)
 
     assert plan.unmet_reason is None
     assert plan.spare_connector_count > 0
@@ -147,9 +145,7 @@ def test_wire_v2_includes_role_and_reference_counts() -> None:
     required_planned = sum(
         1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.REQUIRED
     )
-    spare_planned = sum(
-        1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.SPARE
-    )
+    spare_planned = sum(1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.SPARE)
     assert wire["required_planned_count"] == required_planned
     assert wire["spare_planned_count"] == spare_planned
     assert wire["planned_connector_count"] == required_planned + spare_planned

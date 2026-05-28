@@ -426,28 +426,36 @@ def _build_layer_summaries(
                 _highlight("Required connectors", l2_required),
                 _highlight(
                     "Required planned",
-                    l2_plan.get("required_planned_count", _PLACEHOLDER)
-                    if isinstance(l2_plan, dict)
-                    else _PLACEHOLDER,
+                    (
+                        l2_plan.get("required_planned_count", _PLACEHOLDER)
+                        if isinstance(l2_plan, dict)
+                        else _PLACEHOLDER
+                    ),
                 ),
                 _highlight("Planned connectors", l2_planned),
                 _highlight(
                     "Reference connectors",
-                    l2_plan.get("reference_connector_count", _PLACEHOLDER)
-                    if isinstance(l2_plan, dict)
-                    else _PLACEHOLDER,
+                    (
+                        l2_plan.get("reference_connector_count", _PLACEHOLDER)
+                        if isinstance(l2_plan, dict)
+                        else _PLACEHOLDER
+                    ),
                 ),
                 _highlight(
                     "Spare connectors",
-                    l2_plan.get("spare_connector_count", _PLACEHOLDER)
-                    if isinstance(l2_plan, dict)
-                    else _PLACEHOLDER,
+                    (
+                        l2_plan.get("spare_connector_count", _PLACEHOLDER)
+                        if isinstance(l2_plan, dict)
+                        else _PLACEHOLDER
+                    ),
                 ),
                 _highlight(
                     "Spare planned",
-                    l2_plan.get("spare_planned_count", _PLACEHOLDER)
-                    if isinstance(l2_plan, dict)
-                    else _PLACEHOLDER,
+                    (
+                        l2_plan.get("spare_planned_count", _PLACEHOLDER)
+                        if isinstance(l2_plan, dict)
+                        else _PLACEHOLDER
+                    ),
                 ),
                 _highlight(
                     "Required normal lines",

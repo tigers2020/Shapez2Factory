@@ -99,8 +99,7 @@ def remaining_slots_after_selection(
     used: set[Coord],
 ) -> dict[CardinalEdge, list[Coord]]:
     return {
-        edge: [coord for coord in slots if coord not in used]
-        for edge, slots in edge_slots.items()
+        edge: [coord for coord in slots if coord not in used] for edge, slots in edge_slots.items()
     }
 
 

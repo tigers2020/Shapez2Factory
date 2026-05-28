@@ -93,9 +93,7 @@ def _build_layer02_solver_summary(
 ) -> dict[str, Any]:
     required_connector_count = int(plan_wire.get("required_connector_count") or 0)
     required_planned = int(plan_wire.get("required_planned_count") or 0)
-    run_success = (
-        unmet_reason is None and required_planned >= required_connector_count
-    )
+    run_success = unmet_reason is None and required_planned >= required_connector_count
     return {
         "validation_passed": False,
         "run_success": run_success,

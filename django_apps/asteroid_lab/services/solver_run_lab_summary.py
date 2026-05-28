@@ -308,9 +308,7 @@ def _installed_over_route_candidates(*, installed: Any, route_candidates: Any) -
     if installed in (None, "", _PLACEHOLDER) and route_candidates in (None, "", _PLACEHOLDER):
         return _PLACEHOLDER
     left = _PLACEHOLDER if installed in (None, "", _PLACEHOLDER) else str(installed)
-    right = (
-        _PLACEHOLDER if route_candidates in (None, "", _PLACEHOLDER) else str(route_candidates)
-    )
+    right = _PLACEHOLDER if route_candidates in (None, "", _PLACEHOLDER) else str(route_candidates)
     return f"{left} / {right}"
 
 
@@ -358,9 +356,7 @@ def _build_layer_summaries(
     optimization_goal: dict[str, Any],
 ) -> list[dict[str, Any]]:
     stack_run_status_raw = solver_summary.get("stack_run_status")
-    stack_run_status = (
-        str(stack_run_status_raw) if stack_run_status_raw not in (None, "") else None
-    )
+    stack_run_status = str(stack_run_status_raw) if stack_run_status_raw not in (None, "") else None
     completed_raw = solver_summary.get("completed_layer_slugs")
     completed_layer_slugs = frozenset(
         str(s) for s in (completed_raw if isinstance(completed_raw, list) else ())
@@ -373,9 +369,7 @@ def _build_layer_summaries(
     l5_legacy = (
         "completed"
         if validation_passed
-        else "failed"
-        if issue_codes or first_issue_code
-        else "pending"
+        else "failed" if issue_codes or first_issue_code else "pending"
     )
 
     def outcome(slug: str, legacy: str) -> str:
@@ -422,9 +416,7 @@ def _build_layer_summaries(
                 _highlight("Terrain upper bound", headline),
                 _highlight(
                     "Required normal lines",
-                    capacity.get("external_line_count")
-                    if primary == "shape"
-                    else _PLACEHOLDER,
+                    capacity.get("external_line_count") if primary == "shape" else _PLACEHOLDER,
                 ),
                 _highlight(connector_label, capacity.get("external_connector_count")),
                 _highlight("Platform upper bound", capacity.get("platform_upper_bound")),
@@ -459,9 +451,7 @@ def _build_layer_summaries(
                 _highlight("Macro-only mode", solver_summary.get("macro_only_mode")),
                 _highlight(
                     "Macro commits",
-                    macro.get("committed_macro_count")
-                    if macro
-                    else _PLACEHOLDER,
+                    macro.get("committed_macro_count") if macro else _PLACEHOLDER,
                 ),
                 _highlight(
                     "Macro placements",
@@ -478,25 +468,29 @@ def _build_layer_summaries(
                 _highlight("Confirmed placements", rttp.get("confirmed_count")),
                 _highlight(
                     "Validation",
-                    "passed"
-                    if rttp.get("validation_passed") is True
-                    else "failed"
-                    if rttp.get("validation_passed") is False
-                    else _PLACEHOLDER,
+                    (
+                        "passed"
+                        if rttp.get("validation_passed") is True
+                        else "failed" if rttp.get("validation_passed") is False else _PLACEHOLDER
+                    ),
                 ),
                 _highlight("Commit order", rttp.get("commit_order_preview")),
                 _highlight(
                     "Actual output",
-                    rttp.get("actual_committed_output_per_min")
-                    if rttp.get("actual_output_status") == "available"
-                    else _PLACEHOLDER,
+                    (
+                        rttp.get("actual_committed_output_per_min")
+                        if rttp.get("actual_output_status") == "available"
+                        else _PLACEHOLDER
+                    ),
                 ),
                 _highlight("Budget status", throughput_target.get("budget_status")),
                 _highlight(
                     "Throughput shortfall",
-                    throughput_target.get("throughput_shortfall_per_min")
-                    if throughput_target.get("budget_status") == "shortfall"
-                    else _PLACEHOLDER,
+                    (
+                        throughput_target.get("throughput_shortfall_per_min")
+                        if throughput_target.get("budget_status") == "shortfall"
+                        else _PLACEHOLDER
+                    ),
                 ),
                 _highlight(
                     "First issue",
@@ -546,14 +540,10 @@ def lab_run_summary_from_solver_summary(
     macro_only_mode = solver_summary.get("macro_only_mode")
     macro_commit_summary_raw = solver_summary.get("macro_commit_summary")
     macro_commit_summary = (
-        dict(macro_commit_summary_raw)
-        if isinstance(macro_commit_summary_raw, dict)
-        else None
+        dict(macro_commit_summary_raw) if isinstance(macro_commit_summary_raw, dict) else None
     )
     optimization_goal = dict(solver_summary.get("optimization_goal") or {})
-    reconstruction = _section_reconstruction(
-        solver_summary.get("reconstruction_observability")
-    )
+    reconstruction = _section_reconstruction(solver_summary.get("reconstruction_observability"))
     capacity = _section_capacity(solver_summary.get("reconstruction_capacity"))
     rttp = _section_rttp(solver_summary)
     throughput_target = _section_throughput_target(solver_summary)

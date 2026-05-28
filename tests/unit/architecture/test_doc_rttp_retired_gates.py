@@ -72,8 +72,6 @@ def test_rttp_superpowers_specs_allowlist_only() -> None:
 
 
 def test_inventory_marks_optimization_retired() -> None:
-    text = (_REPO / "documents" / "index" / "document_inventory.md").read_text(
-        encoding="utf-8"
-    )
+    text = (_REPO / "documents" / "index" / "document_inventory.md").read_text(encoding="utf-8")
     assert "optimization/` **removed**" in text or "optimization/` deleted" in text
     assert "RTTP Hybrid C pipeline" not in text

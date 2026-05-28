@@ -77,7 +77,7 @@ QUARANTINED_MODULE_PREFIXES: tuple[QuarantineModulePrefix, ...] = (
 QUARANTINED_DOC_PATHS: tuple[QuarantineDocPath, ...] = (
     QuarantineDocPath(
         id="doc-algorithm-solver-runtime-series",
-        path="documents/Algorithm/solver_runtime",
+        path="documents/archive/asteroid_lab_rttp_retired_2026-05/algorithm/solver_runtime",
         reason="ARCHIVED Phase A–M orchestration series",
         replacement="django_apps/asteroid_lab/reconstruction/ + decontamination spec",
         delete_candidate=False,

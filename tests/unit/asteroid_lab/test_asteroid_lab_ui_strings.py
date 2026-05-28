@@ -9,13 +9,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[3]
 TEMPLATE = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
 LAYER_SUMMARIES_PARTIAL = (
-    REPO
-    / "django_apps"
-    / "web"
-    / "templates"
-    / "web"
-    / "partials"
-    / "lab_layer_summaries.html"
+    REPO / "django_apps" / "web" / "templates" / "web" / "partials" / "lab_layer_summaries.html"
 )
 
 FORBIDDEN = (

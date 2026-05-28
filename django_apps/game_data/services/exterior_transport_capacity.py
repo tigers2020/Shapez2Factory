@@ -43,24 +43,38 @@ def get_active_exterior_fluid_transport_capacity(
     return row
 
 
-def regular_belt_throughput_per_min_from_row(row: ExteriorShapeTransportCapacity) -> Decimal:
+def inner_belt_throughput_per_min_from_row(row: ExteriorShapeTransportCapacity) -> Decimal:
+    """Inner belt: mini_unit × buildings_per_regular_belt (tier-1: 30×4 = 120/min)."""
+
     return cast(
         Decimal,
         row.mini_unit_output_per_min * Decimal(row.buildings_per_regular_belt),
     )
 
 
-def line_throughput_per_min_from_row(row: ExteriorShapeTransportCapacity) -> Decimal:
-    """One exterior line (``lanes_per_line`` regular-belt groups at mini-unit rate)."""
+def regular_belt_throughput_per_min_from_row(row: ExteriorShapeTransportCapacity) -> Decimal:
+    """Alias for inner-belt throughput (legacy name)."""
+
+    return inner_belt_throughput_per_min_from_row(row)
+
+
+def full_miner_output_per_min_from_row(row: ExteriorShapeTransportCapacity) -> Decimal:
+    """Full mini miner: mini_unit × miner_full_output_multiplier (tier-1: 30×16 = 480/min)."""
 
     return cast(
         Decimal,
-        regular_belt_throughput_per_min_from_row(row) * Decimal(row.lanes_per_line),
+        row.mini_unit_output_per_min * Decimal(row.miner_full_output_multiplier),
     )
 
 
+def line_throughput_per_min_from_row(row: ExteriorShapeTransportCapacity) -> Decimal:
+    """One exterior Space Belt line at full miner export (tier-1: 480 shapes/min)."""
+
+    return full_miner_output_per_min_from_row(row)
+
+
 def space_belt_connector_capacity_per_min_from_row(row: ExteriorShapeTransportCapacity) -> Decimal:
-    """One Space Belt building: ``line_throughput × lines_per_space_belt`` (tier-1: 8640)."""
+    """One Space Belt building: ``line × lines_per_space_belt`` (tier-1: 480×12 = 5760/min)."""
 
     return cast(
         Decimal,
@@ -69,12 +83,12 @@ def space_belt_connector_capacity_per_min_from_row(row: ExteriorShapeTransportCa
 
 
 def space_belt_max_per_min_from_row(row: ExteriorShapeTransportCapacity) -> Decimal:
-    """Wiki saturated cap (48 regular-belt equivalents → 2880/min); not one Space Belt building."""
+    """Wiki cap: inner_belt × space_belt_full_belt_count (tier-1: 120×48 = 5760/min)."""
 
-    regular = regular_belt_throughput_per_min_from_row(row)
+    inner = inner_belt_throughput_per_min_from_row(row)
     return cast(
         Decimal,
-        regular * Decimal(row.space_belt_full_belt_count),
+        inner * Decimal(row.space_belt_full_belt_count),
     )
 
 

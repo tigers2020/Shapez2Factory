@@ -1,10 +1,10 @@
-"""Solver runtime entry — fail-closed stub (RTTP removed in decontamination PR-A)."""
+"""Solver runtime entry — Layer 02 when enabled; otherwise fail-closed stub."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Any
+
+from django.conf import settings
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
@@ -14,54 +14,14 @@ from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
+from django_apps.asteroid_lab.services.solver_run_lab_summary import lab_run_summary_from_orm
+from django_apps.asteroid_lab.services.solver_runtime_types import (
+    SolverRuntimeEntryErrorCode,
+    SolverRuntimeEntryResult,
+    empty_milestone_track_metrics,
+)
 
 SOLVER_NOT_AVAILABLE_MESSAGE = "Solver runtime has been removed; reconstruction is still available."
-
-
-class SolverRuntimeEntryErrorCode(StrEnum):
-    """Structured failure codes for solver runtime entry (no free-form strings)."""
-
-    PROJECT_NOT_FOUND = "project_not_found"
-    NO_MAP_INPUT = "no_map_input"
-    DECODE_FAILED = "decode_failed"
-    SOLVER_NOT_AVAILABLE = "SOLVER_NOT_AVAILABLE"
-    PROVENANCE_INCOMPLETE = "provenance_incomplete"
-    CATALOG_SLICE_REQUIRED = "catalog_slice_required"
-    CATALOG_SLICE_HASH_MISMATCH = "catalog_slice_hash_mismatch"
-    CATALOG_TRANSPORT_UNRESOLVED = "catalog_transport_unresolved"
-    INVALID_THROUGHPUT_TARGET_PERCENT = "invalid_throughput_target_percent"
-    INVALID_MAX_PLACEMENT_GOAL_COUNT = "invalid_max_placement_goal_count"
-    RTTP_VALIDATION_FAILED = "rttp_validation_failed"
-
-
-def _empty_milestone_track_metrics() -> dict[str, Any]:
-    return {
-        "track_key": None,
-        "frame_count": 0,
-        "event_types": [],
-        "replay_truncated": False,
-        "truncation_reason": None,
-        "dropped_frame_count": None,
-        "diagnostic_reason": None,
-        "source_solver_run_id": None,
-    }
-
-
-@dataclass(frozen=True, slots=True)
-class SolverRuntimeEntryResult:
-    ok: bool
-    solver_run_id: int | None
-    lab_replay_frames_json: list[dict[str, Any]]
-    replay_track_metrics: dict[str, Any]
-    solver_summary: dict[str, Any]
-    validation_passed: bool
-    gene_template_source: dict[str, Any] = field(default_factory=dict)
-    error_code: SolverRuntimeEntryErrorCode | None = None
-    message: str | None = None
-    lab_optimization_milestone_frames_json: list[dict[str, Any]] = field(default_factory=list)
-    lab_optimization_milestone_track_metrics: dict[str, Any] = field(
-        default_factory=_empty_milestone_track_metrics
-    )
 
 
 def _solver_not_available_result(project_id: int) -> SolverRuntimeEntryResult:
@@ -89,10 +49,22 @@ def run_solver_runtime_for_project(
     game_data_provenance: Any | None = None,
     catalog_slice: Any | None = None,
 ) -> SolverRuntimeEntryResult:
-    """Always return ``SOLVER_NOT_AVAILABLE`` (``ASTEROID_LAB_RTTP_ENABLED`` ignored)."""
+    """Layer 02 path when enabled; otherwise fail-closed ``SOLVER_NOT_AVAILABLE``."""
 
-    del run_key, replace_existing_run, config, generator_version
-    del game_data_snapshot, game_data_provenance, catalog_slice
+    del generator_version, game_data_snapshot, catalog_slice
+
+    if getattr(settings, "ASTEROID_LAB_LAYER_02_SOLVER_ENABLED", False):
+        from django_apps.asteroid_lab.services.solver_runtime_layer02 import (
+            run_layer02_solver_for_project,
+        )
+
+        return run_layer02_solver_for_project(
+            int(project_id),
+            run_key=run_key,
+            replace_existing_run=replace_existing_run,
+            config=config,
+            game_data_provenance=game_data_provenance,
+        )
 
     if not m.AsteroidProject.objects.filter(pk=int(project_id)).exists():
         frames, metrics = build_lab_replay_frames_for_project(int(project_id))
@@ -129,7 +101,7 @@ def run_solver_runtime_for_project(
 def _normalize_milestone_track_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
     if metrics.get("frame_count") is not None:
         return dict(metrics)
-    return _empty_milestone_track_metrics()
+    return empty_milestone_track_metrics()
 
 
 def entry_result_to_json_dict(
@@ -182,6 +154,10 @@ def entry_result_to_json_dict(
         body["error_code"] = result.error_code.value
     if result.message is not None:
         body["message"] = result.message
+    if result.solver_run_id is not None:
+        run = m.SolverRun.objects.filter(pk=int(result.solver_run_id)).first()
+        if run is not None:
+            body["run_summary"] = lab_run_summary_from_orm(run)
     return body
 
 

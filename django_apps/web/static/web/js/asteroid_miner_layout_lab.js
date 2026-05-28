@@ -234,6 +234,114 @@
     return layer;
   }
 
+  function clearPlannedExteriorConnectorHighlight(el) {
+    if (!el) return;
+    const marker = el.querySelector("[data-lab-exterior-connector-marker]");
+    if (marker) {
+      marker.remove();
+    }
+  }
+
+  function plannedConnectorCoordKey(x, y) {
+    return String(x) + "," + String(y);
+  }
+
+  /** Paint cells from ``metrics.exterior_connector_plan`` (SoT), not overlay_cells alone. */
+  function plannedConnectorCellsFromWire(wire) {
+    if (!wire || typeof wire !== "object") {
+      return [];
+    }
+    const list = wire.planned_connectors;
+    if (!Array.isArray(list)) {
+      return [];
+    }
+    const out = [];
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!item || typeof item !== "object") {
+        continue;
+      }
+      const vc = item.void_coord;
+      let x = null;
+      let y = null;
+      if (vc && typeof vc === "object") {
+        x = vc.x;
+        y = vc.y;
+      } else {
+        x = item.x;
+        y = item.y;
+      }
+      if (x == null || y == null) {
+        continue;
+      }
+      out.push({
+        x: x,
+        y: y,
+        overlay_role: "planned_exterior_connector",
+        tile_type: item.layout_t != null ? String(item.layout_t) : "",
+        rotation: item.rotation,
+        connector_id: item.connector_id != null ? String(item.connector_id) : "",
+      });
+    }
+    return out;
+  }
+
+  function plannedConnectorCoordKeySet(wire) {
+    const keys = new Set();
+    const cells = plannedConnectorCellsFromWire(wire);
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i];
+      keys.add(plannedConnectorCoordKey(c.x, c.y));
+    }
+    return keys;
+  }
+
+  function applyPlannedExteriorConnectorWhiteHighlight(el) {
+    if (!el) return;
+    clearPlannedExteriorConnectorHighlight(el);
+    el.style.zIndex = "2";
+    el.style.border = "";
+    el.style.backgroundColor = "rgba(255, 255, 255, 0.12)";
+    el.style.boxShadow = "inset 0 0 0 2px rgba(255, 255, 255, 0.92)";
+    el.style.outline = "none";
+  }
+
+  function renderPlannedExteriorConnectorHighlights(
+    frame,
+    baseClasses,
+    domCells,
+    resolveCellIndex,
+    trackMetrics,
+  ) {
+    const wire = resolveExteriorConnectorPlanWire(frame, trackMetrics);
+    let cells = plannedConnectorCellsFromWire(wire);
+    if (!cells.length) {
+      const mapView = frame && frame.map_view;
+      const ov =
+        mapView && typeof mapView === "object" && Array.isArray(mapView.overlay_cells)
+          ? mapView.overlay_cells
+          : [];
+      for (let i = 0; i < ov.length; i++) {
+        const raw = ov[i];
+        if (!raw || typeof raw !== "object") continue;
+        if (String(raw.overlay_role || "") !== "planned_exterior_connector") continue;
+        const mapped = overlayCellsFromMapView({ overlay_cells: [raw] });
+        if (mapped[0]) cells.push(mapped[0]);
+      }
+    }
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      if (!cell || typeof cell !== "object") continue;
+      const idx = resolveCellIndex(cell);
+      if (idx == null || idx < 0 || idx >= domCells.length) continue;
+      const el = domCells[idx];
+      el.className = LAB_CELL_BASE + " lab-planned-exterior-connector";
+      applyLabCellHudAttributes(el, cell, "planned_exterior_connector");
+      applyLabCellSprite(el, cell);
+      applyPlannedExteriorConnectorWhiteHighlight(el);
+    }
+  }
+
   function clearLabCellSprite(el) {
     const layer = el.querySelector("[data-lab-sprite-layer]");
     if (layer) {
@@ -596,15 +704,51 @@
     return out;
   }
 
-  function overlayCellsFromMapView(mapView) {
+  function sortOverlayCellsForPaint(cells) {
+    if (!Array.isArray(cells) || cells.length < 2) return cells;
+    const regular = [];
+    const planned = [];
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      if (!cell || typeof cell !== "object") {
+        regular.push(cell);
+        continue;
+      }
+      if (String(cell.overlay_role || "") === "planned_exterior_connector") {
+        planned.push(cell);
+      } else {
+        regular.push(cell);
+      }
+    }
+    return regular.concat(planned);
+  }
+
+  function overlayCellsFromMapView(mapView, options) {
     if (!mapView || typeof mapView !== "object") return [];
     const ov = mapView.overlay_cells;
     if (!Array.isArray(ov) || !ov.length) return [];
+    const skipPlanned =
+      options && typeof options === "object" && options.skipPlannedExteriorConnectors === true;
+    const plannedCoordKeys =
+      options && typeof options === "object" && options.plannedConnectorCoordKeys
+        ? options.plannedConnectorCoordKeys
+        : null;
     const out = [];
     for (let i = 0; i < ov.length; i++) {
       const c = ov[i];
       if (!c || typeof c !== "object") continue;
-      out.push({
+      if (skipPlanned && String(c.overlay_role || "") === "planned_exterior_connector") {
+        continue;
+      }
+      if (
+        plannedCoordKeys &&
+        c.x != null &&
+        c.y != null &&
+        plannedCoordKeys.has(plannedConnectorCoordKey(c.x, c.y))
+      ) {
+        continue;
+      }
+      const row = {
         x: c.x,
         y: c.y,
         cell_kind: c.kind != null ? c.kind : c.cell_kind,
@@ -612,7 +756,14 @@
         tile_type: c.tile_type != null ? String(c.tile_type) : "",
         sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
         rotation: c.rotation,
-      });
+      };
+      if (c.overlay_role != null && String(c.overlay_role) !== "") {
+        row.overlay_role = String(c.overlay_role);
+      }
+      if (c.connector_id != null && String(c.connector_id) !== "") {
+        row.connector_id = String(c.connector_id);
+      }
+      out.push(row);
     }
     return out;
   }
@@ -831,10 +982,18 @@
     if (r === "decode") {
       return "lab-decode-cell-tone";
     }
+    if (r === "planned_exterior_connector") {
+      return "lab-planned-exterior-connector relative";
+    }
     return "ring-1 ring-inset ring-violet-400/35 bg-violet-950/15";
   }
 
   function toneForFullMapCell(cell) {
+    const overlayRole =
+      cell && cell.overlay_role != null ? String(cell.overlay_role) : "";
+    if (overlayRole === "planned_exterior_connector") {
+      return "lab-planned-exterior-connector relative";
+    }
     const ck = cell && cell.cell_kind != null ? String(cell.cell_kind) : "";
     const routeTone = toneForRouteOverlayKind(ck);
     if (routeTone) return routeTone;
@@ -1019,6 +1178,9 @@
   }
 
   const LAB_TERRAIN_RIM_STORAGE_KEY = "lab-terrain-rim-highlight";
+  const LAB_EXTERIOR_CONNECTOR_ROLE = "planned_exterior_connector";
+  const LAB_EXTERIOR_CONNECTOR_METRICS_KEY = "exterior_connector_plan";
+  const LAB_FROZEN_EXTERIOR_CONNECTOR_PLAN_KEY = "frozen_exterior_connector_plan";
 
   function isTerrainRimHighlightEnabled() {
     const toggle = document.getElementById("lab-terrain-rim-highlight-toggle");
@@ -1057,6 +1219,25 @@
     }
     const tm = trackMetrics && typeof trackMetrics === "object" ? trackMetrics : {};
     const frozen = tm.frozen_terrain_rim_highlight;
+    if (frozen && typeof frozen === "object") {
+      return frozen;
+    }
+    return null;
+  }
+
+  function resolveExteriorConnectorPlanWire(frame, trackMetrics) {
+    if (!frame || typeof frame !== "object") {
+      return null;
+    }
+    const fm =
+      frame.metrics && typeof frame.metrics === "object"
+        ? frame.metrics[LAB_EXTERIOR_CONNECTOR_METRICS_KEY]
+        : null;
+    if (fm && typeof fm === "object") {
+      return fm;
+    }
+    const tm = trackMetrics && typeof trackMetrics === "object" ? trackMetrics : {};
+    const frozen = tm[LAB_FROZEN_EXTERIOR_CONNECTOR_PLAN_KEY];
     if (frozen && typeof frozen === "object") {
       return frozen;
     }
@@ -1185,8 +1366,12 @@
   function resetGridBase(domCells, baseClasses) {
     for (let i = 0; i < domCells.length; i++) {
       clearLabCellBundleBridges(domCells[i]);
+      clearPlannedExteriorConnectorHighlight(domCells[i]);
       domCells[i].className = baseClasses[i] || "";
       domCells[i].style.boxShadow = "";
+      domCells[i].style.backgroundColor = "";
+      domCells[i].style.border = "";
+      domCells[i].style.zIndex = "";
       domCells[i].removeAttribute("data-cell-kind");
       domCells[i].removeAttribute("data-overlay-role");
       domCells[i].removeAttribute("data-tile-type");
@@ -1232,7 +1417,12 @@
     const fm = fullMapCellsFromFrame(frame);
     if (!fm.length) return false;
     renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
-    const ovCells = overlayCellsFromMapView(frame.map_view);
+    const planWire = resolveExteriorConnectorPlanWire(frame, trackMetrics);
+    const plannedCoordKeys = plannedConnectorCoordKeySet(planWire);
+    const ovCells = overlayCellsFromMapView(frame.map_view, {
+      skipPlannedExteriorConnectors: true,
+      plannedConnectorCoordKeys: plannedCoordKeys,
+    });
     if (ovCells.length) {
       renderFullMapCells(baseClasses, domCells, ovCells, resolveCellIndex);
     }
@@ -1242,6 +1432,13 @@
     }
     renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
     applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
+    renderPlannedExteriorConnectorHighlights(
+      frame,
+      baseClasses,
+      domCells,
+      resolveCellIndex,
+      trackMetrics,
+    );
     if (isTerrainRimHighlightEnabled() && rimDrawCtx && rimDrawCtx.layout) {
       const rimWire = resolveTerrainRimHighlightWire(frame, trackMetrics);
       if (rimWire) {

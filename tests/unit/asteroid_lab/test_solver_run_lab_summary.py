@@ -147,8 +147,11 @@ def test_lab_run_summary_layer_summaries_ordered_l1_through_l5() -> None:
     assert "Shape field cells" in l1_labels
     assert any(h["label"] == "Max throughput" for h in summaries[0]["highlights"])
     l2_labels = [h["label"] for h in summaries[1]["highlights"]]
-    assert "External space belts" in l2_labels
+    assert "Required connectors" in l2_labels
+    assert "Planned connectors" in l2_labels
+    assert "Reference belts @100% terrain" in l2_labels
     assert "Required normal lines" in l2_labels
+    assert "External space belts" not in l2_labels
     assert "Capacity basis" not in l2_labels
     assert "Rule source" not in l2_labels
     assert "Shape max throughput" not in l2_labels

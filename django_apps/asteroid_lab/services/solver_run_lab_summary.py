@@ -386,11 +386,18 @@ def _build_layer_summaries(
     primary = _primary_resource_kind(capacity.get("primary_resource_kind"))
     headline = capacity.get("reconstruction_max_throughput_per_min", _PLACEHOLDER)
     field_cells_label = _primary_field_cells_label(primary)
-    connector_label = _external_connector_label(primary)
 
     macro = macro_commit_summary or {}
     route_candidates = _rim_route_candidate_count(reconstruction, solver_summary)
     installed = confirmed if confirmed not in (None, "", _PLACEHOLDER) else _PLACEHOLDER
+
+    l2_plan = solver_summary.get("exterior_connector_plan")
+    l2_required = _PLACEHOLDER
+    l2_planned = solver_summary.get("planned_connector_count", _PLACEHOLDER)
+    if isinstance(l2_plan, dict):
+        l2_required = l2_plan.get("required_connector_count", _PLACEHOLDER)
+        if l2_plan.get("planned_connector_count") is not None:
+            l2_planned = l2_plan.get("planned_connector_count")
 
     layers: list[tuple[int, str, str, str, list[dict[str, str]]]] = [
         (
@@ -414,14 +421,19 @@ def _build_layer_summaries(
             outcome(LAYER_02_EXTERIOR_TRANSPORT, "pending"),
             [
                 _highlight("Terrain upper bound", headline),
+                _highlight("Target percent", pct if pct == _PLACEHOLDER else f"{pct}%"),
+                _highlight("Planning target", target_tp),
+                _highlight("Required connectors", l2_required),
+                _highlight("Planned connectors", l2_planned),
                 _highlight(
                     "Required normal lines",
                     capacity.get("external_line_count") if primary == "shape" else _PLACEHOLDER,
                 ),
-                _highlight(connector_label, capacity.get("external_connector_count")),
+                _highlight(
+                    "Reference belts @100% terrain",
+                    capacity.get("external_connector_count"),
+                ),
                 _highlight("Platform upper bound", capacity.get("platform_upper_bound")),
-                _highlight("Target percent", pct if pct == _PLACEHOLDER else f"{pct}%"),
-                _highlight("Planning target", target_tp),
             ],
         ),
         (

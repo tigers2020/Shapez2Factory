@@ -71,6 +71,35 @@ def test_lab_js_renders_layer_summaries_from_run_payload() -> None:
     assert "updateLabDetailPanels" not in js
 
 
+def test_lab_exterior_connector_overlay_contract() -> None:
+    js = (
+        REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
+    css = (REPO / "assets" / "css" / "input.css").read_text(encoding="utf-8")
+    assert "planned_exterior_connector" in js
+    assert "exterior_connector_plan" in js
+    assert "frozen_exterior_connector_plan" in js
+    assert "lab-planned-exterior-connector" in css
+    assert "lab-planned-exterior-connector" in js
+    assert "applyPlannedExteriorConnectorWhiteHighlight" in js
+    assert "renderPlannedExteriorConnectorHighlights" in js
+    assert "plannedConnectorCellsFromWire" in js
+    assert "plannedConnectorCoordKeys" in js
+    assert "skipPlannedExteriorConnectors" in js
+    assert "overlay_role" in js
+    assert "row.overlay_role = String(c.overlay_role)" in js
+    assert "sortOverlayCellsForPaint" in js
+    assert "contain: layout paint" in css
+    built_css = (REPO / "django_apps" / "web" / "static" / "web" / "css" / "app.css").read_text(
+        encoding="utf-8",
+    )
+    assert "lab-planned-exterior-connector" in built_css, (
+        "run npm run build:css — Lab L2 marker styles missing from app.css"
+    )
+    assert "lab-planned-exterior-connector" in built_css
+    assert "inset" in built_css
+
+
 def test_lab_terrain_rim_highlight_toggle_and_css_contract() -> None:
     template = TEMPLATE.read_text(encoding="utf-8")
     js = (

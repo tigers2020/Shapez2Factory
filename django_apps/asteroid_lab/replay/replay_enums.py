@@ -30,6 +30,7 @@ class ReplayEventType(StrEnum):
     DECODE_COMPLETED = "decode.completed"
     RECONSTRUCTION_STARTED = "reconstruction.started"
     RECONSTRUCTION_COMPLETED = "reconstruction.completed"
+    EXTERIOR_TRANSPORT_COMPLETED = "exterior_transport.completed"
 
     # Optimization (superset: matches OptimizationReplayEventType wire values)
     OPTIMIZATION_INPUT_LOADED = "optimization.input_loaded"

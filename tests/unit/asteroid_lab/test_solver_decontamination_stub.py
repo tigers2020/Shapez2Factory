@@ -19,8 +19,8 @@ def _minimal_copy() -> str:
     return "SHAPEZ2-4-e30="
 
 
-@override_settings(ASTEROID_LAB_RTTP_ENABLED=False)
-def test_run_solver_stub_when_rttp_flag_false() -> None:
+@override_settings(ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=False, ASTEROID_LAB_RTTP_ENABLED=False)
+def test_run_solver_stub_when_layer02_and_rttp_disabled() -> None:
     proj = m.AsteroidProject.objects.create(name="StubOff", slug="stub-off")
     m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
     result = run_solver_runtime_for_project(int(proj.pk))
@@ -29,9 +29,9 @@ def test_run_solver_stub_when_rttp_flag_false() -> None:
     assert result.message == SOLVER_NOT_AVAILABLE_MESSAGE
 
 
-@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
-def test_run_solver_stub_when_rttp_flag_true() -> None:
-    """Setting must not resurrect RTTP after PR-A stub."""
+@override_settings(ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=False, ASTEROID_LAB_RTTP_ENABLED=True)
+def test_run_solver_stub_when_rttp_flag_true_layer02_off() -> None:
+    """RTTP flag must not resurrect full solver while L2 entry is disabled."""
     proj = m.AsteroidProject.objects.create(name="StubOn", slug="stub-on")
     m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
     result = run_solver_runtime_for_project(

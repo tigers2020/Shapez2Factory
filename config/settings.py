@@ -168,6 +168,9 @@ ASTEROID_LAB_RTTP_ENABLED = os.environ.get("ASTEROID_LAB_RTTP_ENABLED", "1").str
     "yes",
 )
 
+# Run Solver: L1 reconstruction + L2 exterior connector plan (L3–L5 not run).
+ASTEROID_LAB_LAYER_02_SOLVER_ENABLED = True
+
 ASTEROID_LAB_REPLAY_PAYLOAD_MODE = (
     os.environ.get(
         "ASTEROID_LAB_REPLAY_PAYLOAD_MODE",

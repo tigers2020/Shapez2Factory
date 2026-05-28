@@ -18,16 +18,22 @@ class ExteriorShapeTransportCapacity(models.Model):
     mini_unit_output_per_min = models.DecimalField(
         max_digits=12,
         decimal_places=4,
+        help_text="Mini miner base extraction (tier-1 CANON: 30 shapes/min).",
     )
-    buildings_per_regular_belt = models.PositiveSmallIntegerField()
+    buildings_per_regular_belt = models.PositiveSmallIntegerField(
+        help_text="Mini units per inner belt group (tier-1 CANON: 4 → 120 shapes/min inner belt).",
+    )
+    miner_full_output_multiplier = models.PositiveSmallIntegerField(
+        help_text="Expander full-setup multiplier on mini miner (tier-1 CANON: 16 → 480 shapes/min line).",
+    )
     lanes_per_line = models.PositiveSmallIntegerField(
-        help_text="Regular-belt groups per exterior line (tier-1 CANON: 12 → 720 shapes/min line).",
+        help_text="Inner belts exporting outside one miner (tier-1 CANON: 12; sizing uses 480/min line).",
     )
     lines_per_space_belt = models.PositiveSmallIntegerField(
-        help_text="Exterior lines per Space Belt building (tier-1 CANON: 12 → 8640 shapes/min belt).",
+        help_text="Exterior lines per Space Belt building (tier-1 CANON: 12 → 5760 shapes/min belt).",
     )
     space_belt_full_belt_count = models.PositiveSmallIntegerField(
-        help_text="Wiki saturated regular-belt equivalents per full belt (48 → 2880/min); not per-building cap.",
+        help_text="Inner-belt equivalents at saturated wiki cap (48 × 120/min → 5760/min).",
     )
     output_unit = models.CharField(max_length=64, default="shapes_per_min")
     source_kind = models.CharField(

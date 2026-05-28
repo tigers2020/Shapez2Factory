@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
 
 _RECON_META_KEY = "_asteroid_lab_reconstruction"
 
@@ -16,16 +17,22 @@ def island_bbox_from_xy_dicts(rows: Sequence[dict[str, Any]]) -> dict[str, int] 
     for row in rows:
         if not isinstance(row, dict):
             continue
+        x_val: int | None = None
+        y_val: int | None = None
         try:
-            xs.append(int(row["x"]))
-            ys.append(int(row["y"]))
+            x_val = int(row["x"])
+            y_val = int(row["y"])
         except (KeyError, TypeError, ValueError):
             try:
-                xs.append(int(row["X"]))
-                ys.append(int(row["Y"]))
+                x_val = int(row["X"])
+                y_val = int(row["Y"])
             except (KeyError, TypeError, ValueError):
                 continue
-    if not xs:
+        if x_val is None or y_val is None:
+            continue
+        xs.append(x_val)
+        ys.append(y_val)
+    if not xs or not ys:
         return None
     min_x, max_x = min(xs), max(xs)
     min_y, max_y = min(ys), max(ys)
@@ -49,16 +56,25 @@ def full_map_island_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict
     meta = decoded_json.get(_RECON_META_KEY)
     if isinstance(meta, dict):
         bb = meta.get("full_map_island_bbox")
-        if isinstance(bb, dict) and "min_x" in bb and "width" in bb:
-            return {k: int(bb[k]) for k in ("min_x", "max_x", "min_y", "max_y", "width", "height")}
+        _bbox_keys = ("min_x", "max_x", "min_y", "max_y", "width", "height")
+        if isinstance(bb, dict) and all(k in bb for k in _bbox_keys):
+            try:
+                return {k: int(bb[k]) for k in _bbox_keys}
+            except (TypeError, ValueError):
+                pass
     bp = decoded_json.get("BP")
     if not isinstance(bp, dict):
         return None
     entries = bp.get("Entries")
     if not isinstance(entries, list):
         return None
+    # Island-local: omitted ``X``/``Y`` default to 0 (``entry_island_raw_coord``), not skipped.
     return island_bbox_from_xy_dicts(
-        [{"X": e.get("X"), "Y": e.get("Y")} for e in entries if isinstance(e, dict)]
+        [
+            {"x": entry_island_raw_coord(e).x, "y": entry_island_raw_coord(e).y}
+            for e in entries
+            if isinstance(e, dict)
+        ]
     )
 
 

@@ -6,7 +6,10 @@ from typing import Any, cast
 
 from django.db.models import Count, Prefetch
 
-from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import MINER_SEED_SCHEMA
+from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
+    EXPECTED_19_GENE_KEYS,
+    MINER_SEED_SCHEMA_V2,
+)
 from django_apps.asteroid_lab.models import GeneticSample, ReplayFrame, ReplayTrack
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
@@ -20,7 +23,7 @@ def _gene_template_catalog() -> dict[str, Any]:
     """Read-only DB summary of miner seed patterns (display only, never solver input)."""
     seed_qs = GeneticSample.objects.filter(
         gene_key__isnull=False,
-        metadata_json__schema=MINER_SEED_SCHEMA,
+        metadata_json__schema=MINER_SEED_SCHEMA_V2,
         metadata_json__is_seed=True,
     )
     db_count = seed_qs.count()
@@ -28,10 +31,10 @@ def _gene_template_catalog() -> dict[str, Any]:
     return {
         "source": GeneTemplateSourceKind.GENETIC_SAMPLE_DB.value,
         "db_gene_count": db_count,
-        "generator_version": MINER_SEED_SCHEMA,
+        "generator_version": MINER_SEED_SCHEMA_V2,
         "sample_gene_ids": top_ids,
         "seed_command_hint": "python manage.py seed_miner_patterns",
-        "needs_seed": db_count != 14,
+        "needs_seed": db_count != len(EXPECTED_19_GENE_KEYS),
     }
 
 

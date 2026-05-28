@@ -14,13 +14,11 @@ from django_apps.asteroid_lab.lab_screen_grid import (
     mini_map_grid_coord,
     sprite_rotation_deg_from_quarter,
 )
-from django_apps.asteroid_lab.reconstruction.display_map import (
-    full_map_island_bbox_from_decoded_json,
-)
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
+from django_apps.asteroid_lab.snapshots.island_bbox import island_bbox_from_cells
 
 # Change-form preview: larger cells. Changelist uses same cell size inside a scroll box.
 _DEFAULT_CELL_PX = 52
@@ -180,21 +178,33 @@ def genetic_sample_mini_map_html(
         return "-"
 
     snap = build_decoded_blueprint_snapshot(decoded_json)
-    island_full = full_map_island_bbox_from_decoded_json(decoded_json)
-    bbox = island_full if island_full is not None else snap.bbox_json
+    if not snap.cells:
+        return "-"
 
-    by_pos: dict[tuple[int, int], DecodedCellDTO] = {}
-    if "min_x" in bbox and "width" in bbox:
+    # Admin preview: bbox from decoded cells only (island-local X/Y, X==0 allowed).
+    # Do not trust persisted reconstruction meta — legacy rows used export/server extents.
+    bbox = island_bbox_from_cells(snap.cells) or snap.bbox_json
+    _bbox_keys = ("min_x", "min_y", "width", "height")
+    if not all(k in bbox for k in _bbox_keys):
+        bbox = snap.bbox_json
+    if not all(k in bbox for k in _bbox_keys):
+        return mark_safe(
+            '<p class="genetic-sample-map-note">No island bbox; cannot draw mini-map.</p>'
+        )
+
+    try:
         min_x = int(bbox["min_x"])
         min_y = int(bbox["min_y"])
         sw = max(int(bbox["width"]), _MIN_ADMIN_GRID_COLS)
         sh = max(int(bbox["height"]), _MIN_ADMIN_GRID_ROWS)
-        for cell in snap.cells:
-            by_pos[(int(cell.x) - min_x, int(cell.y) - min_y)] = cell
-    else:
+    except (KeyError, TypeError, ValueError):
         return mark_safe(
-            '<p class="genetic-sample-map-note">bbox媛 ?놁뼱 誘몃땲留듭쓣 洹몃┫ ???놁뒿?덈떎.</p>'
+            '<p class="genetic-sample-map-note">Invalid island bbox; cannot draw mini-map.</p>'
         )
+
+    by_pos: dict[tuple[int, int], DecodedCellDTO] = {}
+    for cell in snap.cells:
+        by_pos[(int(cell.x) - min_x, int(cell.y) - min_y)] = cell
 
     img_px = max(18, cell_px - 6)
     style = (

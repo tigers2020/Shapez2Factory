@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 
-from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import MINER_SEED_SCHEMA
+from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import MINER_SEED_SCHEMA_V2
 from django_apps.asteroid_lab.models import GeneticSample
 
 User = get_user_model()
@@ -33,26 +33,42 @@ def test_genetic_sample_changelist_shows_seed_form(staff_client: Client) -> None
     assert response.status_code == 200
     html = response.content.decode()
     assert "Miner seed pattern ingest" in html
+    assert "purge_non_seed" in html
 
 
 @pytest.mark.django_db
 def test_genetic_sample_admin_seed_button_runs_command(staff_client: Client) -> None:
-    GeneticSample.objects.filter(metadata_json__schema=MINER_SEED_SCHEMA).delete()
+    GeneticSample.objects.filter(metadata_json__schema=MINER_SEED_SCHEMA_V2).delete()
     assert not GeneticSample.objects.filter(
-        metadata_json__schema=MINER_SEED_SCHEMA,
+        metadata_json__schema=MINER_SEED_SCHEMA_V2,
         metadata_json__is_seed=True,
     ).exists()
 
+    valid_code = open("var/default_miner_pattern.txt", encoding="utf-8").readline().strip()
+    GeneticSample.objects.create(
+        gene_key="legacy_manual_for_admin",
+        name="legacy",
+        code=valid_code,
+        metadata_json={"note": "manual"},
+    )
+
     url = reverse("admin:asteroid_lab_geneticsample_seed_miner_patterns")
-    response = staff_client.post(url, follow=False)
-    assert response.status_code == 302
+    response = staff_client.post(
+        url,
+        {"purge_non_seed": "on", "replace_stale": "on"},
+        follow=True,
+    )
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert "genetic-sample-mini-map" in html
     assert (
         GeneticSample.objects.filter(
-            metadata_json__schema=MINER_SEED_SCHEMA,
+            metadata_json__schema=MINER_SEED_SCHEMA_V2,
             metadata_json__is_seed=True,
         ).count()
-        == 14
+        == 19
     )
+    assert GeneticSample.objects.filter(gene_key="legacy_manual_for_admin").exists()
 
 
 @pytest.mark.django_db

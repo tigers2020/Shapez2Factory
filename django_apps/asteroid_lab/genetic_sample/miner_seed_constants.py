@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 MINER_SEED_SCHEMA = "miner_seed_v1"
+MINER_SEED_SCHEMA_V2 = "miner_seed_v2"
 EXHAUSTIVE_GENERATOR_STALE = "exhaustive_sample_gene_v1"
 
 MINER_LAYOUT_TYPES_SHAPE = (
@@ -17,18 +18,66 @@ LAYOUT_TYPE_SHAPE_TO_FLUID: dict[str, str] = {
     "SpaceBelt_Forward": "SpacePipe_Forward",
 }
 
+EXPECTED_PATTERN_IDS: tuple[str, ...] = (
+    "m0e_01",
+    "m1e_01",
+    "m2e_01",
+    "m2e_02",
+    "m2e_03",
+    "m2e_04",
+    "m3e_01",
+    "m3e_02",
+    "m3e_03",
+    "m3e_04",
+    "m3e_05",
+    "m3e_06",
+    "m3e_07",
+    "m3e_08",
+    "m3e_09",
+    "m3e_10",
+    "m3e_11",
+    "m3e_12",
+    "m3e_13",
+)
+
+EXPECTED_19_GENE_KEYS: tuple[str, ...] = tuple(
+    f"miner_seed_{pattern_id}" for pattern_id in EXPECTED_PATTERN_IDS
+)
+
+MINER_SEED_SCHEMAS_PURGEABLE: frozenset[str] = frozenset(
+    {MINER_SEED_SCHEMA, MINER_SEED_SCHEMA_V2}
+)
+
+
+def gene_key_for_pattern_id(pattern_id: str) -> str:
+    if pattern_id not in EXPECTED_PATTERN_IDS:
+        msg = f"unknown miner seed pattern_id: {pattern_id!r}"
+        raise ValueError(msg)
+    return f"miner_seed_{pattern_id}"
+
 
 def gene_key_for_rank(rank: int) -> str:
+    """Legacy v1 rank 1..14 — retained for tests referencing old keys only."""
+
     if rank < 1 or rank > 14:
-        msg = "seed rank must be 1..14"
+        msg = "legacy seed rank must be 1..14"
         raise ValueError(msg)
     return f"miner_seed_{rank:02d}"
 
 
+CANONICAL_MINER_SEED_GENE_KEYS: tuple[str, ...] = EXPECTED_19_GENE_KEYS
+
+
 __all__ = [
+    "CANONICAL_MINER_SEED_GENE_KEYS",
+    "EXPECTED_19_GENE_KEYS",
+    "EXPECTED_PATTERN_IDS",
     "EXHAUSTIVE_GENERATOR_STALE",
     "LAYOUT_TYPE_SHAPE_TO_FLUID",
     "MINER_LAYOUT_TYPES_SHAPE",
     "MINER_SEED_SCHEMA",
+    "MINER_SEED_SCHEMA_V2",
+    "MINER_SEED_SCHEMAS_PURGEABLE",
+    "gene_key_for_pattern_id",
     "gene_key_for_rank",
 ]

@@ -21,8 +21,7 @@ def correct_tier1_shape_transport_rates(apps, schema_editor) -> None:
         source_note=(
             "Shapez 2 1.0 tier-1: mini 30/min; expander x16 → 480/min line; "
             "inner belt 120/min (4×30); 12 inner belts export; "
-            "Space Belt 480/min × 12 lines = 5760/min per building. EVTC spec: "
-            + EVTC_SPEC
+            "Space Belt 480/min × 12 lines = 5760/min per building. EVTC spec: " + EVTC_SPEC
         ),
     )
 

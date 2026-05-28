@@ -83,10 +83,7 @@ def enrich_lab_timeline_frames_with_exterior_connector_plan(
                 overlay = [
                     row
                     for row in overlay
-                    if not (
-                        isinstance(row, dict)
-                        and row.get("overlay_role") == OVERLAY_ROLE
-                    )
+                    if not (isinstance(row, dict) and row.get("overlay_role") == OVERLAY_ROLE)
                 ]
                 overlay = _overlay_without_connector_coord_duplicates(
                     overlay,

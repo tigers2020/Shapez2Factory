@@ -144,9 +144,7 @@ def run_layer02_solver_for_project(
             message="throughput_target_percent must be an integer from 1 to 100",
         )
 
-    inp = (
-        m.AsteroidMapInput.objects.filter(project_id=pid).order_by("-created_at", "-id").first()
-    )
+    inp = m.AsteroidMapInput.objects.filter(project_id=pid).order_by("-created_at", "-id").first()
     if inp is None:
         frames, metrics = build_lab_replay_frames_for_project(pid)
         return SolverRuntimeEntryResult(
@@ -239,9 +237,7 @@ def run_layer02_solver_for_project(
     run = m.SolverRun.objects.filter(pk=run_id).first()
     if run is not None:
         run.status = (
-            m.SolverRun.RunStatus.COMPLETED
-            if unmet is None
-            else m.SolverRun.RunStatus.PARTIAL
+            m.SolverRun.RunStatus.COMPLETED if unmet is None else m.SolverRun.RunStatus.PARTIAL
         )
         run.save(update_fields=["status"])
 

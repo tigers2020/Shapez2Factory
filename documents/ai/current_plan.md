@@ -4,7 +4,7 @@
 
 | Queue | State |
 |-------|--------|
-| P0 Decontamination (this spec) | **ACTIVE** — plan approved; Task 0 governance in progress |
+| P0 Decontamination (this spec) | **ACTIVE** — PR-A/B merged on branch; Task 5–6 doc/gates WIP |
 | RTTP MEG-C2 | **BLOCKED** by decontamination |
 | v0.2 core algorithm recovery | **BLOCKED** — superseded by decontamination surgery |
 | MEG contract spec | **FROZEN** reference — [`2026-05-27-rttp-mining-equipment-goal-contract-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md) |
@@ -23,9 +23,8 @@
 
 **Runtime (code authority):**
 
-- `ASTEROID_LAB_RTTP_ENABLED=True` (default) → `solver_runtime_entry` runs `run_rttp_pipeline` + replay sink.
-- `ASTEROID_LAB_RTTP_ENABLED=False` → HTTP `Run Solver` returns **200** + `SOLVER_NOT_AVAILABLE` (reconstruction guidance only). This is the only stub path.
-- "optimization removed · always stub" is **not** the case — strip-solver removed the **legacy monolith/shadow/RD**; RTTP Hybrid C was restored and wired as a separate package.
+- **Post-P0 (target):** `solver_runtime_entry` / `run_solver` always return **200** + `SOLVER_NOT_AVAILABLE`; `ASTEROID_LAB_RTTP_ENABLED` is **ignored** (no `run_rttp_pipeline`).
+- **Pre-P0 (historical):** RTTP Hybrid C + replay sink when flag enabled — removed by decontamination PR-B.
 
 **Surgery (history):** [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md) · execution record: [`docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md`](../../docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md)
 
@@ -99,15 +98,15 @@ Coverage: fixture topology·export, replay `reconstruction_final` merge + `step4
   - Includes `test_b_cs4_reconstruction_replay_boundary.py`; **excludes** `test_rttp_replay_*`
   - Failure after B-CS4 CLOSED = maintenance regression track (reopen B-CS3/B-CS4 only if original closure evidence was invalid)
 
-- **PR-B optimization contamination gate owner:** `powershell -File scripts/test_optimization_contamination.ps1`
-  - Or: `python -m pytest tests/unit/architecture/test_optimization_contamination_gates.py tests/unit/architecture/test_catalog_consumption_boundaries.py -v --tb=short` + `ruff check django_apps/asteroid_lab/optimization tests/unit/architecture`
+- **P0 reconstruction decontamination gate owner:** `powershell -File scripts/test_reconstruction_decontamination.ps1`
+  - Or: `python -m pytest tests/unit/architecture/test_reconstruction_decontamination_gates.py -v --tb=short`
   - **Not** included in `test_reconstruction_narrow.ps1` (reconstruction-only)
 
 - **PR-D quarantine registry gate owner:** `powershell -File scripts/test_quarantine_registry.ps1`
 
 - **Capacity C-GATE (complete-map SoT) gate owner:** `powershell -File scripts/test_capacity_sot.ps1`
   - Architecture: `test_capacity_complete_map_sot_gates.py` (G1 import + G2 semantic token)
-  - **Not** included in `test_reconstruction_narrow.ps1` or `test_optimization_contamination.ps1`
+  - **Not** included in `test_reconstruction_narrow.ps1` or `test_reconstruction_decontamination.ps1`
 
 Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
@@ -357,7 +356,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - PR: #69
   - Spec: [`docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md)
   - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md)
-  - Evidence: `test_optimization_contamination_gates.py` 3 PASS; milestone import boundary test removed; standing `scripts/test_optimization_contamination.ps1`
+  - Evidence: `test_reconstruction_decontamination_gates.py` PASS; standing `scripts/test_reconstruction_decontamination.ps1`
   - Entry Gate A (2026-05-24): master @ `28c7261e` pre-merge; post-merge PR-B standing gate green on `e56ff048`
   - No production solver behaviour change
 

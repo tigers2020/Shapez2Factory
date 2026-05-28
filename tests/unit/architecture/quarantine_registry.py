@@ -63,31 +63,23 @@ QUARANTINED_MODULE_PREFIXES: tuple[QuarantineModulePrefix, ...] = (
         id="revival-solver-runtime-pipeline",
         prefix="solver_runtime_pipeline",
         reason="Monolith pipeline removed (strip-solver)",
-        replacement="django_apps.asteroid_lab.optimization.pipeline",
+        replacement="django_apps.asteroid_lab.services.solver_runtime_entry",
     ),
     QuarantineModulePrefix(
         id="revival-pass-first",
         prefix="pass_first",
         reason="Legacy pass-first path family",
-        replacement="django_apps.asteroid_lab.optimization.pipeline",
+        replacement="django_apps.asteroid_lab.reconstruction.pipeline",
     ),
 )
 
 # Document tree checks (front matter / stale authority — not importable).
 QUARANTINED_DOC_PATHS: tuple[QuarantineDocPath, ...] = (
     QuarantineDocPath(
-        id="doc-plans-asteroid-lab-optimization",
-        path="documents/plans/asteroid_lab_optimization",
-        reason="Inventory QUARANTINE; pre-RTTP plan snapshots",
-        replacement="documents/Algorithm/asteroid_lab_*.md + docs/superpowers/specs/",
-        delete_candidate=False,
-        owner_next_step="maintain",
-    ),
-    QuarantineDocPath(
         id="doc-algorithm-solver-runtime-series",
         path="documents/Algorithm/solver_runtime",
         reason="ARCHIVED Phase A–M orchestration series",
-        replacement="django_apps/asteroid_lab/optimization/ + RTTP specs",
+        replacement="django_apps/asteroid_lab/reconstruction/ + decontamination spec",
         delete_candidate=False,
         owner_next_step="maintain",
         front_matter_scope="readme_only",
@@ -104,7 +96,7 @@ PR_E_APPLIED_DELETIONS: tuple[PrEDeleteCandidate, ...] = (
         evidence="0-byte file; collects zero tests",
         replacements=(
             "tests/unit/architecture/test_django_app_import_boundaries.py",
-            "tests/unit/architecture/test_optimization_contamination_gates.py",
+            "tests/unit/architecture/test_reconstruction_decontamination_gates.py",
         ),
     ),
     PrEDeleteCandidate(
@@ -134,8 +126,7 @@ PR_E_APPLIED_DELETIONS: tuple[PrEDeleteCandidate, ...] = (
 # Closed set — extend only via spec amendment.
 ACTIVE_RUNTIME_ROOTS: tuple[str, ...] = (
     "django_apps/asteroid_lab/services/solver_runtime_entry.py",
-    "django_apps/asteroid_lab/optimization/pipeline.py",
-    "django_apps/asteroid_lab/optimization/reconstruction_adapter.py",
+    "django_apps/asteroid_lab/reconstruction/pipeline.py",
     "django_apps/asteroid_lab/management/commands/run_solver.py",
     "django_apps/web/views/public_pages.py",
 )
@@ -196,10 +187,9 @@ PR_F_APPLIED_DELETIONS: tuple[PrEDeleteCandidate, ...] = ()
 PR_F_PROTECTED_TESTS: tuple[str, ...] = (
     "tests/unit/architecture/",
     "tests/unit/architecture/test_quarantined_paths_do_not_leak.py",
-    "tests/unit/architecture/test_optimization_contamination_gates.py",
+    "tests/unit/architecture/test_reconstruction_decontamination_gates.py",
     "tests/unit/architecture/test_capacity_complete_map_sot_gates.py",
     "tests/unit/architecture/test_django_app_import_boundaries.py",
-    "tests/unit/architecture/test_catalog_consumption_boundaries.py",
     "tests/unit/asteroid_lab/test_rttp_",
     "tests/unit/asteroid_lab/test_replay_",
     "tests/unit/asteroid_lab/test_reconstruction_",
@@ -425,7 +415,7 @@ PR_F_AGGRESSIVE_AUDIT_CANDIDATES: tuple[PrFAuditEntry, ...] = (
     ),
     PrFAuditEntry(
         id="f0-016-tests-unit-architecture-test_optimization_contam",
-        path="tests/unit/architecture/test_optimization_contamination_gates.py",
+        path="tests/unit/architecture/test_reconstruction_decontamination_gates.py",
         kind="file",
         grade="PROTECTED_CONTRACT",
         package="unit/architecture",

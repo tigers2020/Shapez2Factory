@@ -10,7 +10,7 @@
 
 **Runtime (authoritative):** decode → cleanup → reconstruction → `ReconstructionCompleteMap` → persist → Lab reconstruction replay. `run_solver` / `solver_runtime_entry` → **`SOLVER_NOT_AVAILABLE`** (`ASTEROID_LAB_RTTP_ENABLED` ignored). **`shapez_solver` out of scope.**
 
-**RTTP historical queue:** [`documents/archive/asteroid_lab_rttp_retired_2026-05/current_plan_rttp_historical.md`](../archive/asteroid_lab_rttp_retired_2026-05/current_plan_rttp_historical.md) — forensic only; **do not implement**.
+**RTTP historical queue:** **hard-deleted** (2026-05-28) — git history only; **do not implement**.
 
 ## Authority precedence
 
@@ -41,7 +41,6 @@ django_apps/asteroid_lab/services/solver_runtime_entry.py  ← SOLVER_NOT_AVAILA
 powershell -File scripts/test_reconstruction_narrow.ps1
 powershell -File scripts/test_reconstruction_decontamination.ps1
 powershell -File scripts/test_capacity_sot.ps1
-powershell -File scripts/test_doc_rttp_retired.ps1
 ```
 
 ## Maintenance / Standing Gates
@@ -49,7 +48,6 @@ powershell -File scripts/test_doc_rttp_retired.ps1
 - **Replay narrow:** `scripts/test_reconstruction_narrow.ps1`
 - **P0 decontamination:** `scripts/test_reconstruction_decontamination.ps1`
 - **Capacity C-GATE:** `scripts/test_capacity_sot.ps1`
-- **Doc RTTP retirement:** `scripts/test_doc_rttp_retired.ps1`
 - **Quarantine registry:** `scripts/test_quarantine_registry.ps1`
 
 Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`

@@ -15,7 +15,7 @@ Status enum follows [`document_lifecycle.md`](document_lifecycle.md).
 
 **QUARANTINE / ARCHIVE (never implementation authority):**
 
-- [`documents/archive/asteroid_lab_rttp_retired_2026-05/`](../archive/asteroid_lab_rttp_retired_2026-05/) — RTTP runtime retired
+- RTTP retirement tree — **hard-deleted** 2026-05-28 (`documents/archive/asteroid_lab_rttp_retired_2026-05/`); git history only
 - [`documents/plans/asteroid_lab_optimization/`](../plans/asteroid_lab_optimization/) — pre-strip-solver snapshots (if present)
 
 There is no separate `authority_index.md`; this file is the sole authority map.
@@ -63,8 +63,8 @@ When two documents disagree on Asteroid Lab implementation, resolve by this tabl
 | Replay boundary | [`docs/superpowers/specs/2026-05-24-b-cs4-reconstruction-replay-boundary-design.md`](../../docs/superpowers/specs/2026-05-24-b-cs4-reconstruction-replay-boundary-design.md) | CLOSED | Reconstruction vs replay |
 | Game data snapshot | `django_apps/asteroid_lab/contracts/game_data_snapshot*.py` | CANON → code | Not RTTP catalog contracts |
 | MEG contract (frozen) | [`docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md) | **FROZEN** | Do not implement until RTTP re-opened |
-| RTTP / optimization / routing / commit / GA | [`documents/archive/asteroid_lab_rttp_retired_2026-05/`](../archive/asteroid_lab_rttp_retired_2026-05/) | **RETIRED** | No `optimization/` package |
-| Legacy Algorithm 01–08 · solver_runtime phases | [`documents/archive/asteroid_lab_rttp_retired_2026-05/algorithm/`](../archive/asteroid_lab_rttp_retired_2026-05/algorithm/) | **RETIRED** | Historical reference only |
+| RTTP / optimization / routing / commit / GA | git history only | **REMOVED** | No `optimization/` package; archive tree deleted 2026-05-28 |
+| Legacy Algorithm 01–08 · solver_runtime phases | git history only | **REMOVED** | Hard-deleted with RTTP archive |
 | Mining layout solver (removed) | git history only | **REMOVED** | — |
 | `shapez_solver` (factory graph) | `django_apps/shapez_solver/` | OUT OF SCOPE | Not Asteroid Lab decontamination |
 
@@ -87,7 +87,6 @@ When two documents disagree on Asteroid Lab implementation, resolve by this tabl
 | Document | Status | Kind | Canonical | Notes |
 |------|------|------|-----------|------|
 | [`documents/archive/README.md`](../archive/README.md) | `CANON` | archive index | YES | Archive bucket map |
-| [`documents/archive/asteroid_lab_rttp_retired_2026-05/README.md`](../archive/asteroid_lab_rttp_retired_2026-05/README.md) | `ARCHIVED` | RTTP retirement | NO | Forensic + retired superpowers |
 | [`documents/archive/2026-05-completed/README.md`](../archive/2026-05-completed/README.md) | `COMPLETED` | completed index | NO | 2026-05 completed bundle |
 | [`documents/archive/completed-implementation/README.md`](../archive/completed-implementation/README.md) | `COMPLETED` | completed plan/research pairs | NO | Per-stem pairs for completed implementation |
 | [`documents/archive/obsolete-src-shapez2-solver-plans-2026-05-01/`](../archive/obsolete-src-shapez2-solver-plans-2026-05-01/) | `ARCHIVED` | obsolete plan set | NO | Pre-Django-first transition plans |
@@ -104,4 +103,4 @@ When two documents disagree on Asteroid Lab implementation, resolve by this tabl
 - `django_apps.shapez_asteroid` and `tests/unit/shapez_asteroid*` have been removed.
 - `django_apps/asteroid_lab/optimization/` and `catalog/` **removed** (P0 decontamination PR #117).
 - Mining layout solver (`documents/Algorithm/mining_solver_cursor_sessions/`) — **git history only**.
-- RTTP superpowers specs/plans — moved under [`documents/archive/asteroid_lab_rttp_retired_2026-05/superpowers/`](../archive/asteroid_lab_rttp_retired_2026-05/superpowers/) when filename matched retirement patterns (2026-05-27 G4).
+- RTTP superpowers specs/plans — were under `documents/archive/asteroid_lab_rttp_retired_2026-05/superpowers/`; **hard-deleted** 2026-05-28 (git history).

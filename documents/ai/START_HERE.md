@@ -34,7 +34,7 @@ This file is the entry point that new AI sessions, subagents, and Cursor work re
 - Replay/artifacts are output-only (not algorithm inputs)
 - `run_solver` is fail-closed stub only — **no RTTP pipeline**
 
-**Forbidden:** Do not implement from RTTP queue rows, `documents/archive/asteroid_lab_rttp_retired_2026-05/` (except FROZEN MEG contract read-only), or retired `documents/Algorithm/asteroid_lab_01`–`08` / `solver_runtime/` archives.
+**Forbidden:** Do not implement RTTP / optimization runtime (queue and archive tree **hard-deleted** 2026-05-28; git history only). FROZEN MEG contract spec remains read-only reference.
 
 **Forbidden:** Do not use `documents/plans/asteroid_lab_optimization/` as implementation authority.
 

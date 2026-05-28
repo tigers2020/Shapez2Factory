@@ -1,9 +1,11 @@
 # Miner Seed Difficulty Rank — Design Spec
 
-**Status:** Approved (contract review 2026-05-28: `compactness_approx`, `difficulty_score: int`, dry-run ambiguity)  
+**Status:** Approved — **amended 2026-05-28** (`intrinsic_priority_*` split from `difficulty_rank`; see §9)  
 **Date:** 2026-05-28  
 **Track:** Asteroid Lab `GeneticSample` miner seed metadata (follow-up to miner seed v2 equivalence)  
 **Work classification:** Contract change (metadata only; no bootstrap reorder)
+
+**Implementation note:** Branch `feat/miner-seed-difficulty-rank` landed PR-D1/D2 with `difficulty_rank` only. **PR-D2b** (this amendment) adds `intrinsic_priority_score` / `intrinsic_priority_rank` and corrects consumer boundaries; does **not** replace `difficulty_rank` formula.
 
 **Related:**
 
@@ -25,12 +27,15 @@
 
 Using `seed_rank` as “difficulty” or “GA try order” causes drift between catalog stability and solver pedagogy.
 
+**Amendment (2026-05-28):** `difficulty_rank` (curriculum: easy → hard) must **not** drive candidate generation or gene-picker default order. Low-extension patterns (`m0e`, `m1e`) ranking 1–2 causes pool fill by low-throughput fillers before simple high-throughput patterns (e.g. linear `m3e_01`). Pattern selection uses **`intrinsic_priority_rank`** (production-adjusted intrinsic; §9).
+
 ### Goals
 
 | Goal | Contract |
 |------|----------|
 | Preserve catalog stability | `seed_rank` unchanged = `catalog_rank` ≡ bootstrap `line_no` |
-| Add intrinsic difficulty | `difficulty_score`, `difficulty_rank`, `difficulty_tier`, `rank_reason` at ingest |
+| Add intrinsic difficulty | `difficulty_score`, `difficulty_rank`, `difficulty_tier`, `rank_reason` at ingest (curriculum) |
+| Add intrinsic priority | `intrinsic_priority_score`, `intrinsic_priority_rank` at ingest (pattern picker; §9) |
 | Defer map-aware priority | `search_priority_rank` null until Phase 5 fitness DTO exists |
 | Determinism | Same decoded root → same score; full catalog resort is ingest-global |
 | No catalog identity change | `gene_key`, `equivalence_signature`, bootstrap line order **unchanged** |
@@ -53,13 +58,32 @@ Using `seed_rank` as “difficulty” or “GA try order” causes drift between
 |-------|-------|--------|---------|
 | `seed_rank` | `catalog_rank` | `seed_miner_patterns` (fixed zip order) | Admin default sort, bootstrap `line_no`, replay/debug |
 | `difficulty_score` | — | ingest scorer (`int`, v1 integer-valued formula) | Admin column, curriculum docs, tests |
-| `difficulty_rank` | — | ingest (global sort 1..18) | Gene picker / future GA initialization |
+| `difficulty_rank` | — | ingest (global sort 1..18) | Admin / curriculum / pedagogy docs |
 | `difficulty_tier` | — | ingest (derived) | UI grouping, coarse curriculum |
 | `rank_reason` | — | ingest (breakdown) | Debug, golden tests |
-| `search_priority_rank` | — | **null** in this track | Phase 5+: map-aware gene try order |
+| `intrinsic_priority_score` | — | ingest (`int`; §9.3) | Debug, tie-break input |
+| `intrinsic_priority_rank` | — | ingest (global sort 1..18; §9.4) | Candidate generation / gene picker **default** order |
+| `intrinsic_priority_source` | — | `"production_adjusted_intrinsic_v1"` | Formula version stamp |
+| `search_priority_rank` | — | **null** until Phase 5 | Map-aware gene try order after fitness |
 | `search_priority_source` | — | `"deferred_phase5"` | Explains null rank |
 
-**Forbidden:** Treating `seed_rank` as difficulty, throughput sort key, or solver commit sequence.
+### 2.1b Consumer boundaries (amended)
+
+| Consumer | Field |
+|----------|-------|
+| Admin default sort / bootstrap `line_no` | `seed_rank` (catalog) |
+| Admin / curriculum grouping | `difficulty_rank`, `difficulty_tier` |
+| Candidate generation / gene picker default | `intrinsic_priority_rank` |
+| Map-aware search order (Phase 5+) | `search_priority_rank` |
+| Solver commit order | `FitnessBreakdown` / `Gene.commit_order` — **not** any ingest rank |
+
+**Forbidden:**
+
+- Using `difficulty_rank` as candidate generation order or pool fill sequence
+- Filling candidate pool by ascending `difficulty_rank`
+- Treating low-extension patterns as preferred merely because they are easy
+- Treating `intrinsic_priority_rank` as final commit order
+- Treating `seed_rank` as difficulty, throughput sort key, or solver commit sequence
 
 ### 2.2 Extended `miner_seed_v2` metadata example
 
@@ -85,6 +109,9 @@ Using `seed_rank` as “difficulty” or “GA try order” causes drift between
     "throughput_soft_penalty": 12,
     "compactness_approx": 1.0
   },
+  "intrinsic_priority_score": 211,
+  "intrinsic_priority_rank": 1,
+  "intrinsic_priority_source": "production_adjusted_intrinsic_v1",
   "search_priority_rank": null,
   "search_priority_source": "deferred_phase5",
   "extension_count": 3,
@@ -229,11 +256,19 @@ Note: `m3e_01` (linear 3-chain) is the easiest ext-3 pattern; branched / multi-t
 
 Use only when tightening the formula; default ingest allows score ties resolved by `pattern_id`.
 
-### 4.2 Admin
+### 4.2 Admin (amended labels)
 
-- Add readonly columns: `difficulty_rank`, `difficulty_tier`, `difficulty_score` (short).
-- Default changelist ordering: `metadata_json__seed_rank` (catalog) — **not** difficulty.
-- Optional filter by `difficulty_tier`.
+Recommended `list_display` order:
+
+```text
+Catalog rank | Intrinsic priority | Intrinsic difficulty | Ext | Score
+```
+
+- **Catalog rank** — `seed_rank`
+- **Intrinsic priority** — `intrinsic_priority_rank` (and tier/score in tooltip or secondary column optional)
+- **Intrinsic difficulty** — `difficulty_rank` as `N (TN)` plus `difficulty_score`
+- Default changelist ordering: `metadata_json__seed_rank` (catalog) — **not** priority or difficulty
+- JSONField tier filter remains **out of scope** (Django admin `NotRelationField` on `metadata_json__*`)
 
 ### 4.3 Phase 5 — `search_priority_rank` (future)
 
@@ -241,12 +276,12 @@ When `FitnessBreakdown` and conservative penalties exist:
 
 ```text
 search_priority_rank = sort(
-  difficulty_rank,
+  intrinsic_priority_rank,
   candidate_effective_score   # map + probe + fitness proxies
 )
 ```
 
-**Contract:** Map-aware score never overwrites `difficulty_rank`; solver may read both. Document in `asteroid_lab_05` cross-link.
+**Contract:** Map-aware score never overwrites `intrinsic_priority_rank` or `difficulty_rank`. Document in `asteroid_lab_05` cross-link.
 
 ---
 
@@ -277,17 +312,125 @@ search_priority_rank = sort(
 
 ## §7 — Implementation phases (for planning)
 
-| Phase | Scope |
-|-------|--------|
-| **PR-D1** | Scorer module + unit tests + golden order |
-| **PR-D2** | `seed_miner_patterns` metadata + admin columns |
-| **PR-D3** (blocked) | `search_priority_rank` when Phase 5 fitness DTO lands |
+| Phase | Scope | Status |
+|-------|--------|--------|
+| **PR-D1** | Scorer module + `difficulty_*` golden order | Done on `feat/miner-seed-difficulty-rank` |
+| **PR-D2** | Ingest `difficulty_*` metadata + admin columns | Done (needs label/priority amend) |
+| **PR-D2b** | `intrinsic_priority_*` scorer + ingest + admin + tests (§9) | Done |
+| **PR-D3** (blocked) | `search_priority_rank` when Phase 5 fitness DTO lands | Deferred |
+
+---
+
+## §9 — Intrinsic priority (production-adjusted) — amendment 2026-05-28
+
+### 9.1 Semantics
+
+| Field | Meaning |
+|-------|---------|
+| `difficulty_rank` | How **simple** the pattern is (curriculum). Low rank = easy; `m0e`/`m1e` at front is **correct**. |
+| `intrinsic_priority_rank` | How **efficient** the pattern is per unit throughput (map-independent). Low rank = try first in gene picker / candidate pool. |
+| `search_priority_rank` | Map + fitness adjusted order (Phase 5). |
+
+Do **not** replace the §3.3 `difficulty_score` formula. `extension_count × 100` is intentional for curriculum separation.
+
+### 9.2 Why `difficulty_rank` fails for picker order
+
+`difficulty_score` penalizes extension count so heavily that all `m3e_*` sort after `m1e_*`, even when `m3e_01` is the simplest high-throughput topology. That inverts desired solver behavior (simple high-production templates first; `m1e`/`m0e` as fallback fillers).
+
+### 9.3 `intrinsic_priority_score` (lower = higher priority)
+
+```text
+intrinsic_priority_score: int =
+    round((difficulty_score × 10) / throughput_factor)
+  + low_extension_fallback_penalty
+```
+
+```python
+LOW_EXTENSION_FALLBACK_PENALTY_BY_EXT: dict[int, int] = {
+    3: 0,
+    2: 40,
+    1: 220,
+    0: 400,
+}
+```
+
+| `extension_count` | Penalty | Role |
+|------------------:|--------:|------|
+| 3 | 0 | Prefer high-throughput templates |
+| 2 | 40 | Mid-production assist |
+| 1 | 220 | Fallback candidate |
+| 0 | 400 | Last-resort / gap fill |
+
+`throughput_factor` remains `4 × (1 + extension_count)` from game contract.
+
+### 9.4 Global `intrinsic_priority_rank` assignment
+
+After all 18 patterns are scored:
+
+```python
+sort_key = (
+    intrinsic_priority_score,   # ascending
+    difficulty_tier,            # ascending
+    difficulty_score,           # ascending
+    pattern_id,                 # deterministic tie-break
+)
+```
+
+Assign `intrinsic_priority_rank = 1..18` by sorted position.
+
+### 9.5 Golden expected priority order (bootstrap v2, verified 2026-05-28)
+
+| `intrinsic_priority_rank` | `pattern_id` | `ext` | `difficulty_score` | `throughput_factor` | `intrinsic_priority_score` |
+|--------------------------:|--------------|------:|-------------------:|--------------------:|---------------------------:|
+| 1 | `m3e_01` | 3 | 337 | 16 | 211 |
+| 2 | `m3e_02` | 3 | 354 | 16 | 221 |
+| 3 | `m3e_04` | 3 | 354 | 16 | 221 |
+| 4 | `m2e_01` | 2 | 221 | 12 | 224 |
+| 5 | `m3e_03` | 3 | 364 | 16 | 228 |
+| 6 | `m2e_02` | 2 | 233 | 12 | 234 |
+| 7 | `m3e_07` | 3 | 377 | 16 | 236 |
+| 8 | `m3e_09` | 3 | 381 | 16 | 238 |
+| 9 | `m3e_06` | 3 | 384 | 16 | 240 |
+| 10 | `m3e_13` | 3 | 384 | 16 | 240 |
+| 11 | `m3e_05` | 3 | 394 | 16 | 246 |
+| 12 | `m3e_11` | 3 | 394 | 16 | 246 |
+| 13 | `m3e_12` | 3 | 394 | 16 | 246 |
+| 14 | `m3e_08` | 3 | 404 | 16 | 252 |
+| 15 | `m2e_04` | 2 | 261 | 12 | 258 |
+| 16 | `m2e_03` | 2 | 263 | 12 | 259 |
+| 17 | `m1e_01` | 1 | 105 | 8 | 351 |
+| 18 | `m0e_01` | 0 | 8 | 4 | 420 |
+
+Tie-break at rank 2–3 (`m3e_02` / `m3e_04`, same priority score 221): `pattern_id` lexicographic.
+
+### 9.6 Ingest metadata (additional keys)
+
+```json
+{
+  "intrinsic_priority_score": 211,
+  "intrinsic_priority_rank": 1,
+  "intrinsic_priority_source": "production_adjusted_intrinsic_v1"
+}
+```
+
+Dry-run table should print **both** `difficulty_rank` and `intrinsic_priority_rank` columns.
+
+### 9.7 Tests (PR-D2b)
+
+| Test | Asserts |
+|------|---------|
+| `test_golden_intrinsic_priority_rank_order` | §9.5 order |
+| `test_m1e_does_not_precede_simple_m3e_for_priority` | `intrinsic_priority_rank(m3e_01) < intrinsic_priority_rank(m1e_01)` |
+| `test_difficulty_rank_remains_curriculum_order` | §3.6 unchanged |
+| `test_intrinsic_priority_rank_is_not_search_priority_rank` | `search_priority_rank is None` |
+| `test_seed_miner_patterns_writes_intrinsic_priority_metadata` | ingest keys present |
 
 ---
 
 ## §8 — Approval checklist
 
 - [x] §1 Metadata separation (`seed_rank` = catalog)
-- [x] §3 Intrinsic formula and golden order
+- [x] §3 Intrinsic difficulty formula and golden order
 - [x] User sign-off on full spec (contract review 2026-05-28)
 - [x] Implementation plan: [`../plans/2026-05-28-miner-seed-difficulty-rank.md`](../plans/2026-05-28-miner-seed-difficulty-rank.md)
+- [x] §9 Intrinsic priority amendment (PR-D2b)

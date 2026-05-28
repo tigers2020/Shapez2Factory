@@ -91,8 +91,9 @@ def test_genetic_sample_changelist_shows_difficulty_columns(staff_client: Client
     assert response.status_code == 200
     html = response.content.decode()
     assert "Catalog rank" in html
-    assert "Difficulty" in html
-    assert "Score" in html
+    assert "Intrinsic priority" in html
+    assert "Intrinsic difficulty" in html
+    assert "Difficulty score" in html
 
 
 @pytest.mark.django_db

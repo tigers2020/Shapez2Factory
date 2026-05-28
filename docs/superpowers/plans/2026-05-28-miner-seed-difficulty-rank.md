@@ -504,6 +504,44 @@ git commit -m "docs: close miner seed difficulty rank plan"
 
 ---
 
+## PR-D2b — Intrinsic priority amendment (spec §9; **done**)
+
+**Goal:** Add `intrinsic_priority_score` / `intrinsic_priority_rank` without changing `difficulty_*` formula or golden order.
+
+**Spec:** [`../specs/2026-05-28-miner-seed-difficulty-rank-design.md`](../specs/2026-05-28-miner-seed-difficulty-rank-design.md) §9
+
+### Task 2b: Priority scorer
+
+**Files:**
+- Modify: `django_apps/asteroid_lab/genetic_sample/miner_seed_intrinsic_difficulty.py`
+- Modify: `django_apps/asteroid_lab/genetic_sample/miner_seed_constants.py`
+- Modify: `tests/unit/asteroid_lab/test_miner_seed_intrinsic_difficulty.py`
+
+- [x] Add `LOW_EXTENSION_FALLBACK_PENALTY_BY_EXT`, `intrinsic_priority_score()`, `assign_intrinsic_priority_ranks()`
+- [x] Add `EXPECTED_INTRINSIC_PRIORITY_RANK_ORDER` (spec §9.5)
+- [x] Tests: `test_golden_intrinsic_priority_rank_order`, `test_m1e_does_not_precede_simple_m3e_for_priority`, `test_difficulty_rank_remains_curriculum_order`
+
+### Task 3b: Ingest metadata
+
+**Files:**
+- Modify: `django_apps/asteroid_lab/management/commands/seed_miner_patterns.py`
+- Modify: `tests/unit/asteroid_lab/test_seed_miner_patterns_command.py`
+
+- [x] Write `intrinsic_priority_*` + `intrinsic_priority_source` on ingest
+- [x] Dry-run table: add `intrinsic_priority_rank` column
+- [x] Test: `test_seed_miner_patterns_writes_intrinsic_priority_metadata`
+
+### Task 4b: Admin labels
+
+**Files:**
+- Modify: `django_apps/asteroid_lab/admin.py`
+- Modify: `tests/unit/asteroid_lab/test_genetic_sample_admin_seed.py`
+
+- [x] Rename columns: Catalog rank | Intrinsic priority | Intrinsic difficulty
+- [x] Default sort remains `seed_rank`
+
+---
+
 ## Spec self-review (plan vs spec)
 
 | Spec section | Task |
@@ -519,6 +557,9 @@ git commit -m "docs: close miner seed difficulty rank plan"
 | §4.3 deferred `search_priority_rank` | Task 3 metadata |
 | §5 tests | Tasks 2–3 |
 | PR-D3 Phase 5 | Out of scope |
+| §9 intrinsic priority | PR-D2b Tasks 2b–4b (**done**) |
+
+PR-D1/D2/D2b complete on branch `feat/miner-seed-difficulty-rank`.
 
 No placeholders remain in task steps.
 

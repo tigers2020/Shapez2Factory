@@ -18,6 +18,27 @@ LAYOUT_TYPE_SHAPE_TO_FLUID: dict[str, str] = {
     "SpaceBelt_Forward": "SpacePipe_Forward",
 }
 
+EXPECTED_INTRINSIC_PRIORITY_RANK_ORDER: tuple[str, ...] = (
+    "m3e_01",
+    "m3e_02",
+    "m3e_04",
+    "m2e_01",
+    "m3e_03",
+    "m2e_02",
+    "m3e_07",
+    "m3e_09",
+    "m3e_06",
+    "m3e_13",
+    "m3e_05",
+    "m3e_11",
+    "m3e_12",
+    "m3e_08",
+    "m2e_04",
+    "m2e_03",
+    "m1e_01",
+    "m0e_01",
+)
+
 EXPECTED_DIFFICULTY_RANK_ORDER: tuple[str, ...] = (
     "m0e_01",
     "m1e_01",
@@ -100,6 +121,7 @@ __all__ = [
     "CANONICAL_MINER_SEED_GENE_KEYS",
     "EXPECTED_19_GENE_KEYS",
     "EXPECTED_DIFFICULTY_RANK_ORDER",
+    "EXPECTED_INTRINSIC_PRIORITY_RANK_ORDER",
     "EXPECTED_MINER_SEED_GENE_KEYS",
     "EXPECTED_PATTERN_IDS",
     "EXHAUSTIVE_GENERATOR_STALE",

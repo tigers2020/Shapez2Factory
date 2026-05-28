@@ -19,6 +19,13 @@ from django_apps.asteroid_lab.snapshots.island_bbox import island_bbox_from_xy_d
 _LINEAR_CHAIN_BONUS = 15
 _THROUGHPUT_SOFT_CAP = 12
 
+LOW_EXTENSION_FALLBACK_PENALTY_BY_EXT: dict[int, int] = {
+    3: 0,
+    2: 40,
+    1: 220,
+    0: 400,
+}
+
 ParentEdge = tuple[tuple[int, int], tuple[int, int]]
 SortKey = tuple[int, int, float, int, str]
 
@@ -152,6 +159,35 @@ def find_rank_ambiguity(
     return collisions
 
 
+def intrinsic_priority_score(result: IntrinsicDifficultyResult) -> int:
+    """Production-adjusted intrinsic priority (lower = try first in gene picker)."""
+
+    ext = int(result.reason["extension_count"])
+    throughput = int(result.reason["throughput_factor"])
+    base = round((result.score * 10) / throughput)
+    return base + LOW_EXTENSION_FALLBACK_PENALTY_BY_EXT[ext]
+
+
+def assign_intrinsic_priority_ranks(
+    items: list[tuple[str, IntrinsicDifficultyResult]],
+) -> list[tuple[str, IntrinsicDifficultyResult, int]]:
+    """Return (pattern_id, result, intrinsic_priority_rank) sorted highest-priority-first."""
+
+    def sort_key(item: tuple[str, IntrinsicDifficultyResult]) -> tuple[int, int, int, str]:
+        pattern_id, result = item
+        return (
+            intrinsic_priority_score(result),
+            result.tier,
+            result.score,
+            pattern_id,
+        )
+
+    ordered = sorted(items, key=sort_key)
+    return [
+        (pattern_id, result, rank) for rank, (pattern_id, result) in enumerate(ordered, start=1)
+    ]
+
+
 def assign_difficulty_ranks(
     items: list[tuple[str, IntrinsicDifficultyResult]],
 ) -> list[tuple[str, IntrinsicDifficultyResult, int]]:
@@ -177,8 +213,11 @@ def assign_difficulty_ranks(
 
 __all__ = [
     "IntrinsicDifficultyResult",
+    "LOW_EXTENSION_FALLBACK_PENALTY_BY_EXT",
     "assign_difficulty_ranks",
+    "assign_intrinsic_priority_ranks",
     "find_rank_ambiguity",
     "intrinsic_difficulty_from_root",
+    "intrinsic_priority_score",
     "pre_pattern_id_sort_key",
 ]

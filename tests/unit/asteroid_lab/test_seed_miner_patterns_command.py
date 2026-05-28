@@ -9,6 +9,7 @@ from django.core.management.base import CommandError
 from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
     EXHAUSTIVE_GENERATOR_STALE,
     EXPECTED_DIFFICULTY_RANK_ORDER,
+    EXPECTED_INTRINSIC_PRIORITY_RANK_ORDER,
     EXPECTED_MINER_SEED_GENE_KEYS,
     EXPECTED_PATTERN_IDS,
     MINER_SEED_SCHEMA_V2,
@@ -96,6 +97,34 @@ def test_seed_miner_patterns_writes_difficulty_metadata() -> None:
 
 
 @pytest.mark.django_db
+def test_seed_miner_patterns_writes_intrinsic_priority_metadata() -> None:
+    call_command("seed_miner_patterns")
+    row = GeneticSample.objects.get(gene_key="miner_seed_m3e_01")
+    meta = row.metadata_json
+    assert meta["intrinsic_priority_rank"] == 1
+    assert meta["intrinsic_priority_score"] == 211
+    assert isinstance(meta["intrinsic_priority_score"], int)
+    assert meta["intrinsic_priority_source"] == "production_adjusted_intrinsic_v1"
+    assert meta["search_priority_rank"] is None
+
+
+@pytest.mark.django_db
+def test_intrinsic_priority_ranks_are_permutation_1_to_18() -> None:
+    call_command("seed_miner_patterns")
+    rows = GeneticSample.objects.filter(
+        metadata_json__schema=MINER_SEED_SCHEMA_V2,
+        metadata_json__is_seed=True,
+    )
+    ranks = [int(row.metadata_json["intrinsic_priority_rank"]) for row in rows]
+    assert sorted(ranks) == list(range(1, 19))
+    by_rank = {
+        int(row.metadata_json["intrinsic_priority_rank"]): row.metadata_json["pattern_id"]
+        for row in rows
+    }
+    assert [by_rank[i] for i in range(1, 19)] == list(EXPECTED_INTRINSIC_PRIORITY_RANK_ORDER)
+
+
+@pytest.mark.django_db
 def test_difficulty_ranks_are_permutation_1_to_18() -> None:
     call_command("seed_miner_patterns")
     rows = GeneticSample.objects.filter(
@@ -114,7 +143,7 @@ def test_difficulty_ranks_are_permutation_1_to_18() -> None:
 def test_dry_run_prints_difficulty_table(capsys: pytest.CaptureFixture[str]) -> None:
     call_command("seed_miner_patterns", dry_run=True)
     out = capsys.readouterr().out
-    assert "difficulty_rank  pattern_id" in out
+    assert "difficulty_rank  intrinsic_priority_rank  pattern_id" in out
     assert "m0e_01" in out
     assert "dry-run: validated 18 seeds" in out
 

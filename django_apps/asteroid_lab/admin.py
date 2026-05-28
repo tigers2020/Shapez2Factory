@@ -182,6 +182,7 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         "name",
         "gene_key",
         "seed_rank_display",
+        "intrinsic_priority_rank_display",
         "difficulty_rank_display",
         "difficulty_score_display",
         "extension_count_display",
@@ -282,7 +283,19 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         rank = meta.get("seed_rank")
         return str(rank) if isinstance(rank, int) else "-"
 
-    @admin.display(description="Difficulty", ordering="metadata_json__difficulty_rank")
+    @admin.display(
+        description="Intrinsic priority",
+        ordering="metadata_json__intrinsic_priority_rank",
+    )
+    def intrinsic_priority_rank_display(self, obj: m.GeneticSample) -> str:
+        meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
+        rank = meta.get("intrinsic_priority_rank")
+        score = meta.get("intrinsic_priority_score")
+        if isinstance(rank, int) and isinstance(score, int):
+            return f"{rank} ({score})"
+        return "-"
+
+    @admin.display(description="Intrinsic difficulty", ordering="metadata_json__difficulty_rank")
     def difficulty_rank_display(self, obj: m.GeneticSample) -> str:
         meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
         rank = meta.get("difficulty_rank")
@@ -291,7 +304,10 @@ class GeneticSampleAdmin(admin.ModelAdmin):
             return f"{rank} (T{tier})"
         return "-"
 
-    @admin.display(description="Score", ordering="metadata_json__difficulty_score")
+    @admin.display(
+        description="Difficulty score",
+        ordering="metadata_json__difficulty_score",
+    )
     def difficulty_score_display(self, obj: m.GeneticSample) -> str:
         meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
         score = meta.get("difficulty_score")

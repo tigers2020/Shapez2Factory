@@ -28,8 +28,10 @@ from django_apps.asteroid_lab.genetic_sample.miner_seed_equivalence import (
 from django_apps.asteroid_lab.genetic_sample.miner_seed_intrinsic_difficulty import (
     IntrinsicDifficultyResult,
     assign_difficulty_ranks,
+    assign_intrinsic_priority_ranks,
     find_rank_ambiguity,
     intrinsic_difficulty_from_root,
+    intrinsic_priority_score,
 )
 from django_apps.asteroid_lab.genetic_sample.miner_seed_topology import (
     count_extensions,
@@ -41,6 +43,7 @@ from django_apps.asteroid_lab.models import GeneticSample
 _DEFAULT_BOOTSTRAP_PATH = "var/default_miner_pattern.txt"
 _EXPECTED_LINE_COUNT = len(EXPECTED_PATTERN_IDS)
 _SEARCH_PRIORITY_SOURCE_DEFERRED = "deferred_phase5"
+_INTRINSIC_PRIORITY_SOURCE = "production_adjusted_intrinsic_v1"
 
 
 @dataclass(frozen=True)
@@ -121,8 +124,14 @@ class Command(BaseCommand):  # type: ignore[misc]
             pattern_id: (result, difficulty_rank) for pattern_id, result, difficulty_rank in ranked
         }
 
+        priority_ranked = assign_intrinsic_priority_ranks(scored)
+        priority_by_pattern = {
+            pattern_id: (result, intrinsic_priority_rank)
+            for pattern_id, result, intrinsic_priority_rank in priority_ranked
+        }
+
         if options["dry_run"]:
-            self._print_difficulty_rank_table(parsed, difficulty_by_pattern)
+            self._print_rank_table(parsed, difficulty_by_pattern, priority_by_pattern)
             self.stdout.write(
                 self.style.NOTICE(
                     f"dry-run: validated {_EXPECTED_LINE_COUNT} seeds; no database writes.",
@@ -132,12 +141,14 @@ class Command(BaseCommand):  # type: ignore[misc]
 
         for seed in parsed:
             difficulty, difficulty_rank = difficulty_by_pattern[seed.pattern_id]
+            _priority_result, intrinsic_priority_rank = priority_by_pattern[seed.pattern_id]
             meta = self._build_metadata(
                 seed=seed,
                 rel_source_file=rel_source_file,
                 file_sha=file_sha,
                 difficulty=difficulty,
                 difficulty_rank=difficulty_rank,
+                intrinsic_priority_rank=intrinsic_priority_rank,
             )
             gkey = gene_key_for_pattern_id(seed.pattern_id)
             obj, _created = GeneticSample.objects.update_or_create(
@@ -228,8 +239,10 @@ class Command(BaseCommand):  # type: ignore[misc]
         file_sha: str,
         difficulty: IntrinsicDifficultyResult,
         difficulty_rank: int,
+        intrinsic_priority_rank: int,
     ) -> dict[str, Any]:
         ext = seed.extension_count
+        priority_score = intrinsic_priority_score(difficulty)
         return {
             "schema": MINER_SEED_SCHEMA_V2,
             "is_seed": True,
@@ -239,6 +252,9 @@ class Command(BaseCommand):  # type: ignore[misc]
             "difficulty_rank": difficulty_rank,
             "difficulty_tier": difficulty.tier,
             "rank_reason": difficulty.reason,
+            "intrinsic_priority_score": priority_score,
+            "intrinsic_priority_rank": intrinsic_priority_rank,
+            "intrinsic_priority_source": _INTRINSIC_PRIORITY_SOURCE,
             "search_priority_rank": None,
             "search_priority_source": _SEARCH_PRIORITY_SOURCE_DEFERRED,
             "source": {
@@ -266,13 +282,14 @@ class Command(BaseCommand):  # type: ignore[misc]
             f"rank ambiguity between {a!r} and {b!r} for pre-pattern_id sort key {key}",
         )
 
-    def _print_difficulty_rank_table(
+    def _print_rank_table(
         self,
         parsed: list[_ParsedSeed],
         difficulty_by_pattern: dict[str, tuple[IntrinsicDifficultyResult, int]],
+        priority_by_pattern: dict[str, tuple[IntrinsicDifficultyResult, int]],
     ) -> None:
         self.stdout.write(
-            "difficulty_rank  pattern_id   tier  score  catalog_rank",
+            "difficulty_rank  intrinsic_priority_rank  pattern_id   tier  score  catalog_rank",
         )
         rows = sorted(
             parsed,
@@ -280,8 +297,9 @@ class Command(BaseCommand):  # type: ignore[misc]
         )
         for seed in rows:
             difficulty, difficulty_rank = difficulty_by_pattern[seed.pattern_id]
+            _priority_result, intrinsic_priority_rank = priority_by_pattern[seed.pattern_id]
             self.stdout.write(
-                f"{difficulty_rank:>15}  {seed.pattern_id:<11}  "
+                f"{difficulty_rank:>15}  {intrinsic_priority_rank:>24}  {seed.pattern_id:<11}  "
                 f"{difficulty.tier:>4}  {difficulty.score:>5}  {seed.catalog_rank:>12}",
             )
 

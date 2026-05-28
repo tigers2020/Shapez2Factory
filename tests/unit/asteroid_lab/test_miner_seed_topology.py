@@ -21,8 +21,8 @@ def bootstrap_lines() -> list[str]:
     return [ln.strip() for ln in _BOOTSTRAP.read_text(encoding="utf-8").splitlines() if ln.strip()]
 
 
-def test_bootstrap_has_nineteen_lines(bootstrap_lines: list[str]) -> None:
-    assert len(bootstrap_lines) == 19
+def test_bootstrap_has_eighteen_lines(bootstrap_lines: list[str]) -> None:
+    assert len(bootstrap_lines) == 18
 
 
 def test_topology_signatures_present_for_all_bootstrap(bootstrap_lines: list[str]) -> None:
@@ -30,12 +30,12 @@ def test_topology_signatures_present_for_all_bootstrap(bootstrap_lines: list[str
     for line in bootstrap_lines:
         dto = decode_copy_string(line)
         sigs.append(topology_signature_from_decoded_root(dto.root))
-    assert len(sigs) == 19
+    assert len(sigs) == 18
 
 
 def test_extension_count_distribution(bootstrap_lines: list[str]) -> None:
     counts = [count_extensions(decode_copy_string(line).root) for line in bootstrap_lines]
-    assert counts.count(3) == 13
+    assert counts.count(3) == 12
     assert counts.count(2) == 4
     assert counts.count(1) == 1
     assert counts.count(0) == 1

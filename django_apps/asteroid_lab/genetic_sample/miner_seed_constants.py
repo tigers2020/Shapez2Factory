@@ -34,15 +34,20 @@ EXPECTED_PATTERN_IDS: tuple[str, ...] = (
     "m3e_07",
     "m3e_08",
     "m3e_09",
-    "m3e_10",
     "m3e_11",
     "m3e_12",
     "m3e_13",
 )
 
-EXPECTED_19_GENE_KEYS: tuple[str, ...] = tuple(
+# Audit md lists m3e_10 as a parent-R variant of m3e_09 (same equivalence class).
+AUDIT_ONLY_PATTERN_IDS: frozenset[str] = frozenset({"m3e_10"})
+
+EXPECTED_MINER_SEED_GENE_KEYS: tuple[str, ...] = tuple(
     f"miner_seed_{pattern_id}" for pattern_id in EXPECTED_PATTERN_IDS
 )
+
+# Back-compat alias (18 canonical keys after m3e_10 collapse).
+EXPECTED_19_GENE_KEYS: tuple[str, ...] = EXPECTED_MINER_SEED_GENE_KEYS
 
 MINER_SEED_SCHEMAS_PURGEABLE: frozenset[str] = frozenset(
     {MINER_SEED_SCHEMA, MINER_SEED_SCHEMA_V2}
@@ -65,12 +70,17 @@ def gene_key_for_rank(rank: int) -> str:
     return f"miner_seed_{rank:02d}"
 
 
-CANONICAL_MINER_SEED_GENE_KEYS: tuple[str, ...] = EXPECTED_19_GENE_KEYS
+CANONICAL_MINER_SEED_GENE_KEYS: tuple[str, ...] = EXPECTED_MINER_SEED_GENE_KEYS
+
+CANONICAL_MINER_SEED_COUNT = len(EXPECTED_PATTERN_IDS)
 
 
 __all__ = [
+    "AUDIT_ONLY_PATTERN_IDS",
+    "CANONICAL_MINER_SEED_COUNT",
     "CANONICAL_MINER_SEED_GENE_KEYS",
     "EXPECTED_19_GENE_KEYS",
+    "EXPECTED_MINER_SEED_GENE_KEYS",
     "EXPECTED_PATTERN_IDS",
     "EXHAUSTIVE_GENERATOR_STALE",
     "LAYOUT_TYPE_SHAPE_TO_FLUID",

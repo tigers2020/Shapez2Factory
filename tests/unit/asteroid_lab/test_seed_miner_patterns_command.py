@@ -6,7 +6,7 @@ import pytest
 from django.core.management import call_command
 
 from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
-    EXPECTED_19_GENE_KEYS,
+    EXPECTED_MINER_SEED_GENE_KEYS,
     EXPECTED_PATTERN_IDS,
     EXHAUSTIVE_GENERATOR_STALE,
     MINER_SEED_SCHEMA_V2,
@@ -17,18 +17,19 @@ from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_raw_x
 
 
 @pytest.mark.django_db
-def test_seed_miner_patterns_ingests_nineteen_unique_topology_signatures() -> None:
+def test_seed_miner_patterns_ingests_eighteen_unique_signatures() -> None:
     call_command("seed_miner_patterns", replace_stale=True)
     qs = GeneticSample.objects.filter(
         metadata_json__schema=MINER_SEED_SCHEMA_V2,
         metadata_json__is_seed=True,
     )
-    assert qs.count() == 19
+    assert qs.count() == 18
     topo_sigs = {row.metadata_json["topology_signature"] for row in qs}
-    assert len(topo_sigs) == 19
+    assert len(topo_sigs) == 18
     equiv_sigs = {row.metadata_json["equivalence_signature"] for row in qs}
     assert len(equiv_sigs) == 18
-    assert {row.gene_key for row in qs} == set(EXPECTED_19_GENE_KEYS)
+    assert {row.gene_key for row in qs} == set(EXPECTED_MINER_SEED_GENE_KEYS)
+    assert not GeneticSample.objects.filter(gene_key="miner_seed_m3e_10").exists()
 
 
 @pytest.mark.django_db
@@ -47,7 +48,7 @@ def test_purge_non_seed_narrow_does_not_delete_manual_rows() -> None:
             metadata_json__schema=MINER_SEED_SCHEMA_V2,
             metadata_json__is_seed=True,
         ).count()
-        == 19
+        == 18
     )
 
 

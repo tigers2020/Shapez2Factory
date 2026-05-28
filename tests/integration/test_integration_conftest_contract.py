@@ -9,12 +9,12 @@ from django_apps.asteroid_lab.models import GeneticSample
 
 
 @pytest.mark.django_db
-def test_seed_miner_patterns_autouse_populates_nineteen_seed_rows() -> None:
+def test_seed_miner_patterns_autouse_populates_eighteen_seed_rows() -> None:
     """Fails if ``seed_miner_patterns_db`` omits the ``db`` fixture."""
     assert (
         GeneticSample.objects.filter(
             metadata_json__schema=MINER_SEED_SCHEMA_V2,
             metadata_json__is_seed=True,
         ).count()
-        == 19
+        == 18
     )

@@ -7,7 +7,7 @@ from typing import Any, cast
 from django.db.models import Count, Prefetch
 
 from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
-    EXPECTED_19_GENE_KEYS,
+    CANONICAL_MINER_SEED_COUNT,
     MINER_SEED_SCHEMA_V2,
 )
 from django_apps.asteroid_lab.models import GeneticSample, ReplayFrame, ReplayTrack
@@ -34,7 +34,7 @@ def _gene_template_catalog() -> dict[str, Any]:
         "generator_version": MINER_SEED_SCHEMA_V2,
         "sample_gene_ids": top_ids,
         "seed_command_hint": "python manage.py seed_miner_patterns",
-        "needs_seed": db_count != len(EXPECTED_19_GENE_KEYS),
+        "needs_seed": db_count != CANONICAL_MINER_SEED_COUNT,
     }
 
 

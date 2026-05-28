@@ -35,7 +35,7 @@ def test_purge_narrow_keeps_manual_and_removes_stale_v1() -> None:
     assert GeneticSample.objects.filter(
         metadata_json__schema=MINER_SEED_SCHEMA_V2,
         metadata_json__is_seed=True,
-    ).count() == 19
+    ).count() == 18
 
 
 @pytest.mark.django_db

@@ -66,7 +66,7 @@ def test_genetic_sample_admin_seed_button_runs_command(staff_client: Client) -> 
             metadata_json__schema=MINER_SEED_SCHEMA_V2,
             metadata_json__is_seed=True,
         ).count()
-        == 19
+        == 18
     )
     assert GeneticSample.objects.filter(gene_key="legacy_manual_for_admin").exists()
 

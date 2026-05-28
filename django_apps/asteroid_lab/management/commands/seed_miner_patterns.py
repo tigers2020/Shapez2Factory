@@ -1,4 +1,4 @@
-"""Ingest 19 canonical miner seed patterns from bootstrap copy strings into GeneticSample."""
+"""Ingest 18 canonical miner seed patterns from bootstrap copy strings into GeneticSample."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from django.db import transaction
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
     EXHAUSTIVE_GENERATOR_STALE,
-    EXPECTED_19_GENE_KEYS,
+    EXPECTED_MINER_SEED_GENE_KEYS,
     EXPECTED_PATTERN_IDS,
     MINER_LAYOUT_TYPES_SHAPE,
     MINER_SEED_SCHEMA_V2,
@@ -38,7 +38,7 @@ _EXPECTED_LINE_COUNT = len(EXPECTED_PATTERN_IDS)
 class Command(BaseCommand):  # type: ignore[misc]
     help = (
         "Ingest miner seed topologies from var/default_miner_pattern.txt "
-        "into GeneticSample (miner_seed_v2 schema, 19 rows)."
+        "into GeneticSample (miner_seed_v2 schema, 18 rows)."
     )
 
     def add_arguments(self, parser: Any) -> None:
@@ -65,7 +65,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             action="store_true",
             help=(
                 "Delete stale miner_seed_* rows with miner_seed_v1 or miner_seed_v2 schema "
-                "whose gene_key is not in the expected 19 canonical keys."
+                "whose gene_key is not in the expected 18 canonical keys."
             ),
         )
 
@@ -84,6 +84,7 @@ class Command(BaseCommand):  # type: ignore[misc]
         file_sha = hashlib.sha256(path.read_bytes()).hexdigest()
         rel_source_file = str(path).replace("\\", "/")
         topo_sigs: set[str] = set()
+        equiv_sigs: set[str] = set()
 
         pairs = zip(EXPECTED_PATTERN_IDS, lines, strict=True)
         for rank, (pattern_id, code) in enumerate(pairs, start=1):
@@ -103,6 +104,11 @@ class Command(BaseCommand):  # type: ignore[misc]
             topo_sigs.add(topo_sig)
 
             equiv_sig = equivalence_signature_from_decoded_root(dto.root)
+            if equiv_sig in equiv_sigs:
+                raise CommandError(
+                    f"duplicate equivalence_signature at seed rank {rank} ({pattern_id})",
+                )
+            equiv_sigs.add(equiv_sig)
             ext = count_extensions(dto.root)
             meta = {
                 "schema": MINER_SEED_SCHEMA_V2,
@@ -169,7 +175,7 @@ class Command(BaseCommand):  # type: ignore[misc]
         )
 
     def _purge_stale_miner_seed_rows(self) -> int:
-        expected = set(EXPECTED_19_GENE_KEYS)
+        expected = set(EXPECTED_MINER_SEED_GENE_KEYS)
         stale_ids: list[int] = []
         for row in GeneticSample.objects.filter(gene_key__startswith="miner_seed_").only(
             "pk",

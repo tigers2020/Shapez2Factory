@@ -7,13 +7,17 @@ from pathlib import Path
 import pytest
 
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
-from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import EXPECTED_PATTERN_IDS
-from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
+from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
+    AUDIT_ONLY_PATTERN_IDS,
+    CANONICAL_MINER_SEED_COUNT,
+    EXPECTED_PATTERN_IDS,
+)
 from django_apps.asteroid_lab.genetic_sample.miner_seed_equivalence import (
     MinerSeedLayoutValidationError,
     assert_miner_seed_layout_strict,
     equivalence_signature_from_decoded_root,
 )
+from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
 
 _BOOTSTRAP = Path("var/default_miner_pattern.txt")
 
@@ -23,26 +27,44 @@ def bootstrap_lines() -> list[str]:
     return [ln.strip() for ln in _BOOTSTRAP.read_text(encoding="utf-8").splitlines() if ln.strip()]
 
 
-def test_bootstrap_nineteen_lines(bootstrap_lines: list[str]) -> None:
-    assert len(bootstrap_lines) == 19
+def test_bootstrap_eighteen_lines(bootstrap_lines: list[str]) -> None:
+    assert len(bootstrap_lines) == CANONICAL_MINER_SEED_COUNT == 18
 
 
-def test_equivalence_signatures_count_among_bootstrap(bootstrap_lines: list[str]) -> None:
+def test_equivalence_signatures_unique_among_bootstrap(bootstrap_lines: list[str]) -> None:
     sigs: list[str] = []
     for line in bootstrap_lines:
         root = decode_copy_string(line).root
         assert_miner_seed_layout_strict(root)
         sigs.append(equivalence_signature_from_decoded_root(root))
-    assert len(sigs) == 19
-    assert len(set(sigs)) == 18
-    assert sigs.count(sigs[14]) == 2
+    assert len(sigs) == len(set(sigs)) == 18
 
 
-def test_m3e_09_and_m3e_10_share_equivalence_signature(bootstrap_lines: list[str]) -> None:
-    roots = [decode_copy_string(bootstrap_lines[i]).root for i in (14, 15)]
-    assert equivalence_signature_from_decoded_root(roots[0]) == equivalence_signature_from_decoded_root(
-        roots[1],
+def test_audit_m3e_10_matches_m3e_09_equivalence_class() -> None:
+    """Audit-only m3e_10 paste is a parent-R variant of canonical m3e_09."""
+
+    import re
+
+    md = Path("var/miner_seed_belt_ignored_canonical_parent_r_patterns.md").read_text(
+        encoding="utf-8",
     )
+    sections = re.split(r"^## (m\d+e_\d+)\b", md, flags=re.M)
+    copies: dict[str, str] = {}
+    for i in range(1, len(sections), 2):
+        pid = sections[i]
+        body = sections[i + 1]
+        match = re.search(
+            r"Copy string:\s*\n```[^\n]*\n(SHAPEZ2-[^\n`]+)",
+            body,
+            re.I,
+        )
+        if match:
+            copies[pid] = match.group(1).strip() + "$"
+
+    assert "m3e_10" in AUDIT_ONLY_PATTERN_IDS
+    sig_09 = equivalence_signature_from_decoded_root(decode_copy_string(copies["m3e_09"]).root)
+    sig_10 = equivalence_signature_from_decoded_root(decode_copy_string(copies["m3e_10"]).root)
+    assert sig_09 == sig_10
 
 
 def test_d4_rotation_preserves_equivalence_signature(bootstrap_lines: list[str]) -> None:

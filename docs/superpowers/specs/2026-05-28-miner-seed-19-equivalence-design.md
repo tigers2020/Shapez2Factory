@@ -1,6 +1,6 @@
 # Miner Seed 19-Equivalence Catalog — Design Spec
 
-**Status:** Approved (catalog architect review 2026-05-28)  
+**Status:** Approved (catalog architect review 2026-05-28); **amended 2026-05-28** — DB catalog **18** rows (`m3e_10` audit-only, same class as `m3e_09`)  
 **Date:** 2026-05-28  
 **Track:** Asteroid Lab `GeneticSample` miner seed authority (follow-up to PR-Seed)  
 **Supersedes (catalog row count / dedupe only):** §4 row-count and uniqueness rules in [`2026-05-28-miner-seed-decontamination-design.md`](2026-05-28-miner-seed-decontamination-design.md) — **14 → 19** canonical seeds with D₄ equivalence.  
@@ -30,9 +30,9 @@ PR-Seed established **14** `miner_seed_v1` rows using `topology_signature` (isla
 
 | Goal | Contract |
 |------|----------|
-| Canonical store | Exactly **19** active miner seed rows (`schema == miner_seed_v2`, `is_seed == true`) |
+| Canonical store | Exactly **18** active miner seed rows (`schema == miner_seed_v2`, `is_seed == true`) |
 | Equivalence | D₄ quotient on extension **parent tree** (belt + miner `R` excluded from signature) |
-| Bootstrap | `var/default_miner_pattern.txt` = **19-line** ingest evidence; runtime must not read it (unchanged boundary) |
+| Bootstrap | `var/default_miner_pattern.txt` = **18-line** ingest evidence; audit md retains **19** sections (`m3e_10` = parent-R variant, not ingested) |
 | Audit | Keep `topology_signature` for paste fidelity; **do not** use it for catalog uniqueness |
 | Ingest safety | **Strict** layout/R validation by default; **no** auto-correction in this track |
 | Purge | Remove only stale **`miner_seed_*`** rows with `miner_seed_v1` / `miner_seed_v2` schema outside the expected 19 keys |
@@ -55,11 +55,12 @@ Stable IDs and counts match the audit markdown.
 | M + 0E | `miner_seed_m0e_01` | 1 |
 | M + 1E | `miner_seed_m1e_01` | 1 |
 | M + 2E | `miner_seed_m2e_01` … `m2e_04` | 4 |
-| M + 3E | `miner_seed_m3e_01` … `m3e_13` | 13 |
-| **Total** | | **19** |
+| M + 3E | `miner_seed_m3e_01` … `m3e_13` (no `m3e_10` in DB) | 12 |
+| **Total (DB)** | | **18** |
+| Audit-only (md) | `m3e_10` — same `equivalence_signature` as `m3e_09` | — |
 
-**Ordered ingest rank (`seed_rank` 1..19):**  
-`m0e_01`, `m1e_01`, `m2e_01`, `m2e_02`, `m2e_03`, `m2e_04`, `m3e_01` … `m3e_13` (same order as audit doc sections).
+**Ordered ingest rank (`seed_rank` 1..18):**  
+`m0e_01`, `m1e_01`, `m2e_01`, `m2e_02`, `m2e_03`, `m2e_04`, `m3e_01` … `m3e_09`, `m3e_11` … `m3e_13` (skips audit-only `m3e_10`).
 
 | `extension_count` | `throughput_factor` | Keys |
 |-------------------|---------------------|------|
@@ -112,7 +113,7 @@ Signature identity uses **geometry of parent links** `(child_coord, parent_coord
 | Field | Role | Uniqueness |
 |-------|------|------------|
 | `topology_signature` | Decoded paste fidelity / audit / regression | **Not** required unique across catalog |
-| `equivalence_signature` | Catalog dedupe, ingest guards | **Required unique** among 19 v2 seeds |
+| `equivalence_signature` | Catalog dedupe, ingest guards | **Required unique** among 18 v2 seeds |
 | `gene_key` | Solver-facing stable ID (`miner_seed_m3e_07`, etc.) | **Required unique** (DB partial unique when set) |
 
 ---

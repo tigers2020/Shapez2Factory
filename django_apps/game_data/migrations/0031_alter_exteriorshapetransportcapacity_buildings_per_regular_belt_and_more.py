@@ -17,28 +17,40 @@ class Migration(migrations.Migration):
             model_name="exteriorshapetransportcapacity",
             name="buildings_per_regular_belt",
             field=models.PositiveSmallIntegerField(
-                help_text="Mini units per inner belt group (tier-1 CANON: 4 → 120 shapes/min inner belt)."
+                help_text=(
+                    "Mini units per inner belt group "
+                    "(tier-1 CANON: 4 → 120 shapes/min inner belt)."
+                )
             ),
         ),
         migrations.AlterField(
             model_name="exteriorshapetransportcapacity",
             name="lanes_per_line",
             field=models.PositiveSmallIntegerField(
-                help_text="Inner belts exporting outside one miner (tier-1 CANON: 12; sizing uses 480/min line)."
+                help_text=(
+                    "Inner belts exporting outside one miner "
+                    "(tier-1 CANON: 12; sizing uses 480/min line)."
+                )
             ),
         ),
         migrations.AlterField(
             model_name="exteriorshapetransportcapacity",
             name="lines_per_space_belt",
             field=models.PositiveSmallIntegerField(
-                help_text="Exterior lines per Space Belt building (tier-1 CANON: 12 → 5760 shapes/min belt)."
+                help_text=(
+                    "Exterior lines per Space Belt building "
+                    "(tier-1 CANON: 12 → 5760 shapes/min belt)."
+                )
             ),
         ),
         migrations.AlterField(
             model_name="exteriorshapetransportcapacity",
             name="miner_full_output_multiplier",
             field=models.PositiveSmallIntegerField(
-                help_text="Expander full-setup multiplier on mini miner (tier-1 CANON: 16 → 480 shapes/min line)."
+                help_text=(
+                    "Expander full-setup multiplier on mini miner "
+                    "(tier-1 CANON: 16 → 480 shapes/min line)."
+                )
             ),
         ),
     ]

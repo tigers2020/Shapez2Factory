@@ -32,10 +32,13 @@ def test_purge_narrow_keeps_manual_and_removes_stale_v1() -> None:
     call_command("seed_miner_patterns", purge_non_seed=True)
     assert GeneticSample.objects.filter(gene_key="manual_legacy_sample").exists()
     assert not GeneticSample.objects.filter(gene_key=gene_key_for_rank(1)).exists()
-    assert GeneticSample.objects.filter(
-        metadata_json__schema=MINER_SEED_SCHEMA_V2,
-        metadata_json__is_seed=True,
-    ).count() == 18
+    assert (
+        GeneticSample.objects.filter(
+            metadata_json__schema=MINER_SEED_SCHEMA_V2,
+            metadata_json__is_seed=True,
+        ).count()
+        == 18
+    )
 
 
 @pytest.mark.django_db

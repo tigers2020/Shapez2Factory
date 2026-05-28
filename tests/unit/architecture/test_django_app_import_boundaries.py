@@ -59,6 +59,8 @@ _IMPORT_MATRIX_SKIP: dict[str, frozenset[str]] = {
             "django_apps/asteroid_lab/catalog/asteroid_sprite_projection.py",
             # ELCP: candidate throughput uses game_data mining rules (function-local import).
             "django_apps/asteroid_lab/optimization/commit/incremental_commit.py",
+            # L2: EVTC row resolution (no cap literals in layer modules).
+            "django_apps/asteroid_lab/layers/layer_02_exterior_transport/capacity.py",
         }
     ),
 }

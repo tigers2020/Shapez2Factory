@@ -36,7 +36,8 @@ def test_required_connectors_uses_evtc_ceildiv_shape() -> None:
         speed_tier=1,
     )
     assert plan.unmet_reason is None
-    assert len(plan.planned_connectors) == plan.required_connector_count
+    assert len(plan.planned_connectors) == plan.reference_connector_count
+    assert plan.reference_connector_count >= plan.required_connector_count
     assert plan.required_connector_count >= 1
 
 
@@ -84,9 +85,11 @@ def test_wire_uses_lowercase_edge_slug() -> None:
     )
     wire = exterior_connector_plan_to_metrics_dict(plan)["exterior_connector_plan"]
     assert isinstance(wire, dict)
+    assert wire["version"] == "exterior_connector_plan.v2"
     connectors = wire.get("planned_connectors")
     assert isinstance(connectors, list) and connectors
     assert connectors[0]["edge"] in {"north", "east", "south", "west"}
+    assert connectors[0]["role"] in {"required", "spare"}
 
 
 def test_layout_t_and_rotation_are_separate() -> None:

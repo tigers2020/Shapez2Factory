@@ -125,13 +125,18 @@ def build_layer02_timeline_frame_dict(
     planned_count = plan_wire.get("planned_connector_count")
     if planned_count is None:
         planned_count = len(planned_overlay)
+    required_planned = plan_wire.get("required_planned_count", planned_count)
+    spare_planned = plan_wire.get("spare_planned_count", 0)
 
     return {
         "frame_index": 0,
         "phase": "reconstruction",
         "event_type": LAYER02_EVENT_TYPE,
         "title": "Exterior transport complete",
-        "description": f"Planned {planned_count} exterior connector(s)",
+        "description": (
+            f"Planned {planned_count} exterior connector(s) "
+            f"({required_planned} required, {spare_planned} spare)"
+        ),
         "map_view": map_view,
         "inspector": {
             "lab_phase": "reconstruction",

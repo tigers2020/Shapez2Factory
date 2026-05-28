@@ -115,11 +115,15 @@ def _planned_connectors(plan_wire: dict[str, object]) -> list[dict[str, Any]]:
         y = void_coord.get("y")
         if x is None or y is None:
             continue
+        role = str(item.get("role") or "required").strip().lower()
+        if role not in {"required", "spare"}:
+            role = "required"
         out.append(
             {
                 "x": int(x),
                 "y": int(y),
                 "overlay_role": OVERLAY_ROLE,
+                "connector_role": role,
                 "tile_type": str(item.get("layout_t") or ""),
                 "rotation": int(item.get("rotation") or 0),
                 "connector_id": str(item.get("connector_id") or ""),

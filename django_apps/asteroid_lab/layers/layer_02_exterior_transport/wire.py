@@ -6,6 +6,9 @@ from typing import Any
 
 from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
 from django_apps.asteroid_lab.layers.contracts.exterior_connection import ExteriorConnectionPlan
+from django_apps.asteroid_lab.layers.contracts.exterior_connector_role import (
+    ExteriorConnectorRole,
+)
 
 _EDGES_ORDER: tuple[CardinalEdge, ...] = (
     CardinalEdge.NORTH,
@@ -20,15 +23,26 @@ def exterior_connector_plan_to_metrics_dict(plan: ExteriorConnectionPlan) -> dic
     for conn in plan.planned_connectors:
         counts_by_edge[conn.edge.value] += 1
 
+    required_planned = sum(
+        1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.REQUIRED
+    )
+    spare_planned = sum(
+        1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.SPARE
+    )
+
     return {
         "exterior_connector_plan": {
-            "version": "exterior_connector_plan.v1",
+            "version": "exterior_connector_plan.v2",
             "slot_rule": plan.slot_rule,
             "placement_rule": plan.placement_rule,
             "rotation_rule": plan.rotation_rule,
             "rotation_convention": "R0_E_CW",
             "required_connector_count": plan.required_connector_count,
-            "planned_connector_count": len(plan.planned_connectors),
+            "reference_connector_count": plan.reference_connector_count,
+            "spare_connector_count": plan.spare_connector_count,
+            "required_planned_count": required_planned,
+            "spare_planned_count": spare_planned,
+            "planned_connector_count": required_planned + spare_planned,
             "counts_by_edge": counts_by_edge,
             "planned_connectors": [
                 {
@@ -38,6 +52,7 @@ def exterior_connector_plan_to_metrics_dict(plan: ExteriorConnectionPlan) -> dic
                     "layout_t": c.layout_t,
                     "rotation": c.rotation,
                     "capacity_per_min": str(c.capacity_per_min),
+                    "role": c.role.value,
                     "coords": [{"x": xy[0], "y": xy[1]} for xy in c.coords],
                 }
                 for c in plan.planned_connectors

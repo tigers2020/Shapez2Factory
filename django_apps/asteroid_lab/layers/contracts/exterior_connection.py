@@ -7,6 +7,9 @@ from decimal import Decimal
 from enum import StrEnum
 
 from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
+from django_apps.asteroid_lab.layers.contracts.exterior_connector_role import (
+    ExteriorConnectorRole,
+)
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
 
@@ -25,6 +28,7 @@ class ExteriorConnector:
     rotation: int
     capacity_per_min: Decimal
     coords: tuple[Coord, ...]
+    role: ExteriorConnectorRole
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +38,8 @@ class ExteriorConnectionPlan:
     planning_target_per_min: Decimal
     per_connector_capacity_per_min: Decimal
     required_connector_count: int
+    reference_connector_count: int
+    spare_connector_count: int
     planned_connectors: tuple[ExteriorConnector, ...]
     unmet_reason: ExteriorConnectionShortfallReason | None
     slot_rule: str = "VOID_DEEP_SLOTS_V1"
@@ -45,4 +51,5 @@ __all__ = [
     "ExteriorConnectionPlan",
     "ExteriorConnectionShortfallReason",
     "ExteriorConnector",
+    "ExteriorConnectorRole",
 ]

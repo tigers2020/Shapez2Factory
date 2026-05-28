@@ -278,6 +278,7 @@
         x: x,
         y: y,
         overlay_role: "planned_exterior_connector",
+        connector_role: item.role != null ? String(item.role) : "required",
         tile_type: item.layout_t != null ? String(item.layout_t) : "",
         rotation: item.rotation,
         connector_id: item.connector_id != null ? String(item.connector_id) : "",
@@ -304,6 +305,21 @@
     el.style.backgroundColor = "rgba(255, 255, 255, 0.12)";
     el.style.boxShadow = "inset 0 0 0 2px rgba(255, 255, 255, 0.92)";
     el.style.outline = "none";
+  }
+
+  function applyPlannedExteriorConnectorSpareHighlight(el) {
+    if (!el) return;
+    clearPlannedExteriorConnectorHighlight(el);
+    el.style.zIndex = "2";
+    el.style.border = "";
+    el.style.backgroundColor = "rgba(34, 211, 238, 0.14)";
+    el.style.boxShadow = "inset 0 0 0 2px rgba(34, 211, 238, 0.92)";
+    el.style.outline = "none";
+  }
+
+  function normalizeConnectorRole(raw) {
+    const role = String(raw || "required").trim().toLowerCase();
+    return role === "spare" ? "spare" : "required";
   }
 
   function renderPlannedExteriorConnectorHighlights(
@@ -335,10 +351,18 @@
       const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const el = domCells[idx];
-      el.className = LAB_CELL_BASE + " lab-planned-exterior-connector";
-      applyLabCellHudAttributes(el, cell, "planned_exterior_connector");
-      applyLabCellSprite(el, cell);
-      applyPlannedExteriorConnectorWhiteHighlight(el);
+      const role = normalizeConnectorRole(cell.connector_role);
+      if (role === "spare") {
+        el.className = LAB_CELL_BASE + " lab-planned-exterior-connector-spare";
+        applyLabCellHudAttributes(el, cell, "planned_exterior_connector");
+        applyLabCellSprite(el, cell);
+        applyPlannedExteriorConnectorSpareHighlight(el);
+      } else {
+        el.className = LAB_CELL_BASE + " lab-planned-exterior-connector";
+        applyLabCellHudAttributes(el, cell, "planned_exterior_connector");
+        applyLabCellSprite(el, cell);
+        applyPlannedExteriorConnectorWhiteHighlight(el);
+      }
     }
   }
 
@@ -763,6 +787,9 @@
       if (c.connector_id != null && String(c.connector_id) !== "") {
         row.connector_id = String(c.connector_id);
       }
+      if (c.connector_role != null && String(c.connector_role) !== "") {
+        row.connector_role = String(c.connector_role);
+      }
       out.push(row);
     }
     return out;
@@ -992,6 +1019,9 @@
     const overlayRole =
       cell && cell.overlay_role != null ? String(cell.overlay_role) : "";
     if (overlayRole === "planned_exterior_connector") {
+      if (normalizeConnectorRole(cell.connector_role) === "spare") {
+        return "lab-planned-exterior-connector-spare relative";
+      }
       return "lab-planned-exterior-connector relative";
     }
     const ck = cell && cell.cell_kind != null ? String(cell.cell_kind) : "";

@@ -91,7 +91,11 @@ def _build_layer02_solver_summary(
     unmet_reason: str | None,
     target_throughput_per_min: str,
 ) -> dict[str, Any]:
-    run_success = unmet_reason is None and planned_connector_count > 0
+    required_connector_count = int(plan_wire.get("required_connector_count") or 0)
+    required_planned = int(plan_wire.get("required_planned_count") or 0)
+    run_success = (
+        unmet_reason is None and required_planned >= required_connector_count
+    )
     return {
         "validation_passed": False,
         "run_success": run_success,
@@ -179,7 +183,7 @@ def run_layer02_solver_for_project(
     )
     plan_wire = exterior_connector_plan_to_metrics_dict(plan)["exterior_connector_plan"]
     unmet = plan.unmet_reason.value if plan.unmet_reason is not None else None
-    planned_count = len(plan.planned_connectors)
+    planned_count = int(plan_wire.get("planned_connector_count") or len(plan.planned_connectors))
 
     obs = build_reconstruction_observability(
         recon=recon,

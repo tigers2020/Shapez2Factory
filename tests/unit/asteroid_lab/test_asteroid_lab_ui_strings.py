@@ -80,8 +80,12 @@ def test_lab_exterior_connector_overlay_contract() -> None:
     assert "exterior_connector_plan" in js
     assert "frozen_exterior_connector_plan" in js
     assert "lab-planned-exterior-connector" in css
+    assert "lab-planned-exterior-connector-spare" in css
     assert "lab-planned-exterior-connector" in js
     assert "applyPlannedExteriorConnectorWhiteHighlight" in js
+    assert "applyPlannedExteriorConnectorSpareHighlight" in js
+    assert "connector_role" in js
+    assert "normalizeConnectorRole" in js
     assert "renderPlannedExteriorConnectorHighlights" in js
     assert "plannedConnectorCellsFromWire" in js
     assert "plannedConnectorCoordKeys" in js
@@ -96,6 +100,7 @@ def test_lab_exterior_connector_overlay_contract() -> None:
     assert (
         "lab-planned-exterior-connector" in built_css
     ), "run npm run build:css — Lab L2 marker styles missing from app.css"
+    assert "lab-planned-exterior-connector-spare" in built_css
     assert "inset" in built_css
 
 

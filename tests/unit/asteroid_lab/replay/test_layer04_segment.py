@@ -37,9 +37,7 @@ def test_layer04_segment_emits_begin_selected_complete() -> None:
     assert all(is_registered_event_type(t) for t in types)
     assert all(replay_map_view_is_renderable(fr.map_view) for fr in frames)
     selected_frames = [
-        fr
-        for fr in frames
-        if fr.event_type.value == EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED
+        fr for fr in frames if fr.event_type.value == EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED
     ]
     assert len(selected_frames) == 1
     assert selected_frames[0].metrics["placement_state"] == "PROVISIONAL_PLACED"
@@ -63,9 +61,7 @@ def test_layer04_segment_truncates_selected_at_replay_cap() -> None:
         rejected=(),
     )
     selected_count = sum(
-        1
-        for fr in frames
-        if fr.event_type.value == EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED
+        1 for fr in frames if fr.event_type.value == EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED
     )
     assert selected_count == MAX_LAYER04_REPLAY_SELECTED
     complete = frames[-1]

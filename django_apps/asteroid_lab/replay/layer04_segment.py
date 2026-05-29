@@ -166,8 +166,7 @@ def build_layer04_runtime_segment_frames(
             event_type=ReplayEventType.LAYER04_RIM_PLACEMENT_COMPLETE,
             title="Layer 04 rim placement complete",
             description=(
-                f"Selected {len(selected)} placement(s); "
-                f"{len(rejected)} rejection(s) recorded"
+                f"Selected {len(selected)} placement(s); " f"{len(rejected)} rejection(s) recorded"
             ),
             metrics=complete_metrics,
         )

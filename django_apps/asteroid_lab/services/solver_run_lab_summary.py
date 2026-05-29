@@ -10,8 +10,9 @@ from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_MINING_BUNDLES,
-    LAYER_04_INNER_PATTERN_FILL,
-    LAYER_05_COMMIT_VALIDATE,
+    LAYER_04_RIM_BUNDLE_PLACEMENT,
+    LAYER_05_INNER_PATTERN_FILL,
+    LAYER_06_COMMIT_VALIDATE,
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
@@ -304,12 +305,64 @@ def _rim_route_candidate_count(
     return _PLACEHOLDER
 
 
-def _installed_over_route_candidates(*, installed: Any, route_candidates: Any) -> str:
-    if installed in (None, "", _PLACEHOLDER) and route_candidates in (None, "", _PLACEHOLDER):
+def _ratio_display(*, left: Any, right: Any) -> str:
+    if left in (None, "", _PLACEHOLDER) and right in (None, "", _PLACEHOLDER):
         return _PLACEHOLDER
-    left = _PLACEHOLDER if installed in (None, "", _PLACEHOLDER) else str(installed)
-    right = _PLACEHOLDER if route_candidates in (None, "", _PLACEHOLDER) else str(route_candidates)
-    return f"{left} / {right}"
+    left_text = _PLACEHOLDER if left in (None, "", _PLACEHOLDER) else str(left)
+    right_text = _PLACEHOLDER if right in (None, "", _PLACEHOLDER) else str(right)
+    return f"{left_text} / {right_text}"
+
+
+def _layer03_route_probe_succeeded_count(solver_summary: dict[str, Any]) -> Any:
+    return _obs_field_count(
+        solver_summary,
+        "route_probe_succeeded_count",
+        "normal_candidate_count",
+    )
+
+
+def _layer03_route_probed_pool_count(solver_summary: dict[str, Any]) -> Any:
+    return _obs_field_count(
+        solver_summary,
+        "normal_candidate_count",
+        "route_probe_succeeded_count",
+    )
+
+
+def _layer04_provisional_placed_count(solver_summary: dict[str, Any]) -> Any:
+    return _obs_field_count(solver_summary, "layer04_selected_count", "selected_count")
+
+
+def _layer03_skip_reason_label(solver_summary: dict[str, Any]) -> str:
+    raw = solver_summary.get("layer03_skip_reason")
+    if raw in (None, "", "none"):
+        return _PLACEHOLDER
+    return str(raw)
+
+
+def _format_layer03_reject_reason_counts(solver_summary: dict[str, Any]) -> str:
+    raw = solver_summary.get("layer03_reject_reason_counts")
+    if not raw:
+        return _PLACEHOLDER
+    parts: list[str] = []
+    for item in raw[:3]:
+        if isinstance(item, (list, tuple)) and len(item) == 2:
+            reason, count = item
+            parts.append(f"{reason}: {count}")
+    return "; ".join(parts) if parts else _PLACEHOLDER
+
+
+def _layer04_placement_complete_label(solver_summary: dict[str, Any]) -> str:
+    slugs = solver_summary.get("completed_layer_slugs")
+    if not isinstance(slugs, list) or LAYER_04_RIM_BUNDLE_PLACEMENT not in slugs:
+        return _PLACEHOLDER
+    selected = _layer04_provisional_placed_count(solver_summary)
+    if selected in (None, "", _PLACEHOLDER):
+        return _PLACEHOLDER
+    try:
+        return "yes" if int(selected) > 0 else "no"
+    except (TypeError, ValueError):
+        return _PLACEHOLDER
 
 
 def _highlight(label: str, value: Any) -> dict[str, str]:
@@ -388,8 +441,10 @@ def _build_layer_summaries(
     field_cells_label = _primary_field_cells_label(primary)
 
     macro = macro_commit_summary or {}
-    route_candidates = _rim_route_candidate_count(reconstruction, solver_summary)
-    installed = confirmed if confirmed not in (None, "", _PLACEHOLDER) else _PLACEHOLDER
+    rim_anchor_slots = _rim_route_candidate_count(reconstruction, solver_summary)
+    route_probe_succeeded = _layer03_route_probe_succeeded_count(solver_summary)
+    route_probed_pool = _layer03_route_probed_pool_count(solver_summary)
+    provisional_placed = _layer04_provisional_placed_count(solver_summary)
 
     l2_plan = solver_summary.get("exterior_connector_plan")
     l2_required = _PLACEHOLDER
@@ -475,22 +530,93 @@ def _build_layer_summaries(
             outcome(LAYER_03_RIM_MINING_BUNDLES, "pending"),
             [
                 _highlight("Target placements", target_placement),
-                _highlight("Route candidates", route_candidates),
+                _highlight("Rim anchor slots", rim_anchor_slots),
                 _highlight(
-                    "Installed / Route candidates",
-                    _installed_over_route_candidates(
-                        installed=installed,
-                        route_candidates=route_candidates,
+                    "Direction seed attempts",
+                    _obs_field_count(solver_summary, "direction_seed_attempt_count"),
+                ),
+                _highlight(
+                    "Exterior dir candidates",
+                    _obs_field_count(solver_summary, "exterior_direction_candidate_count"),
+                ),
+                _highlight("Route-probed pool", route_probed_pool),
+                _highlight(
+                    "Route probe attempts",
+                    _obs_field_count(solver_summary, "route_probe_attempt_count"),
+                ),
+                _highlight(
+                    "Field route cells",
+                    _obs_field_count(solver_summary, "field_route_cell_count_total"),
+                ),
+                _highlight(
+                    "Weighted route cost",
+                    _obs_field_count(solver_summary, "weighted_route_cost_total"),
+                ),
+                _highlight("Route probe succeeded", route_probe_succeeded),
+                _highlight(
+                    "Probe succeeded / Pool",
+                    _ratio_display(left=route_probe_succeeded, right=route_probed_pool),
+                ),
+                _highlight(
+                    "Seed projection attempts",
+                    _obs_field_count(
+                        solver_summary,
+                        "seed_projection_attempt_count",
                     ),
                 ),
+                _highlight(
+                    "Geometry rejected",
+                    _obs_field_count(
+                        solver_summary,
+                        "local_geometry_rejected_count",
+                    ),
+                ),
+                _highlight(
+                    "Top reject reasons",
+                    _format_layer03_reject_reason_counts(solver_summary),
+                ),
+                _highlight("Layer skip reason", _layer03_skip_reason_label(solver_summary)),
                 _highlight("Capacity deficit", capacity_deficit_count),
             ],
         ),
         (
             4,
-            LAYER_04_INNER_PATTERN_FILL,
+            LAYER_04_RIM_BUNDLE_PLACEMENT,
+            "Rim bundle placement",
+            outcome(LAYER_04_RIM_BUNDLE_PLACEMENT, "pending"),
+            [
+                _highlight("Provisional placed", provisional_placed),
+                _highlight(
+                    "Placed / Probe succeeded",
+                    _ratio_display(left=provisional_placed, right=route_probe_succeeded),
+                ),
+                _highlight(
+                    "Overlap rejected",
+                    _obs_field_count(
+                        solver_summary,
+                        "layer04_rejected_overlap_count",
+                        "rejected_overlap_count",
+                    ),
+                ),
+                _highlight(
+                    "Overlay occupied cells",
+                    _obs_field_count(
+                        solver_summary,
+                        "layer04_overlay_occupied_cell_count",
+                        "overlay_occupied_cell_count",
+                    ),
+                ),
+                _highlight(
+                    "Provisional placement complete",
+                    _layer04_placement_complete_label(solver_summary),
+                ),
+            ],
+        ),
+        (
+            5,
+            LAYER_05_INNER_PATTERN_FILL,
             "Inner pattern fill",
-            outcome(LAYER_04_INNER_PATTERN_FILL, "pending"),
+            outcome(LAYER_05_INNER_PATTERN_FILL, "pending"),
             [
                 _highlight("Macro-only mode", solver_summary.get("macro_only_mode")),
                 _highlight(
@@ -504,10 +630,10 @@ def _build_layer_summaries(
             ],
         ),
         (
-            5,
-            LAYER_05_COMMIT_VALIDATE,
+            6,
+            LAYER_06_COMMIT_VALIDATE,
             "Commit & validate",
-            outcome(LAYER_05_COMMIT_VALIDATE, l5_legacy),
+            outcome(LAYER_06_COMMIT_VALIDATE, l5_legacy),
             [
                 _highlight("Confirmed placements", rttp.get("confirmed_count")),
                 _highlight(

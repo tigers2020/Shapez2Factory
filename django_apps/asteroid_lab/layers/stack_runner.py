@@ -1,25 +1,32 @@
-"""Orchestrates layer 1 facade and layers 2–5 with exclusive 60s budget."""
+"""Orchestrates layer 1 facade and layers 2–6 with exclusive 60s budget."""
 
 from __future__ import annotations
 
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
-from django_apps.asteroid_lab.layers.contracts.diagnostic import DiagnosticLayerSnapshot
-from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
-from django_apps.asteroid_lab.layers.contracts.layer_post_summary import (
-    LayerPostSummaryOutcome,
-    LayerPostSummaryRecord,
+from django_apps.asteroid_lab.layers.contracts.candidates import (
+    Layer03ExpansionMetrics,
+    RimBundleCandidateSet,
+    build_rim_bundle_candidate_set,
 )
+from django_apps.asteroid_lab.layers.contracts.diagnostic import DiagnosticLayerSnapshot
+from django_apps.asteroid_lab.layers.contracts.exterior_connection import ExteriorConnectionPlan
+from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
+from django_apps.asteroid_lab.layers.contracts.layer_post_summary import LayerPostSummaryOutcome
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_MINING_BUNDLES,
-    LAYER_04_INNER_PATTERN_FILL,
-    LAYER_05_COMMIT_VALIDATE,
+    LAYER_04_RIM_BUNDLE_PLACEMENT,
+    LAYER_05_INNER_PATTERN_FILL,
+    LAYER_06_COMMIT_VALIDATE,
 )
+from django_apps.asteroid_lab.layers.contracts.provisional_overlay import ProvisionalLayoutOverlay
+from django_apps.asteroid_lab.layers.contracts.rim_placement import Layer04RimPlacementResult
 from django_apps.asteroid_lab.layers.contracts.stack_result import StackRunResult
 from django_apps.asteroid_lab.layers.contracts.stack_status import StackRunStatus
 from django_apps.asteroid_lab.layers.layer_01_reconstruction.output import (
@@ -32,16 +39,25 @@ from django_apps.asteroid_lab.layers.layer_02_exterior_transport.run import (
 from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.run import (
     run_layer_03_rim_mining_bundles,
 )
-from django_apps.asteroid_lab.layers.layer_04_inner_pattern_fill.run import (
-    run_layer_04_inner_pattern_fill,
+from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
+    run_layer_04_rim_bundle_placement,
 )
-from django_apps.asteroid_lab.layers.layer_05_commit_validate.run import (
-    run_layer_05_commit_validate,
+from django_apps.asteroid_lab.layers.layer_05_inner_pattern_fill.run import (
+    run_layer_05_inner_pattern_fill,
+)
+from django_apps.asteroid_lab.layers.layer_06_commit_validate.run import (
+    run_layer_06_commit_validate,
 )
 from django_apps.asteroid_lab.layers.observability.layer_post_summary_log import (
     LayerPostSummaryLogSession,
     build_layer01_post_summary_metrics,
+    build_layer02_post_summary_metrics,
+    build_layer03_post_summary_metrics,
+    build_layer04_post_summary_metrics,
+    build_layer05_post_summary_metrics,
+    build_layer06_post_summary_metrics,
     create_layer_post_summary_log_session,
+    emit_layer_post_summary,
 )
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
@@ -52,22 +68,36 @@ _LAYER_INDEX: dict[str, int] = {
     LAYER_01_RECONSTRUCTION: 1,
     LAYER_02_EXTERIOR_TRANSPORT: 2,
     LAYER_03_RIM_MINING_BUNDLES: 3,
-    LAYER_04_INNER_PATTERN_FILL: 4,
-    LAYER_05_COMMIT_VALIDATE: 5,
+    LAYER_04_RIM_BUNDLE_PLACEMENT: 4,
+    LAYER_05_INNER_PATTERN_FILL: 5,
+    LAYER_06_COMMIT_VALIDATE: 6,
 }
 
 
+def _empty_candidate_set() -> RimBundleCandidateSet:
+    return build_rim_bundle_candidate_set(
+        normal_candidates=(),
+        diagnostic_rejected_candidates=(),
+        metrics=Layer03ExpansionMetrics.empty(),
+    )
+
+
 @dataclass(frozen=True, slots=True)
-class _Layer02To05Runner:
+class _LayerStackRunner:
     slug: str
-    run: Callable[..., None]
+    run: Callable[..., Any]
 
 
-_DEFAULT_RUNNERS: tuple[_Layer02To05Runner, ...] = (
-    _Layer02To05Runner(LAYER_02_EXTERIOR_TRANSPORT, run_layer_02_exterior_transport),
-    _Layer02To05Runner(LAYER_03_RIM_MINING_BUNDLES, run_layer_03_rim_mining_bundles),
-    _Layer02To05Runner(LAYER_04_INNER_PATTERN_FILL, run_layer_04_inner_pattern_fill),
-    _Layer02To05Runner(LAYER_05_COMMIT_VALIDATE, run_layer_05_commit_validate),
+# Backward-compatible alias (PR-3c).
+_Layer02To05Runner = _LayerStackRunner
+
+
+_DEFAULT_RUNNERS: tuple[_LayerStackRunner, ...] = (
+    _LayerStackRunner(LAYER_02_EXTERIOR_TRANSPORT, run_layer_02_exterior_transport),
+    _LayerStackRunner(LAYER_03_RIM_MINING_BUNDLES, run_layer_03_rim_mining_bundles),
+    _LayerStackRunner(LAYER_04_RIM_BUNDLE_PLACEMENT, run_layer_04_rim_bundle_placement),
+    _LayerStackRunner(LAYER_05_INNER_PATTERN_FILL, run_layer_05_inner_pattern_fill),
+    _LayerStackRunner(LAYER_06_COMMIT_VALIDATE, run_layer_06_commit_validate),
 )
 
 
@@ -79,45 +109,25 @@ def _diagnostic_for_slug(slug: str) -> DiagnosticLayerSnapshot:
     )
 
 
-def _write_layer_post_summary(
-    session: LayerPostSummaryLogSession | None,
-    *,
-    layer_slug: str,
-    outcome: LayerPostSummaryOutcome,
-    elapsed_ms: int,
-    remaining_budget_ms: int | None,
-    metrics: dict[str, object] | None = None,
-) -> None:
-    if session is None:
-        return
-    layer_index = _LAYER_INDEX.get(layer_slug, 0)
-    session.write_layer_post_summary(
-        LayerPostSummaryRecord(
-            layer_slug=layer_slug,
-            layer_index=layer_index,
-            outcome=outcome,
-            elapsed_ms=elapsed_ms,
-            remaining_budget_ms=remaining_budget_ms,
-            metrics=dict(metrics or {}),
-        )
-    )
-
-
-def run_layers_02_to_05(
+def run_layers_02_to_06(
     *,
     complete_map: ReconstructionCompleteMap,
     budget_ctx: LayerBudgetContext,
-    runners: tuple[_Layer02To05Runner, ...] = _DEFAULT_RUNNERS,
+    runners: tuple[_LayerStackRunner, ...] = _DEFAULT_RUNNERS,
     post_summary_session: LayerPostSummaryLogSession | None = None,
 ) -> StackRunResult:
     completed: list[str] = []
     last_diagnostic: DiagnosticLayerSnapshot | None = None
+    last_exterior_plan: ExteriorConnectionPlan | None = None
+    last_candidate_set: RimBundleCandidateSet = _empty_candidate_set()
+    last_placement_result: Layer04RimPlacementResult | None = None
 
     for entry in runners:
         if budget_ctx.remaining_budget_ms() <= 0:
-            _write_layer_post_summary(
+            emit_layer_post_summary(
                 post_summary_session,
                 layer_slug=entry.slug,
+                layer_index=_LAYER_INDEX.get(entry.slug, 0),
                 outcome=LayerPostSummaryOutcome.SKIPPED_BUDGET,
                 elapsed_ms=0,
                 remaining_budget_ms=0,
@@ -130,17 +140,68 @@ def run_layers_02_to_05(
                 diagnostic_snapshot=last_diagnostic,
             )
         started = budget_ctx.now_fn()
-        entry.run(complete_map=complete_map, budget_ctx=budget_ctx)
+        post_metrics: dict[str, object] = {"stub": True}
+        if entry.slug == LAYER_02_EXTERIOR_TRANSPORT:
+            last_exterior_plan = entry.run(complete_map=complete_map, budget_ctx=budget_ctx)
+            if isinstance(last_exterior_plan, ExteriorConnectionPlan):
+                post_metrics = build_layer02_post_summary_metrics(last_exterior_plan)
+        elif entry.slug == LAYER_03_RIM_MINING_BUNDLES:
+            layer03_result = entry.run(
+                complete_map=complete_map,
+                budget_ctx=budget_ctx,
+                exterior_plan=last_exterior_plan,
+            )
+            if isinstance(layer03_result, RimBundleCandidateSet):
+                last_candidate_set = layer03_result
+                post_metrics = build_layer03_post_summary_metrics(layer03_result)
+        elif entry.slug == LAYER_04_RIM_BUNDLE_PLACEMENT:
+            last_placement_result = entry.run(
+                complete_map=complete_map,
+                exterior_plan=last_exterior_plan,
+                candidate_set=last_candidate_set,
+                budget_ctx=budget_ctx,
+            )
+            if isinstance(last_placement_result, Layer04RimPlacementResult):
+                post_metrics = build_layer04_post_summary_metrics(last_placement_result)
+        elif entry.slug == LAYER_05_INNER_PATTERN_FILL:
+            overlay = (
+                last_placement_result.provisional_overlay
+                if last_placement_result is not None
+                else ProvisionalLayoutOverlay.empty()
+            )
+            from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
+                empty_layer04_rim_placement_result,
+            )
+
+            placement_result = (
+                last_placement_result
+                if last_placement_result is not None
+                else empty_layer04_rim_placement_result()
+            )
+            entry.run(
+                complete_map=complete_map,
+                exterior_plan=last_exterior_plan,
+                rim_placement_result=placement_result,
+                provisional_overlay=overlay,
+                budget_ctx=budget_ctx,
+            )
+            post_metrics = build_layer05_post_summary_metrics()
+        elif entry.slug == LAYER_06_COMMIT_VALIDATE:
+            entry.run(complete_map=complete_map, budget_ctx=budget_ctx)
+            post_metrics = build_layer06_post_summary_metrics()
+        else:
+            entry.run(complete_map=complete_map, budget_ctx=budget_ctx)
         elapsed_ms = max(0, int((budget_ctx.now_fn() - started) * 1000))
         completed.append(entry.slug)
         last_diagnostic = _diagnostic_for_slug(entry.slug)
-        _write_layer_post_summary(
+        emit_layer_post_summary(
             post_summary_session,
             layer_slug=entry.slug,
+            layer_index=_LAYER_INDEX.get(entry.slug, 0),
             outcome=LayerPostSummaryOutcome.COMPLETED,
             elapsed_ms=elapsed_ms,
             remaining_budget_ms=budget_ctx.remaining_budget_ms(),
-            metrics={"stub": True},
+            metrics=post_metrics,
         )
 
     return StackRunResult(
@@ -151,12 +212,28 @@ def run_layers_02_to_05(
     )
 
 
+def run_layers_02_to_05(
+    *,
+    complete_map: ReconstructionCompleteMap,
+    budget_ctx: LayerBudgetContext,
+    runners: tuple[_LayerStackRunner, ...] = _DEFAULT_RUNNERS,
+    post_summary_session: LayerPostSummaryLogSession | None = None,
+) -> StackRunResult:
+    """Deprecated alias for ``run_layers_02_to_06`` (PR-3c layer renumber)."""
+    return run_layers_02_to_06(
+        complete_map=complete_map,
+        budget_ctx=budget_ctx,
+        runners=runners,
+        post_summary_session=post_summary_session,
+    )
+
+
 def run_full_from_cleanup_recon(
     *,
     cleanup: CleanupResult,
     recon: ReconstructionResult,
     budget_ctx: LayerBudgetContext | None = None,
-    runners: tuple[_Layer02To05Runner, ...] = _DEFAULT_RUNNERS,
+    runners: tuple[_LayerStackRunner, ...] = _DEFAULT_RUNNERS,
     post_summary_session: LayerPostSummaryLogSession | None = None,
     project_slug: str | None = None,
     solver_run_id: int | None = None,
@@ -173,16 +250,17 @@ def run_full_from_cleanup_recon(
         l1_started = time.monotonic()
         layer01 = run_layer_01(cleanup=cleanup, recon=recon)
         l1_elapsed_ms = max(0, int((time.monotonic() - l1_started) * 1000))
-        _write_layer_post_summary(
+        emit_layer_post_summary(
             session,
             layer_slug=LAYER_01_RECONSTRUCTION,
+            layer_index=_LAYER_INDEX[LAYER_01_RECONSTRUCTION],
             outcome=LayerPostSummaryOutcome.COMPLETED,
             elapsed_ms=l1_elapsed_ms,
             remaining_budget_ms=None,
             metrics=build_layer01_post_summary_metrics(layer01),
         )
         ctx = budget_ctx or LayerBudgetContext.from_budget_ms(LAYER_STACK_BUDGET_MS)
-        stack_result = run_layers_02_to_05(
+        stack_result = run_layers_02_to_06(
             complete_map=layer01.complete_map,
             budget_ctx=ctx,
             runners=runners,
@@ -196,6 +274,9 @@ def run_full_from_cleanup_recon(
 
 __all__ = [
     "LAYER_STACK_BUDGET_MS",
+    "_Layer02To05Runner",
+    "_LayerStackRunner",
     "run_full_from_cleanup_recon",
     "run_layers_02_to_05",
+    "run_layers_02_to_06",
 ]

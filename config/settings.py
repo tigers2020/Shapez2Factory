@@ -182,10 +182,11 @@ ASTEROID_LAB_REPLAY_PAYLOAD_MODE = (
 if ASTEROID_LAB_REPLAY_PAYLOAD_MODE not in ("inline", "lazy"):
     ASTEROID_LAB_REPLAY_PAYLOAD_MODE = "lazy"
 
-# Layer stack post-summary JSONL (observability only; default off; no os.environ enable).
-ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_ENABLED = False
+# Layer stack behavior + summary JSONL under var/ (observability only; not solver input).
+ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_ENABLED = True
+ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_MAX_RUNS = 5
 ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_DIR = (
-    BASE_DIR / "var" / "log" / "asteroid_lab_layer_post_summary"
+    BASE_DIR / "var" / "log" / "asteroid_lab_layer_stack"
 )
 
 STORAGES = {

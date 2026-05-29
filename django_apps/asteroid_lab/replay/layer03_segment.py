@@ -188,8 +188,7 @@ def build_layer03_runtime_segment_frames(
         )
         if plan.physical_subwindow_count > 1:
             description += (
-                f" · part {plan.physical_subwindow_index}/"
-                f"{plan.physical_subwindow_count}"
+                f" · part {plan.physical_subwindow_index}/" f"{plan.physical_subwindow_count}"
             )
         probe_windows.append(
             _timeline_frame(

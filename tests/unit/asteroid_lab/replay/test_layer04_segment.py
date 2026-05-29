@@ -94,9 +94,7 @@ def test_layer04_segment_truncates_rejected_overlap_at_replay_cap() -> None:
         rejected=rejections,
     )
     overlap_frames = [
-        fr
-        for fr in frames
-        if fr.event_type.value == "layer04_rim_candidate_rejected_overlap"
+        fr for fr in frames if fr.event_type.value == "layer04_rim_candidate_rejected_overlap"
     ]
     assert len(overlap_frames) == MAX_LAYER04_REPLAY_REJECTED_OVERLAP
     complete = frames[-1]

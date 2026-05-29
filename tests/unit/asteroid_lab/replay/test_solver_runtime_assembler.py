@@ -335,8 +335,7 @@ def test_layer03_probe_windows_cover_full_replay_pool_by_candidate_ids() -> None
 
     candidate_set = rim_bundle_candidate_set_with_observability_for_golden()
     expected_ids = [
-        entry.candidate.candidate_id
-        for entry in candidate_set.observability.replay_pool_candidates
+        entry.candidate.candidate_id for entry in candidate_set.observability.replay_pool_candidates
     ]
     frames = build_solver_runtime_replay_frames(
         complete_map=golden_5x5_complete_map(),
@@ -346,9 +345,7 @@ def test_layer03_probe_windows_cover_full_replay_pool_by_candidate_ids() -> None
         layer04=None,
     )
     window_frames = [
-        f
-        for f in frames
-        if f["event_type"] == EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW
+        f for f in frames if f["event_type"] == EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW
     ]
     assert window_frames
 

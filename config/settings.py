@@ -185,9 +185,7 @@ if ASTEROID_LAB_REPLAY_PAYLOAD_MODE not in ("inline", "lazy"):
 # Layer stack behavior + summary JSONL under var/ (observability only; not solver input).
 ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_ENABLED = True
 ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_MAX_RUNS = 5
-ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_DIR = (
-    BASE_DIR / "var" / "log" / "asteroid_lab_layer_stack"
-)
+ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_DIR = BASE_DIR / "var" / "log" / "asteroid_lab_layer_stack"
 
 STORAGES = {
     "default": {

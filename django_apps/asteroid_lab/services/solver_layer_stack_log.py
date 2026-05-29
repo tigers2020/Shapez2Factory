@@ -19,9 +19,6 @@ from django_apps.asteroid_lab.layers.contracts.stack_status import StackRunStatu
 from django_apps.asteroid_lab.layers.layer_01_reconstruction.output import (
     Layer01ReconstructionOutput,
 )
-from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.forensic_log import (
-    write_layer04_selected_placements_log,
-)
 from django_apps.asteroid_lab.layers.observability.layer_post_summary_log import (
     build_layer01_post_summary_metrics,
     build_layer02_post_summary_metrics,
@@ -102,11 +99,6 @@ def write_lab_solver_layer_stack_logs(
         remaining_budget_ms=None,
         metrics=build_layer04_post_summary_metrics(layer04),
     )
-    if layer04.selected_placements:
-        write_layer04_selected_placements_log(
-            run_dir=session.run_dir,
-            selected_placements=layer04.selected_placements,
-        )
     stack_result = StackRunResult(
         status=stack_run_status,
         completed_layer_slugs=completed_layer_slugs,

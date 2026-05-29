@@ -8,9 +8,6 @@ from django_apps.asteroid_lab.layers.contracts.rim_placement import (
     RimPlacementRejection,
     RimPlacementRejectReason,
 )
-from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.place import (
-    build_rim_bundle_placement,
-)
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED,
     EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN,
@@ -31,6 +28,7 @@ from django_apps.asteroid_lab.replay.runtime_frame_finalize import (
 )
 from django_apps.asteroid_lab.replay.timeline_dtos import replay_map_view_is_renderable
 from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
+    rim_bundle_placement_from_probe,
     succeeded_probe_at,
 )
 from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
@@ -52,7 +50,7 @@ def _frames_from_specs(*, selected, rejected, packing_observability=None):
 
 
 def test_layer04_selected_overlay_includes_route_probe_path_not_space_belt() -> None:
-    placement = build_rim_bundle_placement(
+    placement = rim_bundle_placement_from_probe(
         succeeded_probe_at(
             (3, -10),
             output_dir=Direction.N,
@@ -72,7 +70,7 @@ def test_layer04_selected_overlay_includes_route_probe_path_not_space_belt() -> 
 
 
 def test_layer04_selected_overlay_preserves_candidate_cell_rotation() -> None:
-    placement = build_rim_bundle_placement(
+    placement = rim_bundle_placement_from_probe(
         succeeded_probe_at((3, -10), output_dir=Direction.N),
     )
     specs = build_layer04_runtime_segment_specs(selected=(placement,), rejected=())
@@ -88,7 +86,7 @@ def test_layer04_selected_overlay_preserves_candidate_cell_rotation() -> None:
 
 
 def test_layer04_segment_emits_begin_selected_complete() -> None:
-    placement = build_rim_bundle_placement(succeeded_probe_at((3, 4)))
+    placement = rim_bundle_placement_from_probe(succeeded_probe_at((3, 4)))
     frames = _frames_from_specs(selected=(placement,), rejected=())
     types = [fr.event_type.value for fr in frames]
     assert types[0] == EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN
@@ -105,7 +103,7 @@ def test_layer04_segment_emits_begin_selected_complete() -> None:
 
 def test_layer04_segment_truncates_selected_at_replay_cap() -> None:
     placements = tuple(
-        build_rim_bundle_placement(
+        rim_bundle_placement_from_probe(
             succeeded_probe_at(
                 (3 + i, 4),
                 gene_key=f"miner_seed_m{i:02d}",
@@ -146,7 +144,7 @@ def test_layer04_segment_truncates_rejected_overlap_at_replay_cap() -> None:
 
 
 def test_layer04_complete_frame_projects_packing_observability() -> None:
-    placement = build_rim_bundle_placement(succeeded_probe_at((3, 4)))
+    placement = rim_bundle_placement_from_probe(succeeded_probe_at((3, 4)))
     observability = Layer04PackingObservability(
         greedy_baseline_total_gain=4,
         selected_total_gain=5,

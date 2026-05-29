@@ -58,7 +58,7 @@ L4: consume that data for packing only — MUST NOT re-probe or re-derive footpr
      that L3 already attached to BundleCandidate / RouteProbedBundleCandidate.
 ```
 
-`throughput_factor` on L3 candidates is **estimate / observability input** to L4 metrics; it is **not** the L4 v2 primary objective (§4).
+`throughput_factor` on L3 candidates is the **L3 estimate** of mining output. **Amended 2026-05-29:** the L3→L4 contract is explicitly extended so that L4 v2 consumes `throughput_factor` as its **primary set-packing objective** (§2.1); it is still an L3 estimate (L3 MUST NOT pack/reserve on it).
 
 ---
 
@@ -85,7 +85,7 @@ This is **not** an L3 enumeration bug. L3 MUST keep all feasible directions in t
 |------|--------|
 | Global full-pool MWIS | **Non-goal** |
 | Greedy + ad-hoc local replacement pass | **Non-goal** |
-| `throughput_factor` as primary optimizer objective | **Forbidden** unless L3→L4 contract explicitly extended in a future spec |
+| `throughput_factor` as primary optimizer objective | **Adopted (Amended 2026-05-29)** — L3→L4 contract explicitly extended; throughput-first set packing per §2.1 |
 | L3 packing / reservation | **Forbidden** |
 | L5/L6 implementation | Out of scope |
 | Replay/UI lazy-load | Separate track |
@@ -94,17 +94,29 @@ This is **not** an L3 enumeration bug. L3 MUST keep all feasible directions in t
 
 ## §2 — Objective (Option C)
 
-### 2.1 Primary (solver / tests)
+### 2.1 Primary (solver / tests) — **Amended 2026-05-29**
 
-**A — `effective_mining_gain` only** for optimization and automated assertions.
+**A — weighted set packing on `throughput_factor` (mining output proxy).**
 
 ```text
-effective_mining_gain(candidate) = len(candidate.mining_occupied_cells)   # v2 unchanged
+set_score(S) — lexicographic (maximize):
+  1. total_throughput_factor     = sum(c.throughput_factor for c in S)
+  2. total_effective_mining_gain = sum(len(mining_occupied_cells))   # tie-break
+  3. selected_count |S|
+  4. total_route_cost ASC
+  5. total_connector_goal_distance ASC
+  6. stable sorted candidate_id tuple
 ```
+
+`effective_mining_gain(candidate) = len(candidate.mining_occupied_cells)` remains defined; it is **not** the primary optimizer objective after this amendment.
 
 ### 2.2 Secondary (observability)
 
-**B — throughput** (e.g. `throughput_factor` sum) MAY be recorded on `Layer04RimPlacementResult.packing_observability` and projected into replay for Lab/benchmark. MUST NOT drive `EXACT_PACK` branch decisions in v2.0.
+**B —** `Layer04PackingObservability` records `selected_throughput_factor_sum` and `greedy_baseline_throughput_factor_sum` alongside mining-gain totals.
+
+### 2.3 Post-selection repair (v2.1)
+
+After logical selection per component, `apply_one_to_many_exchange_repair` MAY replace a single selected candidate with a non-overlapping subset of pool candidates that overlap only that node, when the replacement set has strictly greater `set_score`. Applies to both `EXACT_PACK` and `GREEDY_FALLBACK` outputs (idempotent when exact).
 
 ---
 
@@ -144,12 +156,7 @@ Rationale: spatially understandable order when `LayerBudgetContext` interrupts m
 For a feasible non-overlapping set `S` of candidates within one component:
 
 ```text
-set_score(S) — lexicographic (maximize):
-  1. total_effective_mining_gain     = sum(effective_mining_gain(c))     DESC
-  2. selected_count                  = |S|                              DESC
-  3. total_route_cost                = sum(route_cost(entry))          ASC
-  4. total_connector_goal_distance   = sum(connector_goal_distance(entry)) ASC
-  5. selected_candidate_ids          = tuple(sorted(candidate_id))     ASC
+set_score(S) — see §2.1 (throughput_factor first).
 ```
 
 Per-candidate `route_cost` and `connector_goal_distance` MUST use the same definitions as [`sort_keys.py`](../../../django_apps/asteroid_lab/layers/layer_04_rim_bundle_placement/sort_keys.py) today.
@@ -192,7 +199,8 @@ L4 v2 computes each component_winner_set as a logical candidate set first (no bu
 Materialization then accepts winners in deterministic materialization order.
 
 Materialization order (within one component_winner_set):
-  ascending candidate_sort_key(entry) — same tuple as L4 v1 mining-first sort.
+  ascending candidate_sort_key(entry) — throughput-first tuple (§2.1):
+  (-throughput_factor, -effective_mining_gain, route_cost, intrinsic_priority_rank, ...).
 
 Global materialization order:
   components in component_sort_key order (§3.3);
@@ -258,13 +266,18 @@ inside each conflict component (subject to MAX_EXACT_COMPONENT_SIZE and budget).
 L4 v2 MUST NOT select a placement solely because it appears earlier in mining-first
 greedy order when another non-overlapping subset in the same component has a higher set_score.
 
-L4 v2 MUST use total_effective_mining_gain as the primary objective (§4).
+L4 v2 MUST use total_throughput_factor as the primary set_score objective (§2.1, §4);
+total_effective_mining_gain is the secondary tie-break, not the primary objective.
+intrinsic_priority_rank is a deterministic tie-break only (after throughput, gain, route);
+it MUST NOT be the primary objective and MUST NOT be used to suppress low-tier seeds
+(e.g. m0e_01) from the L4 pool.
 ```
 
 ### 6.2 MUST NOT
 
 ```text
-MUST NOT use throughput_factor as the v2.0 primary objective.
+MUST NOT demote throughput_factor below total_effective_mining_gain in set_score
+(Amended 2026-05-29: throughput_factor is the v2 primary objective, §2.1).
 
 MUST NOT perform route probe or L3 candidate regeneration in L4.
 

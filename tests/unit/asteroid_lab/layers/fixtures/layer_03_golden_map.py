@@ -1,4 +1,4 @@
-"""Golden 5×5 field map + minimal L2 plan for Layer 03 expansion tests."""
+"""Golden 5×5 field map + minimal L2 plan for replay / assembler tests."""
 
 from __future__ import annotations
 
@@ -11,10 +11,6 @@ from django_apps.asteroid_lab.layers.contracts.exterior_connection import (
 )
 from django_apps.asteroid_lab.layers.contracts.exterior_connector_role import (
     ExteriorConnectorRole,
-)
-from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.seed_catalog import (
-    MinerSeedCatalog,
-    MinerSeedEntry,
 )
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.reconstruction.rim_topology import field_rim_cells
@@ -39,7 +35,6 @@ def _external_void_cells(field: frozenset[Coord]) -> frozenset[Coord]:
         for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
             if (nx, ny) not in field:
                 void.add((nx, ny))
-    # East void corridor for minimal L2 connector goal at (8, 4).
     void.add((8, 4))
     return frozenset(void)
 
@@ -81,39 +76,6 @@ def minimal_l2_plan_for_golden(*, goal_coord: Coord = (8, 4)) -> ExteriorConnect
     )
 
 
-def _minimal_m0e_decoded_json() -> dict[str, object]:
-    return {
-        "BP": {
-            "Entries": [
-                {"T": "Layout_ShapeMiner", "X": 0, "Y": 0, "R": 0},
-                {"T": "SpaceBelt_Forward", "X": 1, "Y": 0, "R": 0},
-                {"T": "SpaceBelt_Forward", "X": 2, "Y": 0, "R": 0},
-            ],
-        },
-    }
-
-
-def two_seed_catalog() -> MinerSeedCatalog:
-    return MinerSeedCatalog.from_entries(
-        MinerSeedEntry(
-            gene_key="miner_seed_m3e_01",
-            pattern_id="m3e_01",
-            intrinsic_priority_rank=1,
-            throughput_factor=16,
-            topology_signature="topo_shared_minimal",
-            decoded_json=_minimal_m0e_decoded_json(),
-        ),
-        MinerSeedEntry(
-            gene_key="miner_seed_m1e_01",
-            pattern_id="m1e_01",
-            intrinsic_priority_rank=17,
-            throughput_factor=16,
-            topology_signature="topo_shared_minimal",
-            decoded_json=_minimal_m0e_decoded_json(),
-        ),
-    )
-
-
 def expected_golden_rim_anchor_count() -> int:
     return len(field_rim_cells(_field_cells()))
 
@@ -122,5 +84,4 @@ __all__ = [
     "expected_golden_rim_anchor_count",
     "golden_5x5_complete_map",
     "minimal_l2_plan_for_golden",
-    "two_seed_catalog",
 ]

@@ -14,8 +14,8 @@ from django_apps.asteroid_lab.layers.contracts.candidates import (
     make_bundle_candidate_for_test,
 )
 from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKind
-from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.place import (
-    build_rim_bundle_placement,
+from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
+    rim_bundle_placement_from_probe,
 )
 from django_apps.asteroid_lab.replay.layer04_segment import _overlay_cells_for_placement
 
@@ -66,7 +66,7 @@ def test_layer04_overlay_extractor_kind_is_domain_shape_miner() -> None:
             cell_role=BundleCellRole.TRANSPORT_STUB,
         ),
     )
-    placement = build_rim_bundle_placement(_succeeded_entry(placements=placements))
+    placement = rim_bundle_placement_from_probe(_succeeded_entry(placements=placements))
     cells = _overlay_cells_for_placement(placement)
     miner_rows = [c for c in cells if (c.x, c.y) == anchor]
     assert miner_rows
@@ -96,7 +96,7 @@ def test_layer04_overlay_extension_kind_is_domain_shape_miner_extension() -> Non
             cell_role=BundleCellRole.TRANSPORT_STUB,
         ),
     )
-    placement = build_rim_bundle_placement(_succeeded_entry(placements=placements))
+    placement = rim_bundle_placement_from_probe(_succeeded_entry(placements=placements))
     cells = _overlay_cells_for_placement(placement)
     ext_rows = [c for c in cells if (c.x, c.y) == ext_coord]
     assert ext_rows
@@ -120,7 +120,7 @@ def test_layer04_overlay_transport_stub_kind_is_domain_space_belt() -> None:
             cell_role=BundleCellRole.TRANSPORT_STUB,
         ),
     )
-    placement = build_rim_bundle_placement(_succeeded_entry(placements=placements))
+    placement = rim_bundle_placement_from_probe(_succeeded_entry(placements=placements))
     cells = _overlay_cells_for_placement(placement)
     stub_rows = [c for c in cells if (c.x, c.y) == stub]
     assert stub_rows

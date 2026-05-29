@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.place import (
-    build_rim_bundle_placement,
-)
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED,
     EVENT_TYPE_LAYER04_RIM_PLACEMENT_COMPLETE,
@@ -16,12 +13,13 @@ from django_apps.asteroid_lab.replay.pattern_bundle_highlight import (
     mining_occupied_from_rim_placement,
 )
 from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
+    rim_bundle_placement_from_probe,
     succeeded_probe_at,
 )
 
 
 def test_selected_frame_highlights_use_extractor_union_extension_only() -> None:
-    placement = build_rim_bundle_placement(
+    placement = rim_bundle_placement_from_probe(
         succeeded_probe_at(
             (3, 4),
             mining=frozenset({(3, 4), (3, 5)}),
@@ -44,14 +42,14 @@ def test_selected_frame_highlights_use_extractor_union_extension_only() -> None:
 
 
 def test_placement_complete_frame_includes_all_selected_highlights() -> None:
-    placement_a = build_rim_bundle_placement(
+    placement_a = rim_bundle_placement_from_probe(
         succeeded_probe_at(
             (3, 4),
             mining=frozenset({(3, 4), (3, 5)}),
             transport=frozenset({(4, 4)}),
         ),
     )
-    placement_b = build_rim_bundle_placement(
+    placement_b = rim_bundle_placement_from_probe(
         succeeded_probe_at(
             (5, 4),
             mining=frozenset({(5, 4), (5, 5)}),

@@ -27,9 +27,6 @@ from django_apps.asteroid_lab.layers.contracts.stack_result import StackRunResul
 from django_apps.asteroid_lab.layers.layer_01_reconstruction.output import (
     Layer01ReconstructionOutput,
 )
-from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.forensic_log import (
-    LAYER04_SELECTED_PLACEMENTS_FILENAME,
-)
 from django_apps.asteroid_lab.layers.observability.layer_behavior_catalog import (
     format_layer_summary_line,
     layer_behavior_for_slug,
@@ -37,6 +34,7 @@ from django_apps.asteroid_lab.layers.observability.layer_behavior_catalog import
 
 _SCHEMA_VERSION = 2
 _DEFAULT_MAX_RUNS = 5
+_LAYER04_SELECTED_PLACEMENTS_FILENAME = "layer_04_selected_placements.jsonl"
 
 
 def _settings_bool(name: str, default: bool = False) -> bool:
@@ -239,9 +237,9 @@ class LayerPostSummaryLogSession:
     def close(self, stack_result: StackRunResult) -> None:
         self.write_stack_run_post_summary(stack_result)
         artifacts: dict[str, str] = {}
-        forensic_path = self.run_dir / LAYER04_SELECTED_PLACEMENTS_FILENAME
+        forensic_path = self.run_dir / _LAYER04_SELECTED_PLACEMENTS_FILENAME
         if forensic_path.is_file():
-            artifacts["layer04_selected_placements"] = LAYER04_SELECTED_PLACEMENTS_FILENAME
+            artifacts["layer04_selected_placements"] = _LAYER04_SELECTED_PLACEMENTS_FILENAME
         manifest: dict[str, object] = {
             "schema_version": _SCHEMA_VERSION,
             "run_id": self.run_id,

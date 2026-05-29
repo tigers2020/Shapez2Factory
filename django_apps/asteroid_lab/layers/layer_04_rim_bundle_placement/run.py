@@ -1,4 +1,4 @@
-"""Layer 4 — rim bundle provisional placement + overlay materialization."""
+"""Layer 4 stub — rim bundle provisional placement (rebuild from skeleton)."""
 
 from __future__ import annotations
 
@@ -10,22 +10,14 @@ from django_apps.asteroid_lab.layers.contracts.rim_placement import (
     Layer04RimPlacementResult,
     build_layer04_rim_placement_result,
 )
-from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.place import (
-    build_provisional_overlay,
-    build_rim_bundle_placement,
-)
-from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.select_v2 import (
-    select_non_overlapping_candidates_v2,
-)
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 
 
 def empty_layer04_rim_placement_result() -> Layer04RimPlacementResult:
-    overlay = ProvisionalLayoutOverlay.empty()
     return build_layer04_rim_placement_result(
         selected_placements=(),
         rejected_candidates=(),
-        provisional_overlay=overlay,
+        provisional_overlay=ProvisionalLayoutOverlay.empty(),
         replay_frames=(),
     )
 
@@ -37,23 +29,8 @@ def run_layer_04_rim_bundle_placement(
     candidate_set: RimBundleCandidateSet,
     budget_ctx: LayerBudgetContext,
 ) -> Layer04RimPlacementResult:
-    _ = complete_map
-    if exterior_plan is None or not candidate_set.normal_candidates:
-        return empty_layer04_rim_placement_result()
-
-    outcome = select_non_overlapping_candidates_v2(
-        normal_candidates=candidate_set.normal_candidates,
-        budget_ctx=budget_ctx,
-    )
-    placements = tuple(build_rim_bundle_placement(entry) for entry in outcome.selected_entries)
-    overlay = build_provisional_overlay(placements)
-    return build_layer04_rim_placement_result(
-        selected_placements=placements,
-        rejected_candidates=outcome.rejected,
-        provisional_overlay=overlay,
-        replay_frames=(),
-        packing_observability=outcome.packing_observability,
-    )
+    _ = (complete_map, exterior_plan, candidate_set, budget_ctx)
+    return empty_layer04_rim_placement_result()
 
 
 __all__ = ["empty_layer04_rim_placement_result", "run_layer_04_rim_bundle_placement"]

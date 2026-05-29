@@ -6,14 +6,15 @@ from django_apps.asteroid_lab.layers.contracts.candidates import (
     Layer03ExpansionMetrics,
     Layer03SkipReason,
     RimBundleCandidateSet,
+    RouteProbedBundleCandidate,
 )
 from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
 from django_apps.asteroid_lab.layers.contracts.rim_placement import Layer04RimPlacementResult
 from django_apps.asteroid_lab.layers.layer_02_exterior_transport.wire import (
     exterior_connector_plan_to_metrics_dict,
 )
-from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.expand import (
-    expand_rim_bundle_candidates,
+from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.run import (
+    run_layer_03_rim_mining_bundles,
 )
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
@@ -23,14 +24,17 @@ from tests.unit.asteroid_lab.layers.fixtures.layer_03_candidate_set_factory impo
     rim_bundle_candidate_set_for_test,
 )
 from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
+    expected_golden_rim_anchor_count,
     golden_5x5_complete_map,
     minimal_l2_plan_for_golden,
-    two_seed_catalog,
+)
+from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
+    layer04_rim_placement_result_for_probes,
+    succeeded_probe_at,
 )
 
 
 def reconstruction_complete_lab_frame_dict_for_golden() -> dict[str, object]:
-    """Minimal renderable reconstruction.completed wire for golden 5×5 map."""
     complete = golden_5x5_complete_map()
     rows = [
         {
@@ -106,47 +110,58 @@ def rim_bundle_candidate_set_missing_exterior_plan() -> RimBundleCandidateSet:
     )
 
 
+def _compact_probe(
+    anchor: tuple[int, int],
+    *,
+    equivalence_key: str,
+    rank: int,
+) -> RouteProbedBundleCandidate:
+    stub = (anchor[0] + 1, anchor[1])
+    goal = (stub[0] + 1, stub[1])
+    return succeeded_probe_at(
+        anchor,
+        equivalence_key=equivalence_key,
+        rank=rank,
+        mining=frozenset({anchor}),
+        transport=frozenset({stub}),
+        goal=goal,
+    )
+
+
 def rim_bundle_candidate_set_with_observability_for_golden() -> RimBundleCandidateSet:
-    return expand_rim_bundle_candidates(
+    probes = (
+        _compact_probe((6, 4), equivalence_key="equiv_a", rank=1),
+        _compact_probe((4, 6), equivalence_key="equiv_b", rank=2),
+        _compact_probe((6, 2), equivalence_key="equiv_c", rank=3),
+        _compact_probe((2, 6), equivalence_key="equiv_d", rank=4),
+    )
+    metrics = Layer03ExpansionMetrics(
+        rim_anchor_count=expected_golden_rim_anchor_count(),
+        seed_projection_attempt_count=2,
+        local_geometry_rejected_count=0,
+        route_probe_attempt_count=len(probes),
+        route_probe_succeeded_count=len(probes),
+        route_probe_failed_count=0,
+        dedupe_duplicate_count=0,
+        normal_candidate_count=len(probes),
+        diagnostic_rejected_count=0,
+        budget_skipped_count=0,
+        layer_skip_reason=Layer03SkipReason.NONE,
+    )
+    return rim_bundle_candidate_set_for_test(
+        normal_candidates=probes,
+        diagnostic_rejected_candidates=(),
+        metrics=metrics,
+    )
+
+
+def rim_bundle_candidate_set_from_layer03_stub() -> RimBundleCandidateSet:
+    return run_layer_03_rim_mining_bundles(
         complete_map=golden_5x5_complete_map(),
         exterior_plan=minimal_l2_plan_for_golden(),
         budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
-        seed_catalog=two_seed_catalog(),
     )
 
 
 def layer04_result_with_selection_for_golden() -> Layer04RimPlacementResult:
-    from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
-        run_layer_04_rim_bundle_placement,
-    )
-    from tests.unit.asteroid_lab.layers.fixtures.layer_03_candidate_set_factory import (
-        rim_bundle_candidate_set_for_test,
-    )
-    from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
-        succeeded_probe_at,
-    )
-
-    entry = succeeded_probe_at((6, 4))
-    candidate_set = rim_bundle_candidate_set_for_test(
-        normal_candidates=(entry,),
-        diagnostic_rejected_candidates=(),
-        metrics=Layer03ExpansionMetrics(
-            rim_anchor_count=1,
-            seed_projection_attempt_count=0,
-            local_geometry_rejected_count=0,
-            route_probe_attempt_count=1,
-            route_probe_succeeded_count=1,
-            route_probe_failed_count=0,
-            dedupe_duplicate_count=0,
-            normal_candidate_count=1,
-            diagnostic_rejected_count=0,
-            budget_skipped_count=0,
-            layer_skip_reason=Layer03ExpansionMetrics.empty().layer_skip_reason,
-        ),
-    )
-    return run_layer_04_rim_bundle_placement(
-        complete_map=golden_5x5_complete_map(),
-        exterior_plan=minimal_l2_plan_for_golden(),
-        candidate_set=candidate_set,
-        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
-    )
+    return layer04_rim_placement_result_for_probes((succeeded_probe_at((6, 4)),))

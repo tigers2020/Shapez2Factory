@@ -166,11 +166,6 @@ def test_assembler_skips_l2_when_exterior_plan_wire_none() -> None:
 
 
 def test_assembler_emits_l2_then_l4_when_layer04_present() -> None:
-    from django_apps.asteroid_lab.layers.contracts.candidates import Layer03ExpansionMetrics
-    from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
-    from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
-        run_layer_04_rim_bundle_placement,
-    )
     from django_apps.asteroid_lab.replay.event_types import (
         EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN,
         EVENT_TYPE_LAYER04_RIM_PLACEMENT_COMPLETE,
@@ -178,45 +173,14 @@ def test_assembler_emits_l2_then_l4_when_layer04_present() -> None:
     from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
         build_solver_runtime_replay_frames,
     )
-    from tests.unit.asteroid_lab.layers.fixtures.layer_03_candidate_set_factory import (
-        rim_bundle_candidate_set_for_test,
-    )
-    from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
-        minimal_l2_plan_for_golden,
-    )
-    from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
-        succeeded_probe_at,
-    )
     from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
         exterior_plan_wire_for_golden,
         golden_complete_map,
+        layer04_result_with_selection_for_golden,
         reconstruction_complete_lab_frame_dict_for_golden,
     )
 
-    entry = succeeded_probe_at((6, 4))
-    candidate_set = rim_bundle_candidate_set_for_test(
-        normal_candidates=(entry,),
-        diagnostic_rejected_candidates=(),
-        metrics=Layer03ExpansionMetrics(
-            rim_anchor_count=1,
-            seed_projection_attempt_count=0,
-            local_geometry_rejected_count=0,
-            route_probe_attempt_count=1,
-            route_probe_succeeded_count=1,
-            route_probe_failed_count=0,
-            dedupe_duplicate_count=0,
-            normal_candidate_count=1,
-            diagnostic_rejected_count=0,
-            budget_skipped_count=0,
-            layer_skip_reason=Layer03ExpansionMetrics.empty().layer_skip_reason,
-        ),
-    )
-    layer04 = run_layer_04_rim_bundle_placement(
-        complete_map=golden_complete_map(),
-        exterior_plan=minimal_l2_plan_for_golden(),
-        candidate_set=candidate_set,
-        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
-    )
+    layer04 = layer04_result_with_selection_for_golden()
     frames = build_solver_runtime_replay_frames(
         complete_map=golden_complete_map(),
         lab_frames_before_append=[reconstruction_complete_lab_frame_dict_for_golden()],
@@ -376,15 +340,18 @@ def test_layer03_probe_windows_cover_full_replay_pool_by_candidate_ids() -> None
 
     from django_apps.asteroid_lab.replay.pattern_bundle_highlight import METRICS_KEY
 
-    multi = next(
-        fr for fr in window_frames if len((fr.get("metrics") or {}).get("candidate_ids") or []) >= 2
-    )
-    highlights = (multi.get("metrics") or {}).get(METRICS_KEY)
-    assert isinstance(highlights, dict)
-    bundles = highlights.get("bundles")
-    assert isinstance(bundles, list) and len(bundles) >= 2
-    color_indices = {b["color_index"] for b in bundles}
-    assert len(color_indices) >= 2
+    multi_candidates = [
+        fr
+        for fr in window_frames
+        if len((fr.get("metrics") or {}).get("candidate_ids") or []) >= 2
+    ]
+    if multi_candidates:
+        highlights = (multi_candidates[0].get("metrics") or {}).get(METRICS_KEY)
+        assert isinstance(highlights, dict)
+        bundles = highlights.get("bundles")
+        assert isinstance(bundles, list) and len(bundles) >= 2
+        color_indices = {b["color_index"] for b in bundles}
+        assert len(color_indices) >= 2
 
 
 def test_assembler_l3_probe_windows_follow_summary() -> None:

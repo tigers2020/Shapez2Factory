@@ -19,7 +19,7 @@ Load order: `.env` → `.env.debug` (when present).
 |--------|------|-----|
 | **runtime** | Infrastructure · data paths needed locally/deployment | `DATABASE_URL`, `DJANGO_USE_SQLITE`, `SHAPEZ_BASEDATA_ROOT` |
 | **feature** | Product behavior toggles (code has readers) | `ASTEROID_LAB_REPLAY_PAYLOAD_MODE` |
-| **infra** | Graph PNG preview · cache, etc. | `SOLVER_GRAPH_PREVIEW_*` |
+| **infra** | Graph PNG preview · cache, HTTP gzip (no env — `GZipMiddleware` in `config/settings.py`) | `SOLVER_GRAPH_PREVIEW_*` |
 | **debug** | Do not put in default `.env` | `ASTEROID_LAB_BOUNDARY_JSONL`, `SHAPEZ_COPY_DEBUG_DIR` |
 | **unused** | Names left only in `.env` — **not referenced in code, delete** | `SHAPEZ_MINING_*`, `ASTEROID_LAB_REPLAY_JSON_DELIVERY`, etc. |
 
@@ -77,6 +77,7 @@ OAuth · Support URL, etc.: see `config/settings.py`.
 
 - **11B optimization overlay**: no env flag. On implementation, separate design · update this doc.
 - **13C lazy Lab replay**: `ASTEROID_LAB_REPLAY_PAYLOAD_MODE` registered (default `lazy`). See [`asteroid_lab_13_replay_payload_scalability.md`](../../Algorithm/asteroid_lab_13_replay_payload_scalability.md).
+- **13G gzip transport**: `django.middleware.gzip.GZipMiddleware` after WhiteNoise in `config/settings.py` (no env flag). Large JSON responses (e.g. `GET …/lab-replay/`) compress when `Accept-Encoding: gzip`.
 
 ## Related manuals
 

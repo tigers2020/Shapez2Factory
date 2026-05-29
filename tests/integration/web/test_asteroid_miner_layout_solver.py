@@ -108,7 +108,9 @@ def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     ctx = alc.lab_page_context(project_id=proj.pk)
     assert ctx["has_replay_frames"] is True
     assert ctx["total_frames"] >= 6
-    assert 'id="lab-replay-frames-data"' in response.content.decode()
+    content = response.content.decode()
+    assert 'id="lab-replay-manifest-data"' in content
+    assert 'id="lab-replay-frames-data"' not in content
 
 
 def test_replay_frame_cell_post_returns_cell_json() -> None:

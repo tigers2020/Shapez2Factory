@@ -12,6 +12,11 @@ from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
 )
 from django_apps.asteroid_lab.models import GeneticSample, ReplayFrame, ReplayTrack
 from django_apps.asteroid_lab.observability.lab_perf_trace import perf_span
+from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
+    build_lab_replay_lazy_handle,
+    lab_replay_manifest_json_dict,
+    lab_replay_payload_mode,
+)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
     get_latest_lab_replay_track_for_project,
@@ -50,6 +55,20 @@ LAB_CELL_NEUTRAL = (
 def _neutral_overlay_matrix() -> list[list[str]]:
     row = [LAB_CELL_NEUTRAL, LAB_CELL_NEUTRAL, LAB_CELL_NEUTRAL]
     return [list(row) for _ in range(CELL_COUNT)]
+
+
+def _solver_run_id_from_lab_summary(run_summary: dict[str, Any] | None) -> int | None:
+    """Lab run summary uses string ``id`` (see ``lab_run_summary_from_solver_summary``)."""
+
+    if not run_summary or not isinstance(run_summary, dict):
+        return None
+    raw = run_summary.get("id")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
 
 
 def _single_cell_overlay_matrix() -> list[list[str]]:
@@ -126,6 +145,8 @@ def neutral_lab_context() -> dict[str, Any]:
         "stages_display": [],
         "lab_replay_track_id": None,
         "lab_replay_track_key": None,
+        "lab_replay_ssr_delivery": "lazy",
+        "lab_replay_manifest_json": {},
         "lab_replay_frames_json": [],
         "lab_initial_replay_frame_json": {},
         "has_replay_frames": False,
@@ -159,61 +180,90 @@ def neutral_lab_context() -> dict[str, Any]:
     }
 
 
-def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
+def lab_page_context(*, project_id: int | None = None, project_slug: str = "") -> dict[str, Any]:
     """Lab shell context. Product replay is one composed timeline per project."""
 
     ctx = neutral_lab_context()
     if project_id is None:
         return ctx
 
+    mode = lab_replay_payload_mode()
+    ctx["lab_replay_ssr_delivery"] = mode
+
     with perf_span("solver_runs_for_lab_project_ms"):
         runs = solver_runs_for_lab_project(int(project_id))
     ctx["runs"] = runs
     ctx["initial_lab_run"] = runs[0] if runs else None
+    solver_run_id = _solver_run_id_from_lab_summary(runs[0] if runs else None)
 
     with perf_span("get_latest_lab_replay_track_ms"):
         track = get_latest_lab_replay_track_for_project(int(project_id))
     with perf_span("build_lab_replay_frames_for_project_ms"):
         frames_json, track_metrics = build_lab_replay_frames_for_project(int(project_id))
-    if not frames_json:
-        if track is not None:
-            ctx["lab_replay_track_id"] = int(track.pk)
-            ctx["lab_replay_track_key"] = str(track.track_key)
-        ctx["replay_track_metrics"] = track_metrics
-        return ctx
+    ctx["replay_track_metrics"] = track_metrics
 
-    first = frames_json[0]
-    n = len(frames_json)
-    first_idx = int(first.get("frame_index", 0))
-    initial_json = dict(first)
-
-    ctx.update(
-        {
-            "total_frames": n,
-            "initial_frame": first_idx,
-            "initial_replay_phase": str(first.get("phase") or "—"),
-            "lab_replay_frames_json": frames_json,
-            "lab_initial_replay_frame_json": initial_json,
-            "has_replay_frames": True,
-            "replay_track_metrics": track_metrics,
-        }
-    )
     if track is not None:
         ctx["lab_replay_track_id"] = int(track.pk)
         ctx["lab_replay_track_key"] = str(track.track_key)
 
+    if mode == "inline":
+        if frames_json:
+            first = frames_json[0]
+            n = len(frames_json)
+            first_idx = int(first.get("frame_index", 0))
+            ctx.update(
+                {
+                    "total_frames": n,
+                    "initial_frame": first_idx,
+                    "initial_replay_phase": str(first.get("phase") or "—"),
+                    "lab_replay_frames_json": frames_json,
+                    "lab_initial_replay_frame_json": {},
+                    "has_replay_frames": True,
+                    "lab_replay_manifest_json": {},
+                }
+            )
+            ui_frame = first_idx
+            ui_total = n
+            ui_has_replay = True
+        else:
+            ui_frame = 0
+            ui_total = 0
+            ui_has_replay = False
+    else:
+        handle = build_lab_replay_lazy_handle(
+            mode="lazy",
+            frames=frames_json,
+            project_slug=str(project_slug),
+            solver_run_id=solver_run_id,
+        )
+        ctx["lab_replay_manifest_json"] = lab_replay_manifest_json_dict(
+            handle=handle,
+            replay_track_metrics=track_metrics,
+        )
+        ctx["lab_replay_frames_json"] = []
+        ctx["lab_initial_replay_frame_json"] = {}
+        ctx["has_replay_frames"] = handle.frame_count > 0
+        ctx["total_frames"] = handle.frame_count
+        preview = handle.preview_frame or {}
+        ctx["initial_frame"] = int(preview.get("frame_index", 0))
+        ctx["initial_replay_phase"] = str(preview.get("phase") or "—")
+        ui_frame = ctx["initial_frame"]
+        ui_total = handle.frame_count
+        ui_has_replay = handle.frame_count > 0
+
     ui = dict(ctx["lab_ui_initial"])
     ui.update(
         {
-            "frame": first_idx,
-            "totalFrames": n,
-            "hasReplayFrames": True,
+            "frame": ui_frame,
+            "totalFrames": ui_total,
+            "hasReplayFrames": ui_has_replay,
             "replayTrackId": int(track.pk) if track is not None else None,
             "replayTrackKey": str(track.track_key) if track is not None else None,
         }
     )
     ctx["lab_ui_initial"] = ui
-    single = _single_cell_overlay_matrix()
-    ctx["lab_cell_overlay_matrix"] = single
-    ctx["lab_cell_initial_classes"] = [single[0][0]]
+    if ui_has_replay:
+        single = _single_cell_overlay_matrix()
+        ctx["lab_cell_overlay_matrix"] = single
+        ctx["lab_cell_initial_classes"] = [single[0][0]]
     return ctx

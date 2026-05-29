@@ -54,10 +54,28 @@ def build_lab_replay_lazy_handle(
     )
 
 
+def lab_replay_manifest_json_dict(
+    *,
+    handle: LabReplayLazyHandle,
+    replay_track_metrics: dict[str, Any],
+) -> dict[str, Any]:
+    preview = handle.preview_frame
+    return {
+        "mode": handle.mode,
+        "frame_count": int(handle.frame_count),
+        "preview_frame_index": int(handle.preview_frame_index),
+        "preview_frame": dict(preview) if preview is not None else None,
+        "fetch_url": handle.fetch_url,
+        "replay_payload_version": int(handle.replay_payload_version),
+        "replay_track_metrics": dict(replay_track_metrics),
+    }
+
+
 __all__ = [
     "LAB_REPLAY_PAYLOAD_VERSION",
     "LabReplayLazyHandle",
     "LabReplayPayloadMode",
     "build_lab_replay_lazy_handle",
+    "lab_replay_manifest_json_dict",
     "lab_replay_payload_mode",
 ]

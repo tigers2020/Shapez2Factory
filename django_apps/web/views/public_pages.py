@@ -197,7 +197,10 @@ def pattern_lab(request: HttpRequest) -> HttpResponse:
 def _asteroid_miner_lab_page_context(
     blueprint_code: str, *, project: AsteroidProject | None = None
 ) -> dict[str, Any]:
-    ctx = lab_page_context(project_id=int(project.pk) if project is not None else None)
+    ctx = lab_page_context(
+        project_id=int(project.pk) if project is not None else None,
+        project_slug=str(project.slug) if project is not None else "",
+    )
     ctx["blueprint_code"] = blueprint_code
     ui_initial = dict(ctx.get("lab_ui_initial") or {})
     ui_initial["blueprintCode"] = blueprint_code

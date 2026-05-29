@@ -259,6 +259,45 @@ def test_projection_failure_returns_reject_reason() -> None:
     assert projection.reject_reason == CandidateRejectReason.LOCAL_GEOMETRY_INVALID
 
 
+def test_build_rim_bundle_candidate_set_requires_observability() -> None:
+    from django_apps.asteroid_lab.layers.contracts.candidates import (
+        Layer03ExpansionMetrics,
+        Layer03SkipReason,
+        build_rim_bundle_candidate_set,
+    )
+    from django_apps.asteroid_lab.layers.contracts.layer03_observability import (
+        build_layer03_observability_for_test,
+    )
+
+    obs = build_layer03_observability_for_test(skip_reason=Layer03SkipReason.NONE)
+    result = build_rim_bundle_candidate_set(
+        normal_candidates=(),
+        diagnostic_rejected_candidates=(),
+        metrics=Layer03ExpansionMetrics.empty(),
+        observability=obs,
+    )
+    assert result.observability.skip_reason is Layer03SkipReason.NONE
+
+
+def test_expand_populates_layer03_observability() -> None:
+    result = expand_rim_bundle_candidates(
+        complete_map=golden_5x5_complete_map(),
+        exterior_plan=minimal_l2_plan_for_golden(),
+        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
+        seed_catalog=two_seed_catalog(),
+    )
+    assert result.observability.normal_candidate_count == result.metrics.normal_candidate_count
+    assert result.observability.skip_reason == result.metrics.layer_skip_reason
+    from django_apps.asteroid_lab.layers.contracts.layer03_observability import (
+        sort_replay_pool_candidates,
+    )
+
+    assert len(result.observability.replay_pool_candidates) == len(result.normal_candidates)
+    assert result.observability.replay_pool_candidates == sort_replay_pool_candidates(
+        result.normal_candidates
+    )
+
+
 def test_expand_empty_miner_seed_catalog_hold() -> None:
     result = expand_rim_bundle_candidates(
         complete_map=golden_5x5_complete_map(),

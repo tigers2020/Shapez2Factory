@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal, cast
+from typing import TYPE_CHECKING, Literal, cast
+
+if TYPE_CHECKING:
+    from django_apps.asteroid_lab.layers.contracts.layer03_observability import (
+        Layer03Observability,
+    )
 
 from django_apps.asteroid_lab.genetic_sample.enums import Direction
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import LAYER_03_RIM_MINING_BUNDLES
@@ -171,6 +176,7 @@ class RimBundleCandidateSet:
     normal_candidates: tuple[RouteProbedBundleCandidate, ...]
     diagnostic_rejected_candidates: tuple[RouteProbedBundleCandidate, ...]
     metrics: Layer03ExpansionMetrics
+    observability: Layer03Observability
 
 
 def _validate_route_probed_bundle_candidate(entry: RouteProbedBundleCandidate) -> None:
@@ -221,6 +227,7 @@ def build_rim_bundle_candidate_set(
     normal_candidates: tuple[RouteProbedBundleCandidate, ...],
     diagnostic_rejected_candidates: tuple[RouteProbedBundleCandidate, ...],
     metrics: Layer03ExpansionMetrics,
+    observability: Layer03Observability,
 ) -> RimBundleCandidateSet:
     for entry in normal_candidates:
         if entry.route_probe_status != RouteProbeStatus.SUCCEEDED:
@@ -239,10 +246,20 @@ def build_rim_bundle_candidate_set(
     if metrics.diagnostic_rejected_count != len(diagnostic_rejected_candidates):
         msg = "metrics.diagnostic_rejected_count must equal len(diagnostic_rejected_candidates)"
         raise ValueError(msg)
+    if observability.skip_reason is not metrics.layer_skip_reason:
+        msg = "observability.skip_reason must match metrics.layer_skip_reason"
+        raise ValueError(msg)
+    if observability.normal_candidate_count != metrics.normal_candidate_count:
+        msg = "observability.normal_candidate_count must match metrics.normal_candidate_count"
+        raise ValueError(msg)
+    if observability.rim_anchor_count != metrics.rim_anchor_count:
+        msg = "observability.rim_anchor_count must match metrics.rim_anchor_count"
+        raise ValueError(msg)
     return RimBundleCandidateSet(
         normal_candidates=normal_candidates,
         diagnostic_rejected_candidates=diagnostic_rejected_candidates,
         metrics=metrics,
+        observability=observability,
     )
 
 

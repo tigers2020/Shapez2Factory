@@ -33,9 +33,6 @@ from django_apps.asteroid_lab.services.experiment_service import (
     create_or_replace_solver_run,
     create_solver_run,
 )
-from django_apps.asteroid_lab.services.lab_layer02_timeline import (
-    build_layer02_runtime_replay_frames,
-)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
@@ -250,10 +247,16 @@ def run_layer02_solver_for_project(
         replay_timeline_frame_to_json_dict(fr)
         for fr in lab_replay_payload._lab_timeline_frames_for_project(pid)
     ]
-    runtime_replay_frames = build_layer02_runtime_replay_frames(
-        plan_wire=plan_wire,
-        lab_frames_before_append=lab_serialized,
+    from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
+        build_solver_runtime_replay_frames,
+    )
+
+    runtime_replay_frames = build_solver_runtime_replay_frames(
         complete_map=layer01.complete_map,
+        lab_frames_before_append=lab_serialized,
+        exterior_plan_wire=plan_wire,
+        layer03=layer03,
+        layer04=layer04,
     )
 
     rk = (run_key or "").strip() or _default_run_key()

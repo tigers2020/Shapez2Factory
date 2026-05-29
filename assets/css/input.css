@@ -208,6 +208,34 @@
     box-shadow: 0 0 8px rgb(132 204 22 / 0.5);
   }
 
+  /* L3 pool preview: candidate observation tint (no belt/pipe sprites). */
+  .lab-overlay-candidate-miner {
+    background-color: rgb(255 170 40 / 0.35);
+    box-shadow: inset 0 0 0 1px rgb(255 170 40 / 0.55);
+  }
+
+  .lab-overlay-candidate-miner-ring {
+    box-shadow:
+      inset 0 0 0 2px rgb(255 170 40 / 0.92),
+      0 0 6px rgb(255 170 40 / 0.35);
+  }
+
+  .lab-overlay-candidate-transport-stub {
+    background-color: rgb(170 90 255 / 0.45);
+    box-shadow: inset 0 0 0 1px rgb(170 90 255 / 0.6);
+  }
+
+  .lab-overlay-candidate-transport-stub-ring {
+    box-shadow:
+      inset 0 0 0 2px rgb(170 90 255 / 0.9),
+      0 0 6px rgb(170 90 255 / 0.35);
+  }
+
+  .lab-overlay-candidate-route-path {
+    background-color: rgb(64 180 255 / 0.38);
+    box-shadow: inset 0 0 0 1px rgb(64 180 255 / 0.55);
+  }
+
   /* Lab map cells: anchor absolute sprite layer + bridges. */
   .lab-cell {
     position: relative;

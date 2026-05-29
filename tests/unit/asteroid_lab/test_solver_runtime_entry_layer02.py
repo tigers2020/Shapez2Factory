@@ -53,8 +53,12 @@ def test_run_solver_layer02_persists_plan_and_summary() -> None:
     assert isinstance(config.get("exterior_connector_plan"), dict)
     runtime_frames = config.get(SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY)
     assert isinstance(runtime_frames, list)
-    assert len(runtime_frames) == 1
-    assert runtime_frames[0].get("event_type") == LAYER02_EVENT_TYPE
+    runtime_types = [str(f.get("event_type") or "") for f in runtime_frames]
+    assert LAYER02_EVENT_TYPE in runtime_types
+    assert "layer03_rim_bundle_scan_begin" in runtime_types
+    assert runtime_types.index("layer03_rim_bundle_scan_begin") > runtime_types.index(
+        LAYER02_EVENT_TYPE
+    )
     summary = dict(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY) or {})
     assert summary.get("stack_run_status") == "success"
     completed = list(summary.get("completed_layer_slugs") or [])

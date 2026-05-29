@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from django_apps.asteroid_lab.layers.contracts.placement_state import PlacementCommitState
 from django_apps.asteroid_lab.layers.contracts.rim_placement import (
     RimBundlePlacement,
@@ -10,7 +12,10 @@ from django_apps.asteroid_lab.layers.contracts.rim_placement import (
 )
 from django_apps.asteroid_lab.replay.event_types import assert_registered_event_type
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
-from django_apps.asteroid_lab.replay.replay_limits import MAX_LAYER04_REPLAY_SELECTED
+from django_apps.asteroid_lab.replay.replay_limits import (
+    MAX_LAYER04_REPLAY_REJECTED_OVERLAP,
+    MAX_LAYER04_REPLAY_SELECTED,
+)
 from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayMapView,
     ReplayOverlayCell,
@@ -54,6 +59,26 @@ def _overlay_cells_for_placement(placement: RimBundlePlacement) -> tuple[ReplayO
     for x, y in sorted(placement.output_stub_cells):
         overlay.append(ReplayOverlayCell(x=x, y=y, kind="transport_stub", transport=transport))
     return tuple(overlay)
+
+
+def _overlay_cells_for_overlap_rejection(
+    rejection: RimPlacementRejection,
+) -> tuple[ReplayOverlayCell, ...]:
+    if not rejection.conflicting_cells:
+        return ()
+    return tuple(
+        ReplayOverlayCell(x=x, y=y, kind="overlap_conflict", transport="")
+        for x, y in sorted(rejection.conflicting_cells)
+    )
+
+
+def _combined_overlay_for_placements(
+    placements: Sequence[RimBundlePlacement],
+) -> tuple[ReplayOverlayCell, ...]:
+    combined: list[ReplayOverlayCell] = []
+    for placement in placements:
+        combined.extend(_overlay_cells_for_placement(placement))
+    return tuple(combined)
 
 
 def _timeline_frame(
@@ -115,8 +140,14 @@ def build_layer04_runtime_segment_frames(
         )
     ]
 
-    truncated = len(selected) > MAX_LAYER04_REPLAY_SELECTED
+    truncated_selected = len(selected) > MAX_LAYER04_REPLAY_SELECTED
     selected_for_replay = selected[:MAX_LAYER04_REPLAY_SELECTED]
+
+    overlap_rejections = tuple(
+        r for r in rejected if r.reason is RimPlacementRejectReason.PHYSICAL_OVERLAP
+    )
+    truncated_rejected = len(overlap_rejections) > MAX_LAYER04_REPLAY_REJECTED_OVERLAP
+    rejections_for_replay = overlap_rejections[:MAX_LAYER04_REPLAY_REJECTED_OVERLAP]
 
     for placement in selected_for_replay:
         meta = _placement_metadata(placement)
@@ -131,9 +162,7 @@ def build_layer04_runtime_segment_frames(
             )
         )
 
-    for rejection in rejected:
-        if rejection.reason is not RimPlacementRejectReason.PHYSICAL_OVERLAP:
-            continue
+    for rejection in rejections_for_replay:
         frames.append(
             _timeline_frame(
                 base_map_view=base_map_view,
@@ -148,6 +177,7 @@ def build_layer04_runtime_segment_frames(
                     "conflicting_candidate_id": rejection.conflicting_candidate_id,
                     "conflicting_cell_count": len(rejection.conflicting_cells),
                 },
+                overlay_cells=_overlay_cells_for_overlap_rejection(rejection),
             )
         )
 
@@ -155,10 +185,15 @@ def build_layer04_runtime_segment_frames(
         "layer": LAYER04_PHASE,
         "selected_count": len(selected),
         "rejected_count": len(rejected),
+        "rejected_overlap_count": len(overlap_rejections),
     }
-    if truncated:
+    if truncated_selected:
         complete_metrics["truncated_selected_replay"] = True
         complete_metrics["replay_selected_cap"] = MAX_LAYER04_REPLAY_SELECTED
+    if truncated_rejected:
+        complete_metrics["truncated_rejected_overlap_replay"] = True
+        complete_metrics["replay_rejected_overlap_cap"] = MAX_LAYER04_REPLAY_REJECTED_OVERLAP
+        complete_metrics["rejected_overlap_replay_shown"] = len(rejections_for_replay)
 
     frames.append(
         _timeline_frame(
@@ -166,9 +201,11 @@ def build_layer04_runtime_segment_frames(
             event_type=ReplayEventType.LAYER04_RIM_PLACEMENT_COMPLETE,
             title="Layer 04 rim placement complete",
             description=(
-                f"Selected {len(selected)} placement(s); " f"{len(rejected)} rejection(s) recorded"
+                f"Selected {len(selected)} placement(s); "
+                f"{len(overlap_rejections)} overlap rejection(s) recorded"
             ),
             metrics=complete_metrics,
+            overlay_cells=_combined_overlay_for_placements(selected),
         )
     )
     return tuple(frames)

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 def test_layer03_event_types_registered() -> None:
     from django_apps.asteroid_lab.replay.event_types import (
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW,
         EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY,
         EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_BEGIN,
         EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_COMPLETE,
@@ -16,6 +17,7 @@ def test_layer03_event_types_registered() -> None:
         EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_BEGIN,
         EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_COMPLETE,
         EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY,
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW,
     ):
         assert wire in SNAPSHOT_EVENT_TYPES
         assert is_registered_event_type(wire)
@@ -164,10 +166,7 @@ def test_assembler_skips_l2_when_exterior_plan_wire_none() -> None:
 
 
 def test_assembler_emits_l2_then_l4_when_layer04_present() -> None:
-    from django_apps.asteroid_lab.layers.contracts.candidates import (
-        Layer03ExpansionMetrics,
-        build_rim_bundle_candidate_set,
-    )
+    from django_apps.asteroid_lab.layers.contracts.candidates import Layer03ExpansionMetrics
     from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
     from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
         run_layer_04_rim_bundle_placement,
@@ -178,6 +177,9 @@ def test_assembler_emits_l2_then_l4_when_layer04_present() -> None:
     )
     from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
         build_solver_runtime_replay_frames,
+    )
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_candidate_set_factory import (
+        rim_bundle_candidate_set_for_test,
     )
     from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
         minimal_l2_plan_for_golden,
@@ -192,7 +194,7 @@ def test_assembler_emits_l2_then_l4_when_layer04_present() -> None:
     )
 
     entry = succeeded_probe_at((6, 4))
-    candidate_set = build_rim_bundle_candidate_set(
+    candidate_set = rim_bundle_candidate_set_for_test(
         normal_candidates=(entry,),
         diagnostic_rejected_candidates=(),
         metrics=Layer03ExpansionMetrics(
@@ -228,11 +230,220 @@ def test_assembler_emits_l2_then_l4_when_layer04_present() -> None:
     assert types[-1] == EVENT_TYPE_LAYER04_RIM_PLACEMENT_COMPLETE
 
 
-def test_replay_limits_layer03_top_n_constant() -> None:
+def test_assembler_emits_l3_begin_after_l2_when_plan_wire_present() -> None:
+    from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
+        build_solver_runtime_replay_frames,
+    )
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import golden_5x5_complete_map
+    from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
+        exterior_plan_wire_for_golden,
+        reconstruction_complete_lab_frame_dict_for_golden,
+        rim_bundle_candidate_set_with_observability_for_golden,
+    )
+
+    frames = build_solver_runtime_replay_frames(
+        complete_map=golden_5x5_complete_map(),
+        lab_frames_before_append=[reconstruction_complete_lab_frame_dict_for_golden()],
+        exterior_plan_wire=exterior_plan_wire_for_golden(),
+        layer03=rim_bundle_candidate_set_with_observability_for_golden(),
+        layer04=None,
+    )
+    types = [f["event_type"] for f in frames]
+    assert types.index("layer03_rim_bundle_scan_begin") > types.index(
+        "exterior_transport.completed"
+    )
+
+
+def test_assembler_skips_l2_completed_when_exterior_plan_wire_none() -> None:
+    from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
+        build_solver_runtime_replay_frames,
+    )
+    from django_apps.asteroid_lab.replay.timeline_dtos import replay_map_view_is_renderable
+    from django_apps.asteroid_lab.replay.timeline_serialization import (
+        replay_map_view_from_json_dict,
+    )
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import golden_5x5_complete_map
+    from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
+        reconstruction_complete_lab_frame_dict_for_golden,
+        rim_bundle_candidate_set_missing_exterior_plan,
+    )
+
+    frames = build_solver_runtime_replay_frames(
+        complete_map=golden_5x5_complete_map(),
+        lab_frames_before_append=[reconstruction_complete_lab_frame_dict_for_golden()],
+        exterior_plan_wire=None,
+        layer03=rim_bundle_candidate_set_missing_exterior_plan(),
+        layer04=None,
+    )
+    types = [f["event_type"] for f in frames]
+    assert "exterior_transport.completed" not in types
+
+    begin = next(f for f in frames if f["event_type"] == "layer03_rim_bundle_scan_begin")
+    assert begin["map_view"]["full_cells"]
+    assert replay_map_view_is_renderable(replay_map_view_from_json_dict(begin["map_view"]))
+
+    complete = next(f for f in frames if f["event_type"] == "layer03_rim_bundle_scan_complete")
+    assert complete["metrics"]["layer03_skip_reason"] == "missing_exterior_connection_plan"
+
+
+def test_layer03_pool_summary_has_no_overlay_cells() -> None:
+    from django_apps.asteroid_lab.replay.event_types import (
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY,
+    )
+    from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
+        build_solver_runtime_replay_frames,
+    )
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import golden_5x5_complete_map
+    from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
+        exterior_plan_wire_for_golden,
+        reconstruction_complete_lab_frame_dict_for_golden,
+        rim_bundle_candidate_set_with_observability_for_golden,
+    )
+
+    candidate_set = rim_bundle_candidate_set_with_observability_for_golden()
+    assert candidate_set.observability.replay_pool_candidates
+
+    frames = build_solver_runtime_replay_frames(
+        complete_map=golden_5x5_complete_map(),
+        lab_frames_before_append=[reconstruction_complete_lab_frame_dict_for_golden()],
+        exterior_plan_wire=exterior_plan_wire_for_golden(),
+        layer03=candidate_set,
+        layer04=None,
+    )
+    summary = next(
+        f for f in frames if f["event_type"] == EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY
+    )
+    assert summary["map_view"]["overlay_cells"] == []
+    assert summary["metrics"]["logical_window_count"] >= 1
+    assert summary["metrics"]["shows_all_candidates"] is True
+    assert summary["metrics"]["pool_preview_overlay_mode"] == "candidate_observation"
+
+
+def test_layer03_probe_windows_cover_full_replay_pool_by_candidate_ids() -> None:
+    from django_apps.asteroid_lab.replay.event_types import (
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW,
+    )
+    from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
+        build_solver_runtime_replay_frames,
+    )
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import golden_5x5_complete_map
+    from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
+        exterior_plan_wire_for_golden,
+        reconstruction_complete_lab_frame_dict_for_golden,
+        rim_bundle_candidate_set_with_observability_for_golden,
+    )
+
+    candidate_set = rim_bundle_candidate_set_with_observability_for_golden()
+    expected_ids = [
+        entry.candidate.candidate_id
+        for entry in candidate_set.observability.replay_pool_candidates
+    ]
+    frames = build_solver_runtime_replay_frames(
+        complete_map=golden_5x5_complete_map(),
+        lab_frames_before_append=[reconstruction_complete_lab_frame_dict_for_golden()],
+        exterior_plan_wire=exterior_plan_wire_for_golden(),
+        layer03=candidate_set,
+        layer04=None,
+    )
+    window_frames = [
+        f
+        for f in frames
+        if f["event_type"] == EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW
+    ]
+    assert window_frames
+
+    seen_ids = [cid for fr in window_frames for cid in fr["metrics"]["candidate_ids"]]
+
+    assert seen_ids == expected_ids
+    assert len(seen_ids) == len(set(seen_ids))
+
+    for fr in window_frames:
+        metrics = fr["metrics"]
+        assert metrics["candidate_count_in_window"] == len(metrics["candidate_ids"])
+        assert metrics["candidate_start_index"] <= metrics["candidate_end_index"]
+
+
+def test_assembler_l3_probe_windows_follow_summary() -> None:
+    from django_apps.asteroid_lab.replay.event_types import (
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW,
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY,
+    )
+    from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
+        build_solver_runtime_replay_frames,
+    )
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import golden_5x5_complete_map
+    from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
+        exterior_plan_wire_for_golden,
+        reconstruction_complete_lab_frame_dict_for_golden,
+        rim_bundle_candidate_set_with_observability_for_golden,
+    )
+
+    frames = build_solver_runtime_replay_frames(
+        complete_map=golden_5x5_complete_map(),
+        lab_frames_before_append=[reconstruction_complete_lab_frame_dict_for_golden()],
+        exterior_plan_wire=exterior_plan_wire_for_golden(),
+        layer03=rim_bundle_candidate_set_with_observability_for_golden(),
+        layer04=None,
+    )
+    types = [f["event_type"] for f in frames]
+    assert types.index(EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY) < types.index(
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW
+    )
+
+
+def test_l4_segment_does_not_inherit_l3_candidate_overlay() -> None:
+    from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
+        build_solver_runtime_replay_frames,
+    )
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import golden_5x5_complete_map
+    from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
+        exterior_plan_wire_for_golden,
+        layer04_result_with_selection_for_golden,
+        reconstruction_complete_lab_frame_dict_for_golden,
+        rim_bundle_candidate_set_with_observability_for_golden,
+    )
+
+    frames = build_solver_runtime_replay_frames(
+        complete_map=golden_5x5_complete_map(),
+        lab_frames_before_append=[reconstruction_complete_lab_frame_dict_for_golden()],
+        exterior_plan_wire=exterior_plan_wire_for_golden(),
+        layer03=rim_bundle_candidate_set_with_observability_for_golden(),
+        layer04=layer04_result_with_selection_for_golden(),
+    )
+
+    l4_frames = [f for f in frames if str(f["event_type"]).startswith("layer04_")]
+
+    for fr in l4_frames:
+        map_view = fr["map_view"]
+        inherited = [
+            row
+            for row in (map_view.get("full_cells") or []) + (map_view.get("overlay_cells") or [])
+            if str(row.get("kind", "")).startswith("candidate_")
+        ]
+        assert inherited == []
+
+
+def test_replay_limits_layer03_pool_preview_windows_constant() -> None:
     from django_apps.asteroid_lab.replay.replay_limits import (
-        LAYER03_REPLAY_TOP_N,
+        LAYER03_REPLAY_MAX_POOL_PREVIEW_WINDOWS,
         MAX_LAYER04_REPLAY_SELECTED,
     )
 
-    assert LAYER03_REPLAY_TOP_N == 8
+    assert LAYER03_REPLAY_MAX_POOL_PREVIEW_WINDOWS == 10
     assert MAX_LAYER04_REPLAY_SELECTED == 32
+
+
+def test_layer03_probe_window_event_type_registered() -> None:
+    from django_apps.asteroid_lab.replay.event_types import (
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW,
+        SNAPSHOT_EVENT_TYPES,
+        is_registered_event_type,
+    )
+    from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
+
+    assert EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW in SNAPSHOT_EVENT_TYPES
+    assert is_registered_event_type(EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW)
+    assert (
+        ReplayEventType.LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW.value
+        == EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW
+    )

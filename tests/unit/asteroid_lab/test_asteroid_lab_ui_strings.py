@@ -71,6 +71,25 @@ def test_lab_js_renders_layer_summaries_from_run_payload() -> None:
     assert "updateLabDetailPanels" not in js
 
 
+def test_lab_l3_candidate_observation_overlay_contract() -> None:
+    js = (
+        REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
+    css = (REPO / "assets" / "css" / "input.css").read_text(encoding="utf-8")
+    built_css = (REPO / "django_apps" / "web" / "static" / "web" / "css" / "app.css").read_text(
+        encoding="utf-8",
+    )
+    assert "isL3PoolProbeWindowFrame" in js
+    assert "layer03_rim_bundle_pool_probe_window" in js
+    assert "lab-overlay-candidate-miner-ring" in js
+    assert "lab-overlay-candidate-miner-ring" in css
+    assert "lab-overlay-candidate-miner-ring" in built_css
+    assert "prior ? prior + " not in js
+    assert "el.className = tone ? base + " in js
+    assert "shouldSkipCandidateObservationOnSpriteCell" in js
+    assert "sortL3CandidateOverlayCellsForPaint" in js
+
+
 def test_lab_exterior_connector_overlay_contract() -> None:
     js = (
         REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"

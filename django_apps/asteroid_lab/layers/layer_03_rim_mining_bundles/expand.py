@@ -16,6 +16,9 @@ from django_apps.asteroid_lab.layers.contracts.candidates import (
     make_bundle_candidate_for_test,
 )
 from django_apps.asteroid_lab.layers.contracts.exterior_connection import ExteriorConnectionPlan
+from django_apps.asteroid_lab.layers.contracts.layer03_observability import (
+    build_layer03_observability,
+)
 from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
 from django_apps.asteroid_lab.layers.contracts.route_goal import build_layer03_route_goals
 from django_apps.asteroid_lab.layers.contracts.transport_kind import (
@@ -48,6 +51,23 @@ from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.seed_catalog im
 from django_apps.asteroid_lab.layers.shared.route_probe import weighted_route_probe
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
+
+
+def _candidate_set(
+    *,
+    normal_candidates: tuple[RouteProbedBundleCandidate, ...],
+    diagnostic_rejected_candidates: tuple[RouteProbedBundleCandidate, ...],
+    metrics: Layer03ExpansionMetrics,
+) -> RimBundleCandidateSet:
+    return build_rim_bundle_candidate_set(
+        normal_candidates=normal_candidates,
+        diagnostic_rejected_candidates=diagnostic_rejected_candidates,
+        metrics=metrics,
+        observability=build_layer03_observability(
+            metrics=metrics,
+            normal_candidates=normal_candidates,
+        ),
+    )
 
 
 def _hold_metrics(
@@ -185,7 +205,7 @@ def expand_rim_bundle_candidates(
     rim_anchor_count = len(outer_rim)
 
     if exterior_plan is None:
-        return build_rim_bundle_candidate_set(
+        return _candidate_set(
             normal_candidates=(),
             diagnostic_rejected_candidates=(),
             metrics=_hold_metrics(
@@ -196,7 +216,7 @@ def expand_rim_bundle_candidates(
 
     catalog = seed_catalog or load_miner_seed_catalog()
     if not catalog.seeds:
-        return build_rim_bundle_candidate_set(
+        return _candidate_set(
             normal_candidates=(),
             diagnostic_rejected_candidates=(),
             metrics=_hold_metrics(
@@ -210,7 +230,7 @@ def expand_rim_bundle_candidates(
     route_goals = build_layer03_route_goals(exterior_plan, transport_kind=transport_kind)
 
     if not route_goals:
-        return build_rim_bundle_candidate_set(
+        return _candidate_set(
             normal_candidates=(),
             diagnostic_rejected_candidates=(),
             metrics=_hold_metrics(
@@ -440,7 +460,7 @@ def expand_rim_bundle_candidates(
         weighted_route_cost_total=weighted_route_cost_total,
         transport_blocked_by_mining_count=transport_blocked_by_mining_count,
     )
-    return build_rim_bundle_candidate_set(
+    return _candidate_set(
         normal_candidates=normal_sorted,
         diagnostic_rejected_candidates=diagnostic_tuple,
         metrics=metrics,

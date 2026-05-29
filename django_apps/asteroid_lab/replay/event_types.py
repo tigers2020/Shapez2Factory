@@ -95,6 +95,7 @@ def normalize_rttp_milestone_event_type(event_type: str) -> str:
 EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_BEGIN = "layer03_rim_bundle_scan_begin"
 EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_COMPLETE = "layer03_rim_bundle_scan_complete"
 EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY = "layer03_rim_bundle_pool_summary"
+EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW = "layer03_rim_bundle_pool_probe_window"
 
 # --- layer 04 rim provisional placement (observability only) ---
 EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN = "layer04_rim_placement_begin"
@@ -156,6 +157,7 @@ SNAPSHOT_EVENT_TYPES: frozenset[str] = frozenset(
         EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_BEGIN,
         EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_COMPLETE,
         EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY,
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW,
         EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN,
         EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED,
         EVENT_TYPE_LAYER04_RIM_CANDIDATE_REJECTED_OVERLAP,

@@ -75,10 +75,16 @@ _LAYER_INDEX: dict[str, int] = {
 
 
 def _empty_candidate_set() -> RimBundleCandidateSet:
+    from django_apps.asteroid_lab.layers.contracts.layer03_observability import (
+        build_layer03_observability,
+    )
+
+    metrics = Layer03ExpansionMetrics.empty()
     return build_rim_bundle_candidate_set(
         normal_candidates=(),
         diagnostic_rejected_candidates=(),
-        metrics=Layer03ExpansionMetrics.empty(),
+        metrics=metrics,
+        observability=build_layer03_observability(metrics=metrics, normal_candidates=()),
     )
 
 

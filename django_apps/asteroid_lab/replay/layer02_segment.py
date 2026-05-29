@@ -42,7 +42,19 @@ def map_view_from_complete_map(complete_map: ReconstructionCompleteMap) -> Repla
 def _display_rows_from_complete_map(
     complete_map: ReconstructionCompleteMap,
 ) -> list[dict[str, Any]]:
-    return [_decoded_cell_to_row(cell) for cell in complete_map.cells]
+    if complete_map.cells:
+        return [_decoded_cell_to_row(cell) for cell in complete_map.cells]
+    return [
+        {
+            "x": int(x),
+            "y": int(y),
+            "kind": "asteroid_shape_field",
+            "transport": "",
+            "rotation": 0,
+            "tile_type": "",
+        }
+        for x, y in sorted(complete_map.field_cells)
+    ]
 
 
 def _decoded_cell_to_row(cell: DecodedCellDTO) -> dict[str, Any]:

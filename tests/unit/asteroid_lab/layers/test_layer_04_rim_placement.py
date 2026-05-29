@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from django_apps.asteroid_lab.layers.contracts.candidates import (
-    Layer03ExpansionMetrics,
-    build_rim_bundle_candidate_set,
-)
+from django_apps.asteroid_lab.layers.contracts.candidates import Layer03ExpansionMetrics
 from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
 from django_apps.asteroid_lab.layers.contracts.placement_state import PlacementCommitState
 from django_apps.asteroid_lab.layers.contracts.provisional_overlay import ProvisionalLayoutOverlay
@@ -25,6 +22,9 @@ from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
 )
 from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.select import (
     select_non_overlapping_candidates,
+)
+from tests.unit.asteroid_lab.layers.fixtures.layer_03_candidate_set_factory import (
+    rim_bundle_candidate_set_for_test,
 )
 from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
     golden_5x5_complete_map,
@@ -140,23 +140,24 @@ def test_build_placement_provisional_state_only() -> None:
 
 
 def _candidate_set_with(*entries: object) -> object:
-    normal = entries
-    return build_rim_bundle_candidate_set(
+    normal = entries  # type: ignore[assignment]
+    metrics = Layer03ExpansionMetrics(
+        rim_anchor_count=1,
+        seed_projection_attempt_count=0,
+        local_geometry_rejected_count=0,
+        route_probe_attempt_count=len(normal),
+        route_probe_succeeded_count=len(normal),
+        route_probe_failed_count=0,
+        dedupe_duplicate_count=0,
+        normal_candidate_count=len(normal),
+        diagnostic_rejected_count=0,
+        budget_skipped_count=0,
+        layer_skip_reason=Layer03ExpansionMetrics.empty().layer_skip_reason,
+    )
+    return rim_bundle_candidate_set_for_test(
         normal_candidates=normal,  # type: ignore[arg-type]
         diagnostic_rejected_candidates=(),
-        metrics=Layer03ExpansionMetrics(
-            rim_anchor_count=1,
-            seed_projection_attempt_count=0,
-            local_geometry_rejected_count=0,
-            route_probe_attempt_count=len(normal),
-            route_probe_succeeded_count=len(normal),
-            route_probe_failed_count=0,
-            dedupe_duplicate_count=0,
-            normal_candidate_count=len(normal),
-            diagnostic_rejected_count=0,
-            budget_skipped_count=0,
-            layer_skip_reason=Layer03ExpansionMetrics.empty().layer_skip_reason,
-        ),
+        metrics=metrics,
     )
 
 
@@ -207,11 +208,7 @@ def test_layer04_never_outputs_routed_confirmed() -> None:
 
 
 def test_run_layer04_hold_when_exterior_plan_none() -> None:
-    candidate_set = build_rim_bundle_candidate_set(
-        normal_candidates=(),
-        diagnostic_rejected_candidates=(),
-        metrics=Layer03ExpansionMetrics.empty(),
-    )
+    candidate_set = rim_bundle_candidate_set_for_test()
     result = run_layer_04_rim_bundle_placement(
         complete_map=golden_5x5_complete_map(),
         exterior_plan=None,
@@ -223,11 +220,7 @@ def test_run_layer04_hold_when_exterior_plan_none() -> None:
 
 
 def test_run_layer04_empty_normal_candidates_yields_empty_selection() -> None:
-    candidate_set = build_rim_bundle_candidate_set(
-        normal_candidates=(),
-        diagnostic_rejected_candidates=(),
-        metrics=Layer03ExpansionMetrics.empty(),
-    )
+    candidate_set = rim_bundle_candidate_set_for_test()
     result = run_layer_04_rim_bundle_placement(
         complete_map=golden_5x5_complete_map(),
         exterior_plan=minimal_l2_plan_for_golden(),

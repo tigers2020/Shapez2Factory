@@ -14,7 +14,6 @@ from django_apps.asteroid_lab.layers.contracts.candidates import (
     RouteProbedBundleCandidate,
     RouteProbeResult,
     RouteProbeStatus,
-    build_rim_bundle_candidate_set,
     make_bundle_candidate_for_test,
 )
 from django_apps.asteroid_lab.layers.contracts.transport_kind import (
@@ -22,6 +21,9 @@ from django_apps.asteroid_lab.layers.contracts.transport_kind import (
     TransportKind,
     map_resource_kind_to_transport_kind,
     resource_kind_from_plan_string,
+)
+from tests.unit.asteroid_lab.layers.fixtures.layer_03_candidate_set_factory import (
+    rim_bundle_candidate_set_for_test,
 )
 
 
@@ -65,7 +67,7 @@ def _succeeded_probe(
 def test_normal_candidates_type_requires_succeeded_status() -> None:
     candidate = make_bundle_candidate_for_test()
     with pytest.raises(ValueError, match="normal_candidates"):
-        build_rim_bundle_candidate_set(
+        rim_bundle_candidate_set_for_test(
             normal_candidates=(
                 RouteProbedBundleCandidate(
                     candidate=candidate,
@@ -83,7 +85,7 @@ def test_normal_candidates_type_requires_succeeded_status() -> None:
 def test_unprobed_never_in_normal_pool() -> None:
     candidate = make_bundle_candidate_for_test()
     with pytest.raises(ValueError, match="SKIPPED_GEOMETRY"):
-        build_rim_bundle_candidate_set(
+        rim_bundle_candidate_set_for_test(
             normal_candidates=(
                 RouteProbedBundleCandidate(
                     candidate=candidate,
@@ -107,7 +109,7 @@ def test_route_probe_failed_goes_to_diagnostic_rejected_only() -> None:
         route_goal_id=None,
         reject_reason=CandidateRejectReason.ROUTE_PROBE_FAILED,
     )
-    result = build_rim_bundle_candidate_set(
+    result = rim_bundle_candidate_set_for_test(
         normal_candidates=(),
         diagnostic_rejected_candidates=(failed,),
         metrics=replace(
@@ -187,7 +189,7 @@ def test_build_rim_bundle_candidate_set_accepts_valid_succeeded() -> None:
         route_probe_attempt_count=1,
         route_probe_succeeded_count=1,
     )
-    result = build_rim_bundle_candidate_set(
+    result = rim_bundle_candidate_set_for_test(
         normal_candidates=(probed,),
         diagnostic_rejected_candidates=(),
         metrics=metrics,
@@ -200,7 +202,7 @@ def test_succeeded_must_not_appear_in_diagnostic_pool() -> None:
     candidate = make_bundle_candidate_for_test()
     probed = _succeeded_probe(candidate)
     with pytest.raises(ValueError, match="diagnostic_rejected_candidates"):
-        build_rim_bundle_candidate_set(
+        rim_bundle_candidate_set_for_test(
             normal_candidates=(),
             diagnostic_rejected_candidates=(probed,),
             metrics=Layer03ExpansionMetrics.empty(),

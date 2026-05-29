@@ -157,10 +157,6 @@ def test_intrinsic_priority_rank_attempt_order(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_stack_runner_passes_l3_result_to_l4_and_overlay_to_l5() -> None:
-    from django_apps.asteroid_lab.layers.contracts.candidates import (
-        Layer03ExpansionMetrics,
-        build_rim_bundle_candidate_set,
-    )
     from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
         LAYER_04_RIM_BUNDLE_PLACEMENT,
         LAYER_05_INNER_PATTERN_FILL,
@@ -172,12 +168,11 @@ def test_stack_runner_passes_l3_result_to_l4_and_overlay_to_l5() -> None:
         build_layer04_rim_placement_result,
     )
     from django_apps.asteroid_lab.layers.stack_runner import _LayerStackRunner, run_layers_02_to_06
-
-    l3_out = build_rim_bundle_candidate_set(
-        normal_candidates=(),
-        diagnostic_rejected_candidates=(),
-        metrics=Layer03ExpansionMetrics.empty(),
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_candidate_set_factory import (
+        rim_bundle_candidate_set_for_test,
     )
+
+    l3_out = rim_bundle_candidate_set_for_test()
     overlay = ProvisionalLayoutOverlay.empty()
     l4_out = build_layer04_rim_placement_result(
         selected_placements=(),

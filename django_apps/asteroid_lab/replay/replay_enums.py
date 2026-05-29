@@ -36,6 +36,7 @@ class ReplayEventType(StrEnum):
     LAYER03_RIM_BUNDLE_SCAN_BEGIN = "layer03_rim_bundle_scan_begin"
     LAYER03_RIM_BUNDLE_SCAN_COMPLETE = "layer03_rim_bundle_scan_complete"
     LAYER03_RIM_BUNDLE_POOL_SUMMARY = "layer03_rim_bundle_pool_summary"
+    LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW = "layer03_rim_bundle_pool_probe_window"
 
     # Layer 04 rim provisional placement (solver runtime segment)
     LAYER04_RIM_PLACEMENT_BEGIN = "layer04_rim_placement_begin"

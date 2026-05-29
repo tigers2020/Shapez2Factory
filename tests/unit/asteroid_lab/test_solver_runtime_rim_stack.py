@@ -22,11 +22,11 @@ from django_apps.asteroid_lab.services.solver_runtime_rim_stack import (
 
 
 def test_merge_rim_stack_into_solver_summary() -> None:
-    from django_apps.asteroid_lab.layers.contracts.candidates import (
-        build_rim_bundle_candidate_set,
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_candidate_set_factory import (
+        rim_bundle_candidate_set_for_test,
     )
 
-    layer03 = build_rim_bundle_candidate_set(
+    layer03 = rim_bundle_candidate_set_for_test(
         normal_candidates=(),
         diagnostic_rejected_candidates=(),
         metrics=Layer03ExpansionMetrics(
@@ -62,11 +62,11 @@ def test_merge_rim_stack_into_solver_summary() -> None:
 
 
 def test_merge_rim_stack_hold_skips_completed_slugs() -> None:
-    from django_apps.asteroid_lab.layers.contracts.candidates import (
-        build_rim_bundle_candidate_set,
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_candidate_set_factory import (
+        rim_bundle_candidate_set_for_test,
     )
 
-    layer03 = build_rim_bundle_candidate_set(
+    layer03 = rim_bundle_candidate_set_for_test(
         normal_candidates=(),
         diagnostic_rejected_candidates=(),
         metrics=Layer03ExpansionMetrics(

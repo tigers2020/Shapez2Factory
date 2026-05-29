@@ -47,7 +47,11 @@ Layer 3 MUST NOT use candidate enumeration order as Gene.commit_order
 Layer 3 MUST NOT use difficulty_rank or seed_rank for pattern try order
 Layer 3 MUST NOT use replay / NDJSON / solver_summary as algorithm input
 Layer 3 MUST NOT treat candidate-stage route_probe success as commit guarantee
+Layer 3 MUST NOT own `solver_runtime_replay_frames` or layer-local replay modules
 ```
+
+**Runtime replay (cross-link):** L3 progress frames and `Layer03Observability` projection are owned by the central assembler — [`2026-05-28-central-solver-runtime-replay-assembler-design.md`](2026-05-28-central-solver-runtime-replay-assembler-design.md) (`replay/layer03_segment.py`, `replay/solver_runtime_assembler.py`). PR-A ships L2/L4 reunification only; L3 timeline frames follow PR-B.
+
 
 **Outer-rim greedy install (forbidden recurrence):**
 

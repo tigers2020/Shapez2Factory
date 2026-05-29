@@ -19,7 +19,7 @@
 | Item | Contract |
 |------|----------|
 | Slug | `layer_04_rim_bundle_placement` |
-| Purpose | Consume L3 `normal_candidates`; **deterministic physical non-overlap selection**; materialize `PROVISIONAL_PLACED` placements + `ProvisionalLayoutOverlay` + replay frames |
+| Purpose | Consume L3 `normal_candidates`; **deterministic physical non-overlap selection**; materialize `PROVISIONAL_PLACED` placements + `ProvisionalLayoutOverlay`; **runtime replay frames via central assembler** (not layer package) |
 | Output | `Layer04RimPlacementResult` (includes `provisional_overlay`) |
 | Dense coverage meaning | **Provisional stack occupancy** — not committed layout |
 
@@ -206,6 +206,10 @@ budget_ctx.remaining_budget_ms() > 0 at decision time
 
 ## §4 — Replay contract
 
+**Authority (2026-05-28):** Layer 04 MUST NOT build `solver_runtime_replay_frames` or import `ReplayTimelineFrame`. Frame projection lives in `django_apps/asteroid_lab/replay/layer04_segment.py`; ordering and JSON output in `replay/solver_runtime_assembler.py`. See [`2026-05-28-central-solver-runtime-replay-assembler-design.md`](2026-05-28-central-solver-runtime-replay-assembler-design.md).
+
+`run_layer_04_rim_bundle_placement` returns `replay_frames=()` (deprecated field; removal v1.1). Assembler reads `selected_placements` / `rejected_candidates` only.
+
 ### 4.1 Event types
 
 Register in `django_apps/asteroid_lab/replay/event_types.py` and `SNAPSHOT_EVENT_TYPES`.
@@ -239,9 +243,12 @@ layer04_rim_placement_complete
 ### 4.3 Separation
 
 ```text
-ReplayFrameAppendDTO / SnapshotEventDTO = output artifact (observability)
+ReplayTimelineFrame (wire via solver_runtime_assembler) = output artifact (observability)
+ReplayFrameAppendDTO on Layer04RimPlacementResult = deprecated v1 stub (always empty in production)
 ProvisionalLayoutOverlay = stack runner wire between L4 → L5
 ```
+
+Segment builder `build_layer04_runtime_segment_frames` receives `base_map_view` from the assembler only — MUST NOT scan prior frame lists.
 
 ---
 

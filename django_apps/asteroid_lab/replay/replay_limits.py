@@ -8,3 +8,9 @@ MAX_LAB_REPLAY_TIMELINE_CELLS_PER_FRAME = 2000
 
 # Solver runtime recorder: align with Lab full_map cap (parity with reconstruction.completed).
 MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME = MAX_LAB_REPLAY_TIMELINE_CELLS_PER_FRAME
+
+# Layer 03 pool summary overlay (central assembler).
+LAYER03_REPLAY_TOP_N = 8
+
+# Layer 04 per-run selected placement replay frames (central assembler).
+MAX_LAYER04_REPLAY_SELECTED = 32

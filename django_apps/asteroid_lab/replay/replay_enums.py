@@ -32,6 +32,17 @@ class ReplayEventType(StrEnum):
     RECONSTRUCTION_COMPLETED = "reconstruction.completed"
     EXTERIOR_TRANSPORT_COMPLETED = "exterior_transport.completed"
 
+    # Layer 03 rim bundle scan (solver runtime segment)
+    LAYER03_RIM_BUNDLE_SCAN_BEGIN = "layer03_rim_bundle_scan_begin"
+    LAYER03_RIM_BUNDLE_SCAN_COMPLETE = "layer03_rim_bundle_scan_complete"
+    LAYER03_RIM_BUNDLE_POOL_SUMMARY = "layer03_rim_bundle_pool_summary"
+
+    # Layer 04 rim provisional placement (solver runtime segment)
+    LAYER04_RIM_PLACEMENT_BEGIN = "layer04_rim_placement_begin"
+    LAYER04_RIM_CANDIDATE_SELECTED = "layer04_rim_candidate_selected"
+    LAYER04_RIM_CANDIDATE_REJECTED_OVERLAP = "layer04_rim_candidate_rejected_overlap"
+    LAYER04_RIM_PLACEMENT_COMPLETE = "layer04_rim_placement_complete"
+
     # Optimization (superset: matches OptimizationReplayEventType wire values)
     OPTIMIZATION_INPUT_LOADED = "optimization.input_loaded"
     CAPACITY_PLAN_CREATED = "capacity.plan_created"

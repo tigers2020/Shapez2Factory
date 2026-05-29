@@ -48,6 +48,34 @@ class RimPlacementRejection:
     reason: RimPlacementRejectReason
     conflicting_candidate_id: str | None = None
     conflicting_cells: frozenset[Coord] = frozenset()
+    rejected_candidate_id: str = ""
+    rejected_output_dir: str = ""
+    rejected_mining_cell_count: int = 0
+    conflicting_winner_candidate_id: str | None = None
+    conflicting_winner_output_dir: str | None = None
+    conflicting_winner_mining_cell_count: int | None = None
+    winner_selected_due_to_higher_mining_gain: bool = False
+    overlap_tiebreak_step: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.rejected_candidate_id:
+            object.__setattr__(self, "rejected_candidate_id", self.candidate_id)
+        if (
+            self.conflicting_winner_candidate_id is not None
+            and self.conflicting_candidate_id is not None
+            and self.conflicting_winner_candidate_id != self.conflicting_candidate_id
+        ):
+            msg = "conflicting_winner_candidate_id must mirror conflicting_candidate_id"
+            raise ValueError(msg)
+        if (
+            self.conflicting_winner_candidate_id is None
+            and self.conflicting_candidate_id is not None
+        ):
+            object.__setattr__(
+                self,
+                "conflicting_winner_candidate_id",
+                self.conflicting_candidate_id,
+            )
 
 
 @dataclass(frozen=True, slots=True)

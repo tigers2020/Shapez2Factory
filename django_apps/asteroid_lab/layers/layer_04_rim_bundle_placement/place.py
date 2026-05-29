@@ -35,6 +35,10 @@ def build_rim_bundle_placement(entry: RouteProbedBundleCandidate) -> RimBundlePl
     if entry.route_probe_result is not None and entry.route_probe_result.goal_coord is not None:
         goal_cells = frozenset({entry.route_probe_result.goal_coord})
 
+    path_cells: tuple[Coord, ...] = ()
+    if entry.route_probe_result is not None:
+        path_cells = entry.route_probe_result.path_coords
+
     placement_id = f"{candidate.candidate_id}:prov"
     return RimBundlePlacement(
         candidate_id=candidate.candidate_id,
@@ -51,6 +55,8 @@ def build_rim_bundle_placement(entry: RouteProbedBundleCandidate) -> RimBundlePl
         route_probe_goal_cells=goal_cells,
         placement_state=PlacementCommitState.PROVISIONAL_PLACED,
         intrinsic_priority_rank=candidate.intrinsic_priority_rank,
+        cell_placements=placements,
+        probed_route_path_cells=path_cells,
     )
 
 

@@ -27,6 +27,9 @@ from django_apps.asteroid_lab.layers.contracts.stack_result import StackRunResul
 from django_apps.asteroid_lab.layers.layer_01_reconstruction.output import (
     Layer01ReconstructionOutput,
 )
+from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.forensic_log import (
+    LAYER04_SELECTED_PLACEMENTS_FILENAME,
+)
 from django_apps.asteroid_lab.layers.observability.layer_behavior_catalog import (
     format_layer_summary_line,
     layer_behavior_for_slug,
@@ -235,7 +238,11 @@ class LayerPostSummaryLogSession:
 
     def close(self, stack_result: StackRunResult) -> None:
         self.write_stack_run_post_summary(stack_result)
-        manifest = {
+        artifacts: dict[str, str] = {}
+        forensic_path = self.run_dir / LAYER04_SELECTED_PLACEMENTS_FILENAME
+        if forensic_path.is_file():
+            artifacts["layer04_selected_placements"] = LAYER04_SELECTED_PLACEMENTS_FILENAME
+        manifest: dict[str, object] = {
             "schema_version": _SCHEMA_VERSION,
             "run_id": self.run_id,
             "project_slug": self.project_slug,
@@ -245,6 +252,8 @@ class LayerPostSummaryLogSession:
             "failed_layer_slug": stack_result.failed_layer_slug,
             "log_dir": str(self.run_dir),
         }
+        if artifacts:
+            manifest["artifacts"] = artifacts
         path = self.run_dir / "manifest.json"
         path.write_text(
             json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2),

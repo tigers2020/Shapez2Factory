@@ -154,6 +154,7 @@ def build_solver_runtime_replay_frames(
         l4_specs = build_layer04_runtime_segment_specs(
             selected=layer04.selected_placements,
             rejected=layer04.rejected_candidates,
+            packing_observability=layer04.packing_observability,
         )
         out.extend(
             _finalize_specs(

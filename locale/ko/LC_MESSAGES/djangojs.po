@@ -5,6 +5,12 @@ msgstr ""
 "Language: ko\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 
+msgid " (expected on diagnostic canon)"
+msgstr " (expected on diagnostic canon)"
+
+msgid " (regression on pass-capable slug)"
+msgstr " (regression on pass-capable slug)"
+
 msgid "(read-only)"
 msgstr "(읽기 전용)"
 
@@ -169,9 +175,6 @@ msgstr "노드를 고르면 속성이 보입니다."
 msgid "Select a node."
 msgstr "노드를 선택해 주세요."
 
-msgid "Shape"
-msgstr "Shape"
-
 msgid "Short by"
 msgstr "부족"
 
@@ -211,6 +214,9 @@ msgstr "실제 출력 대기 (PR-2b)"
 
 msgid "actual output unavailable"
 msgstr "실제 출력 없음"
+
+msgid "cells"
+msgstr "cells"
 
 msgid "committed"
 msgstr "확정"

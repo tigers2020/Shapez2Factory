@@ -22,8 +22,16 @@ def succeeded_probe_at(
     transport: frozenset[tuple[int, int]] | None = None,
     goal: tuple[int, int] = (8, 4),
     output_dir: Direction = Direction.E,
+    rotation: int | None = None,
     route_cost: int = 0,
 ) -> RouteProbedBundleCandidate:
+    if rotation is None:
+        rotation = {
+            Direction.E: 0,
+            Direction.S: 1,
+            Direction.W: 2,
+            Direction.N: 3,
+        }[output_dir]
     stub_start = (anchor[0] + 1, anchor[1]) if transport is None else min(transport)
     candidate = make_bundle_candidate_for_test(
         gene_key=gene_key,
@@ -31,6 +39,7 @@ def succeeded_probe_at(
         anchor_coord=anchor,
         equivalence_key=equivalence_key,
         output_dir=output_dir,
+        rotation=rotation,
         mining_occupied_cells=mining or frozenset({anchor}),
         transport_stub_cells=transport or frozenset({stub_start}),
         route_probe_start_coord=stub_start,

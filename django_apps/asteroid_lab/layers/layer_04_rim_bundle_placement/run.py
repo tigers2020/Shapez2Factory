@@ -14,8 +14,8 @@ from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.place import 
     build_provisional_overlay,
     build_rim_bundle_placement,
 )
-from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.select import (
-    select_non_overlapping_candidates,
+from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.select_v2 import (
+    select_non_overlapping_candidates_v2,
 )
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 
@@ -41,17 +41,18 @@ def run_layer_04_rim_bundle_placement(
     if exterior_plan is None or not candidate_set.normal_candidates:
         return empty_layer04_rim_placement_result()
 
-    selected_entries, rejected = select_non_overlapping_candidates(
+    outcome = select_non_overlapping_candidates_v2(
         normal_candidates=candidate_set.normal_candidates,
         budget_ctx=budget_ctx,
     )
-    placements = tuple(build_rim_bundle_placement(entry) for entry in selected_entries)
+    placements = tuple(build_rim_bundle_placement(entry) for entry in outcome.selected_entries)
     overlay = build_provisional_overlay(placements)
     return build_layer04_rim_placement_result(
         selected_placements=placements,
-        rejected_candidates=rejected,
+        rejected_candidates=outcome.rejected,
         provisional_overlay=overlay,
         replay_frames=(),
+        packing_observability=outcome.packing_observability,
     )
 
 

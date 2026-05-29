@@ -172,6 +172,18 @@ def _candidate_set_with(*entries: object) -> object:
     )
 
 
+def test_run_layer04_populates_packing_observability() -> None:
+    candidate_set = _candidate_set_with(succeeded_probe_at((6, 4)))
+    result = run_layer_04_rim_bundle_placement(
+        complete_map=golden_5x5_complete_map(),
+        exterior_plan=minimal_l2_plan_for_golden(),
+        candidate_set=candidate_set,
+        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
+    )
+    assert result.packing_observability is not None
+    assert result.packing_observability.selected_total_gain >= 1
+
+
 def test_run_layer04_replay_frames_empty_runtime_authority_in_assembler() -> None:
     candidate_set = _candidate_set_with(succeeded_probe_at((6, 4)))
     result = run_layer_04_rim_bundle_placement(

@@ -43,9 +43,24 @@ Load order: `.env` → `.env.debug` (when present).
 | `ASTEROID_LAB_REPLAY_PAYLOAD_MODE` | `lazy` | `config/settings.py` — `inline` keeps full POST `lab_replay_frames_json`; `lazy` omits inline array (Sequence 13C) |
 | `ASTEROID_LAB_BOUNDARY_JSONL` | off | `django_apps/asteroid_lab/observability/boundary_jsonl.py` |
 | `ASTEROID_LAB_BOUNDARY_JSONL_DIR` | `var/asteroid_boundary_logs` | same |
-| `ASTEROID_LAB_SOLVER_SUMMARY_STACK_LOG` | on (`1`) | `django_apps/asteroid_lab/observability/solver_summary_stack_log.py` |
-| `ASTEROID_LAB_SOLVER_SUMMARY_STACK_LOG_DIR` | `var/log/solver_summary_stack` | same |
-| `ASTEROID_LAB_SOLVER_SUMMARY_STACK_MAX` | `5` | same (max stack entries per file, 1–20) |
+| `ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_ENABLED` | on (`True` in `config/settings.py`) | `django_apps/asteroid_lab/layers/observability/layer_post_summary_log.py` |
+| `ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_DIR` | `var/log/asteroid_lab_layer_stack` | same |
+| `ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_MAX_RUNS` | `5` | same (per-project run dir retention) |
+
+**Layer-stack forensic canonical path** (when post-summary logging is enabled):
+
+```text
+var/log/asteroid_lab_layer_stack/projects/{project_slug}/runs/{run_id}/
+  manifest.json
+  stack_run.jsonl
+  layer_01_reconstruction.jsonl … layer_04_rim_bundle_placement.jsonl
+  layer_04_selected_placements.jsonl   # L4 selected-placement forensic (one row per placement)
+```
+
+Separate optional paths (not merged into layer-stack):
+
+- `var/asteroid_boundary_logs/` — boundary JSONL (`ASTEROID_LAB_BOUNDARY_JSONL`)
+- `var/log/asteroid_lab.log` — Django file logger (`ASTEROID_LAB_FILE_LOG`)
 | `SHAPEZ_COPY_DEBUG_DIR` | off (empty string) | `config/shapez_runtime_flags.py` (no consumer code — reserved dump path) |
 
 OAuth · Support URL, etc.: see `config/settings.py`.

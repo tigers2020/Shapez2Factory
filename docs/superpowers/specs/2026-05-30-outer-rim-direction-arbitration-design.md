@@ -338,7 +338,7 @@ JS or Python contract test: overlay row with `kind=miner` does not resolve to `S
 | Decision | Status |
 |----------|--------|
 | L4 approach B (mining-first greedy) | **APPROVED** |
-| MWIS (C) | **Deferred** §8 |
+| MWIS (C) | **Promoted** → [`2026-05-31-layer-04-v2-component-packing-optimizer-design.md`](2026-05-31-layer-04-v2-component-packing-optimizer-design.md) (component-local, \|C\|≤20) |
 | PR-A / PR-B split | **APPROVED** |
 | `route_cost` ASC (not `-route_cost`) | **APPROVED** (blocking amendment 1) |
 | `effective_mining_gain` naming | **APPROVED** (blocking amendment 2) |

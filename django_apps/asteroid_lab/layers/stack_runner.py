@@ -39,6 +39,9 @@ from django_apps.asteroid_lab.layers.layer_02_exterior_transport.run import (
 from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.run import (
     run_layer_03_rim_mining_bundles,
 )
+from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.forensic_log import (
+    write_layer04_selected_placements_log,
+)
 from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
     run_layer_04_rim_bundle_placement,
 )
@@ -169,6 +172,11 @@ def run_layers_02_to_06(
             )
             if isinstance(last_placement_result, Layer04RimPlacementResult):
                 post_metrics = build_layer04_post_summary_metrics(last_placement_result)
+                if post_summary_session is not None and last_placement_result.selected_placements:
+                    write_layer04_selected_placements_log(
+                        run_dir=post_summary_session.run_dir,
+                        selected_placements=last_placement_result.selected_placements,
+                    )
         elif entry.slug == LAYER_05_INNER_PATTERN_FILL:
             overlay = (
                 last_placement_result.provisional_overlay

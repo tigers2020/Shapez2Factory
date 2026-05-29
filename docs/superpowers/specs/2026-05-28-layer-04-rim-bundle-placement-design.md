@@ -182,6 +182,8 @@ class Layer04RimPlacementResult:
 ### 3.4 Selection (normative)
 
 > **Superseded (2026-05-30):** Sort key and overlap rejection metadata replaced by [`2026-05-30-outer-rim-direction-arbitration-design.md`](2026-05-30-outer-rim-direction-arbitration-design.md) §3–§4 (mining-first greedy; `effective_mining_gain`).
+>
+> **Superseded (2026-05-31):** Selection algorithm replaced by [`2026-05-31-layer-04-v2-component-packing-optimizer-design.md`](2026-05-31-layer-04-v2-component-packing-optimizer-design.md) (component-local exact pack + capped fallback). Mining-first greedy remains as fallback for `|C| > 20` and observability baseline only.
 
 **Sort key (ascending) — historical:**
 

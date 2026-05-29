@@ -1,0 +1,1218 @@
+[
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_01:-8:11:w:2:shape_belt",
+    "equivalence_key": "41d7b7816c40f505bf70d022790982c0f384fc93f993f6479fad42c3a8353b60",
+    "anchor": [
+      -8,
+      11
+    ],
+    "output_dir": "w",
+    "gene_key": "miner_seed_m3e_01",
+    "mining": [
+      [
+        -8,
+        11
+      ],
+      [
+        -7,
+        11
+      ],
+      [
+        -6,
+        11
+      ],
+      [
+        -5,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -9,
+        11
+      ]
+    ],
+    "route_cost": 8,
+    "goal": [
+      -15,
+      13
+    ],
+    "route_probe_start": [
+      -9,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m2e_01:-8:11:w:2:shape_belt",
+    "equivalence_key": "961cb771dae74290d3ef13682ccb4009052645eb4aef46c92cfbd55643236ead",
+    "anchor": [
+      -8,
+      11
+    ],
+    "output_dir": "w",
+    "gene_key": "miner_seed_m2e_01",
+    "mining": [
+      [
+        -8,
+        11
+      ],
+      [
+        -7,
+        11
+      ],
+      [
+        -6,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -9,
+        11
+      ]
+    ],
+    "route_cost": 8,
+    "goal": [
+      -15,
+      13
+    ],
+    "route_probe_start": [
+      -9,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m1e_01:-8:11:w:2:shape_belt",
+    "equivalence_key": "26dd013c901ad9bf074508f2eef04344fc19226d20e0daefc29f20108c649af8",
+    "anchor": [
+      -8,
+      11
+    ],
+    "output_dir": "w",
+    "gene_key": "miner_seed_m1e_01",
+    "mining": [
+      [
+        -8,
+        11
+      ],
+      [
+        -7,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -9,
+        11
+      ]
+    ],
+    "route_cost": 8,
+    "goal": [
+      -15,
+      13
+    ],
+    "route_probe_start": [
+      -9,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m0e_01:-8:11:s:1:shape_belt",
+    "equivalence_key": "2e7b85191aa5b6270d45ed5593902dba7e09e103337aeb47e80bc19c11c98aa1",
+    "anchor": [
+      -8,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m0e_01",
+    "mining": [
+      [
+        -8,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -8,
+        10
+      ]
+    ],
+    "route_cost": 34,
+    "goal": [
+      -15,
+      13
+    ],
+    "route_probe_start": [
+      -8,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m0e_01:-8:11:w:2:shape_belt",
+    "equivalence_key": "b6513350456b4578950f0ff1cbcfac381ac609111052c63c8f4091537a1ff9e4",
+    "anchor": [
+      -8,
+      11
+    ],
+    "output_dir": "w",
+    "gene_key": "miner_seed_m0e_01",
+    "mining": [
+      [
+        -8,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -9,
+        11
+      ]
+    ],
+    "route_cost": 8,
+    "goal": [
+      -15,
+      13
+    ],
+    "route_probe_start": [
+      -9,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m2e_04:-7:11:s:1:shape_belt",
+    "equivalence_key": "a9d5410a91f68be829fab3a54b0d200ef81feb4de738d127954a34ef95308bdd",
+    "anchor": [
+      -7,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m2e_04",
+    "mining": [
+      [
+        -8,
+        11
+      ],
+      [
+        -7,
+        11
+      ],
+      [
+        -6,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -7,
+        10
+      ]
+    ],
+    "route_cost": 59,
+    "goal": [
+      -15,
+      13
+    ],
+    "route_probe_start": [
+      -7,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m0e_01:-7:11:s:1:shape_belt",
+    "equivalence_key": "6089c31b4369828a12e85373f75f62a3734b2da11b33f4642ca4a3bbe37e03e1",
+    "anchor": [
+      -7,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m0e_01",
+    "mining": [
+      [
+        -7,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -7,
+        10
+      ]
+    ],
+    "route_cost": 58,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -7,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_07:-6:11:s:1:shape_belt",
+    "equivalence_key": "1c70a2cf42a347bc2b1980e1ba982fec967fa33669164aedea87d7b6ace70233",
+    "anchor": [
+      -6,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m3e_07",
+    "mining": [
+      [
+        -8,
+        11
+      ],
+      [
+        -7,
+        11
+      ],
+      [
+        -6,
+        11
+      ],
+      [
+        -5,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -6,
+        10
+      ]
+    ],
+    "route_cost": 81,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -6,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m2e_04:-6:11:s:1:shape_belt",
+    "equivalence_key": "84d30e43a1df514d11c9809b3f68bd28085f6f73aeba901e01d2fd39b42e9726",
+    "anchor": [
+      -6,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m2e_04",
+    "mining": [
+      [
+        -7,
+        11
+      ],
+      [
+        -6,
+        11
+      ],
+      [
+        -5,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -6,
+        10
+      ]
+    ],
+    "route_cost": 81,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -6,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m0e_01:-6:11:s:1:shape_belt",
+    "equivalence_key": "6bf1efbcd9a5f2fb4a6eb7a54698dee4dfe9f47fb4d29cd48e8ddbbf91c1e61a",
+    "anchor": [
+      -6,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m0e_01",
+    "mining": [
+      [
+        -6,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -6,
+        10
+      ]
+    ],
+    "route_cost": 57,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -6,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_07:-5:11:s:1:shape_belt",
+    "equivalence_key": "4405b23a296f9134e12ddae194fde197dc11bdc9ca9613a285e6e3fd97d5fcbf",
+    "anchor": [
+      -5,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m3e_07",
+    "mining": [
+      [
+        -7,
+        11
+      ],
+      [
+        -6,
+        11
+      ],
+      [
+        -5,
+        11
+      ],
+      [
+        -4,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -5,
+        10
+      ]
+    ],
+    "route_cost": 80,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -5,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m2e_04:-5:11:s:1:shape_belt",
+    "equivalence_key": "af6a257952282655c88c7e842eed8a65e0d844dc115dfc46a629211afef2bc77",
+    "anchor": [
+      -5,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m2e_04",
+    "mining": [
+      [
+        -6,
+        11
+      ],
+      [
+        -5,
+        11
+      ],
+      [
+        -4,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -5,
+        10
+      ]
+    ],
+    "route_cost": 80,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -5,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m0e_01:-5:11:s:1:shape_belt",
+    "equivalence_key": "473ab968b4166db86b6f2e3ff5b0082f02bf7796b6d356a380852f36c8d31513",
+    "anchor": [
+      -5,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m0e_01",
+    "mining": [
+      [
+        -5,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -5,
+        10
+      ]
+    ],
+    "route_cost": 56,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -5,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_07:-4:11:s:1:shape_belt",
+    "equivalence_key": "d04cf86ce1dd4f27f54f234391e4d9e7a50e276e745a8c80ad5205221d250ab4",
+    "anchor": [
+      -4,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m3e_07",
+    "mining": [
+      [
+        -6,
+        11
+      ],
+      [
+        -5,
+        11
+      ],
+      [
+        -4,
+        11
+      ],
+      [
+        -3,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -4,
+        10
+      ]
+    ],
+    "route_cost": 81,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -4,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m2e_04:-4:11:s:1:shape_belt",
+    "equivalence_key": "73987dc34d8047f367e0968e6a6ff2fe365a8fbbd79005b9e7b43546c7768f2c",
+    "anchor": [
+      -4,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m2e_04",
+    "mining": [
+      [
+        -5,
+        11
+      ],
+      [
+        -4,
+        11
+      ],
+      [
+        -3,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -4,
+        10
+      ]
+    ],
+    "route_cost": 81,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -4,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m0e_01:-4:11:s:1:shape_belt",
+    "equivalence_key": "cb92de7845f2cfdb1d2681ff8beb6e945e42c318b6099ecff5fe46ecd74e90af",
+    "anchor": [
+      -4,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m0e_01",
+    "mining": [
+      [
+        -4,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -4,
+        10
+      ]
+    ],
+    "route_cost": 55,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -4,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_07:-3:11:s:1:shape_belt",
+    "equivalence_key": "9bb23211c685ed8f076380f78def641d1964867fb8860f7099aefaf2d192badb",
+    "anchor": [
+      -3,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m3e_07",
+    "mining": [
+      [
+        -5,
+        11
+      ],
+      [
+        -4,
+        11
+      ],
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -3,
+        10
+      ]
+    ],
+    "route_cost": 58,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -3,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m2e_04:-3:11:s:1:shape_belt",
+    "equivalence_key": "a014ae659d8d41bd7a3874bcbeeb55977a64c68575e5e08c53bd5c1ddc1565e7",
+    "anchor": [
+      -3,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m2e_04",
+    "mining": [
+      [
+        -4,
+        11
+      ],
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -3,
+        10
+      ]
+    ],
+    "route_cost": 58,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -3,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m0e_01:-3:11:s:1:shape_belt",
+    "equivalence_key": "47bbd1ec0af220fd870cb46034824a131222cbd9479d46d15238d556e8e5655a",
+    "anchor": [
+      -3,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m0e_01",
+    "mining": [
+      [
+        -3,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -3,
+        10
+      ]
+    ],
+    "route_cost": 56,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -3,
+      10
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_01:-2:11:e:0:shape_belt",
+    "equivalence_key": "8e368aa3f3c63f3e915c17a7e7166e29de3c502b83a23e10cbccfe940548afbc",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m3e_01",
+    "mining": [
+      [
+        -5,
+        11
+      ],
+      [
+        -4,
+        11
+      ],
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_02:-2:11:e:0:shape_belt",
+    "equivalence_key": "8b2c05462d79510d278ec7b0001c76b111eba6e366f22b66c1dc523936499911",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m3e_02",
+    "mining": [
+      [
+        -4,
+        10
+      ],
+      [
+        -4,
+        11
+      ],
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_04:-2:11:e:0:shape_belt",
+    "equivalence_key": "d92637fb7588f988e684797b0c46135539845cdd35a68d88b63e87ab4e1712c0",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m3e_04",
+    "mining": [
+      [
+        -4,
+        10
+      ],
+      [
+        -3,
+        10
+      ],
+      [
+        -2,
+        10
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m2e_01:-2:11:e:0:shape_belt",
+    "equivalence_key": "d53402143238aff6ffcf2fd36425c48bdb0ca60c93ef2375751e601e934e0303",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m2e_01",
+    "mining": [
+      [
+        -4,
+        11
+      ],
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_03:-2:11:e:0:shape_belt",
+    "equivalence_key": "43cf4739eaacbed188f7e7cf3f68a27c4fb1d2ddafa62fbbeb5cd3f76bd53517",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m3e_03",
+    "mining": [
+      [
+        -4,
+        10
+      ],
+      [
+        -3,
+        10
+      ],
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m2e_02:-2:11:e:0:shape_belt",
+    "equivalence_key": "2a77390024da47da58854d16353586983775edd59180db0c33336b4ece76640f",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m2e_02",
+    "mining": [
+      [
+        -3,
+        10
+      ],
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_09:-2:11:e:0:shape_belt",
+    "equivalence_key": "67629bef952993184008dcb47940c75a9bf95d6c11832037657c5cd17974a529",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m3e_09",
+    "mining": [
+      [
+        -3,
+        10
+      ],
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        10
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_06:-2:11:e:0:shape_belt",
+    "equivalence_key": "fc22926a1ec32a681fceb3f8d60028aba5fd053b91dde7882752bcb098f88d3a",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m3e_06",
+    "mining": [
+      [
+        -4,
+        11
+      ],
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        10
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m3e_05:-2:11:e:0:shape_belt",
+    "equivalence_key": "899191323635e732115c3bb776868961e87e6b5caecc2c120dffd4e8ac12d9ec",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m3e_05",
+    "mining": [
+      [
+        -4,
+        11
+      ],
+      [
+        -3,
+        10
+      ],
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m2e_03:-2:11:e:0:shape_belt",
+    "equivalence_key": "3ab2597606f0e211a10fe0a5ac75bbd077935fbf88d4162bf3178a4faf38e7ae",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m2e_03",
+    "mining": [
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        10
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m1e_01:-2:11:e:0:shape_belt",
+    "equivalence_key": "8801bc87fe64a491e93dd1cb6855b29c4a65097ed31ddd9405eb9ff1e187959c",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m1e_01",
+    "mining": [
+      [
+        -3,
+        11
+      ],
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m0e_01:-2:11:e:0:shape_belt",
+    "equivalence_key": "534470399e8a87249e6207eceaca6991727d0c45d6b5d944b38a5d504ebd25d5",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "e",
+    "gene_key": "miner_seed_m0e_01",
+    "mining": [
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -1,
+        11
+      ]
+    ],
+    "route_cost": 7,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -1,
+      11
+    ]
+  },
+  {
+    "candidate_id": "layer_03:miner_seed_m0e_01:-2:11:s:1:shape_belt",
+    "equivalence_key": "d528b309c7060bfb1caf304d08d595e24baf1d9f6136584b3f88d634c1152105",
+    "anchor": [
+      -2,
+      11
+    ],
+    "output_dir": "s",
+    "gene_key": "miner_seed_m0e_01",
+    "mining": [
+      [
+        -2,
+        11
+      ]
+    ],
+    "transport": [
+      [
+        -2,
+        10
+      ]
+    ],
+    "route_cost": 33,
+    "goal": [
+      -3,
+      16
+    ],
+    "route_probe_start": [
+      -2,
+      10
+    ]
+  }
+]

@@ -1380,10 +1380,16 @@
   }
 
   function applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex) {
-    applyEquipmentBundleGroupVisualsFromOverlay(cellOverlayJsonFromFrame(frame), domCells, resolveCellIndex);
+    maybeApplyEquipmentBundleGroupVisualsFromOverlay(
+      cellOverlayJsonFromFrame(frame),
+      domCells,
+      resolveCellIndex,
+    );
   }
 
   const LAB_TERRAIN_RIM_STORAGE_KEY = "lab-terrain-rim-highlight";
+  const LAB_PATTERN_BUNDLE_STORAGE_KEY = "lab-pattern-bundle-highlight";
+  const LAB_PATTERN_BUNDLE_PALETTE_SIZE = 8;
   const LAB_EXTERIOR_CONNECTOR_ROLE = "planned_exterior_connector";
   const LAB_EXTERIOR_CONNECTOR_METRICS_KEY = "exterior_connector_plan";
   const LAB_FROZEN_EXTERIOR_CONNECTOR_PLAN_KEY = "frozen_exterior_connector_plan";
@@ -1410,6 +1416,44 @@
     } catch (_err) {
       /* ignore */
     }
+  }
+
+  function isPatternBundleHighlightEnabled() {
+    const toggle = document.getElementById("lab-pattern-bundle-highlight-toggle");
+    if (toggle && !toggle.checked) {
+      return false;
+    }
+    try {
+      const stored = window.localStorage.getItem(LAB_PATTERN_BUNDLE_STORAGE_KEY);
+      if (stored === "0") {
+        return false;
+      }
+    } catch (_err) {
+      return true;
+    }
+    return true;
+  }
+
+  function persistPatternBundleHighlightEnabled(enabled) {
+    try {
+      window.localStorage.setItem(LAB_PATTERN_BUNDLE_STORAGE_KEY, enabled ? "1" : "0");
+    } catch (_err) {
+      /* ignore */
+    }
+  }
+
+  function resolvePatternBundleHighlightWire(frame) {
+    if (!frame || typeof frame !== "object") {
+      return null;
+    }
+    const fm =
+      frame.metrics && typeof frame.metrics === "object"
+        ? frame.metrics.pattern_bundle_highlights
+        : null;
+    if (fm && typeof fm === "object") {
+      return fm;
+    }
+    return null;
   }
 
   function resolveTerrainRimHighlightWire(frame, trackMetrics) {
@@ -1463,23 +1507,29 @@
 
   function clearTerrainRimOutlineSvg() {
     const layer = document.getElementById("lab-optimization-overlay-layer");
-    if (layer) {
-      layer.textContent = "";
+    if (!layer) {
+      return;
+    }
+    const nodes = layer.querySelectorAll(".lab-terrain-rim-outline-svg");
+    for (let i = 0; i < nodes.length; i++) {
+      nodes[i].remove();
     }
   }
 
-  function applyTerrainRimOutlineSvg(wire, layout, cellPx, gapPx) {
-    clearTerrainRimOutlineSvg();
-    if (!wire || typeof wire !== "object" || !layout) {
-      return;
-    }
-    const loops = wire.outer_outline_loops;
-    if (!Array.isArray(loops) || loops.length === 0) {
-      return;
-    }
+  function clearPatternBundleOutlineSvg() {
     const layer = document.getElementById("lab-optimization-overlay-layer");
     if (!layer) {
       return;
+    }
+    const nodes = layer.querySelectorAll(".lab-pattern-bundle-outline-svg");
+    for (let i = 0; i < nodes.length; i++) {
+      nodes[i].remove();
+    }
+  }
+
+  function buildSvgPathDataFromOutlineLoops(loops, layout, cellPx, gapPx) {
+    if (!Array.isArray(loops) || loops.length === 0 || !layout) {
+      return "";
     }
     let pathData = "";
     for (let li = 0; li < loops.length; li++) {
@@ -1503,7 +1553,25 @@
         pathData += segment + " Z ";
       }
     }
+    return pathData.trim();
+  }
+
+  function applyTerrainRimOutlineSvg(wire, layout, cellPx, gapPx) {
+    clearTerrainRimOutlineSvg();
+    if (!wire || typeof wire !== "object" || !layout) {
+      return;
+    }
+    const pathData = buildSvgPathDataFromOutlineLoops(
+      wire.outer_outline_loops,
+      layout,
+      cellPx,
+      gapPx,
+    );
     if (!pathData) {
+      return;
+    }
+    const layer = document.getElementById("lab-optimization-overlay-layer");
+    if (!layer) {
       return;
     }
     const svgNs = "http://www.w3.org/2000/svg";
@@ -1514,13 +1582,105 @@
     svg.setAttribute("aria-hidden", "true");
     const pathEl = document.createElementNS(svgNs, "path");
     pathEl.setAttribute("class", "lab-terrain-rim-outline-path");
-    pathEl.setAttribute("d", pathData.trim());
+    pathEl.setAttribute("d", pathData);
     svg.appendChild(pathEl);
     layer.appendChild(svg);
   }
 
+  function applyPatternBundleHighlightSvg(wire, layout, cellPx, gapPx) {
+    clearPatternBundleOutlineSvg();
+    if (!wire || typeof wire !== "object" || !layout) {
+      return;
+    }
+    const bundles = wire.bundles;
+    if (!Array.isArray(bundles) || bundles.length === 0) {
+      return;
+    }
+    const layer = document.getElementById("lab-optimization-overlay-layer");
+    if (!layer) {
+      return;
+    }
+    const svgNs = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNs, "svg");
+    svg.setAttribute("class", "lab-pattern-bundle-outline-svg");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("aria-hidden", "true");
+    for (let bi = 0; bi < bundles.length; bi++) {
+      const block = bundles[bi];
+      if (!block || typeof block !== "object") {
+        continue;
+      }
+      const pathData = buildSvgPathDataFromOutlineLoops(
+        block.outline_loops,
+        layout,
+        cellPx,
+        gapPx,
+      );
+      if (!pathData) {
+        continue;
+      }
+      let colorIndex = Number(block.color_index);
+      if (!Number.isFinite(colorIndex)) {
+        colorIndex = bi % LAB_PATTERN_BUNDLE_PALETTE_SIZE;
+      } else {
+        colorIndex =
+          ((colorIndex % LAB_PATTERN_BUNDLE_PALETTE_SIZE) + LAB_PATTERN_BUNDLE_PALETTE_SIZE) %
+          LAB_PATTERN_BUNDLE_PALETTE_SIZE;
+      }
+      const pathEl = document.createElementNS(svgNs, "path");
+      pathEl.setAttribute("class", "lab-pattern-bundle-outline-path");
+      pathEl.setAttribute("data-color-index", String(colorIndex));
+      pathEl.setAttribute("d", pathData);
+      svg.appendChild(pathEl);
+    }
+    if (svg.childNodes.length) {
+      layer.appendChild(svg);
+    }
+  }
+
   function applyTerrainRimHighlight(wire, layout, cellPx, gapPx) {
     applyTerrainRimOutlineSvg(wire, layout, cellPx, gapPx);
+  }
+
+  function applyLabOverlayHighlights(frame, trackMetrics, rimDrawCtx) {
+    if (!rimDrawCtx || !rimDrawCtx.layout) {
+      clearTerrainRimOutlineSvg();
+      clearPatternBundleOutlineSvg();
+      return;
+    }
+    if (isTerrainRimHighlightEnabled()) {
+      const rimWire = resolveTerrainRimHighlightWire(frame, trackMetrics);
+      if (rimWire) {
+        applyTerrainRimHighlight(rimWire, rimDrawCtx.layout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+      } else {
+        clearTerrainRimOutlineSvg();
+      }
+    } else {
+      clearTerrainRimOutlineSvg();
+    }
+    if (isPatternBundleHighlightEnabled()) {
+      const patternWire = resolvePatternBundleHighlightWire(frame);
+      if (patternWire) {
+        applyPatternBundleHighlightSvg(
+          patternWire,
+          rimDrawCtx.layout,
+          rimDrawCtx.cellPx,
+          rimDrawCtx.gapPx,
+        );
+      } else {
+        clearPatternBundleOutlineSvg();
+      }
+    } else {
+      clearPatternBundleOutlineSvg();
+    }
+  }
+
+  function maybeApplyEquipmentBundleGroupVisualsFromOverlay(ov, domCells, resolveCellIndex) {
+    if (isPatternBundleHighlightEnabled()) {
+      return;
+    }
+    applyEquipmentBundleGroupVisualsFromOverlay(ov, domCells, resolveCellIndex);
   }
 
   function renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex) {
@@ -1562,11 +1722,11 @@
     const cells = overlay.cells;
     if (Array.isArray(cells) && cells.length > 0) {
       renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex);
-      applyEquipmentBundleGroupVisualsFromOverlay(overlay, domCells, resolveCellIndex);
+      maybeApplyEquipmentBundleGroupVisualsFromOverlay(overlay, domCells, resolveCellIndex);
       return;
     }
     renderExistingLayoutOverlay(baseClasses, domCells, overlay, resolveCellIndex);
-    applyEquipmentBundleGroupVisualsFromOverlay(overlay, domCells, resolveCellIndex);
+    maybeApplyEquipmentBundleGroupVisualsFromOverlay(overlay, domCells, resolveCellIndex);
   }
 
   function resetGridBase(domCells, baseClasses) {
@@ -1640,7 +1800,9 @@
       renderFullMapCells(baseClasses, domCells, deltaCells, resolveCellIndex, frame);
     }
     renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
-    applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
+    if (!isPatternBundleHighlightEnabled()) {
+      applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
+    }
     renderPlannedExteriorConnectorHighlights(
       frame,
       baseClasses,
@@ -1648,19 +1810,7 @@
       resolveCellIndex,
       trackMetrics,
     );
-    if (isTerrainRimHighlightEnabled() && rimDrawCtx && rimDrawCtx.layout) {
-      const rimWire = resolveTerrainRimHighlightWire(frame, trackMetrics);
-      if (rimWire) {
-        applyTerrainRimHighlight(
-          rimWire,
-          rimDrawCtx.layout,
-          rimDrawCtx.cellPx,
-          rimDrawCtx.gapPx,
-        );
-      }
-    } else {
-      clearTerrainRimOutlineSvg();
-    }
+    applyLabOverlayHighlights(frame, trackMetrics, rimDrawCtx);
     return true;
   }
 
@@ -1691,13 +1841,16 @@
       return;
     }
     clearTerrainRimOutlineSvg();
+    clearPatternBundleOutlineSvg();
     const ov = frame.cell_overlay_json;
     if (ov && typeof ov === "object") {
       resetGridBase(domCells, baseClasses);
       renderCellOverlay(baseClasses, domCells, ov, resolveCellIndex);
+      applyLabOverlayHighlights(frame, trackMetrics, rimDrawCtx);
       return;
     }
     resetGridBase(domCells, baseClasses);
+    applyLabOverlayHighlights(frame, trackMetrics, rimDrawCtx);
   }
 
   function updateFrameInfo(frame, totalCount, phaseEl, frameEl, gridEl, timelineSlotIndex) {
@@ -2173,6 +2326,13 @@
 
     function getMaxTimelineIndex() {
       if (hasServerReplay) {
+        if (
+          labReplayLoadState.mode === "lazy" &&
+          labReplayLoadState.status !== "loaded" &&
+          labReplayLoadState.frameCount > replayFrames.length
+        ) {
+          return Math.max(0, labReplayLoadState.frameCount - 1);
+        }
         return Math.max(0, replayFrames.length - 1);
       }
       return TOTAL_FRAMES;
@@ -2804,12 +2964,15 @@
     syncLabActionButtons();
 
     document.getElementById("lab-timeline-prev")?.addEventListener("click", function () {
-      if (hasServerReplay) {
-        replayArrayIndex = Math.max(0, replayArrayIndex - 1);
-      } else {
-        frame = Math.max(0, frame - 1);
-      }
-      applyFrame();
+      ensureLabReplayFramesLoaded("prev").then(function () {
+        if (labReplayLoadState.status === "error") return;
+        if (hasServerReplay) {
+          replayArrayIndex = Math.max(0, replayArrayIndex - 1);
+        } else {
+          frame = Math.max(0, frame - 1);
+        }
+        applyFrame();
+      });
     });
 
     playBtn?.addEventListener("click", function () {
@@ -2823,12 +2986,15 @@
     });
 
     document.getElementById("lab-timeline-next")?.addEventListener("click", function () {
-      if (hasServerReplay) {
-        replayArrayIndex = Math.min(replayFrames.length - 1, replayArrayIndex + 1);
-      } else {
-        frame = Math.min(TOTAL_FRAMES, frame + 1);
-      }
-      applyFrame();
+      ensureLabReplayFramesLoaded("next").then(function () {
+        if (labReplayLoadState.status === "error") return;
+        if (hasServerReplay) {
+          replayArrayIndex = Math.min(replayFrames.length - 1, replayArrayIndex + 1);
+        } else {
+          frame = Math.min(TOTAL_FRAMES, frame + 1);
+        }
+        applyFrame();
+      });
     });
 
     if (scrubEl) {
@@ -2858,6 +3024,24 @@
       }
       rimToggleEl.addEventListener("change", function () {
         persistTerrainRimHighlightEnabled(rimToggleEl.checked);
+        applyFrame();
+      });
+    }
+
+    const patternToggleEl = document.getElementById("lab-pattern-bundle-highlight-toggle");
+    if (patternToggleEl) {
+      try {
+        const storedPattern = window.localStorage.getItem(LAB_PATTERN_BUNDLE_STORAGE_KEY);
+        if (storedPattern === "0") {
+          patternToggleEl.checked = false;
+        } else if (storedPattern === "1") {
+          patternToggleEl.checked = true;
+        }
+      } catch (_patternErr) {
+        /* ignore */
+      }
+      patternToggleEl.addEventListener("change", function () {
+        persistPatternBundleHighlightEnabled(patternToggleEl.checked);
         applyFrame();
       });
     }
@@ -3954,7 +4138,7 @@
         renderCellOverlay(baseClasses, domCells, ov, resolveCellIndex);
       },
       applyEquipmentBundleHighlight: function (ov) {
-        applyEquipmentBundleGroupVisualsFromOverlay(ov, domCells, resolveCellIndex);
+        maybeApplyEquipmentBundleGroupVisualsFromOverlay(ov, domCells, resolveCellIndex);
       },
       renderDecodedCells: function (list) {
         resetGridBase(domCells, baseClasses);

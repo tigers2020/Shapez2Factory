@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
 
+from django_apps.asteroid_lab.reconstruction.cell_hull_outline import (
+    trace_outline_loops_from_segments,
+)
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.reconstruction.rim_topology import field_rim_cells
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
@@ -94,61 +96,13 @@ def _void_boundary_segments(
     return segments
 
 
-def _normalize_edge(a: Coord, b: Coord) -> tuple[Coord, Coord]:
-    return (a, b) if a <= b else (b, a)
-
-
-def _trace_outline_loops(
-    segments: list[tuple[Coord, Coord]],
-) -> tuple[tuple[tuple[int, int], ...], ...]:
-    if not segments:
-        return ()
-
-    adj: dict[Coord, list[Coord]] = defaultdict(list)
-    edges: list[tuple[Coord, Coord]] = []
-    for a, b in segments:
-        adj[a].append(b)
-        adj[b].append(a)
-        edges.append(_normalize_edge(a, b))
-
-    used: set[tuple[Coord, Coord]] = set()
-    loops: list[tuple[tuple[int, int], ...]] = []
-
-    for edge in edges:
-        if edge in used:
-            continue
-        start_a, start_b = edge
-        path: list[tuple[int, int]] = [start_a, start_b]
-        used.add(edge)
-        cur = start_b
-        while cur != start_a:
-            next_candidates = [nxt for nxt in adj[cur] if _normalize_edge(cur, nxt) not in used]
-            if not next_candidates:
-                path = []
-                break
-            nxt = next_candidates[0]
-            used.add(_normalize_edge(cur, nxt))
-            path.append(nxt)
-            cur = nxt
-        if len(path) >= 3 and cur == start_a:
-            closed = tuple(path) + (start_a,)
-            if len(closed) >= 4:
-                loops.append(closed)
-
-    if not loops:
-        return ()
-
-    loops_sorted = sorted(loops, key=len, reverse=True)
-    return tuple(loops_sorted)
-
-
 def _outer_outline_loops(
     field_cells: frozenset[Coord],
     *,
     external_void_cells: frozenset[Coord],
 ) -> tuple[tuple[tuple[int, int], ...], ...]:
     segments = _void_boundary_segments(field_cells, external_void_cells=external_void_cells)
-    return _trace_outline_loops(segments)
+    return trace_outline_loops_from_segments(segments)
 
 
 def build_terrain_rim_highlight_from_renderable_cells(

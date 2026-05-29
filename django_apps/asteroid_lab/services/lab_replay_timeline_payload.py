@@ -28,6 +28,9 @@ from django_apps.asteroid_lab.services.lab_layer02_timeline import resolve_l2_co
 from django_apps.asteroid_lab.services.lab_timeline_exterior_connector_enrichment import (
     enrich_lab_timeline_frames_with_exterior_connector_plan,
 )
+from django_apps.asteroid_lab.services.lab_timeline_pattern_bundle_enrichment import (
+    enrich_lab_timeline_frames_with_pattern_bundle_highlights,
+)
 from django_apps.asteroid_lab.services.lab_timeline_rim_enrichment import (
     enrich_lab_timeline_frames_with_terrain_rim,
 )
@@ -275,6 +278,7 @@ def build_lab_replay_frames_for_project(
     )
     serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
     serialized, frozen_rim_wire = enrich_lab_timeline_frames_with_terrain_rim(serialized)
+    serialized = enrich_lab_timeline_frames_with_pattern_bundle_highlights(serialized)
     plan_wire = _exterior_connector_plan_wire_for_run(run)
     l2_start = resolve_l2_complete_frame_index(serialized)
     serialized, frozen_connector_wire = enrich_lab_timeline_frames_with_exterior_connector_plan(

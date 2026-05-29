@@ -13,6 +13,11 @@ from django_apps.asteroid_lab.layers.contracts.rim_placement import (
     RimPlacementRejectReason,
 )
 from django_apps.asteroid_lab.replay.event_types import assert_registered_event_type
+from django_apps.asteroid_lab.replay.pattern_bundle_highlight import (
+    METRICS_KEY,
+    build_pattern_bundle_highlights_wire,
+    mining_occupied_from_rim_placement,
+)
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.replay_limits import (
     MAX_LAYER04_REPLAY_REJECTED_OVERLAP,
@@ -41,6 +46,29 @@ def _overlay_kind_for_role(*, role: str, transport: str) -> str:
     if role == "transport_stub":
         return "space_pipe" if is_fluid else "space_belt"
     return role
+
+
+def _pattern_bundle_highlights_for_placement(
+    placement: RimBundlePlacement,
+) -> dict[str, object]:
+    occupied = mining_occupied_from_rim_placement(placement)
+    return build_pattern_bundle_highlights_wire(
+        ((placement.candidate_id, occupied, placement.gene_key),)
+    )
+
+
+def _pattern_bundle_highlights_for_placements(
+    placements: Sequence[RimBundlePlacement],
+) -> dict[str, object]:
+    entries = [
+        (
+            placement.candidate_id,
+            mining_occupied_from_rim_placement(placement),
+            placement.gene_key,
+        )
+        for placement in placements
+    ]
+    return build_pattern_bundle_highlights_wire(entries)
 
 
 def _placement_metadata(placement: RimBundlePlacement) -> dict[str, object]:
@@ -232,6 +260,9 @@ def build_layer04_runtime_segment_specs(
 
     for placement in selected_for_replay:
         meta = _placement_metadata(placement)
+        highlights = _pattern_bundle_highlights_for_placement(placement)
+        if highlights:
+            meta[METRICS_KEY] = highlights
         frames.append(
             _spec(
                 event_type=ReplayEventType.LAYER04_RIM_CANDIDATE_SELECTED,
@@ -274,6 +305,10 @@ def build_layer04_runtime_segment_specs(
         complete_metrics["truncated_rejected_overlap_replay"] = True
         complete_metrics["replay_rejected_overlap_cap"] = MAX_LAYER04_REPLAY_REJECTED_OVERLAP
         complete_metrics["rejected_overlap_replay_shown"] = len(rejections_for_replay)
+
+    complete_highlights = _pattern_bundle_highlights_for_placements(selected)
+    if complete_highlights:
+        complete_metrics[METRICS_KEY] = complete_highlights
 
     frames.append(
         _spec(

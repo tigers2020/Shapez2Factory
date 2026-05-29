@@ -94,6 +94,12 @@ Prior docs mentioned `LAB_SPRITE_KNOWN` whitelist and `labSpriteFilenameForCell`
 - Unified timeline JSON (`lab_replay_frames_json`) includes **`cell_overlay_json.equipment_bundles`** when present. Lab JS `cellOverlayJsonFromFrame` → `applyEquipmentBundleGroupVisualsFromOverlay` draws outline (`bundle_edges`) and links (`bundle_links`). Optimization frames recompute bundles on server from `map_view` cells.
 - `bundle_links` string `e` / `s` / `w` / `n` go through `LINK_KEY_TO_DIR` → `DIR_TO_BRIDGE_SUFFIX` to `lab-bundle-bridge-*` classes only (geometry aligned with [`assets/css/input.css`](../../assets/css/input.css) `#lab-replay-grid --lab-cell-gap`).
 
+## Pattern bundle highlight (genetic equipment silhouette)
+
+- Output-only wire: `ReplayTimelineFrame.metrics.pattern_bundle_highlights` (`bundles[].bundle_key`, `gene_key`, server `color_index`, `outline_loops`). Built from miner+extension cells only (belts, route paths, transport stubs excluded).
+- L3/L4: attached at segment compose from candidate `mining_occupied_cells` or placement `extractor_cells ∪ extension_cells`. `layer04_rim_placement_complete` carries the union of all selected placements (same footprint set as the combined overlay). Timeline enrichment fills from `cell_overlay_json.equipment_bundles` when not already present.
+- Lab toggle: `#lab-pattern-bundle-highlight-toggle` (`localStorage` `lab-pattern-bundle-highlight`). When **on**, JS draws `.lab-pattern-bundle-outline-svg` paths on `#lab-optimization-overlay-layer` (stroke palette via `data-color-index`; no client graph coloring). When **on**, skip `applyEquipmentBundleGroupVisualsFromOverlay` (legacy cell borders/bridges). Rim SVG (`.lab-terrain-rim-outline-svg`) and pattern SVG use separate roots and scoped clear functions.
+
 ## Viewport
 
 - `#lab-replay-grid-viewport` stays **16:9** fixed ratio (`aspect-video`, etc.) as **layout size · clipping window** only. `overflow: hidden`, `contain: layout paint`, `touch-action: none`, etc. reduce browser gesture/selection overlap. **Do not put `transform` or zoom-driven inline `width`/`height` on viewport.**

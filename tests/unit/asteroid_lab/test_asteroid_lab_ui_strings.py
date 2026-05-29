@@ -123,6 +123,21 @@ def test_lab_exterior_connector_overlay_contract() -> None:
     assert "inset" in built_css
 
 
+def test_lab_pattern_bundle_highlight_toggle_and_css_contract() -> None:
+    template = TEMPLATE.read_text(encoding="utf-8")
+    js = (
+        REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
+    css = (REPO / "assets" / "css" / "input.css").read_text(encoding="utf-8")
+    assert 'id="lab-pattern-bundle-highlight-toggle"' in template
+    assert "Pattern highlight" in template
+    assert "pattern_bundle_highlights" in js
+    assert "applyPatternBundleHighlightSvg" in js
+    assert "lab-pattern-bundle-outline-path" in css
+    assert "lab-pattern-bundle-highlight" in js
+    assert "lab-pattern-bundle-outline-svg" in css
+
+
 def test_lab_terrain_rim_highlight_toggle_and_css_contract() -> None:
     template = TEMPLATE.read_text(encoding="utf-8")
     js = (

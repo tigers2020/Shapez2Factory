@@ -374,6 +374,20 @@ def test_layer03_probe_windows_cover_full_replay_pool_by_candidate_ids() -> None
         assert metrics["candidate_count_in_window"] == len(metrics["candidate_ids"])
         assert metrics["candidate_start_index"] <= metrics["candidate_end_index"]
 
+    from django_apps.asteroid_lab.replay.pattern_bundle_highlight import METRICS_KEY
+
+    multi = next(
+        fr
+        for fr in window_frames
+        if len((fr.get("metrics") or {}).get("candidate_ids") or []) >= 2
+    )
+    highlights = (multi.get("metrics") or {}).get(METRICS_KEY)
+    assert isinstance(highlights, dict)
+    bundles = highlights.get("bundles")
+    assert isinstance(bundles, list) and len(bundles) >= 2
+    color_indices = {b["color_index"] for b in bundles}
+    assert len(color_indices) >= 2
+
 
 def test_assembler_l3_probe_windows_follow_summary() -> None:
     from django_apps.asteroid_lab.replay.event_types import (

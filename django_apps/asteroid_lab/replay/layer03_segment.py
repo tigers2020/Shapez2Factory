@@ -15,6 +15,10 @@ from django_apps.asteroid_lab.replay.layer03_pool_windowing import (
     PoolProbeWindowPlan,
     build_pool_probe_window_plans,
 )
+from django_apps.asteroid_lab.replay.pattern_bundle_highlight import (
+    METRICS_KEY,
+    build_pattern_bundle_highlights_wire,
+)
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
@@ -82,11 +86,23 @@ def _pool_summary_metrics(
     }
 
 
+def _pattern_bundle_highlights_for_plan(plan: PoolProbeWindowPlan) -> dict[str, object]:
+    entries = [
+        (
+            entry.candidate.candidate_id,
+            entry.candidate.mining_occupied_cells,
+            entry.candidate.gene_key,
+        )
+        for entry in plan.candidates
+    ]
+    return build_pattern_bundle_highlights_wire(entries)
+
+
 def _probe_window_metrics(
     observability: Layer03Observability,
     plan: PoolProbeWindowPlan,
 ) -> dict[str, object]:
-    return {
+    metrics: dict[str, object] = {
         "layer": LAYER03_PHASE,
         "probe_succeeded_count": observability.route_probe_succeeded_count,
         "normal_candidate_count": observability.normal_candidate_count,
@@ -101,6 +117,10 @@ def _probe_window_metrics(
         "candidate_count_in_window": len(plan.candidates),
         "shows_all_candidates": True,
     }
+    highlights = _pattern_bundle_highlights_for_plan(plan)
+    if highlights:
+        metrics[METRICS_KEY] = highlights
+    return metrics
 
 
 def _overlay_for_plan(plan: PoolProbeWindowPlan) -> tuple[ReplayOverlayCell, ...]:

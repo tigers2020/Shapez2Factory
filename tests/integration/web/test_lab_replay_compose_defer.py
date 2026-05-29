@@ -45,9 +45,7 @@ _PAGE_CONTEXT_COMPOSE_PATCH = (
 _PAGE_COMPOSED_LOAD_PATCH = (
     "django_apps.asteroid_lab.services.lab_replay_persisted_cache.load_composed_frames_for_run_id"
 )
-_GET_COMPOSE_PATCH = (
-    "django_apps.web.views.public_pages.build_lab_replay_frames_for_project"
-)
+_GET_COMPOSE_PATCH = "django_apps.web.views.public_pages.build_lab_replay_frames_for_project"
 
 
 @pytest.fixture(scope="module", autouse=True)

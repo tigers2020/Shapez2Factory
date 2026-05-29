@@ -253,6 +253,7 @@ def run_layer02_solver_for_project(
         record_perf_ms,
         serialized_json_utf8_bytes,
     )
+
     with perf_span("replay_artifact_build_ms"):
         lab_serialized = [
             replay_timeline_frame_to_json_dict(fr)

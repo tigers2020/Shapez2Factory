@@ -41,9 +41,7 @@ def select_max_set_score_independent_set(
     branch_nodes = 0
 
     def optimistic_gain_upper_bound(start_idx: int) -> int:
-        return sum(
-            effective_mining_gain(ordered[i].candidate) for i in range(start_idx, n)
-        )
+        return sum(effective_mining_gain(ordered[i].candidate) for i in range(start_idx, n))
 
     def optimistic_score_tuple(
         current: SetScoreTuple,

@@ -252,9 +252,7 @@ def lab_page_context(*, project_id: int | None = None, project_slug: str = "") -
             record_perf_ms("replay_cache_json_decode_ms", (time.monotonic() - t0) * 1000.0)
             if manifest_summary is not None:
                 record_perf_meta(
-                    lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(
-                        manifest_summary
-                    ),
+                    lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(manifest_summary),
                 )
 
         if is_cache_summary_valid(manifest_summary):
@@ -284,9 +282,7 @@ def lab_page_context(*, project_id: int | None = None, project_slug: str = "") -
                 )
             if manifest_summary is not None:
                 record_perf_meta(
-                    lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(
-                        manifest_summary
-                    ),
+                    lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(manifest_summary),
                 )
             if is_cache_summary_valid(manifest_summary):
                 assert manifest_summary is not None

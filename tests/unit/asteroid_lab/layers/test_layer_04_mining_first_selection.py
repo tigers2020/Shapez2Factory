@@ -59,11 +59,7 @@ def test_v2_selects_higher_gain_s_over_w_with_packing_set_loser() -> None:
     )
     assert len(outcome.selected_entries) == 1
     assert outcome.selected_entries[0].candidate.candidate_id == s.candidate.candidate_id
-    losers = [
-        r
-        for r in outcome.rejected
-        if r.rejected_candidate_id == w.candidate.candidate_id
-    ]
+    losers = [r for r in outcome.rejected if r.rejected_candidate_id == w.candidate.candidate_id]
     assert len(losers) == 1
     rej = losers[0]
     assert rej.reason is RimPlacementRejectReason.PHYSICAL_OVERLAP

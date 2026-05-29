@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Bugbot policy
 
-Use Cursor Bugbot **selectively** — not every PR, not a default checklist item.
+Use Cursor Bugbot **selectively** — not on every PR and not as a default checklist item.
 
 ## Invoke when
 
@@ -17,10 +17,10 @@ Use Cursor Bugbot **selectively** — not every PR, not a default checklist item
 
 ## Skip when
 
-- Docs-only PR, no runtime path change
-- Narrow test/style fix with green CI
+- Docs-only PR with no runtime path change
+- Narrow test or style fix with green CI
 - User asked to skip automated review
 
 ## Agent rule
 
-Don't add "run Bugbot" to PR templates or completion checklists by default. Mention Bugbot only when an invoke criterion applies.
+Do not add "run Bugbot" to PR templates or completion checklists by default. Mention Bugbot only when one of the invoke criteria applies.

@@ -6,25 +6,25 @@
 |---|---|---|---|
 | domain | `src/{{package_name}}/domain/` | Dominic | Pure rules, value objects, policies |
 | application | `src/{{package_name}}/application/` | Yuri | use cases, DTOs, port abstractions |
-| adapters | `src/{{package_name}}/adapters/` | Ada | External system impls, response→DTO mapping |
+| adapters | `src/{{package_name}}/adapters/` | Ada | External system implementations, response→DTO mapping |
 | interfaces | `src/{{package_name}}/interfaces/` | Gina | UI screens, user state, widget composition |
 | bootstrap | `src/{{package_name}}/bootstrap/` | Simon | Assembly, dependency wiring |
 | tests | `tests/` | Tess | unit/integration/golden |
 
 ## Dependency direction
 
-- `domain` imports no other layer.
-- `application` depends on `domain` + `application.ports`.
-- `adapters` implement `application.ports`, hide external library details.
-- `interfaces` depend on use cases or application DTOs; must not know adapter impl details directly.
-- `bootstrap` wires concrete adapters with UI + use cases.
+- `domain` must not import other layers.
+- `application` depends on `domain` and `application.ports`.
+- `adapters` implement `application.ports` and hide external library details.
+- `interfaces` depend on use cases or application DTOs but must not know adapter implementation details directly.
+- `bootstrap` wires concrete adapters with UI and use cases.
 
 ## Port rules
 
-- Ports under `src/{{package_name}}/application/ports/`.
+- Place ports under `src/{{package_name}}/application/ports/`.
 - Use cases depend on port protocols or abstract interfaces, not concrete classes.
-- Adapters satisfy port contracts, map external responses to application DTOs.
-- Port changes owned by Yuri; adapter impl by Ada; domain rules by Dominic.
+- Adapters satisfy port contracts and map external responses to application DTOs.
+- Port changes are owned by Yuri; adapter implementation changes by Ada; domain rule changes by Dominic.
 
 ## Test placement
 

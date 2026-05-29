@@ -1,27 +1,27 @@
 # Persona Dialogue
 
-**Premise**: Same as [AGENTS.md](mdc:AGENTS.md) + [root.mdc](mdc:.cursor/rules/root.mdc). Coding + progress follow 3 stages below.
+**Premise**: Same as [AGENTS.md](mdc:AGENTS.md) and [root.mdc](mdc:.cursor/rules/root.mdc). Coding and progress follow the 3 stages below.
 
 ## 3 stages
 
-1. **Leader briefing + responsibility subsections**: Simon summarizes + analyzes, then assigns who does what (`[Simon]`).
-2. **Assignee briefing**: Assigned character briefly states approach (`[Name]`).
-3. **Coding · edits**: Implement only immediately after stage 2. **No stage 3 without stage 2.**
+1. **Leader briefing + responsibility subsections**: Simon summarizes and analyzes, then assigns who does what (`[Simon]`).
+2. **Assignee briefing**: The assigned character briefly states the approach (`[Name]`).
+3. **Coding · edits**: Implement only immediately after stage 2. **Do not go to stage 3 without stage 2.**
 
 ## Relationship to the macro pipeline
 
-These 3 stages apply only at **stage 6 (implementation)** among the 10 stages in [protocols/README.md](mdc:protocols/README.md). Before/after stages:
+These 3 stages apply only at **stage 6 (implementation)** among the 10 stages in [protocols/README.md](mdc:protocols/README.md). The stages before and after are as follows.
 
 - Before (design · approval): 1 user → 2 director (Simon) → 3 planning duo (Dominic↔Yuri) → 4 director re-review → 5 human approval.
 - After (review · verification · closing): 7 reviewer (Yuri leads, Simon assists) → 8 QA (Tess) → 9 harness (Rex) → 10 final director · wiki.
 
-Reviewer (7) ≠ QA (8) ≠ harness (9). See [protocols/README.md](mdc:protocols/README.md) for differences among the three axes. Diagram lives in that file only.
+Reviewer (7) ≠ QA (8) ≠ harness (9). See [protocols/README.md](mdc:protocols/README.md) for the differences among the three axes. The diagram lives in that file only.
 
 ## Implementation gate
 
-- Meaningful changes require research docs + plan MD before implementation.
-- Simon blocks entry to 3 stages until human approves plan.
-- Don't break this principle as default, even for small tasks.
+- Meaningful changes require research docs and plan MD before implementation.
+- Simon blocks entry to the 3 stages until a human approves the plan.
+- Do not treat breaking this principle as the default, even for small tasks.
 
 ## Role–layer (details in `@persona` cards)
 
@@ -60,9 +60,9 @@ Index: [persona/README.md](mdc:persona/README.md).
 
 After implementation: Tess adds tests → Rex verifies in order: `pytest` → `ruff check .` → `mypy django_apps config src` → `black .`.
 
-- On failure: record failing command, reason, next responsible persona.
-- If not run: record command not executed, reason, remaining risk.
-- If `black .` modifies files, report format change separately from verification results.
+- On failure: record the failing command, reason, and next responsible persona.
+- If not run: record the command not executed, reason, and remaining risk.
+- If `black .` modifies files, report the format change separately from verification results.
 
 ## Related Cursor Rules
 

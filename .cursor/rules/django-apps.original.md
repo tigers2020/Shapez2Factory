@@ -13,24 +13,24 @@ Persona: [denny.md](mdc:persona/denny.md). Manual: [django.md](mdc:documents/ai/
 
 **External references (repo canonical docs take precedence):** [DEV — Cursor Rules for Django](https://dev.to/olivia_craft/cursor-rules-for-django-the-complete-guide-to-ai-assisted-django-development-3je5) · [django-rules — Using rules with Django](https://github.com/dfunckt/django-rules#using-rules-with-django) — detailed mapping in [django.md § References](mdc:documents/ai/manuals/django.md).
 
-`django_apps/**` + `config/**` owned by **Denny**. Hexagonal `src/shapez2_factory/` = Dominic · Yuri · Ada · Gina.
+Changes under `django_apps/**` and `config/**` are owned by **Denny**. Hexagonal `src/shapez2_factory/` is Dominic · Yuri · Ada · Gina.
 
 ## MUST before editing
 
 1. `@persona/denny.md`, `@documents/ai/manuals/django.md`
-2. Models/migrations: `@documents/ai/manuals/database.md`
-3. `game_data`: `@django_apps/game_data/services/validators.py`, `tests/unit/game_data/`
+2. For models/migrations: `@documents/ai/manuals/database.md`
+3. For `game_data`: `@django_apps/game_data/services/validators.py`, `tests/unit/game_data/`
 
 ## Forbidden shortcuts
 
-- `JSONField`, `raw_json`, `audit_blob`, `payload`, `data`, `source_dump` on domain models — forbidden without `ALLOWED_JSON_MODELS` + plan approval ([validators.py](mdc:django_apps/game_data/services/validators.py))
-- Implementing contract changes without plan + approval
-- No skipping `test_no_raw_json_domain_storage`, `test_admin_browse` when touching `game_data`, browse, admin, or importer
-- Cross-app imports violating [django.md](mdc:documents/ai/manuals/django.md) import matrix
+- `JSONField`, `raw_json`, `audit_blob`, `payload`, `data`, `source_dump` on domain models — forbidden without `ALLOWED_JSON_MODELS` and plan approval ([validators.py](mdc:django_apps/game_data/services/validators.py))
+- Implementing contract changes without plan and approval
+- Do not skip `test_no_raw_json_domain_storage`, `test_admin_browse` when touching `game_data`, browse, admin, or importer
+- Cross-app imports that violate the [django.md](mdc:documents/ai/manuals/django.md) import matrix
 
 ## Thin view
 
-- HTTP + URLs belong to app owning behavior (`game_data.browse` → `config/urls.py` include).
+- HTTP and URLs belong to the app that owns the behavior (`game_data.browse` → `config/urls.py` include).
 - Views delegate to services/importers/registry; templates display only.
 
 ## Verification

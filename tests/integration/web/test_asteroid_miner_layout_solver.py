@@ -8,6 +8,9 @@ from django.test import Client, override_settings
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
+)
 from django_apps.web.services import asteroid_lab_page_context as alc
 from tests.support.measure_json_sections import measure_json_sections
 
@@ -111,6 +114,37 @@ def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     content = response.content.decode()
     assert 'id="lab-replay-manifest-data"' in content
     assert 'id="lab-replay-frames-data"' not in content
+
+
+def test_run_list_marks_completed_validation_failed_run_as_failed() -> None:
+    """SSR regression: a COMPLETED run with validation_passed=False must render as failed.
+
+    Mirrors the Lab JS rule (failed = status=='failed' OR validation_passed===false) so the
+    first paint matches the JS re-render instead of showing a neutral/cyan 'Run #N' badge.
+    """
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    proj = m.AsteroidProject.objects.get()
+    m.SolverRun.objects.create(
+        project=proj,
+        run_key="run-validation-failed-regression",
+        status=m.SolverRun.RunStatus.COMPLETED,
+        config_json={
+            SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY: {
+                "validation_passed": False,
+                "issue_codes": [],
+            }
+        },
+    )
+
+    page = client.get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": proj.slug}))
+
+    assert page.status_code == 200
+    content = page.content.decode()
+    assert "validation failed" in content
+    assert "border-rose-500/80" in content
 
 
 def test_replay_frame_cell_post_returns_cell_json() -> None:

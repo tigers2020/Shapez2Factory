@@ -2531,13 +2531,13 @@
     }
 
     function applyRunSelectionHighlight(runId) {
+      const wanted = runId != null ? String(runId) : null;
       document.querySelectorAll("[data-lab-run-id]").forEach(function (b) {
-        const on = runId != null && b.getAttribute("data-lab-run-id") === runId;
-        b.classList.toggle("border-cyan-500", on);
-        b.classList.toggle("bg-cyan-500/10", on);
-        b.classList.toggle("border-slate-800", !on);
-        b.classList.toggle("bg-slate-900", !on);
-        b.classList.toggle("hover:border-slate-700", !on);
+        const bid = b.getAttribute("data-lab-run-id");
+        const run = (runs || []).find(function (r) {
+          return r && String(r.id) === bid;
+        });
+        b.className = evolutionRunButtonClasses(run, wanted != null && bid === wanted);
       });
     }
 
@@ -3073,17 +3073,6 @@
         applyFrame();
       });
     }
-
-    document.querySelectorAll("[data-lab-run-id]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        const rid = btn.getAttribute("data-lab-run-id");
-        const run = (runs || []).find(function (r) {
-          return r.id === rid;
-        });
-        applyRunSelectionHighlight(rid);
-        setRunDetail(run);
-      });
-    });
 
     openTopology?.addEventListener("click", function () {
       modal?.classList.remove("hidden");
@@ -4196,6 +4185,7 @@
     updateLabGridHudEmpty();
     bindLabViewportInteractions();
 
+    renderEvolutionRunsList(baselineRunId);
     setRunDetail(baselineRun);
     renderLabReplayLoadStatus();
     applyFrame();

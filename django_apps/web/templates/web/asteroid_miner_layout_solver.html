@@ -299,12 +299,12 @@
                 <button
                   type="button"
                   data-lab-run-id="{{ r.id }}"
-                  class="w-full rounded-xl border p-3 text-left transition {% if r.status == 'failed' %}{% if forloop.first %}border-rose-500/80 bg-rose-950/40{% else %}border-rose-800/80 bg-rose-950/20 hover:border-rose-700{% endif %}{% elif forloop.first %}border-cyan-500 bg-cyan-500/10{% else %}border-slate-800 bg-slate-900 hover:border-slate-700{% endif %}"
+                  class="w-full rounded-xl border p-3 text-left transition {% if r.status == 'failed' or not r.validation_passed %}{% if forloop.first %}border-rose-500/80 bg-rose-950/40{% else %}border-rose-800/80 bg-rose-950/20 hover:border-rose-700{% endif %}{% elif forloop.first %}border-cyan-500 bg-cyan-500/10{% else %}border-slate-800 bg-slate-900 hover:border-slate-700{% endif %}"
                 >
                   <div class="flex items-center justify-between">
                     <div class="font-medium">Run #{{ r.id }}</div>
-                    <div class="text-sm {% if r.status == 'failed' %}text-rose-300{% else %}text-cyan-300{% endif %} lab-run-list-headline">
-                      {% if r.status == 'failed' %}validation failed{% else %}Run #{{ r.id }}{% endif %}
+                    <div class="text-sm {% if r.status == 'failed' or not r.validation_passed %}text-rose-300{% else %}text-cyan-300{% endif %} lab-run-list-headline">
+                      {% if r.status == 'failed' or not r.validation_passed %}validation failed{% else %}Run #{{ r.id }}{% endif %}
                     </div>
                   </div>
                   <div class="mt-2 text-xs text-slate-400 lab-run-list-subtitle" data-lab-run-subtitle-id="{{ r.id }}">—</div>

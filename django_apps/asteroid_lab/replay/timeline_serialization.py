@@ -54,12 +54,20 @@ def replay_bbox_from_json_dict(data: object) -> ReplayBBox:
     )
 
 
+def _wire_kind(data: dict[str, Any]) -> str:
+    return str(data.get("kind") or data.get("cell_kind") or "")
+
+
+def _wire_transport(data: dict[str, Any]) -> str:
+    return str(data.get("transport") or data.get("transport_kind") or "")
+
+
 def _cell_from_dict(data: dict[str, Any]) -> ReplayCell:
     return ReplayCell(
         x=_require_int(data.get("x"), field="cell.x"),
         y=_require_int(data.get("y"), field="cell.y"),
-        kind=str(data.get("kind") or ""),
-        transport=str(data.get("transport") or ""),
+        kind=_wire_kind(data),
+        transport=_wire_transport(data),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
     )
@@ -69,8 +77,8 @@ def _cell_delta_from_dict(data: dict[str, Any]) -> ReplayCellDelta:
     return ReplayCellDelta(
         x=_require_int(data.get("x"), field="cell_delta.x"),
         y=_require_int(data.get("y"), field="cell_delta.y"),
-        kind=str(data.get("kind") or ""),
-        transport=str(data.get("transport") or ""),
+        kind=_wire_kind(data),
+        transport=_wire_transport(data),
         op=str(data.get("op") or "set"),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
@@ -81,8 +89,8 @@ def _overlay_from_dict(data: dict[str, Any]) -> ReplayOverlayCell:
     return ReplayOverlayCell(
         x=_require_int(data.get("x"), field="overlay.x"),
         y=_require_int(data.get("y"), field="overlay.y"),
-        kind=str(data.get("kind") or ""),
-        transport=str(data.get("transport") or ""),
+        kind=_wire_kind(data),
+        transport=_wire_transport(data),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
     )

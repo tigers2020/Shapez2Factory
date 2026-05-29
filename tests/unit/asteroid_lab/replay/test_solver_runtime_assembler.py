@@ -21,6 +21,67 @@ def test_layer03_event_types_registered() -> None:
         assert is_registered_event_type(wire)
 
 
+def test_decoded_cell_row_round_trip_preserves_kind_and_transport() -> None:
+    from django_apps.asteroid_lab.replay.layer02_segment import _decoded_cell_to_row
+    from django_apps.asteroid_lab.replay.timeline_serialization import (
+        replay_map_view_from_json_dict,
+    )
+    from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+
+    sample = DecodedCellDTO(
+        x=3,
+        y=4,
+        layer=None,
+        rotation=0,
+        tile_type="",
+        cell_kind="asteroid_shape_field",
+        transport_kind="shape_belt",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={},
+    )
+    row = _decoded_cell_to_row(sample)
+    map_view = replay_map_view_from_json_dict(
+        {
+            "full_cells": [row],
+            "overlay_cells": [],
+            "cell_delta": [],
+            "annotations": [],
+            "bbox": {"min_x": 3, "min_y": 4, "max_x": 3, "max_y": 4},
+        }
+    )
+    cell = map_view.full_cells[0]
+    assert cell.kind == "asteroid_shape_field"
+    assert cell.transport == "shape_belt"
+
+
+def test_cell_from_dict_accepts_cell_kind_aliases() -> None:
+    from django_apps.asteroid_lab.replay.timeline_serialization import (
+        replay_map_view_from_json_dict,
+    )
+
+    map_view = replay_map_view_from_json_dict(
+        {
+            "full_cells": [
+                {
+                    "x": 1,
+                    "y": 2,
+                    "cell_kind": "asteroid_shape_field",
+                    "transport_kind": "shape_belt",
+                    "rotation": 0,
+                }
+            ],
+            "overlay_cells": [],
+            "cell_delta": [],
+            "annotations": [],
+            "bbox": {"min_x": 1, "min_y": 2, "max_x": 1, "max_y": 2},
+        }
+    )
+    assert map_view.full_cells[0].kind == "asteroid_shape_field"
+    assert map_view.full_cells[0].transport == "shape_belt"
+
+
 def test_layer02_segment_matches_legacy_timeline_wire() -> None:
     from django_apps.asteroid_lab.replay.layer02_segment import (
         build_layer02_exterior_transport_frame,

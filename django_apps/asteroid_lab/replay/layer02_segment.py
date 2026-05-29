@@ -49,8 +49,8 @@ def _decoded_cell_to_row(cell: DecodedCellDTO) -> dict[str, Any]:
     return {
         "x": int(cell.x),
         "y": int(cell.y),
-        "cell_kind": str(cell.cell_kind),
-        "transport_kind": str(cell.transport_kind or ""),
+        "kind": str(cell.cell_kind),
+        "transport": str(cell.transport_kind or ""),
         "rotation": int(cell.rotation),
         "tile_type": str(cell.tile_type or ""),
     }

@@ -20,20 +20,11 @@ from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKi
 from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.place import (
     build_rim_bundle_placement,
 )
-from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.replay import (
-    build_layer04_replay_frames,
-)
 from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
     run_layer_04_rim_bundle_placement,
 )
 from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.select import (
     select_non_overlapping_candidates,
-)
-from django_apps.asteroid_lab.replay.event_types import (
-    EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED,
-    EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN,
-    EVENT_TYPE_LAYER04_RIM_PLACEMENT_COMPLETE,
-    is_registered_event_type,
 )
 from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
     golden_5x5_complete_map,
@@ -148,18 +139,6 @@ def test_build_placement_provisional_state_only() -> None:
     )
 
 
-def test_build_layer04_replay_frames_emits_begin_selected_complete() -> None:
-    entry = succeeded_probe_at((3, 4))
-    placement = build_rim_bundle_placement(entry)
-    frames = build_layer04_replay_frames(selected=(placement,), rejected=())
-    types = [f.frame_payload["event_type"] for f in frames]
-    assert types[0] == EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN
-    assert EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED in types
-    assert types[-1] == EVENT_TYPE_LAYER04_RIM_PLACEMENT_COMPLETE
-    assert all(is_registered_event_type(t) for t in types)
-    assert frames[1].frame_payload["placement_state"] == "PROVISIONAL_PLACED"
-
-
 def _candidate_set_with(*entries: object) -> object:
     normal = entries
     return build_rim_bundle_candidate_set(
@@ -179,6 +158,18 @@ def _candidate_set_with(*entries: object) -> object:
             layer_skip_reason=Layer03ExpansionMetrics.empty().layer_skip_reason,
         ),
     )
+
+
+def test_run_layer04_replay_frames_empty_runtime_authority_in_assembler() -> None:
+    candidate_set = _candidate_set_with(succeeded_probe_at((6, 4)))
+    result = run_layer_04_rim_bundle_placement(
+        complete_map=golden_5x5_complete_map(),
+        exterior_plan=minimal_l2_plan_for_golden(),
+        candidate_set=candidate_set,
+        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
+    )
+    assert result.replay_frames == ()
+    assert result.selected_count >= 1
 
 
 def test_run_layer04_does_not_mutate_complete_map() -> None:

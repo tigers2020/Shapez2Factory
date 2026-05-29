@@ -52,13 +52,15 @@ class RimPlacementRejection:
 
 @dataclass(frozen=True, slots=True)
 class Layer04RimPlacementResult:
+    """Runtime replay frames are built by ``replay.solver_runtime_assembler`` only."""
+
     selected_placements: tuple[RimBundlePlacement, ...]
     rejected_candidates: tuple[RimPlacementRejection, ...]
     selected_count: int
     rejected_overlap_count: int
     rejected_budget_count: int
     provisional_overlay: ProvisionalLayoutOverlay
-    replay_frames: tuple[ReplayFrameAppendDTO, ...]
+    replay_frames: tuple[ReplayFrameAppendDTO, ...]  # deprecated v1: always () in production
 
     def __post_init__(self) -> None:
         if self.selected_count != len(self.selected_placements):

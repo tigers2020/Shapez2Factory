@@ -48,6 +48,7 @@ These are **not substitutes for one another**; responsibilities differ.
 | Strategy | Role | Semantics |
 |------|------|--------|
 | **Inline full replay** | Current: full Lab frames in POST response | Baseline; equivalence proof required on change |
+| **Compose defer + persisted cache (13C2-lite)** | After first compose, persist `lab_replay_composed_frames` + `lab_replay_manifest_summary` on `SolverRun.config_json`; lazy SSR reads summary only; GET reads composed frames; POST composes once | **Between 13D and 13E** — removes duplicate compose on hot paths; wire shape unchanged until 13G/13E. **Status (2026-05-29):** implementation complete locally; acceptance via [`2026-05-29-replay-compose-defer-artifact-reuse-design.md`](../../docs/superpowers/specs/2026-05-29-replay-compose-defer-artifact-reuse-design.md) §7 perf verification |
 | **Lazy-load endpoint (13C)** | POST carries **summary · preview · fetch handle** only; full Lab replay via **on-demand GET**, etc. | Frame **content identical**; only transport path split |
 | **Delta replay (13E)** | Reduces serialization **representation** only; client/server **reconstruction rules** documented | **Serialization optimization**, not **semantic change** |
 | **Cell interning / dictionary encoding (13F)** | **Reference · dictionary encoding** for repeated cell payloads | Cell detail lookup and frame rendering **equivalence** preserved |

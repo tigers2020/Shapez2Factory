@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.genetic_sample.enums import Direction
-from django_apps.asteroid_lab.replay.layer04_segment import OVERLAY_KIND_ROUTE_PROBE_PATH
 from django_apps.asteroid_lab.layers.contracts.rim_placement import (
     Layer04PackingObservability,
     RimPlacementRejection,
@@ -18,7 +17,10 @@ from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_LAYER04_RIM_PLACEMENT_COMPLETE,
     is_registered_event_type,
 )
-from django_apps.asteroid_lab.replay.layer04_segment import build_layer04_runtime_segment_specs
+from django_apps.asteroid_lab.replay.layer04_segment import (
+    OVERLAY_KIND_ROUTE_PROBE_PATH,
+    build_layer04_runtime_segment_specs,
+)
 from django_apps.asteroid_lab.replay.replay_limits import (
     MAX_LAYER04_REPLAY_REJECTED_OVERLAP,
     MAX_LAYER04_REPLAY_SELECTED,
@@ -60,9 +62,7 @@ def test_layer04_selected_overlay_includes_route_probe_path_not_space_belt() -> 
     )
     specs = build_layer04_runtime_segment_specs(selected=(placement,), rejected=())
     selected_spec = next(
-        spec
-        for spec in specs
-        if spec.event_type.value == EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED
+        spec for spec in specs if spec.event_type.value == EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED
     )
     wire = transient_overlay_cells_to_wire(selected_spec.transient_overlay_cells)
     path_rows = [row for row in wire if row["kind"] == OVERLAY_KIND_ROUTE_PROBE_PATH]
@@ -77,9 +77,7 @@ def test_layer04_selected_overlay_preserves_candidate_cell_rotation() -> None:
     )
     specs = build_layer04_runtime_segment_specs(selected=(placement,), rejected=())
     selected_spec = next(
-        spec
-        for spec in specs
-        if spec.event_type.value == EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED
+        spec for spec in specs if spec.event_type.value == EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED
     )
     wire = transient_overlay_cells_to_wire(selected_spec.transient_overlay_cells)
     miner = next(row for row in wire if row["kind"] == "shape_miner")

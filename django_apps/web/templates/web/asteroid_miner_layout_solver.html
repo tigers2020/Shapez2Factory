@@ -9,9 +9,12 @@
   {{ lab_cell_overlay_matrix|json_script:"lab-cell-overlay-matrix-data" }}
   {{ runs|json_script:"lab-runs-data" }}
   {{ lab_ui_initial|json_script:"lab-ui-initial-state" }}
+  {% if lab_replay_ssr_delivery == "inline" %}
   {{ lab_replay_frames_json|json_script:"lab-replay-frames-data" }}
-  {{ lab_initial_replay_frame_json|json_script:"lab-initial-replay-frame-data" }}
   {{ replay_track_metrics|json_script:"lab-replay-track-metrics-data" }}
+  {% else %}
+  {{ lab_replay_manifest_json|json_script:"lab-replay-manifest-data" }}
+  {% endif %}
   {{ lab_identifier_sprite_paths|json_script:"lab-identifier-sprite-paths-data" }}
 
   <div

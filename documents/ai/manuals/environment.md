@@ -19,8 +19,8 @@ Load order: `.env` → `.env.debug` (when present).
 |--------|------|-----|
 | **runtime** | Infrastructure · data paths needed locally/deployment | `DATABASE_URL`, `DJANGO_USE_SQLITE`, `SHAPEZ_BASEDATA_ROOT` |
 | **feature** | Product behavior toggles (code has readers) | `ASTEROID_LAB_REPLAY_PAYLOAD_MODE` |
-| **infra** | Graph PNG preview · cache, etc. | `SOLVER_GRAPH_PREVIEW_*` |
-| **debug** | Do not put in default `.env` | `ASTEROID_LAB_BOUNDARY_JSONL`, `SHAPEZ_COPY_DEBUG_DIR` |
+| **infra** | Graph PNG preview · cache, HTTP gzip (no env — `GZipMiddleware` in `config/settings.py`) | `SOLVER_GRAPH_PREVIEW_*` |
+| **debug** | Do not put in default `.env` | `ASTEROID_LAB_BOUNDARY_JSONL`, `ASTEROID_LAB_PERF_TRACE`, `SHAPEZ_COPY_DEBUG_DIR` |
 | **unused** | Names left only in `.env` — **not referenced in code, delete** | `SHAPEZ_MINING_*`, `ASTEROID_LAB_REPLAY_JSON_DELIVERY`, etc. |
 
 ## Boolean notation
@@ -42,6 +42,7 @@ Load order: `.env` → `.env.debug` (when present).
 | `ASTEROID_LAB_MINERS_PER_ROUTE_OUT` | `12` | `config/settings.py` (shape belt goals per-route bundle budget) |
 | `ASTEROID_LAB_REPLAY_PAYLOAD_MODE` | `lazy` | `config/settings.py` — `inline` keeps full POST `lab_replay_frames_json`; `lazy` omits inline array (Sequence 13C) |
 | `ASTEROID_LAB_BOUNDARY_JSONL` | off | `django_apps/asteroid_lab/observability/boundary_jsonl.py` |
+| `ASTEROID_LAB_PERF_TRACE` | off | `django_apps/asteroid_lab/observability/lab_perf_trace.py` — JSONL under `var/log/asteroid_lab_perf/` |
 | `ASTEROID_LAB_BOUNDARY_JSONL_DIR` | `var/asteroid_boundary_logs` | same |
 | `ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_ENABLED` | on (`True` in `config/settings.py`) | `django_apps/asteroid_lab/layers/observability/layer_post_summary_log.py` |
 | `ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_DIR` | `var/log/asteroid_lab_layer_stack` | same |
@@ -77,6 +78,7 @@ OAuth · Support URL, etc.: see `config/settings.py`.
 
 - **11B optimization overlay**: no env flag. On implementation, separate design · update this doc.
 - **13C lazy Lab replay**: `ASTEROID_LAB_REPLAY_PAYLOAD_MODE` registered (default `lazy`). See [`asteroid_lab_13_replay_payload_scalability.md`](../../Algorithm/asteroid_lab_13_replay_payload_scalability.md).
+- **13G gzip transport**: `django.middleware.gzip.GZipMiddleware` after WhiteNoise in `config/settings.py` (no env flag). Large JSON responses (e.g. `GET …/lab-replay/`) compress when `Accept-Encoding: gzip`.
 
 ## Related manuals
 

@@ -63,6 +63,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.middleware.gzip.GZipMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -181,6 +182,13 @@ ASTEROID_LAB_REPLAY_PAYLOAD_MODE = (
 )
 if ASTEROID_LAB_REPLAY_PAYLOAD_MODE not in ("inline", "lazy"):
     ASTEROID_LAB_REPLAY_PAYLOAD_MODE = "lazy"
+
+# Lab HTTP latency JSONL under var/log/asteroid_lab_perf/ (observability only; not solver input).
+ASTEROID_LAB_PERF_TRACE = os.environ.get("ASTEROID_LAB_PERF_TRACE", "0").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 # Layer stack behavior + summary JSONL under var/ (observability only; not solver input).
 ASTEROID_LAB_LAYER_POST_SUMMARY_LOG_ENABLED = True

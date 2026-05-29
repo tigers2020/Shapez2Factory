@@ -1920,12 +1920,9 @@
       runs = [];
     }
     const uiInitial = readJsonScript("lab-ui-initial-state");
-    const replayFramesRaw = readJsonScript("lab-replay-frames-data");
-    let replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
-    const trackMetricsRaw = readJsonScript("lab-replay-track-metrics-data");
-    let replayTrackMetrics =
-      trackMetricsRaw && typeof trackMetricsRaw === "object" ? trackMetricsRaw : {};
-    let hasServerReplay = replayFrames.length > 0;
+    const manifestRaw = readJsonScript("lab-replay-manifest-data");
+    let replayFrames = [];
+    let replayTrackMetrics = {};
     const labReplayLoadState = {
       mode: "inline",
       status: "idle",
@@ -1934,6 +1931,31 @@
       errorMessage: null,
       loadPromise: null,
     };
+
+    if (manifestRaw && manifestRaw.mode === "lazy") {
+      labReplayLoadState.mode = "lazy";
+      labReplayLoadState.frameCount = Number(manifestRaw.frame_count) || 0;
+      labReplayLoadState.fetchUrl =
+        typeof manifestRaw.fetch_url === "string" ? manifestRaw.fetch_url : null;
+      if (manifestRaw.replay_track_metrics && typeof manifestRaw.replay_track_metrics === "object") {
+        replayTrackMetrics = manifestRaw.replay_track_metrics;
+      }
+      const preview =
+        manifestRaw.preview_frame && typeof manifestRaw.preview_frame === "object"
+          ? manifestRaw.preview_frame
+          : null;
+      replayFrames = preview ? [preview] : [];
+      if (!labReplayLoadState.fetchUrl) {
+        labReplayLoadState.status = "idle";
+      }
+    } else {
+      const replayFramesRaw = readJsonScript("lab-replay-frames-data");
+      replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
+      const trackMetricsRaw = readJsonScript("lab-replay-track-metrics-data");
+      replayTrackMetrics =
+        trackMetricsRaw && typeof trackMetricsRaw === "object" ? trackMetricsRaw : {};
+    }
+    let hasServerReplay = replayFrames.length > 0;
 
     function renderLabReplayLoadStatus() {
       const el = document.getElementById("lab-replay-load-status");
@@ -4169,6 +4191,7 @@
     bindLabViewportInteractions();
 
     setRunDetail(baselineRun);
+    renderLabReplayLoadStatus();
     applyFrame();
   }
 

@@ -119,9 +119,7 @@ def select_non_overlapping_candidates_v2(
             materialization_queue.append((component.component_id, entry))
 
     selected_entries: list[RouteProbedBundleCandidate] = []
-    materialized_by_component: dict[str, list[str]] = {
-        c.component_id: [] for c in components
-    }
+    materialized_by_component: dict[str, list[str]] = {c.component_id: [] for c in components}
     budget_limited = False
     budget_interrupted_component_id: str | None = None
 
@@ -170,9 +168,7 @@ def select_non_overlapping_candidates_v2(
         for rec in component_records
     )
 
-    selected_total_gain = sum(
-        effective_mining_gain(e.candidate) for e in selected_entries
-    )
+    selected_total_gain = sum(effective_mining_gain(e.candidate) for e in selected_entries)
     baseline_gain, baseline_skip = compute_greedy_baseline_observability(
         normal_candidates=normal_candidates,
     )

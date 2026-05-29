@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,14 @@ from django_apps.asteroid_lab.models import (
     ReplayTrack,
     SolverRun,
 )
+from django_apps.asteroid_lab.observability.lab_perf_trace import (
+    count_full_map_cells,
+    lab_perf_trace_request,
+    perf_span,
+    record_perf_meta,
+    record_perf_ms,
+    serialized_json_utf8_bytes,
+)
 from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
     upsert_map_input_for_project,
@@ -31,6 +40,12 @@ from django_apps.asteroid_lab.services.input_service import (
 from django_apps.asteroid_lab.services.lab_map_reset_service import (
     LabMapResetErrorCode,
     reset_project_map_to_inspection_clean,
+)
+from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
+    is_cache_summary_valid,
+    load_composed_frames_for_run_id,
+    load_manifest_summary_for_run_id,
+    persist_composed_replay_for_run_id,
 )
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
@@ -191,7 +206,10 @@ def pattern_lab(request: HttpRequest) -> HttpResponse:
 def _asteroid_miner_lab_page_context(
     blueprint_code: str, *, project: AsteroidProject | None = None
 ) -> dict[str, Any]:
-    ctx = lab_page_context(project_id=int(project.pk) if project is not None else None)
+    ctx = lab_page_context(
+        project_id=int(project.pk) if project is not None else None,
+        project_slug=str(project.slug) if project is not None else "",
+    )
     ctx["blueprint_code"] = blueprint_code
     ui_initial = dict(ctx.get("lab_ui_initial") or {})
     ui_initial["blueprintCode"] = blueprint_code
@@ -279,11 +297,20 @@ def asteroid_miner_layout_project(request: HttpRequest, slug: str) -> HttpRespon
         raise Http404
     inp = AsteroidMapInput.objects.filter(project_id=project.pk).order_by("-created_at").first()
     blueprint_code = (inp.copy_code if inp else "") or ""
-    return render(
-        request,
-        "web/asteroid_miner_layout_solver.html",
-        _asteroid_miner_lab_page_context(blueprint_code, project=project),
-    )
+    with lab_perf_trace_request(request_kind="project_page", project_slug=str(project.slug)):
+        with perf_span("lab_page_context_ms"):
+            page_ctx = _asteroid_miner_lab_page_context(blueprint_code, project=project)
+        record_perf_meta(
+            frame_count=int(page_ctx.get("total_frames") or 0),
+            has_replay_frames=bool(page_ctx.get("has_replay_frames")),
+        )
+        response = render(
+            request,
+            "web/asteroid_miner_layout_solver.html",
+            page_ctx,
+        )
+        record_perf_meta(html_bytes=len(response.content))
+        return response
 
 
 def _run_solver_request_config(request: HttpRequest) -> tuple[dict[str, Any], JsonResponse | None]:
@@ -334,8 +361,25 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
             status=404,
         )
 
+    with lab_perf_trace_request(request_kind="run_solver", project_slug=str(slug)):
+        return _run_solver_post_traced(
+            request,
+            slug=slug,
+            project=project,
+            run_config=run_config,
+        )
+
+
+def _run_solver_post_traced(
+    request: HttpRequest,
+    *,
+    slug: str,
+    project: AsteroidProject,
+    run_config: dict[str, Any],
+) -> JsonResponse:
     try:
-        game_data_build = build_asteroid_game_data_snapshot_with_provenance()
+        with perf_span("game_data_snapshot_ms"):
+            game_data_build = build_asteroid_game_data_snapshot_with_provenance()
     except SnapshotBuildError as exc:
         return JsonResponse(
             {
@@ -356,14 +400,23 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
             status=400,
         )
 
-    result = run_solver_runtime_for_project(
-        int(project.pk),
-        config=run_config,
-        game_data_snapshot=game_data_build.snapshot,
-        game_data_provenance=game_data_build.provenance,
-        catalog_slice=game_data_build.catalog_slice,
+    with perf_span("solver_runtime_ms"):
+        result = run_solver_runtime_for_project(
+            int(project.pk),
+            config=run_config,
+            game_data_snapshot=game_data_build.snapshot,
+            game_data_provenance=game_data_build.provenance,
+            catalog_slice=game_data_build.catalog_slice,
+        )
+    with perf_span("response_json_build_ms"):
+        body = entry_result_to_json_dict(result, project_slug=str(project.slug))
+        payload_json = json.dumps(body, separators=(",", ":"), ensure_ascii=False)
+        payload_bytes = len(payload_json.encode("utf-8"))
+    record_perf_meta(
+        payload_bytes=payload_bytes,
+        solver_run_id=result.solver_run_id,
+        lab_replay_frame_count=len(result.lab_replay_frames_json),
     )
-    body = entry_result_to_json_dict(result, project_slug=str(project.slug))
     if result.error_code in (
         SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
         SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND,
@@ -390,18 +443,44 @@ def asteroid_miner_layout_project_solver_run_lab_replay(
     slug: str,
     run_id: int,
 ) -> JsonResponse:
-    project = AsteroidProject.objects.filter(slug=slug).first()
-    if project is None:
-        return JsonResponse({"ok": False, "error": "project_not_found"}, status=404)
-    run = SolverRun.objects.filter(pk=int(run_id), project_id=int(project.pk)).first()
-    if run is None:
-        return JsonResponse({"ok": False, "error": "solver_run_not_found"}, status=404)
-    frames, metrics = build_lab_replay_frames_for_project(
-        int(project.pk),
-        solver_run_id=int(run.pk),
-    )
-    return JsonResponse(
-        {
+    with lab_perf_trace_request(
+        request_kind="lab_replay_get",
+        project_slug=str(slug),
+        run_id=int(run_id),
+    ):
+        with perf_span("solver_run_lookup_ms"):
+            project = AsteroidProject.objects.filter(slug=slug).first()
+            if project is None:
+                return JsonResponse({"ok": False, "error": "project_not_found"}, status=404)
+            run = SolverRun.objects.filter(pk=int(run_id), project_id=int(project.pk)).first()
+            if run is None:
+                return JsonResponse({"ok": False, "error": "solver_run_not_found"}, status=404)
+        run_pk = int(run.pk)
+        project_pk = int(project.pk)
+        with perf_span("replay_cache_load_ms"):
+            decode_ms = 0.0
+            t0 = time.monotonic()
+            frames = load_composed_frames_for_run_id(run_pk)
+            decode_ms += (time.monotonic() - t0) * 1000.0
+            t0 = time.monotonic()
+            summary = load_manifest_summary_for_run_id(run_pk)
+            decode_ms += (time.monotonic() - t0) * 1000.0
+        record_perf_ms("replay_cache_json_decode_ms", decode_ms)
+        record_perf_meta(
+            lab_replay_cache_frames_bytes=serialized_json_utf8_bytes(frames),
+            lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(summary),
+        )
+        if frames is not None and is_cache_summary_valid(summary):
+            assert summary is not None
+            metrics = dict(summary.get("replay_track_metrics") or {})
+        else:
+            with perf_span("replay_cache_miss_compose_ms"):
+                frames, metrics = build_lab_replay_frames_for_project(
+                    project_pk,
+                    solver_run_id=run_pk,
+                )
+                persist_composed_replay_for_run_id(run_pk, frames=frames, metrics=metrics)
+        payload: dict[str, Any] = {
             "schema_version": 1,
             "run_id": int(run.pk),
             "project_slug": str(project.slug),
@@ -413,7 +492,18 @@ def asteroid_miner_layout_project_solver_run_lab_replay(
                 "semantic_equivalent_to_inline": True,
             },
         }
-    )
+        with perf_span("json_response_build_ms"):
+            payload_bytes = len(
+                json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            )
+            response = JsonResponse(payload)
+        record_perf_meta(
+            frame_count=len(frames),
+            total_full_map_cells=count_full_map_cells(frames),
+            payload_bytes=payload_bytes,
+            response_bytes=len(response.content),
+        )
+        return response
 
 
 @require_POST

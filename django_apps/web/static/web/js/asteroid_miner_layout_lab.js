@@ -75,6 +75,9 @@
     fluid_miner_extension: "Layout_FluidMinerExtension",
     shape_miner: "Layout_ShapeMiner",
     shape_miner_extension: "Layout_ShapeMinerExtension",
+    /** Legacy L4 replay observation aliases (defense-in-depth if wire not yet domain kinds). */
+    miner: "Layout_ShapeMiner",
+    extension: "Layout_ShapeMinerExtension",
   });
 
   /** Blueprint ``T`` alias when art matches another identifier (mirrors ``lab_sprite_path.py``). */
@@ -181,6 +184,17 @@
   /** Last-resort: infer Forward-only sprite from transport kind when tile_type is absent.
    * Turn/splitter/merger variants require replay-provided tile_type — no topology inference here. */
   function inferTransportSpriteIdentifier(cell) {
+    const ck = cell.cell_kind != null ? String(cell.cell_kind) : "";
+    if (
+      ck === "miner" ||
+      ck === "extension" ||
+      ck === "shape_miner" ||
+      ck === "shape_miner_extension" ||
+      ck === "fluid_miner" ||
+      ck === "fluid_miner_extension"
+    ) {
+      return null;
+    }
     const tk = cell.transport_kind || cell.transport;
     if (!tk) return null;
     if (tk === "shape_belt" || cell.cell_kind === "space_belt") return "SpaceBelt_Forward";
@@ -993,6 +1007,7 @@
   /** Pre-candidate_* replay wire on L3 pool summary frames only. */
   var LEGACY_L3_POOL_OVERLAY_CELL_KINDS = {
     miner: true,
+    extension: true,
     transport_stub: true,
     route_path: true,
   };

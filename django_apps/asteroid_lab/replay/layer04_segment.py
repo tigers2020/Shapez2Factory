@@ -35,6 +35,18 @@ def _copy_map_view(base_map_view: ReplayMapView) -> ReplayMapView:
     return replay_map_view_from_json_dict(replay_map_view_to_json_dict(base_map_view))
 
 
+def _overlay_kind_for_role(*, role: str, transport: str) -> str:
+    """Map L4 observation role to domain cell_kind for Lab sprite resolution."""
+    is_fluid = transport == "fluid_pipe"
+    if role == "miner":
+        return "fluid_miner" if is_fluid else "shape_miner"
+    if role == "extension":
+        return "fluid_miner_extension" if is_fluid else "shape_miner_extension"
+    if role == "transport_stub":
+        return "space_pipe" if is_fluid else "space_belt"
+    return role
+
+
 def _placement_metadata(placement: RimBundlePlacement) -> dict[str, object]:
     x, y = placement.anchor_coord
     return {
@@ -53,11 +65,32 @@ def _overlay_cells_for_placement(placement: RimBundlePlacement) -> tuple[ReplayO
     transport = placement.transport_kind.value
     overlay: list[ReplayOverlayCell] = []
     for x, y in sorted(placement.extractor_cells):
-        overlay.append(ReplayOverlayCell(x=x, y=y, kind="miner", transport=transport))
+        overlay.append(
+            ReplayOverlayCell(
+                x=x,
+                y=y,
+                kind=_overlay_kind_for_role(role="miner", transport=transport),
+                transport=transport,
+            )
+        )
     for x, y in sorted(placement.extension_cells):
-        overlay.append(ReplayOverlayCell(x=x, y=y, kind="extension", transport=transport))
+        overlay.append(
+            ReplayOverlayCell(
+                x=x,
+                y=y,
+                kind=_overlay_kind_for_role(role="extension", transport=transport),
+                transport=transport,
+            )
+        )
     for x, y in sorted(placement.output_stub_cells):
-        overlay.append(ReplayOverlayCell(x=x, y=y, kind="transport_stub", transport=transport))
+        overlay.append(
+            ReplayOverlayCell(
+                x=x,
+                y=y,
+                kind=_overlay_kind_for_role(role="transport_stub", transport=transport),
+                transport=transport,
+            )
+        )
     return tuple(overlay)
 
 

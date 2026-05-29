@@ -62,3 +62,11 @@ def test_exact_pack_two_conflict_picks_higher_gain() -> None:
     selected = select_max_set_score_independent_set((low, high))
     assert len(selected) == 1
     assert selected[0].candidate.equivalence_key == "high"
+
+
+def test_exact_pack_prefers_lower_candidate_id_at_full_tie() -> None:
+    lower = succeeded_probe_at((0, 0), gene_key="aaa", equivalence_key="aaa")
+    higher = succeeded_probe_at((0, 0), gene_key="zzz", equivalence_key="zzz")
+    selected = select_max_set_score_independent_set((higher, lower))
+    assert len(selected) == 1
+    assert selected[0].candidate.equivalence_key == "aaa"

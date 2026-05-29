@@ -81,8 +81,6 @@ def select_non_overlapping_candidates_v2(
     component_records: list[RimComponentSelectionRecord] = []
     logical_by_component: dict[str, tuple[RouteProbedBundleCandidate, ...]] = {}
 
-    greedy_logical_ctx = LayerBudgetContext.from_budget_ms(_LOGICAL_GREEDY_BUDGET_MS)
-
     for component in components:
         strategy = (
             RimSelectionStrategy.EXACT_PACK
@@ -92,6 +90,7 @@ def select_non_overlapping_candidates_v2(
         if strategy is RimSelectionStrategy.EXACT_PACK:
             logical = select_max_set_score_independent_set(component.entries)
         else:
+            greedy_logical_ctx = LayerBudgetContext.from_budget_ms(_LOGICAL_GREEDY_BUDGET_MS)
             logical, _rej = select_non_overlapping_candidates(
                 normal_candidates=component.entries,
                 budget_ctx=greedy_logical_ctx,

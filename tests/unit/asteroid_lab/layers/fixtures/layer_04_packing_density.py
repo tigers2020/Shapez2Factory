@@ -14,8 +14,8 @@ def packing_density_probes() -> tuple[RouteProbedBundleCandidate, ...]:
         (2, 2),
         equivalence_key="blocker_a",
         output_dir=Direction.E,
-        mining=frozenset({(0, 2), (1, 2), (2, 2), (3, 2)}),
-        transport=frozenset({(4, 2)}),
+        mining=frozenset({(0, 2), (1, 2), (3, 2), (4, 2)}),
+        transport=frozenset({(5, 2)}),
     )
     verticals: list[RouteProbedBundleCandidate] = []
     for x in (0, 1, 3, 4, 5):
@@ -24,7 +24,7 @@ def packing_density_probes() -> tuple[RouteProbedBundleCandidate, ...]:
                 (x, 0),
                 equivalence_key=f"vert_{x}",
                 output_dir=Direction.S,
-                mining=frozenset({(x, y) for y in range(5)}),
+                mining=frozenset({(x, y) for y in range(4)}),
                 transport=frozenset({(x, 9)}),
             )
         )

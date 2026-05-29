@@ -29,9 +29,15 @@ def set_score_tuple(
 def compare_set_scores(left: SetScoreTuple, right: SetScoreTuple) -> int:
     """Return >0 if left is strictly better than right."""
 
-    if left > right:
+    left_primary = left[:4]
+    right_primary = right[:4]
+    if left_primary > right_primary:
         return 1
-    if left < right:
+    if left_primary < right_primary:
+        return -1
+    if left[4] < right[4]:
+        return 1
+    if left[4] > right[4]:
         return -1
     return 0
 

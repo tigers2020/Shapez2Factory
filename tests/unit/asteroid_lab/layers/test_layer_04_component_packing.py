@@ -34,7 +34,7 @@ def test_packing_density_selects_vertical_bundle_not_blocker() -> None:
         "vert_4",
         "vert_5",
     }
-    assert outcome.packing_observability.selected_total_gain == 25
+    assert outcome.packing_observability.selected_total_gain == 20
 
 
 def test_tiebreak_prefers_higher_selected_count_at_equal_gain() -> None:

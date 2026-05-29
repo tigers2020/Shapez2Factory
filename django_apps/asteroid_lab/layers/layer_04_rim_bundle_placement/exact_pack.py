@@ -15,6 +15,7 @@ from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.sort_keys imp
     candidate_sort_key,
     effective_mining_gain,
 )
+from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
 MAX_EXACT_COMPONENT_SIZE = 20
 MAX_BRANCH_NODES = 500_000
@@ -83,7 +84,7 @@ def select_max_set_score_independent_set(
     return best_entries
 
 
-def _neighbor_mask(index: int, occupied: list[frozenset]) -> int:
+def _neighbor_mask(index: int, occupied: list[frozenset[Coord]]) -> int:
     mask = 0
     for j in range(index):
         if occupied[index] & occupied[j]:

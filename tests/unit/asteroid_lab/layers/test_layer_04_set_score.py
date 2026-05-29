@@ -67,3 +67,13 @@ def test_set_score_prefers_lower_route_cost_at_equal_gain_and_count() -> None:
     assert cheap_score[0] == costly_score[0]
     assert cheap_score[1] == costly_score[1]
     assert compare_set_scores(cheap_score, costly_score) > 0
+
+
+def test_set_score_prefers_lower_candidate_ids_at_full_tie() -> None:
+    lower = succeeded_probe_at((0, 0), gene_key="aaa", equivalence_key="aaa")
+    higher = succeeded_probe_at((0, 0), gene_key="zzz", equivalence_key="zzz")
+    lower_score = set_score_tuple(entries=(lower,))
+    higher_score = set_score_tuple(entries=(higher,))
+    assert lower_score[:4] == higher_score[:4]
+    assert lower_score[4] < higher_score[4]
+    assert compare_set_scores(lower_score, higher_score) > 0

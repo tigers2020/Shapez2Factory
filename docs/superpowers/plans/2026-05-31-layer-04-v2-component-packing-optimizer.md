@@ -18,7 +18,18 @@
 Commit: ONLY when the user explicitly requests git commit.
 ```
 
-- [ ] **Checkpoint** — Record pytest/ruff/mypy paths; no commit unless user asks.
+- [x] **Checkpoint** — Record pytest/ruff/mypy paths; no commit unless user asks.
+
+## Execution status
+
+Status: implemented and narrow-gate verified in the current worktree.
+
+Evidence recorded on 2026-05-29:
+
+- `python -m pytest tests/unit/asteroid_lab/layers/test_layer_04_component_packing.py tests/unit/asteroid_lab/layers/test_layer_04_select_v2_budget.py tests/unit/asteroid_lab/layers/test_layer_04_conflict_graph.py tests/unit/asteroid_lab/layers/test_layer_04_exact_pack.py tests/unit/asteroid_lab/layers/test_layer_04_set_score.py tests/unit/asteroid_lab/layers/test_layer_04_mining_first_selection.py tests/unit/asteroid_lab/layers/test_layer_04_rim_placement.py tests/unit/asteroid_lab/layers/test_layer_04_rim_placement_contracts.py tests/unit/asteroid_lab/layers/test_layer_03_l4_boundary.py tests/unit/asteroid_lab/layers/test_layer_04_run286_strip_regression.py tests/unit/asteroid_lab/layers/test_layer_04_packing_observability.py tests/unit/asteroid_lab/replay/test_layer04_segment.py -v`
+- `python -m ruff check django_apps/asteroid_lab/layers/layer_04_rim_bundle_placement/ django_apps/asteroid_lab/layers/contracts/rim_placement.py django_apps/asteroid_lab/replay/layer04_segment.py tests/unit/asteroid_lab/layers/test_layer_04_component_packing.py tests/unit/asteroid_lab/layers/test_layer_04_select_v2_budget.py tests/unit/asteroid_lab/layers/test_layer_04_conflict_graph.py tests/unit/asteroid_lab/layers/test_layer_04_exact_pack.py tests/unit/asteroid_lab/layers/test_layer_04_set_score.py tests/unit/asteroid_lab/layers/test_layer_04_mining_first_selection.py tests/unit/asteroid_lab/layers/test_layer_04_rim_placement.py tests/unit/asteroid_lab/layers/test_layer_04_rim_placement_contracts.py tests/unit/asteroid_lab/layers/test_layer_03_l4_boundary.py tests/unit/asteroid_lab/layers/test_layer_04_run286_strip_regression.py tests/unit/asteroid_lab/layers/test_layer_04_packing_observability.py tests/unit/asteroid_lab/replay/test_layer04_segment.py`
+- `python -m mypy django_apps/asteroid_lab/layers/layer_04_rim_bundle_placement/ django_apps/asteroid_lab/layers/contracts/rim_placement.py`
+- `python -m black --check django_apps/asteroid_lab/layers/layer_04_rim_bundle_placement/ django_apps/asteroid_lab/layers/contracts/rim_placement.py django_apps/asteroid_lab/layers/__init__.py django_apps/asteroid_lab/services/__init__.py django_apps/asteroid_lab/replay/__init__.py tests/unit/asteroid_lab/layers/test_layer_04_component_packing.py tests/unit/asteroid_lab/layers/test_layer_04_select_v2_budget.py tests/unit/asteroid_lab/layers/test_layer_04_conflict_graph.py tests/unit/asteroid_lab/layers/test_layer_04_exact_pack.py tests/unit/asteroid_lab/layers/test_layer_04_set_score.py tests/unit/asteroid_lab/layers/test_layer_04_mining_first_selection.py tests/unit/asteroid_lab/layers/test_layer_04_rim_placement.py tests/unit/asteroid_lab/layers/test_layer_04_rim_placement_contracts.py tests/unit/asteroid_lab/layers/test_layer_03_l4_boundary.py tests/unit/asteroid_lab/layers/test_layer_04_run286_strip_regression.py tests/unit/asteroid_lab/layers/test_layer_04_packing_observability.py tests/unit/asteroid_lab/replay/test_layer04_segment.py`
 
 ---
 

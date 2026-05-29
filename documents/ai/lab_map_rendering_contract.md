@@ -38,7 +38,21 @@ Not CANON. Keep in sync with [`django_apps/web/static/web/js/asteroid_miner_layo
 1. `cell.sprite_identifier || cell.tile_type` → `labIdentifierSpriteRelpaths[t]` (DB path).
 2. Else prefix fallback: `SpaceBelt_*` → `SpaceBelt/<T>.svg`, `SpacePipe_*` → `SpacePipe/<T>.svg`, `Layout_*` → `Miner/<T>.svg` (`LAB_SPRITE_TILE_TYPE_ALIASES` maps `Layout_ProMiner` → `Layout_ShapeMiner`, etc.).
 3. Else `cell_kind` → `LAB_SPRITE_CELL_KIND_TO_IDENTIFIER` (miner/extension only).
-4. Last fallback: `inferTransportSpriteIdentifier(cell)` — returns `Forward` variant only (turn/splitter skipped without `tile_type`).
+4. Last fallback: `inferTransportSpriteIdentifier(cell)` — returns `Forward` variant only (turn/splitter skipped without `tile_type`). **Must not** run for equipment kinds (`shape_miner`, `miner`, `extension`, etc.).
+
+### L4 rim placement replay overlay (`layer04_segment`)
+
+`map_view.overlay_cells` from Layer 04 MUST use **domain** `kind` / `cell_kind` values:
+
+| Role | Domain `kind` |
+|------|----------------|
+| Extractor | `shape_miner` or `fluid_miner` |
+| Extension | `shape_miner_extension` or `fluid_miner_extension` |
+| Output stub | `space_belt` or `space_pipe` |
+
+**Forbidden:** observation aliases `miner`, `extension`, `transport_stub` on wire rows — they cause `inferTransportSpriteIdentifier` to paint `SpaceBelt_Forward` when `transport` is `shape_belt`.
+
+Legacy `miner` / `extension` on old frames: JS maps via `LAB_SPRITE_CELL_KIND_TO_IDENTIFIER` or tint-only on L3 pool frames; belt infer is blocked for those kinds.
 
 ### Wire JSON contract
 

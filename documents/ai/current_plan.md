@@ -10,7 +10,9 @@
 |-------|--------|
 | Outer-rim (#125/#127/#128) | **CLOSED** — Lab gate 2026-05-29 |
 | P1/P2 L3 observability (rim) | **HOLD** — after Lab green; reopen only if direction forensics insufficient |
-| Lab replay lazy-load | **NEXT** — [`2026-05-30-lab-replay-lazy-load-post-slimming.md`](../../docs/superpowers/plans/2026-05-30-lab-replay-lazy-load-post-slimming.md) |
+| Lab replay lazy-load (13C POST) | **CLOSED** — [`2026-05-30-lab-replay-lazy-load-post-slimming.md`](../../docs/superpowers/plans/2026-05-30-lab-replay-lazy-load-post-slimming.md) |
+| Replay payload 13D-SSR | **IMPLEMENTED (local)** — [`2026-05-29-replay-payload-13d-ssr-slim.md`](../../docs/superpowers/plans/2026-05-29-replay-payload-13d-ssr-slim.md) · spec [`2026-05-29-replay-payload-network-optimization-design.md`](../../docs/superpowers/specs/2026-05-29-replay-payload-network-optimization-design.md) |
+| Replay payload 13G gzip | **NEXT** — [`2026-05-29-replay-payload-13g-compression.md`](../../docs/superpowers/plans/2026-05-29-replay-payload-13g-compression.md) |
 | P0 Decontamination | **CLOSED** — [#117](https://github.com/tigers2020/Shapez2Factory/pull/117) |
 | RTTP / v0.2 recovery / MEG-C2 implementation | **RETIRED** — do not implement |
 | MEG contract | **FROZEN** — [`2026-05-27-rttp-mining-equipment-goal-contract-design.md`](../../docs/superpowers/specs/2026-05-27-rttp-mining-equipment-goal-contract-design.md) (reference only) |

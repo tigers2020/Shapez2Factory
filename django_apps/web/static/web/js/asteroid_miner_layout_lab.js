@@ -1802,6 +1802,9 @@
 
     function applyLoadedLabReplayPayload(payload) {
       if (!payload || !Array.isArray(payload.frames)) return;
+      if (payload.replay_track_metrics && typeof payload.replay_track_metrics === "object") {
+        replayTrackMetrics = payload.replay_track_metrics;
+      }
       const prevIndex = replayArrayIndex;
       replayFrames = payload.frames;
       hasServerReplay = replayFrames.length > 0;
@@ -2962,6 +2965,9 @@
       baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
       const lazy = payload.lab_replay;
       if (lazy && lazy.mode === "lazy") {
+        if (payload.replay_track_metrics && typeof payload.replay_track_metrics === "object") {
+          replayTrackMetrics = payload.replay_track_metrics;
+        }
         labReplayLoadState.mode = "lazy";
         labReplayLoadState.status = "idle";
         labReplayLoadState.frameCount = Number(lazy.frame_count) || 0;

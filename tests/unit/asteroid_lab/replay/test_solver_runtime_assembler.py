@@ -286,7 +286,7 @@ def test_assembler_skips_l2_completed_when_exterior_plan_wire_none() -> None:
     assert complete["metrics"]["layer03_skip_reason"] == "missing_exterior_connection_plan"
 
 
-def test_layer03_pool_summary_has_no_overlay_cells() -> None:
+def test_layer03_pool_summary_has_no_candidate_overlay_but_has_connector() -> None:
     from django_apps.asteroid_lab.replay.event_types import (
         EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY,
     )
@@ -298,6 +298,14 @@ def test_layer03_pool_summary_has_no_overlay_cells() -> None:
         exterior_plan_wire_for_golden,
         reconstruction_complete_lab_frame_dict_for_golden,
         rim_bundle_candidate_set_with_observability_for_golden,
+    )
+
+    candidate_kinds = frozenset(
+        {
+            "candidate_miner",
+            "candidate_transport_stub",
+            "candidate_route_path",
+        }
     )
 
     candidate_set = rim_bundle_candidate_set_with_observability_for_golden()
@@ -313,7 +321,14 @@ def test_layer03_pool_summary_has_no_overlay_cells() -> None:
     summary = next(
         f for f in frames if f["event_type"] == EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY
     )
-    assert summary["map_view"]["overlay_cells"] == []
+    overlay = summary["map_view"]["overlay_cells"]
+    assert not any(
+        isinstance(c, dict) and str(c.get("kind") or "") in candidate_kinds for c in overlay
+    )
+    assert any(
+        isinstance(c, dict) and c.get("overlay_role") == "planned_exterior_connector"
+        for c in overlay
+    )
     assert summary["metrics"]["logical_window_count"] >= 1
     assert summary["metrics"]["shows_all_candidates"] is True
     assert summary["metrics"]["pool_preview_overlay_mode"] == "candidate_observation"

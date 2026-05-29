@@ -17,11 +17,19 @@ from django_apps.shapez_core.models import (
     ShapezGameIdentifier,
     ShapezIdentifierCategory,
 )
+from tests.support.mining_extraction_canon import ensure_mining_extraction_canon_rules
 from tests.unit.shapez_core.conftest import _ensure_ivvd_lookups
 
 CONNECTED_BRANCH_GENE_KEY = (
     '{"e":[[[-1,1],[-1,2],"S"],[[0,0],[0,1],"S"],[[0,1],[-1,1],"W"]],"ec":3,"tk":"pipe"}'
 )
+
+
+@pytest.fixture(autouse=True)
+def _ensure_mining_extraction_canon_rules(db: None) -> None:
+    """Parallel test-fast (xdist) may run before migration seed is visible on a worker."""
+
+    ensure_mining_extraction_canon_rules()
 
 
 @pytest.fixture

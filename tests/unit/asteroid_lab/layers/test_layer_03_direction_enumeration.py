@@ -116,7 +116,40 @@ def test_exterior_output_dir_candidates_sorted_by_goal_not_truncated() -> None:
         route_goals=goals,
         transport_kind=TransportKind.SHAPE_BELT,
     )
-    assert set(dirs) == {Direction.S, Direction.E}
+    assert set(dirs) == {Direction.N, Direction.E}
+
+
+def test_north_void_projection_faces_north_rotation() -> None:
+    """Regression: exterior N must not place miner at R=1 (south) away from void."""
+    anchor = (5, 5)
+    complete_map = _minimal_complete_map(
+        field_cells=frozenset({anchor, (5, 6), (6, 5), (4, 5)}),
+        external_void_cells=frozenset({(5, 4)}),
+    )
+    minimal_miner = MinerSeedEntry(
+        gene_key="miner_only",
+        pattern_id="m0",
+        intrinsic_priority_rank=1,
+        throughput_factor=16,
+        topology_signature="topo_m0",
+        decoded_json={
+            "BP": {"Entries": [{"T": "Layout_ShapeMiner", "X": 0, "Y": 0, "R": 0}]},
+        },
+    )
+    output_dir = Direction.N
+    result = project_miner_seed_at_anchor(
+        seed=minimal_miner,
+        anchor_coord=anchor,
+        output_dir=output_dir,
+        resource_kind=ResourceKind.SHAPE,
+        transport_kind=TransportKind.SHAPE_BELT,
+        complete_map=complete_map,
+    )
+    assert result.candidate is not None
+    miner = next(
+        p for p in result.candidate.placements if p.coord == anchor and p.cell_role.name == "MINER"
+    )
+    assert miner.rotation == 3
 
 
 def test_exterior_output_dir_candidate_places_stub_in_physical_void() -> None:
@@ -141,7 +174,7 @@ def test_exterior_output_dir_candidate_places_stub_in_physical_void() -> None:
         route_goals=goals,
         transport_kind=TransportKind.SHAPE_BELT,
     )
-    assert output_dir is Direction.S
+    assert output_dir is Direction.N
     assert derive_transport_entry_coord(anchor_coord=anchor, output_dir=output_dir) == (5, 4)
 
 
@@ -176,7 +209,7 @@ def test_r2_lite_finds_e_direction_when_r1_would_pick_n_only() -> None:
             route_goals=goals,
             transport_kind=TransportKind.SHAPE_BELT,
         )
-        == Direction.S
+        == Direction.N
     )
     dirs = exterior_output_dir_candidates(
         anchor,
@@ -184,7 +217,7 @@ def test_r2_lite_finds_e_direction_when_r1_would_pick_n_only() -> None:
         route_goals=goals,
         transport_kind=TransportKind.SHAPE_BELT,
     )
-    assert Direction.S in dirs and Direction.E in dirs
+    assert Direction.N in dirs and Direction.E in dirs
 
     result = expand_rim_bundle_candidates(
         complete_map=complete_map,

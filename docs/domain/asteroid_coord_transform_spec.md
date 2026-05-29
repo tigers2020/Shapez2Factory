@@ -147,7 +147,7 @@ server        = (10 + 0, 5 + (-1)) = (10, 4)
 
 On the server grid, **+x is east** and **+y is south** (`cardinal_unit_toward`: `dy > sy` → `Direction.S`). One CW quarter-turn moves the `(1, 0)` stub from east of the extractor to **north** of it (Δy = -1), not south.
 
-Rim candidate generation first detects the physical exterior void around an anchor, then maps that physical direction into the rotation-facing `output_dir`: physical N → `Direction.S`, physical E → `Direction.E`, physical S → `Direction.N`, physical W → `Direction.W`. This keeps `derive_transport_entry_coord(anchor, output_dir)` on the exterior void cell instead of inside the mineable field.
+Rim candidate generation detects the physical exterior void around an anchor and sets `output_dir` to that same cardinal (miner facing / domain rotation). `derive_transport_entry_coord` applies a 180° offset flip for `Direction.N` and `Direction.S` only so the canonical `(1, 0)` stub lands on the void neighbor without rotating the miner away from the void.
 
 Table-driven tests for this table are planned in Phase 1 (`test_coord_transform_golden.py` per integration plan).
 

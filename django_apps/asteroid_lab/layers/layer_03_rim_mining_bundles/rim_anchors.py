@@ -17,10 +17,12 @@ _OFFSET_BY_DIRECTION: tuple[tuple[Direction, Coord], ...] = (
 )
 
 _TIE_ORDER = {Direction.N: 0, Direction.E: 1, Direction.S: 2, Direction.W: 3}
+# ``output_dir`` is miner facing / domain rotation (physical void side).
+# Transport stub offset uses a separate N/S flip in ``derive_transport_entry_coord``.
 _OUTPUT_DIR_BY_PHYSICAL_EXTERIOR_DIR: dict[Direction, Direction] = {
-    Direction.N: Direction.S,
+    Direction.N: Direction.N,
     Direction.E: Direction.E,
-    Direction.S: Direction.N,
+    Direction.S: Direction.S,
     Direction.W: Direction.W,
 }
 

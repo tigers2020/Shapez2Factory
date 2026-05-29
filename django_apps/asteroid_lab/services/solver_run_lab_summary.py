@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from django.db.models.fields.json import KeyTransform
+
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
@@ -798,13 +800,46 @@ def lab_run_summary_from_orm(run: m.SolverRun) -> dict[str, Any]:
     )
 
 
+def _lab_run_summary_from_row(
+    *,
+    run_id: int,
+    status: str,
+    solver_summary: Any,
+) -> dict[str, Any]:
+    """Serialize one run summary without loading the full ``config_json`` blob."""
+
+    if status == m.SolverRun.RunStatus.COMPLETED:
+        ui_status = "completed"
+    elif status == m.SolverRun.RunStatus.PARTIAL:
+        ui_status = "partial"
+    elif status == m.SolverRun.RunStatus.FAILED:
+        ui_status = "failed"
+    else:
+        ui_status = str(status)
+    return lab_run_summary_from_solver_summary(
+        run_id=int(run_id),
+        status=ui_status,
+        solver_summary=dict(solver_summary) if isinstance(solver_summary, dict) else {},
+    )
+
+
 def solver_runs_for_lab_project(project_id: int, *, limit: int = 10) -> list[dict[str, Any]]:
     """Latest solver runs for one project (newest first)."""
 
-    qs = m.SolverRun.objects.filter(project_id=int(project_id)).order_by("-created_at", "-id")[
-        :limit
+    solver_summary_expr = KeyTransform(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY, "config_json")
+    rows = (
+        m.SolverRun.objects.filter(project_id=int(project_id))
+        .order_by("-created_at", "-id")
+        .values_list("id", "status", solver_summary_expr)[:limit]
+    )
+    return [
+        _lab_run_summary_from_row(
+            run_id=int(run_id),
+            status=str(status),
+            solver_summary=solver_summary,
+        )
+        for run_id, status, solver_summary in rows
     ]
-    return [lab_run_summary_from_orm(run) for run in qs]
 
 
 __all__ = [

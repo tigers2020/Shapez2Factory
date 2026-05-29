@@ -102,6 +102,10 @@ See also [`2026-05-29-replay-compose-defer-artifact-reuse-design.md`](2026-05-29
 - `replay_cache_json_decode_ms`, `lab_replay_manifest_summary_bytes` (cache-hit; KB-scale)
 - `replay_cache_miss_compose_ms` (Policy A miss only)
 
+### `project_page` (13F TTFB breakdown — extends 13L)
+
+See [`2026-05-29-lab-page-ttfb-breakdown-shell-only-design.md`](2026-05-29-lab-page-ttfb-breakdown-shell-only-design.md) §6 for `template_render_ms`, SQL meta, `json_script_bytes_by_id`, runs/track sub-phases, and cache-hit label split.
+
 ---
 
 ## Invariants

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
@@ -335,6 +337,34 @@ def test_solver_runs_for_lab_project_orders_newest_first() -> None:
     assert rows[1]["id"] == str(older.pk)
     assert rows[1]["first_issue_code"] == "materialization_failed"
     assert lab_run_summary_from_orm(older)["status"] == "failed"
+
+
+def test_solver_runs_for_lab_project_does_not_select_full_config_json() -> None:
+    proj = m.AsteroidProject.objects.create(name="RunsBlob", slug="runs-blob-summary")
+    m.SolverRun.objects.create(
+        project=proj,
+        run_key="blob",
+        algorithm_label="runtime_v0",
+        status=m.SolverRun.RunStatus.COMPLETED,
+        config_json={
+            SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY: {
+                "validation_passed": True,
+                "confirmed_count": 3,
+                "issue_codes": [],
+            },
+            "lab_replay_composed_frames": [{"payload": "x" * 200_000}],
+        },
+    )
+
+    with CaptureQueriesContext(connection) as captured:
+        rows = solver_runs_for_lab_project(int(proj.pk))
+
+    assert rows[0]["id"]
+    assert rows[0]["status"] == "completed"
+    assert len(captured.captured_queries) == 1
+    sql = captured.captured_queries[0]["sql"]
+    assert 'SELECT "asteroid_lab_solverrun"."config_json"' not in sql
+    assert "JSON_EXTRACT" in sql or "JSON_TYPE" in sql
 
 
 def test_lab_layer3_route_probe_success_not_installed() -> None:

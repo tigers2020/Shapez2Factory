@@ -17,6 +17,12 @@ _OFFSET_BY_DIRECTION: tuple[tuple[Direction, Coord], ...] = (
 )
 
 _TIE_ORDER = {Direction.N: 0, Direction.E: 1, Direction.S: 2, Direction.W: 3}
+_OUTPUT_DIR_BY_PHYSICAL_EXTERIOR_DIR: dict[Direction, Direction] = {
+    Direction.N: Direction.S,
+    Direction.E: Direction.E,
+    Direction.S: Direction.N,
+    Direction.W: Direction.W,
+}
 
 
 def _manhattan(a: Coord, b: Coord) -> int:
@@ -56,7 +62,7 @@ def exterior_output_dir_candidates(
         return (min_goal_dist, _TIE_ORDER[direction], 0)
 
     ordered = sorted(pairs, key=score)
-    return tuple(d for d, _ in ordered)
+    return tuple(_OUTPUT_DIR_BY_PHYSICAL_EXTERIOR_DIR[d] for d, _ in ordered)
 
 
 def select_exterior_output_dir(

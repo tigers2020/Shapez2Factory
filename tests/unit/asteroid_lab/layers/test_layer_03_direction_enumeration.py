@@ -30,6 +30,9 @@ from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.seed_catalog im
     MinerSeedCatalog,
     MinerSeedEntry,
 )
+from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.transport_entry import (
+    derive_transport_entry_coord,
+)
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
@@ -113,7 +116,33 @@ def test_exterior_output_dir_candidates_sorted_by_goal_not_truncated() -> None:
         route_goals=goals,
         transport_kind=TransportKind.SHAPE_BELT,
     )
-    assert set(dirs) == {Direction.N, Direction.E}
+    assert set(dirs) == {Direction.S, Direction.E}
+
+
+def test_exterior_output_dir_candidate_places_stub_in_physical_void() -> None:
+    anchor = (5, 5)
+    complete_map = _minimal_complete_map(
+        field_cells=frozenset({anchor, (5, 6), (4, 5), (6, 5)}),
+        external_void_cells=frozenset({(5, 4)}),
+    )
+    goals = (
+        RouteGoal(
+            goal_id="north",
+            kind=RouteGoalKind.EXTERIOR_CONNECTOR_VOID,
+            coord=(5, 4),
+            transport_kind=TransportKind.SHAPE_BELT,
+            priority=0,
+            connector_role=ExteriorConnectorRole.REQUIRED,
+        ),
+    )
+    output_dir = select_exterior_output_dir(
+        anchor,
+        complete_map=complete_map,
+        route_goals=goals,
+        transport_kind=TransportKind.SHAPE_BELT,
+    )
+    assert output_dir is Direction.S
+    assert derive_transport_entry_coord(anchor_coord=anchor, output_dir=output_dir) == (5, 4)
 
 
 def test_eeemb_projection_m_anchor_output_dir_e() -> None:
@@ -147,7 +176,7 @@ def test_r2_lite_finds_e_direction_when_r1_would_pick_n_only() -> None:
             route_goals=goals,
             transport_kind=TransportKind.SHAPE_BELT,
         )
-        == Direction.N
+        == Direction.S
     )
     dirs = exterior_output_dir_candidates(
         anchor,
@@ -155,7 +184,7 @@ def test_r2_lite_finds_e_direction_when_r1_would_pick_n_only() -> None:
         route_goals=goals,
         transport_kind=TransportKind.SHAPE_BELT,
     )
-    assert Direction.N in dirs and Direction.E in dirs
+    assert Direction.S in dirs and Direction.E in dirs
 
     result = expand_rim_bundle_candidates(
         complete_map=complete_map,

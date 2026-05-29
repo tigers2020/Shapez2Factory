@@ -243,21 +243,24 @@ def run_layer02_solver_for_project(
         layer04=layer04,
     )
 
-    lab_serialized = [
-        replay_timeline_frame_to_json_dict(fr)
-        for fr in lab_replay_payload._lab_timeline_frames_for_project(pid)
-    ]
-    from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
-        build_solver_runtime_replay_frames,
-    )
+    from django_apps.asteroid_lab.observability.lab_perf_trace import perf_span, record_perf_ms
 
-    runtime_replay_frames = build_solver_runtime_replay_frames(
-        complete_map=layer01.complete_map,
-        lab_frames_before_append=lab_serialized,
-        exterior_plan_wire=plan_wire,
-        layer03=layer03,
-        layer04=layer04,
-    )
+    with perf_span("replay_artifact_build_ms"):
+        lab_serialized = [
+            replay_timeline_frame_to_json_dict(fr)
+            for fr in lab_replay_payload._lab_timeline_frames_for_project(pid)
+        ]
+        from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
+            build_solver_runtime_replay_frames,
+        )
+
+        runtime_replay_frames = build_solver_runtime_replay_frames(
+            complete_map=layer01.complete_map,
+            lab_frames_before_append=lab_serialized,
+            exterior_plan_wire=plan_wire,
+            layer03=layer03,
+            layer04=layer04,
+        )
 
     rk = (run_key or "").strip() or _default_run_key()
 
@@ -288,31 +291,38 @@ def run_layer02_solver_for_project(
             provenance_to_config_dict(game_data_provenance)
         )
 
-    if replace_existing_run:
-        dto = create_or_replace_solver_run(
-            pid,
-            run_key=rk,
-            algorithm_label="layer_02_exterior_transport",
-            config=config_json,
-        )
-        run_id = int(dto.id)
-    else:
-        dto = create_solver_run(
-            pid,
-            run_key=rk,
-            algorithm_label="layer_02_exterior_transport",
-            config=config_json,
-        )
-        run_id = int(dto.id)
+    with perf_span("db_persist_ms"):
+        if replace_existing_run:
+            dto = create_or_replace_solver_run(
+                pid,
+                run_key=rk,
+                algorithm_label="layer_02_exterior_transport",
+                config=config_json,
+            )
+            run_id = int(dto.id)
+        else:
+            dto = create_solver_run(
+                pid,
+                run_key=rk,
+                algorithm_label="layer_02_exterior_transport",
+                config=config_json,
+            )
+            run_id = int(dto.id)
 
-    run = m.SolverRun.objects.filter(pk=run_id).first()
-    if run is not None:
-        run.status = (
-            m.SolverRun.RunStatus.COMPLETED if unmet is None else m.SolverRun.RunStatus.PARTIAL
-        )
-        run.save(update_fields=["status"])
+        run = m.SolverRun.objects.filter(pk=run_id).first()
+        if run is not None:
+            run.status = (
+                m.SolverRun.RunStatus.COMPLETED if unmet is None else m.SolverRun.RunStatus.PARTIAL
+            )
+            run.save(update_fields=["status"])
 
-    frames, metrics = build_lab_replay_frames_for_project(pid, solver_run_id=run_id)
+    record_perf_ms("layer_01_ms", float(l1_elapsed_ms))
+    record_perf_ms("layer_02_ms", float(l2_elapsed_ms))
+    record_perf_ms("layer_03_ms", float(l3_elapsed_ms))
+    record_perf_ms("layer_04_ms", float(l4_elapsed_ms))
+
+    with perf_span("post_replay_compose_ms"):
+        frames, metrics = build_lab_replay_frames_for_project(pid, solver_run_id=run_id)
     return SolverRuntimeEntryResult(
         ok=True,
         solver_run_id=run_id,

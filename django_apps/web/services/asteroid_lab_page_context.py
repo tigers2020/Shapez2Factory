@@ -11,6 +11,7 @@ from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
     MINER_SEED_SCHEMA_V2,
 )
 from django_apps.asteroid_lab.models import GeneticSample, ReplayFrame, ReplayTrack
+from django_apps.asteroid_lab.observability.lab_perf_trace import perf_span
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
     get_latest_lab_replay_track_for_project,
@@ -165,12 +166,15 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
     if project_id is None:
         return ctx
 
-    runs = solver_runs_for_lab_project(int(project_id))
+    with perf_span("solver_runs_for_lab_project_ms"):
+        runs = solver_runs_for_lab_project(int(project_id))
     ctx["runs"] = runs
     ctx["initial_lab_run"] = runs[0] if runs else None
 
-    track = get_latest_lab_replay_track_for_project(int(project_id))
-    frames_json, track_metrics = build_lab_replay_frames_for_project(int(project_id))
+    with perf_span("get_latest_lab_replay_track_ms"):
+        track = get_latest_lab_replay_track_for_project(int(project_id))
+    with perf_span("build_lab_replay_frames_for_project_ms"):
+        frames_json, track_metrics = build_lab_replay_frames_for_project(int(project_id))
     if not frames_json:
         if track is not None:
             ctx["lab_replay_track_id"] = int(track.pk)

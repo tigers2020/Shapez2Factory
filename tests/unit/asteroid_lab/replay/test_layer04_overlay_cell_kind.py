@@ -23,12 +23,8 @@ from django_apps.asteroid_lab.replay.layer04_segment import _overlay_cells_for_p
 def _succeeded_entry(*, placements: tuple[BundlePlacement, ...]) -> RouteProbedBundleCandidate:
     anchor = (3, 4)
     mining = frozenset(p.coord for p in placements if p.cell_role is BundleCellRole.MINER)
-    mining |= frozenset(
-        p.coord for p in placements if p.cell_role is BundleCellRole.EXTENSION
-    )
-    stub = frozenset(
-        p.coord for p in placements if p.cell_role is BundleCellRole.TRANSPORT_STUB
-    )
+    mining |= frozenset(p.coord for p in placements if p.cell_role is BundleCellRole.EXTENSION)
+    stub = frozenset(p.coord for p in placements if p.cell_role is BundleCellRole.TRANSPORT_STUB)
     stub_start = min(stub) if stub else (4, 4)
     base = make_bundle_candidate_for_test(
         anchor_coord=anchor,

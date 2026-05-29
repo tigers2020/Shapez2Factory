@@ -181,7 +181,9 @@ class Layer04RimPlacementResult:
 
 ### 3.4 Selection (normative)
 
-**Sort key (ascending):**
+> **Superseded (2026-05-30):** Sort key and overlap rejection metadata replaced by [`2026-05-30-outer-rim-direction-arbitration-design.md`](2026-05-30-outer-rim-direction-arbitration-design.md) §3–§4 (mining-first greedy; `effective_mining_gain`).
+
+**Sort key (ascending) — historical:**
 
 1. `intrinsic_priority_rank`
 2. `anchor_coord` stable order: `(y, x)` — same as `sorted_outer_rim_anchors`

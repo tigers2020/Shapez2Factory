@@ -408,6 +408,8 @@ Display from **Layer 2 complete** onward on the solver timeline. v1: no separate
 
 ### 3.4 Metrics wire
 
+See spare/reference extension: [`2026-05-28-layer-02-spare-exterior-connectors-design.md`](2026-05-28-layer-02-spare-exterior-connectors-design.md) (`exterior_connector_plan.v2`, required + spare roles).
+
 ```json
 {
   "exterior_connector_plan": {

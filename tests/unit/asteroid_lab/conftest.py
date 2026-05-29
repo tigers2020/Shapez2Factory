@@ -17,6 +17,7 @@ from django_apps.shapez_core.models import (
     ShapezGameIdentifier,
     ShapezIdentifierCategory,
 )
+from tests.unit.shapez_core.conftest import _ensure_ivvd_lookups
 
 CONNECTED_BRANCH_GENE_KEY = (
     '{"e":[[[-1,1],[-1,2],"S"],[[0,0],[0,1],"S"],[[0,1],[-1,1],"W"]],"ec":3,"tk":"pipe"}'
@@ -25,6 +26,7 @@ CONNECTED_BRANCH_GENE_KEY = (
 
 @pytest.fixture
 def lab_sprite_identifiers_for_admin() -> ShapezBasedataRelease:
+    _ensure_ivvd_lookups()
     r = ShapezBasedataRelease.objects.create(
         game_version=900_043,
         notes="genetic-lab-sprite-test",

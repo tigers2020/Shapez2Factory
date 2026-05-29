@@ -176,9 +176,20 @@ class IslandExtractorBlueprintAdmin(admin.ModelAdmin):
 @admin.register(m.GeneticSample)
 class GeneticSampleAdmin(admin.ModelAdmin):
     change_list_template = "admin/asteroid_lab/geneticsample/change_list.html"
-    list_display = ("id", "mini_map_list", "name", "gene_key", "project", "updated_at")
+    list_display = (
+        "id",
+        "mini_map_list",
+        "name",
+        "gene_key",
+        "seed_rank_display",
+        "intrinsic_priority_rank_display",
+        "difficulty_rank_display",
+        "difficulty_score_display",
+        "extension_count_display",
+        "topology_signature_short",
+        "updated_at",
+    )
     list_display_links = ("id", "name")
-    list_select_related = ("project",)
     search_fields = ("name", "gene_key", "code")
     raw_id_fields = ("project",)
     readonly_fields = (
@@ -193,6 +204,17 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         ("디코드", {"fields": ("decoded_json_pretty", "mini_map_preview")}),
         ("메타", {"fields": ("metadata_json_pretty", "created_at", "updated_at")}),
     )
+
+    def get_queryset(self, request):
+        from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
+            MINER_SEED_SCHEMA_V2,
+        )
+
+        qs = super().get_queryset(request)
+        return qs.filter(
+            metadata_json__schema=MINER_SEED_SCHEMA_V2,
+            metadata_json__is_seed=True,
+        ).order_by("metadata_json__seed_rank", "gene_key")
 
     def get_urls(self):
         info = self.model._meta.app_label, self.model._meta.model_name
@@ -220,6 +242,7 @@ class GeneticSampleAdmin(admin.ModelAdmin):
 
         dry_run = request.POST.get("dry_run") == "on"
         replace_stale = request.POST.get("replace_stale") == "on"
+        purge_non_seed = request.POST.get("purge_non_seed") == "on"
         out = StringIO()
         cmd_kwargs: dict[str, object] = {
             "verbosity": 1,
@@ -229,6 +252,8 @@ class GeneticSampleAdmin(admin.ModelAdmin):
             cmd_kwargs["dry_run"] = True
         if replace_stale:
             cmd_kwargs["replace_stale"] = True
+        if purge_non_seed and not dry_run:
+            cmd_kwargs["purge_non_seed"] = True
 
         try:
             call_command("seed_miner_patterns", **cmd_kwargs)
@@ -247,11 +272,60 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         else:
             tail = output.splitlines()[-1] if output else "시드 완료."
             self.message_user(request, tail, level=messages.SUCCESS)
-            if replace_stale and "deleted stale exhaustive" in output:
-                for line in output.splitlines():
-                    if "deleted stale exhaustive" in line:
-                        self.message_user(request, line.strip(), level=messages.WARNING)
+            for line in output.splitlines():
+                if "deleted stale exhaustive" in line or "deleted stale miner_seed" in line:
+                    self.message_user(request, line.strip(), level=messages.WARNING)
         return redirect(changelist_url)
+
+    @admin.display(description="Catalog rank", ordering="metadata_json__seed_rank")
+    def seed_rank_display(self, obj: m.GeneticSample) -> str:
+        meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
+        rank = meta.get("seed_rank")
+        return str(rank) if isinstance(rank, int) else "-"
+
+    @admin.display(
+        description="Intrinsic priority",
+        ordering="metadata_json__intrinsic_priority_rank",
+    )
+    def intrinsic_priority_rank_display(self, obj: m.GeneticSample) -> str:
+        meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
+        rank = meta.get("intrinsic_priority_rank")
+        score = meta.get("intrinsic_priority_score")
+        if isinstance(rank, int) and isinstance(score, int):
+            return f"{rank} ({score})"
+        return "-"
+
+    @admin.display(description="Intrinsic difficulty", ordering="metadata_json__difficulty_rank")
+    def difficulty_rank_display(self, obj: m.GeneticSample) -> str:
+        meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
+        rank = meta.get("difficulty_rank")
+        tier = meta.get("difficulty_tier")
+        if isinstance(rank, int) and isinstance(tier, int):
+            return f"{rank} (T{tier})"
+        return "-"
+
+    @admin.display(
+        description="Difficulty score",
+        ordering="metadata_json__difficulty_score",
+    )
+    def difficulty_score_display(self, obj: m.GeneticSample) -> str:
+        meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
+        score = meta.get("difficulty_score")
+        return str(score) if isinstance(score, int) else "-"
+
+    @admin.display(description="Ext")
+    def extension_count_display(self, obj: m.GeneticSample) -> str:
+        meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
+        ext = meta.get("extension_count")
+        return str(ext) if isinstance(ext, int) else "-"
+
+    @admin.display(description="Topology")
+    def topology_signature_short(self, obj: m.GeneticSample) -> str:
+        meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
+        sig = meta.get("topology_signature")
+        if not isinstance(sig, str) or not sig:
+            return "-"
+        return sig[:10] + "…" if len(sig) > 10 else sig
 
     @admin.display(description="디코드 JSON")
     def decoded_json_pretty(self, obj: m.GeneticSample) -> SafeString | str:

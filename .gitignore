@@ -28,6 +28,7 @@ parts/
 sdist/
 var/
 !var/default_miner_pattern.txt
+!var/miner_seed_belt_ignored_canonical_parent_r_patterns.md
 wheels/
 share/python-wheels/
 *.egg-info/

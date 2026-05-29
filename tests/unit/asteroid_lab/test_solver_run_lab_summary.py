@@ -8,7 +8,7 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
-    LAYER_05_COMMIT_VALIDATE,
+    LAYER_06_COMMIT_VALIDATE,
 )
 from django_apps.asteroid_lab.reconstruction.complete_map import (
     build_reconstruction_complete_map,
@@ -131,13 +131,13 @@ def test_lab_run_summary_layer_summaries_ordered_l1_through_l5() -> None:
             "stack_run_status": "success",
             "completed_layer_slugs": [
                 LAYER_01_RECONSTRUCTION,
-                LAYER_05_COMMIT_VALIDATE,
+                LAYER_06_COMMIT_VALIDATE,
             ],
             "failed_layer_slug": None,
         },
     )
     summaries = row["layer_summaries"]
-    assert len(summaries) == 5
+    assert len(summaries) == 6
     assert summaries[0]["layer_slug"] == LAYER_01_RECONSTRUCTION
     assert summaries[0]["layer_index"] == 1
     assert summaries[0]["outcome"] == "completed"
@@ -155,8 +155,8 @@ def test_lab_run_summary_layer_summaries_ordered_l1_through_l5() -> None:
     assert "Capacity basis" not in l2_labels
     assert "Rule source" not in l2_labels
     assert "Shape max throughput" not in l2_labels
-    assert summaries[4]["layer_slug"] == LAYER_05_COMMIT_VALIDATE
-    assert summaries[4]["outcome"] == "completed"
+    assert summaries[5]["layer_slug"] == LAYER_06_COMMIT_VALIDATE
+    assert summaries[5]["outcome"] == "completed"
     assert row["stack_run_status"] == "success"
 
 
@@ -337,33 +337,92 @@ def test_solver_runs_for_lab_project_orders_newest_first() -> None:
     assert lab_run_summary_from_orm(older)["status"] == "failed"
 
 
-def test_lab_layer3_rim_route_candidates_and_installed_ratio() -> None:
+def test_lab_layer3_route_probe_success_not_installed() -> None:
     row = lab_run_summary_from_solver_summary(
         run_id=50,
         status="partial",
         solver_summary={
             "validation_passed": False,
             "confirmed_count": 12,
-            "normal_candidate_count": 999,
+            "normal_candidate_count": 40,
+            "route_probe_succeeded_count": 32,
             "reconstruction_observability": {
                 "shape_field_cell_count": 467,
                 "rim_cell_count": 84,
                 "primary_resource_kind": "shape",
             },
+            "completed_layer_slugs": [
+                "layer_01_reconstruction",
+                "layer_02_exterior_transport",
+                "layer_03_rim_mining_bundles",
+                "layer_04_rim_bundle_placement",
+            ],
+            "layer04_selected_count": 28,
             "optimization_goal": {
                 "passed": False,
                 "shortfall": 455,
-                "confirmed_passed_mining_equipment_cells": 12,
-                "target_mining_equipment_cells": 467,
             },
         },
     )
     layer3 = row["layer_summaries"][2]
-    labels = {h["label"]: h["value"] for h in layer3["highlights"]}
-    assert labels["Route candidates"] == "84"
-    assert labels["Installed / Route candidates"] == "12 / 84"
-    assert "Mining equipment shortfall" not in labels
-    assert "Confirmed mining cells" not in labels
+    layer4 = row["layer_summaries"][3]
+    l3 = {h["label"]: h["value"] for h in layer3["highlights"]}
+    l4 = {h["label"]: h["value"] for h in layer4["highlights"]}
+    assert l3["Rim anchor slots"] == "84"
+    assert l3["Route-probed pool"] == "40"
+    assert l3["Route probe succeeded"] == "32"
+    assert l3["Probe succeeded / Pool"] == "32 / 40"
+    assert l3["Layer skip reason"] == "—"
+    assert "Installed / Route candidates" not in l3
+    assert l4["Provisional placed"] == "28"
+    assert l4["Placed / Probe succeeded"] == "28 / 32"
+    assert l4["Provisional placement complete"] == "yes"
+
+
+def test_lab_layer4_placement_complete_no_when_zero_selected() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=99,
+        status="partial",
+        solver_summary={
+            "completed_layer_slugs": [
+                "layer_01_reconstruction",
+                "layer_02_exterior_transport",
+                "layer_03_rim_mining_bundles",
+                "layer_04_rim_bundle_placement",
+            ],
+            "layer04_selected_count": 0,
+            "route_probe_succeeded_count": 12,
+        },
+    )
+    layer4 = row["layer_summaries"][3]
+    l4 = {h["label"]: h["value"] for h in layer4["highlights"]}
+    assert l4["Provisional placed"] == "0"
+    assert l4["Provisional placement complete"] == "no"
+
+
+def test_lab_layer3_empty_catalog_skip_reason() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=268,
+        status="partial",
+        solver_summary={
+            "validation_passed": False,
+            "rim_anchor_count": 81,
+            "normal_candidate_count": 0,
+            "route_probe_succeeded_count": 0,
+            "seed_projection_attempt_count": 0,
+            "layer03_skip_reason": "empty_miner_seed_catalog",
+            "completed_layer_slugs": [
+                "layer_01_reconstruction",
+                "layer_02_exterior_transport",
+            ],
+            "layer04_selected_count": 0,
+        },
+    )
+    layer3 = row["layer_summaries"][2]
+    l3 = {h["label"]: h["value"] for h in layer3["highlights"]}
+    assert layer3["outcome"] == "pending"
+    assert l3["Layer skip reason"] == "empty_miner_seed_catalog"
+    assert l3["Seed projection attempts"] == "0"
 
 
 def test_lab_run_summary_from_solver_summary_exposes_meg_fields() -> None:

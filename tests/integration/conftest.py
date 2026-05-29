@@ -9,4 +9,4 @@ import pytest
 def seed_miner_patterns_db(db: None) -> None:
     from django.core.management import call_command
 
-    call_command("seed_miner_patterns", replace_stale=True)
+    call_command("seed_miner_patterns", replace_stale=True, purge_non_seed=True)

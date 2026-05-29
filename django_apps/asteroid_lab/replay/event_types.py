@@ -91,6 +91,18 @@ def normalize_rttp_milestone_event_type(event_type: str) -> str:
     return RTTP_MILESTONE_LEGACY_TO_CANONICAL.get(event_type, event_type)
 
 
+# --- layer 03 rim bundle scan (observability only) ---
+EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_BEGIN = "layer03_rim_bundle_scan_begin"
+EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_COMPLETE = "layer03_rim_bundle_scan_complete"
+EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY = "layer03_rim_bundle_pool_summary"
+EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW = "layer03_rim_bundle_pool_probe_window"
+
+# --- layer 04 rim provisional placement (observability only) ---
+EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN = "layer04_rim_placement_begin"
+EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED = "layer04_rim_candidate_selected"
+EVENT_TYPE_LAYER04_RIM_CANDIDATE_REJECTED_OVERLAP = "layer04_rim_candidate_rejected_overlap"
+EVENT_TYPE_LAYER04_RIM_PLACEMENT_COMPLETE = "layer04_rim_placement_complete"
+
 # --- existing layout inspection (A6; UI/replay only) ---
 EVENT_TYPE_EXISTING_LAYOUT_BEGIN = "existing_layout.begin"
 EVENT_TYPE_EXISTING_LAYOUT_TRANSPORT_COMPONENTS_INDEXED = (
@@ -142,6 +154,14 @@ SNAPSHOT_EVENT_TYPES: frozenset[str] = frozenset(
         EVENT_TYPE_EXISTING_LAYOUT_EQUIPMENT_INDEXED,
         EVENT_TYPE_EXISTING_LAYOUT_ATTACHMENT_ANALYZED,
         EVENT_TYPE_EXISTING_LAYOUT_HINTS_GENERATED,
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_BEGIN,
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_COMPLETE,
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_SUMMARY,
+        EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW,
+        EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN,
+        EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED,
+        EVENT_TYPE_LAYER04_RIM_CANDIDATE_REJECTED_OVERLAP,
+        EVENT_TYPE_LAYER04_RIM_PLACEMENT_COMPLETE,
     }
 )
 

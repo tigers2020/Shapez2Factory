@@ -12,8 +12,9 @@ from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetCo
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_MINING_BUNDLES,
-    LAYER_04_INNER_PATTERN_FILL,
-    LAYER_05_COMMIT_VALIDATE,
+    LAYER_04_RIM_BUNDLE_PLACEMENT,
+    LAYER_05_INNER_PATTERN_FILL,
+    LAYER_06_COMMIT_VALIDATE,
 )
 from django_apps.asteroid_lab.layers.contracts.stack_status import StackRunStatus
 from django_apps.asteroid_lab.layers.stack_runner import (
@@ -40,7 +41,7 @@ def _canon_complete_map():
 
 
 @pytest.mark.django_db
-def test_stack_runner_invokes_l1_then_l2_to_l5(
+def test_stack_runner_invokes_l1_then_l2_to_l6(
     imported_game_data_batch_module: object,
 ) -> None:
     _ = imported_game_data_batch_module
@@ -55,8 +56,9 @@ def test_stack_runner_invokes_l1_then_l2_to_l5(
     runners = (
         _mk(LAYER_02_EXTERIOR_TRANSPORT),
         _mk(LAYER_03_RIM_MINING_BUNDLES),
-        _mk(LAYER_04_INNER_PATTERN_FILL),
-        _mk(LAYER_05_COMMIT_VALIDATE),
+        _mk(LAYER_04_RIM_BUNDLE_PLACEMENT),
+        _mk(LAYER_05_INNER_PATTERN_FILL),
+        _mk(LAYER_06_COMMIT_VALIDATE),
     )
     required_copy, _ = load_reconstruction_fixture_line_pairs()[1]
     snap = decode_shapez_copy_string(required_copy)
@@ -102,20 +104,22 @@ def test_stack_runner_invokes_l1_then_l2_to_l5(
     assert calls == [
         LAYER_02_EXTERIOR_TRANSPORT,
         LAYER_03_RIM_MINING_BUNDLES,
-        LAYER_04_INNER_PATTERN_FILL,
-        LAYER_05_COMMIT_VALIDATE,
+        LAYER_04_RIM_BUNDLE_PLACEMENT,
+        LAYER_05_INNER_PATTERN_FILL,
+        LAYER_06_COMMIT_VALIDATE,
     ]
 
 
-def test_l6_not_registered_in_stack_runner_source() -> None:
+def test_layer_06_registered_in_stack_runner_source() -> None:
     source = Path("django_apps/asteroid_lab/layers/stack_runner.py").read_text(encoding="utf-8")
-    assert "layer_06" not in source
+    assert "layer_06_commit_validate" in source
+    assert "run_layer_06_commit_validate" in source
     assert "floor2_space_link" not in source
 
 
-def test_no_layer_06_package_exists() -> None:
+def test_layer_06_commit_validate_package_exists() -> None:
     root = Path("django_apps/asteroid_lab/layers")
-    assert not any("layer_06" in p.name for p in root.rglob("*"))
+    assert any(p.name == "layer_06_commit_validate" for p in root.iterdir() if p.is_dir())
 
 
 def test_remaining_budget_zero_skips_layer_without_call() -> None:
@@ -123,8 +127,9 @@ def test_remaining_budget_zero_skips_layer_without_call() -> None:
     runners = (
         _Layer02To05Runner(LAYER_02_EXTERIOR_TRANSPORT, lambda **_k: None),
         _Layer02To05Runner(LAYER_03_RIM_MINING_BUNDLES, layer03),
-        _Layer02To05Runner(LAYER_04_INNER_PATTERN_FILL, lambda **_k: None),
-        _Layer02To05Runner(LAYER_05_COMMIT_VALIDATE, lambda **_k: None),
+        _Layer02To05Runner(LAYER_04_RIM_BUNDLE_PLACEMENT, lambda **_k: None),
+        _Layer02To05Runner(LAYER_05_INNER_PATTERN_FILL, lambda **_k: None),
+        _Layer02To05Runner(LAYER_06_COMMIT_VALIDATE, lambda **_k: None),
     )
     complete = _canon_complete_map()
     ctx = LayerBudgetContext(

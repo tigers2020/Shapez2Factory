@@ -64,6 +64,26 @@ def test_enrich_skips_frames_before_l2_complete_index() -> None:
     assert len(out[0]["map_view"]["overlay_cells"]) == 0
 
 
+def test_deprecated_layer02_wrapper_omits_l3() -> None:
+    from django_apps.asteroid_lab.services.lab_layer02_timeline import (
+        build_layer02_runtime_replay_frames,
+    )
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
+        golden_5x5_complete_map,
+    )
+    from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
+        exterior_plan_wire_for_golden,
+        reconstruction_complete_lab_frame_dict_for_golden,
+    )
+
+    frames = build_layer02_runtime_replay_frames(
+        plan_wire=exterior_plan_wire_for_golden(),
+        lab_frames_before_append=[reconstruction_complete_lab_frame_dict_for_golden()],
+        complete_map=golden_5x5_complete_map(),
+    )
+    assert "layer03_rim_bundle_scan_begin" not in [f["event_type"] for f in frames]
+
+
 def test_enrich_noop_when_l2_index_unresolved() -> None:
     plan_wire = {"version": "exterior_connector_plan.v1", "planned_connectors": []}
     frames = [_recon_frame()]

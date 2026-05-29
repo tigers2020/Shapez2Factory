@@ -1,4 +1,4 @@
-"""Layer 5 stub — PR-1 skeleton only."""
+"""Layer 6 stub — commit / validate (PR-1 skeleton; renumbered PR-3c)."""
 
 from __future__ import annotations
 
@@ -6,10 +6,13 @@ from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetCo
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 
 
-def run_layer_05_commit_validate(
+def run_layer_06_commit_validate(
     *,
     complete_map: ReconstructionCompleteMap,
     budget_ctx: LayerBudgetContext,
 ) -> None:
     _ = complete_map
     _ = budget_ctx
+
+
+__all__ = ["run_layer_06_commit_validate"]

@@ -3,9 +3,13 @@
 **Status:** Approved (contract review 2026-05-28)  
 **Date:** 2026-05-28  
 **Track:** Asteroid Lab genetic sample / miner layout seed authority  
+
+> **Catalog follow-up (2026-05-28):** Canonical row count and dedupe rules are superseded for ingest by [**19-equivalence spec**](2026-05-28-miner-seed-19-equivalence-design.md) (19 `miner_seed_v2` rows, `equivalence_signature`, 19-line bootstrap). This document remains authoritative for coordinates (§2), `MinerSeedPattern` (§7), and PR-Legacy / PR-RTTP split. PR-Seed history (14 rows) is preserved for forensics.
+
 **Related:**
 
-- Bootstrap evidence: `var/default_miner_pattern.txt` (14 SHAPEZ2 copy strings; reference only)
+- **19-equivalence catalog (follow-up):** [`2026-05-28-miner-seed-19-equivalence-design.md`](2026-05-28-miner-seed-19-equivalence-design.md)
+- Bootstrap evidence: `var/default_miner_pattern.txt` (14 SHAPEZ2 copy strings at PR-Seed approval; **19 lines** per follow-up spec)
 - Copy JSON contract: [`documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md`](../../../documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md)
 - Retired exhaustive seed plan (superseded): [`documents/ai/plans/exhaustive_sample_gene_seed.md`](../../../documents/ai/plans/exhaustive_sample_gene_seed.md)
 - Parent decontamination authority: [`2026-05-24-repo-decontamination-authority-design.md`](2026-05-24-repo-decontamination-authority-design.md)

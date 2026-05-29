@@ -94,6 +94,15 @@ def choose_even_slots(slots: list[Coord], count: int) -> list[Coord]:
     return selected
 
 
+def remaining_slots_after_selection(
+    edge_slots: dict[CardinalEdge, list[Coord]],
+    used: set[Coord],
+) -> dict[CardinalEdge, list[Coord]]:
+    return {
+        edge: [coord for coord in slots if coord not in used] for edge, slots in edge_slots.items()
+    }
+
+
 __all__ = [
     "InsufficientConnectorSlotsError",
     "NoConnectorSlotsError",
@@ -101,4 +110,5 @@ __all__ = [
     "distribute_connector_counts",
     "even_slot_index",
     "nearest_unused_index",
+    "remaining_slots_after_selection",
 ]

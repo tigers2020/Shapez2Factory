@@ -5,6 +5,7 @@ from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetCo
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
     LAYERS_02_TO_05,
+    LAYERS_02_TO_06,
 )
 from django_apps.asteroid_lab.layers.contracts.stack_result import StackRunResult
 from django_apps.asteroid_lab.layers.contracts.stack_status import StackRunStatus
@@ -13,6 +14,7 @@ __all__ = [
     "DiagnosticLayerSnapshot",
     "LAYER_01_RECONSTRUCTION",
     "LAYERS_02_TO_05",
+    "LAYERS_02_TO_06",
     "LayerBudgetContext",
     "StackRunResult",
     "StackRunStatus",

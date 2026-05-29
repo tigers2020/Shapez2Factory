@@ -9,6 +9,7 @@ from django_apps.asteroid_lab.layers.layer_02_exterior_transport.placement impor
     distribute_connector_counts,
     even_slot_index,
     nearest_unused_index,
+    remaining_slots_after_selection,
 )
 
 
@@ -54,3 +55,17 @@ def test_choose_even_slots_interior() -> None:
 def test_choose_even_slots_raises_when_count_exceeds_slots() -> None:
     with pytest.raises(InsufficientConnectorSlotsError):
         choose_even_slots([(0, 0), (1, 0)], 3)
+
+
+def test_remaining_slots_excludes_used_coords() -> None:
+    edge_slots = {
+        CardinalEdge.NORTH: [(0, -5), (1, -5), (2, -5)],
+        CardinalEdge.EAST: [(5, 0)],
+        CardinalEdge.SOUTH: [],
+        CardinalEdge.WEST: [],
+    }
+    used = {(1, -5)}
+    remaining = remaining_slots_after_selection(edge_slots, used)
+    assert (1, -5) not in remaining[CardinalEdge.NORTH]
+    assert len(remaining[CardinalEdge.NORTH]) == 2
+    assert remaining[CardinalEdge.EAST] == [(5, 0)]

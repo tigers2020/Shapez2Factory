@@ -82,3 +82,53 @@ def test_no_plan_wire_noop() -> None:
     out, frozen = enrich_lab_timeline_frames_with_exterior_connector_plan(frames, plan_wire=None)
     assert out == frames
     assert frozen is None
+
+
+def test_overlay_includes_connector_role_spare() -> None:
+    plan_wire = {
+        "version": "exterior_connector_plan.v2",
+        "planned_connectors": [
+            {
+                "connector_id": "ext_conn_09",
+                "void_coord": {"x": 3, "y": -6},
+                "edge": "north",
+                "layout_t": "SpaceBelt_Forward",
+                "rotation": 1,
+                "role": "spare",
+                "coords": [{"x": 3, "y": -6}],
+            }
+        ],
+    }
+    out, _frozen = enrich_lab_timeline_frames_with_exterior_connector_plan(
+        [_frame()],
+        plan_wire=plan_wire,
+        l2_complete_frame_index=0,
+    )
+    overlay = out[0]["map_view"]["overlay_cells"]
+    at = [c for c in overlay if c.get("x") == 3 and c.get("y") == -6]
+    assert len(at) == 1
+    assert at[0].get("connector_role") == "spare"
+    assert at[0].get("overlay_role") == "planned_exterior_connector"
+
+
+def test_overlay_unknown_role_normalizes_to_required() -> None:
+    plan_wire = {
+        "version": "exterior_connector_plan.v2",
+        "planned_connectors": [
+            {
+                "connector_id": "ext_conn_00",
+                "void_coord": {"x": 5, "y": -6},
+                "role": "future",
+                "layout_t": "SpaceBelt_Forward",
+                "rotation": 1,
+                "coords": [{"x": 5, "y": -6}],
+            }
+        ],
+    }
+    out, _frozen = enrich_lab_timeline_frames_with_exterior_connector_plan(
+        [_frame()],
+        plan_wire=plan_wire,
+        l2_complete_frame_index=0,
+    )
+    overlay = out[0]["map_view"]["overlay_cells"]
+    assert overlay[0].get("connector_role") == "required"

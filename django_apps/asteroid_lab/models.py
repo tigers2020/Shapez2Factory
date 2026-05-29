@@ -500,6 +500,10 @@ class GeneticSample(models.Model):
             decode_copy_string,
         )
         from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
+        from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
+            build_decoded_blueprint_snapshot,
+        )
+        from django_apps.asteroid_lab.snapshots.island_bbox import island_bbox_from_cells
         from django_apps.asteroid_lab.snapshots.island_coord_meta import (
             attach_island_coord_meta_to_decoded_json,
         )
@@ -513,6 +517,20 @@ class GeneticSample(models.Model):
             dto = normalize_decoded_blueprint(raw)
             merged = dict(dto.decoded_json)
             attach_island_coord_meta_to_decoded_json(merged)
+            snap = build_decoded_blueprint_snapshot(merged)
+            bbox = island_bbox_from_cells(snap.cells)
+            if bbox is None:
+                bb = snap.bbox_json
+                if int(bb.get("width", 0)) > 0 and int(bb.get("height", 0)) > 0:
+                    bbox = {
+                        k: int(bb[k])
+                        for k in ("min_x", "max_x", "min_y", "max_y", "width", "height")
+                        if k in bb
+                    }
+            if bbox:
+                recon = merged.setdefault("_asteroid_lab_reconstruction", {})
+                if isinstance(recon, dict):
+                    recon["full_map_island_bbox"] = dict(bbox)
             self.decoded_json = merged
         except AsteroidLabCopyDecodeError as exc:
             raise ValidationError({"code": str(exc)}) from exc

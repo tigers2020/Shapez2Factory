@@ -33,9 +33,6 @@ from django_apps.asteroid_lab.services.experiment_service import (
     create_or_replace_solver_run,
     create_solver_run,
 )
-from django_apps.asteroid_lab.services.lab_layer02_timeline import (
-    build_layer02_runtime_replay_frames,
-)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
@@ -91,7 +88,9 @@ def _build_layer02_solver_summary(
     unmet_reason: str | None,
     target_throughput_per_min: str,
 ) -> dict[str, Any]:
-    run_success = unmet_reason is None and planned_connector_count > 0
+    required_connector_count = int(plan_wire.get("required_connector_count") or 0)
+    required_planned = int(plan_wire.get("required_planned_count") or 0)
+    run_success = unmet_reason is None and required_planned >= required_connector_count
     return {
         "validation_passed": False,
         "run_success": run_success,
@@ -127,7 +126,7 @@ def run_layer02_solver_for_project(
     config: dict[str, Any] | None = None,
     game_data_provenance: Any | None = None,
 ) -> SolverRuntimeEntryResult:
-    """Run L1 facade + L2 exterior connector plan; L3–L5 remain unrun (holding)."""
+    """Run L1 facade + L2 exterior plan + L3 candidates + L4 provisional placement."""
 
     pid = int(project_id)
     pct = parse_throughput_target_percent(config)
@@ -171,15 +170,30 @@ def run_layer02_solver_for_project(
             error_code=SolverRuntimeEntryErrorCode.DECODE_FAILED,
         )
 
+    import time
+
+    from django_apps.asteroid_lab.services.solver_layer_stack_log import (
+        timed_ms,
+        write_lab_solver_layer_stack_logs,
+    )
+
+    project = m.AsteroidProject.objects.filter(pk=pid).only("slug").first()
+    project_slug = project.slug if project is not None else f"project-{pid}"
+
+    t_l1 = time.monotonic()
     layer01 = run_layer_01(cleanup=cleanup, recon=recon)
+    l1_elapsed_ms = timed_ms(t_l1)
+
+    t_l2 = time.monotonic()
     plan = execute_layer_02_exterior_transport_plan(
         complete_map=layer01.complete_map,
         capacity_envelope=layer01.capacity_envelope,
         throughput_target_percent=pct,
     )
+    l2_elapsed_ms = timed_ms(t_l2)
     plan_wire = exterior_connector_plan_to_metrics_dict(plan)["exterior_connector_plan"]
     unmet = plan.unmet_reason.value if plan.unmet_reason is not None else None
-    planned_count = len(plan.planned_connectors)
+    planned_count = int(plan_wire.get("planned_connector_count") or len(plan.planned_connectors))
 
     obs = build_reconstruction_observability(
         recon=recon,
@@ -195,17 +209,74 @@ def run_layer02_solver_for_project(
         target_throughput_per_min=str(plan.planning_target_per_min),
     )
 
+    from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
+    from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.run import (
+        run_layer_03_rim_mining_bundles,
+    )
+    from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
+        run_layer_04_rim_bundle_placement,
+    )
+    from django_apps.asteroid_lab.layers.stack_runner import LAYER_STACK_BUDGET_MS
+    from django_apps.asteroid_lab.services.solver_runtime_rim_stack import (
+        merge_rim_stack_into_solver_summary,
+    )
+
+    rim_budget = LayerBudgetContext.from_budget_ms(LAYER_STACK_BUDGET_MS)
+    t_l3 = time.monotonic()
+    layer03 = run_layer_03_rim_mining_bundles(
+        complete_map=layer01.complete_map,
+        exterior_plan=plan,
+        budget_ctx=rim_budget,
+    )
+    l3_elapsed_ms = timed_ms(t_l3)
+    t_l4 = time.monotonic()
+    layer04 = run_layer_04_rim_bundle_placement(
+        complete_map=layer01.complete_map,
+        exterior_plan=plan,
+        candidate_set=layer03,
+        budget_ctx=rim_budget,
+    )
+    l4_elapsed_ms = timed_ms(t_l4)
+    merge_rim_stack_into_solver_summary(
+        solver_summary,
+        layer03=layer03,
+        layer04=layer04,
+    )
+
     lab_serialized = [
         replay_timeline_frame_to_json_dict(fr)
         for fr in lab_replay_payload._lab_timeline_frames_for_project(pid)
     ]
-    runtime_replay_frames = build_layer02_runtime_replay_frames(
-        plan_wire=plan_wire,
-        lab_frames_before_append=lab_serialized,
+    from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
+        build_solver_runtime_replay_frames,
+    )
+
+    runtime_replay_frames = build_solver_runtime_replay_frames(
         complete_map=layer01.complete_map,
+        lab_frames_before_append=lab_serialized,
+        exterior_plan_wire=plan_wire,
+        layer03=layer03,
+        layer04=layer04,
     )
 
     rk = (run_key or "").strip() or _default_run_key()
+
+    completed_slugs = tuple(solver_summary.get("completed_layer_slugs") or ())
+    log_dir = write_lab_solver_layer_stack_logs(
+        project_slug=project_slug,
+        run_key=rk,
+        layer01=layer01,
+        exterior_plan=plan,
+        layer03=layer03,
+        layer04=layer04,
+        completed_layer_slugs=completed_slugs,
+        layer01_elapsed_ms=l1_elapsed_ms,
+        layer02_elapsed_ms=l2_elapsed_ms,
+        layer03_elapsed_ms=l3_elapsed_ms,
+        layer04_elapsed_ms=l4_elapsed_ms,
+    )
+    if log_dir is not None:
+        solver_summary["layer_stack_log_dir"] = log_dir
     config_json: dict[str, Any] = {
         SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY: solver_summary,
         SOLVER_RUN_CONFIG_THROUGHPUT_TARGET_PERCENT_KEY: pct,

@@ -1,4 +1,4 @@
-"""Layer 04 rim provisional placement runtime replay segment (projection only)."""
+"""Layer 04 rim provisional placement runtime replay segment (transient overlay specs only)."""
 
 from __future__ import annotations
 
@@ -16,23 +16,16 @@ from django_apps.asteroid_lab.replay.replay_limits import (
     MAX_LAYER04_REPLAY_REJECTED_OVERLAP,
     MAX_LAYER04_REPLAY_SELECTED,
 )
-from django_apps.asteroid_lab.replay.timeline_dtos import (
-    ReplayMapView,
-    ReplayOverlayCell,
-    ReplayTimelineFrame,
-    replay_map_view_is_renderable,
-)
-from django_apps.asteroid_lab.replay.timeline_serialization import (
-    replay_map_view_from_json_dict,
-    replay_map_view_to_json_dict,
-)
+from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
+from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
 
 LAYER04_PHASE = "layer_04_rim_bundle_placement"
 LAYER04_INSPECTOR_STEP = "layer_04_rim_bundle_placement"
 
-
-def _copy_map_view(base_map_view: ReplayMapView) -> ReplayMapView:
-    return replay_map_view_from_json_dict(replay_map_view_to_json_dict(base_map_view))
+_L4_INSPECTOR = {
+    "lab_phase": "candidate_generation",
+    "lab_phase_step": LAYER04_INSPECTOR_STEP,
+}
 
 
 def _overlay_kind_for_role(*, role: str, transport: str) -> str:
@@ -114,58 +107,35 @@ def _combined_overlay_for_placements(
     return tuple(combined)
 
 
-def _timeline_frame(
+def _spec(
     *,
-    base_map_view: ReplayMapView,
     event_type: ReplayEventType,
     title: str,
     description: str,
     metrics: dict[str, object],
-    overlay_cells: tuple[ReplayOverlayCell, ...] = (),
-) -> ReplayTimelineFrame:
+    transient_overlay_cells: tuple[ReplayOverlayCell, ...] = (),
+) -> ReplaySegmentFrameSpec:
     assert_registered_event_type(event_type.value)
-    map_view = _copy_map_view(base_map_view)
-    if overlay_cells:
-        existing = list(map_view.overlay_cells)
-        existing.extend(overlay_cells)
-        map_view = ReplayMapView(
-            bbox=map_view.bbox,
-            base_ref=map_view.base_ref,
-            full_cells=map_view.full_cells,
-            cell_delta=map_view.cell_delta,
-            overlay_cells=tuple(existing),
-            annotations=map_view.annotations,
-        )
-    if not replay_map_view_is_renderable(map_view):
-        msg = "layer04 segment frame must be renderable"
-        raise ValueError(msg)
-    return ReplayTimelineFrame(
-        frame_index=0,
-        phase=ReplayPhase.CANDIDATE_GENERATION,
+    return ReplaySegmentFrameSpec(
         event_type=event_type,
+        phase=ReplayPhase.CANDIDATE_GENERATION,
         title=title,
         description=description,
-        map_view=map_view,
-        inspector={
-            "lab_phase": "candidate_generation",
-            "lab_phase_step": LAYER04_INSPECTOR_STEP,
-            "lab_event_type": event_type.value,
-        },
         metrics=metrics,
+        transient_overlay_cells=transient_overlay_cells,
+        inspector={**_L4_INSPECTOR, "lab_event_type": event_type.value},
     )
 
 
-def build_layer04_runtime_segment_frames(
+def build_layer04_runtime_segment_specs(
     *,
-    base_map_view: ReplayMapView,
     selected: tuple[RimBundlePlacement, ...],
     rejected: tuple[RimPlacementRejection, ...],
-) -> tuple[ReplayTimelineFrame, ...]:
-    """Build L4 runtime segment frames; ``base_map_view`` is assembler-owned only."""
+) -> tuple[ReplaySegmentFrameSpec, ...]:
+    """Transient L4 observation specs; assembler composes persistent exterior overlays."""
 
-    frames: list[ReplayTimelineFrame] = [
-        _timeline_frame(
-            base_map_view=base_map_view,
+    frames: list[ReplaySegmentFrameSpec] = [
+        _spec(
             event_type=ReplayEventType.LAYER04_RIM_PLACEMENT_BEGIN,
             title="Layer 04 rim placement begin",
             description="Layer 04 rim bundle provisional placement",
@@ -185,20 +155,18 @@ def build_layer04_runtime_segment_frames(
     for placement in selected_for_replay:
         meta = _placement_metadata(placement)
         frames.append(
-            _timeline_frame(
-                base_map_view=base_map_view,
+            _spec(
                 event_type=ReplayEventType.LAYER04_RIM_CANDIDATE_SELECTED,
                 title="Layer 04 candidate selected",
                 description=f"Provisional placement {placement.candidate_id}",
                 metrics=meta,
-                overlay_cells=_overlay_cells_for_placement(placement),
+                transient_overlay_cells=_overlay_cells_for_placement(placement),
             )
         )
 
     for rejection in rejections_for_replay:
         frames.append(
-            _timeline_frame(
-                base_map_view=base_map_view,
+            _spec(
                 event_type=ReplayEventType.LAYER04_RIM_CANDIDATE_REJECTED_OVERLAP,
                 title="Layer 04 candidate rejected (overlap)",
                 description=f"Rejected {rejection.candidate_id}",
@@ -210,7 +178,7 @@ def build_layer04_runtime_segment_frames(
                     "conflicting_candidate_id": rejection.conflicting_candidate_id,
                     "conflicting_cell_count": len(rejection.conflicting_cells),
                 },
-                overlay_cells=_overlay_cells_for_overlap_rejection(rejection),
+                transient_overlay_cells=_overlay_cells_for_overlap_rejection(rejection),
             )
         )
 
@@ -229,8 +197,7 @@ def build_layer04_runtime_segment_frames(
         complete_metrics["rejected_overlap_replay_shown"] = len(rejections_for_replay)
 
     frames.append(
-        _timeline_frame(
-            base_map_view=base_map_view,
+        _spec(
             event_type=ReplayEventType.LAYER04_RIM_PLACEMENT_COMPLETE,
             title="Layer 04 rim placement complete",
             description=(
@@ -238,7 +205,7 @@ def build_layer04_runtime_segment_frames(
                 f"{len(overlap_rejections)} overlap rejection(s) recorded"
             ),
             metrics=complete_metrics,
-            overlay_cells=_combined_overlay_for_placements(selected),
+            transient_overlay_cells=_combined_overlay_for_placements(selected),
         )
     )
     return tuple(frames)
@@ -247,5 +214,5 @@ def build_layer04_runtime_segment_frames(
 __all__ = [
     "LAYER04_INSPECTOR_STEP",
     "LAYER04_PHASE",
-    "build_layer04_runtime_segment_frames",
+    "build_layer04_runtime_segment_specs",
 ]

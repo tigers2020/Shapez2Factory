@@ -1,4 +1,4 @@
-"""Layer 03 rim bundle scan runtime replay segment (projection only)."""
+"""Layer 03 rim bundle scan runtime replay segment (transient overlay specs only)."""
 
 from __future__ import annotations
 
@@ -16,60 +16,35 @@ from django_apps.asteroid_lab.replay.layer03_pool_windowing import (
     build_pool_probe_window_plans,
 )
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
-from django_apps.asteroid_lab.replay.timeline_dtos import (
-    ReplayMapView,
-    ReplayOverlayCell,
-    ReplayTimelineFrame,
-    replay_map_view_is_renderable,
-)
-from django_apps.asteroid_lab.replay.timeline_serialization import (
-    replay_map_view_from_json_dict,
-    replay_map_view_to_json_dict,
-)
+from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
+from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
 
 LAYER03_PHASE = LAYER_03_RIM_MINING_BUNDLES
 LAYER03_INSPECTOR_STEP = LAYER_03_RIM_MINING_BUNDLES
 
+_L3_INSPECTOR = {
+    "lab_phase": "candidate_generation",
+    "lab_phase_step": LAYER03_INSPECTOR_STEP,
+}
 
-def _copy_map_view(base_map_view: ReplayMapView) -> ReplayMapView:
-    return replay_map_view_from_json_dict(replay_map_view_to_json_dict(base_map_view))
 
-
-def _timeline_frame(
+def _spec(
     *,
-    base_map_view: ReplayMapView,
     event_type: ReplayEventType,
     title: str,
     description: str,
     metrics: dict[str, object],
-    overlay_cells: tuple[ReplayOverlayCell, ...] = (),
-) -> ReplayTimelineFrame:
+    transient_overlay_cells: tuple[ReplayOverlayCell, ...] = (),
+) -> ReplaySegmentFrameSpec:
     assert_registered_event_type(event_type.value)
-    copied = _copy_map_view(base_map_view)
-    map_view = ReplayMapView(
-        bbox=copied.bbox,
-        base_ref=copied.base_ref,
-        full_cells=copied.full_cells,
-        cell_delta=copied.cell_delta,
-        overlay_cells=overlay_cells,
-        annotations=copied.annotations,
-    )
-    if not replay_map_view_is_renderable(map_view):
-        msg = "layer03 segment frame must be renderable"
-        raise ValueError(msg)
-    return ReplayTimelineFrame(
-        frame_index=0,
-        phase=ReplayPhase.CANDIDATE_GENERATION,
+    return ReplaySegmentFrameSpec(
         event_type=event_type,
+        phase=ReplayPhase.CANDIDATE_GENERATION,
         title=title,
         description=description,
-        map_view=map_view,
-        inspector={
-            "lab_phase": "candidate_generation",
-            "lab_phase_step": LAYER03_INSPECTOR_STEP,
-            "lab_event_type": event_type.value,
-        },
         metrics=metrics,
+        transient_overlay_cells=transient_overlay_cells,
+        inspector={**_L3_INSPECTOR, "lab_event_type": event_type.value},
     )
 
 
@@ -135,22 +110,19 @@ def _overlay_for_plan(plan: PoolProbeWindowPlan) -> tuple[ReplayOverlayCell, ...
     return tuple(cells)
 
 
-def build_layer03_runtime_segment_frames(
+def build_layer03_runtime_segment_specs(
     *,
     observability: Layer03Observability,
-    base_map_view: ReplayMapView,
-) -> tuple[ReplayTimelineFrame, ...]:
-    """Build L3 runtime segment; ``base_map_view`` is assembler-owned structural base only."""
+) -> tuple[ReplaySegmentFrameSpec, ...]:
+    """Transient L3 observation specs; assembler composes persistent exterior overlays."""
 
-    begin = _timeline_frame(
-        base_map_view=base_map_view,
+    begin = _spec(
         event_type=ReplayEventType.LAYER03_RIM_BUNDLE_SCAN_BEGIN,
         title="Layer 03 rim bundle scan begin",
         description="Layer 03 rim mining bundle candidate expansion",
         metrics={"layer": LAYER03_PHASE},
     )
-    complete = _timeline_frame(
-        base_map_view=base_map_view,
+    complete = _spec(
         event_type=ReplayEventType.LAYER03_RIM_BUNDLE_SCAN_COMPLETE,
         title="Layer 03 rim bundle scan complete",
         description=(
@@ -164,8 +136,7 @@ def build_layer03_runtime_segment_frames(
         replay_pool_candidates=observability.replay_pool_candidates,
     )
     logical_count = plans[0].logical_window_count if plans else 0
-    summary = _timeline_frame(
-        base_map_view=base_map_view,
+    summary = _spec(
         event_type=ReplayEventType.LAYER03_RIM_BUNDLE_POOL_SUMMARY,
         title="Layer 03 rim bundle pool summary",
         description=(
@@ -173,10 +144,10 @@ def build_layer03_runtime_segment_frames(
             f"{logical_count} logical window(s) · {len(plans)} preview frame(s)"
         ),
         metrics=_pool_summary_metrics(observability, plans),
-        overlay_cells=(),
+        transient_overlay_cells=(),
     )
 
-    probe_windows: list[ReplayTimelineFrame] = []
+    probe_windows: list[ReplaySegmentFrameSpec] = []
     for plan in plans:
         title = (
             f"Layer 03 rim bundle pool · window {plan.logical_window_index} / "
@@ -191,13 +162,12 @@ def build_layer03_runtime_segment_frames(
                 f" · part {plan.physical_subwindow_index}/" f"{plan.physical_subwindow_count}"
             )
         probe_windows.append(
-            _timeline_frame(
-                base_map_view=base_map_view,
+            _spec(
                 event_type=ReplayEventType.LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW,
                 title=title,
                 description=description,
                 metrics=_probe_window_metrics(observability, plan),
-                overlay_cells=_overlay_for_plan(plan),
+                transient_overlay_cells=_overlay_for_plan(plan),
             )
         )
 
@@ -210,5 +180,5 @@ __all__ = [
     "OVERLAY_KIND_CANDIDATE_MINER",
     "OVERLAY_KIND_CANDIDATE_ROUTE_PATH",
     "OVERLAY_KIND_CANDIDATE_TRANSPORT_STUB",
-    "build_layer03_runtime_segment_frames",
+    "build_layer03_runtime_segment_specs",
 ]

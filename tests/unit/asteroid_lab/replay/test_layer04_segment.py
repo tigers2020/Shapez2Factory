@@ -1,4 +1,4 @@
-"""Layer 04 runtime replay segment tests (central assembler PR-A)."""
+"""Layer 04 runtime replay segment tests (transient specs; assembler composes overlays)."""
 
 from __future__ import annotations
 
@@ -15,11 +15,12 @@ from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_LAYER04_RIM_PLACEMENT_COMPLETE,
     is_registered_event_type,
 )
-from django_apps.asteroid_lab.replay.layer04_segment import build_layer04_runtime_segment_frames
+from django_apps.asteroid_lab.replay.layer04_segment import build_layer04_runtime_segment_specs
 from django_apps.asteroid_lab.replay.replay_limits import (
     MAX_LAYER04_REPLAY_REJECTED_OVERLAP,
     MAX_LAYER04_REPLAY_SELECTED,
 )
+from django_apps.asteroid_lab.replay.runtime_frame_finalize import finalize_specs_to_timeline_frames
 from django_apps.asteroid_lab.replay.timeline_dtos import replay_map_view_is_renderable
 from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
     succeeded_probe_at,
@@ -29,14 +30,18 @@ from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
 )
 
 
+def _frames_from_specs(*, selected, rejected):
+    base_map_view = renderable_base_map_view_for_golden()
+    specs = build_layer04_runtime_segment_specs(selected=selected, rejected=rejected)
+    return finalize_specs_to_timeline_frames(
+        specs,
+        structural_map_view=base_map_view,
+    )
+
+
 def test_layer04_segment_emits_begin_selected_complete() -> None:
     placement = build_rim_bundle_placement(succeeded_probe_at((3, 4)))
-    base_map_view = renderable_base_map_view_for_golden()
-    frames = build_layer04_runtime_segment_frames(
-        base_map_view=base_map_view,
-        selected=(placement,),
-        rejected=(),
-    )
+    frames = _frames_from_specs(selected=(placement,), rejected=())
     types = [fr.event_type.value for fr in frames]
     assert types[0] == EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN
     assert EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED in types
@@ -51,7 +56,6 @@ def test_layer04_segment_emits_begin_selected_complete() -> None:
 
 
 def test_layer04_segment_truncates_selected_at_replay_cap() -> None:
-    base_map_view = renderable_base_map_view_for_golden()
     placements = tuple(
         build_rim_bundle_placement(
             succeeded_probe_at(
@@ -62,11 +66,7 @@ def test_layer04_segment_truncates_selected_at_replay_cap() -> None:
         )
         for i in range(MAX_LAYER04_REPLAY_SELECTED + 5)
     )
-    frames = build_layer04_runtime_segment_frames(
-        base_map_view=base_map_view,
-        selected=placements,
-        rejected=(),
-    )
+    frames = _frames_from_specs(selected=placements, rejected=())
     selected_count = sum(
         1 for fr in frames if fr.event_type.value == EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED
     )
@@ -77,7 +77,6 @@ def test_layer04_segment_truncates_selected_at_replay_cap() -> None:
 
 
 def test_layer04_segment_truncates_rejected_overlap_at_replay_cap() -> None:
-    base_map_view = renderable_base_map_view_for_golden()
     rejections = tuple(
         RimPlacementRejection(
             candidate_id=f"cand_{i}",
@@ -88,11 +87,7 @@ def test_layer04_segment_truncates_rejected_overlap_at_replay_cap() -> None:
         )
         for i in range(MAX_LAYER04_REPLAY_REJECTED_OVERLAP + 10)
     )
-    frames = build_layer04_runtime_segment_frames(
-        base_map_view=base_map_view,
-        selected=(),
-        rejected=rejections,
-    )
+    frames = _frames_from_specs(selected=(), rejected=rejections)
     overlap_frames = [
         fr for fr in frames if fr.event_type.value == "layer04_rim_candidate_rejected_overlap"
     ]

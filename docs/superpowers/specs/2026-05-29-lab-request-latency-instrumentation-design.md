@@ -83,15 +83,24 @@ Example line:
 - `game_data_snapshot_ms`
 - `solver_runtime_ms`
 - `layer_01_ms` … `layer_04_ms` (from layer02 when active)
-- `replay_artifact_build_ms`, `db_persist_ms`, `post_replay_compose_ms`
+- `replay_artifact_build_ms`, `db_persist_ms`, `replay_compose_once_ms` (13C2-lite; replaces `post_replay_compose_ms`)
+- `lab_replay_cache_frames_bytes`, `lab_replay_manifest_summary_bytes` (on POST success)
 - `response_json_build_ms`, `payload_bytes`, `solver_run_id`
 
 ### `lab_replay_get`
 
 - `solver_run_lookup_ms`
-- `replay_compose_ms`
+- `replay_cache_load_ms`, `replay_cache_json_decode_ms`, `replay_cache_miss_compose_ms` (13C2-lite; `replay_compose_ms` on miss/fallback only)
+- `lab_replay_cache_frames_bytes`, `lab_replay_manifest_summary_bytes`
 - `json_response_build_ms`
 - `frame_count`, `total_full_map_cells`, `payload_bytes`, `response_bytes`
+
+See also [`2026-05-29-replay-compose-defer-artifact-reuse-design.md`](2026-05-29-replay-compose-defer-artifact-reuse-design.md) §4.9.
+
+### `project_page` (lazy SSR, 13C2-lite)
+
+- `replay_cache_json_decode_ms`, `lab_replay_manifest_summary_bytes` (cache-hit; KB-scale)
+- `replay_cache_miss_compose_ms` (Policy A miss only)
 
 ---
 

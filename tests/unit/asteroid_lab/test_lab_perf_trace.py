@@ -13,6 +13,7 @@ from django_apps.asteroid_lab.observability.lab_perf_trace import (
     lab_perf_trace_request,
     perf_span,
     record_perf_meta,
+    serialized_json_utf8_bytes,
 )
 
 
@@ -53,3 +54,13 @@ def test_lab_perf_trace_log_path_under_var_log() -> None:
     path = lab_perf_trace_log_path()
     assert "asteroid_lab_perf" in path.as_posix()
     assert path.name == "lab_perf.jsonl"
+
+
+def test_serialized_json_utf8_bytes_none_is_zero() -> None:
+    assert serialized_json_utf8_bytes(None) == 0
+
+
+def test_serialized_json_utf8_bytes_counts_compact_json() -> None:
+    payload = {"frame_count": 2, "preview_frame": {"frame_index": 1}}
+    expected = len(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+    assert serialized_json_utf8_bytes(payload) == expected

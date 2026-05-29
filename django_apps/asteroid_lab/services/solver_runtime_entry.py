@@ -9,7 +9,12 @@ from django.conf import settings
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
     build_lab_replay_lazy_handle,
+    build_lab_replay_lazy_handle_from_summary,
     lab_replay_payload_mode,
+)
+from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
+    is_cache_summary_valid,
+    load_manifest_summary_for_run_id,
 )
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
@@ -112,11 +117,36 @@ def entry_result_to_json_dict(
     frames = list(result.lab_replay_frames_json)
     milestone_frames = list(result.lab_optimization_milestone_frames_json)
     mode = lab_replay_payload_mode()
+    slug = str(project_slug or "")
+    run_id = result.solver_run_id
+    manifest_summary: dict[str, Any] | None = None
+    if mode == "lazy" and run_id is not None:
+        manifest_summary = load_manifest_summary_for_run_id(int(run_id))
+
+    if mode == "lazy" and is_cache_summary_valid(manifest_summary):
+        assert manifest_summary is not None
+        handle = build_lab_replay_lazy_handle_from_summary(
+            project_slug=slug,
+            solver_run_id=run_id,
+            manifest_summary=manifest_summary,
+        )
+        replay_track_metrics = dict(manifest_summary.get("replay_track_metrics") or {})
+        lab_replay_frame_count = int(handle.frame_count)
+    else:
+        handle = build_lab_replay_lazy_handle(
+            mode=mode,
+            frames=frames,
+            project_slug=slug,
+            solver_run_id=run_id,
+        )
+        replay_track_metrics = dict(result.replay_track_metrics)
+        lab_replay_frame_count = len(frames) if mode == "inline" else int(handle.frame_count)
+
     body: dict[str, Any] = {
         "ok": result.ok,
-        "solver_run_id": result.solver_run_id,
-        "lab_replay_frame_count": len(frames),
-        "replay_track_metrics": result.replay_track_metrics,
+        "solver_run_id": run_id,
+        "lab_replay_frame_count": lab_replay_frame_count,
+        "replay_track_metrics": replay_track_metrics,
         "lab_optimization_milestone_frame_count": len(milestone_frames),
         "lab_optimization_milestone_frames_json": milestone_frames,
         "lab_optimization_milestone_track_metrics": _normalize_milestone_track_metrics(
@@ -128,18 +158,14 @@ def entry_result_to_json_dict(
         "validation_issue_details": list(result.solver_summary.get("issue_details") or []),
         "gene_template_source": dict(result.gene_template_source),
     }
-    handle = build_lab_replay_lazy_handle(
-        mode=mode,
-        frames=frames,
-        project_slug=str(project_slug or ""),
-        solver_run_id=result.solver_run_id,
-    )
     if mode == "lazy":
         body["lab_replay"] = {
             "mode": handle.mode,
             "frame_count": handle.frame_count,
             "preview_frame_index": handle.preview_frame_index,
-            "preview_frame": handle.preview_frame,
+            "preview_frame": (
+                dict(handle.preview_frame) if handle.preview_frame is not None else None
+            ),
             "fetch_url": handle.fetch_url,
             "replay_payload_version": handle.replay_payload_version,
         }

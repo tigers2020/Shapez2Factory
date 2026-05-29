@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,8 @@ from django_apps.asteroid_lab.observability.lab_perf_trace import (
     lab_perf_trace_request,
     perf_span,
     record_perf_meta,
+    record_perf_ms,
+    serialized_json_utf8_bytes,
 )
 from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
@@ -37,6 +40,12 @@ from django_apps.asteroid_lab.services.input_service import (
 from django_apps.asteroid_lab.services.lab_map_reset_service import (
     LabMapResetErrorCode,
     reset_project_map_to_inspection_clean,
+)
+from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
+    is_cache_summary_valid,
+    load_composed_frames_for_run_id,
+    load_manifest_summary_for_run_id,
+    persist_composed_replay_for_run_id,
 )
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
@@ -446,11 +455,31 @@ def asteroid_miner_layout_project_solver_run_lab_replay(
             run = SolverRun.objects.filter(pk=int(run_id), project_id=int(project.pk)).first()
             if run is None:
                 return JsonResponse({"ok": False, "error": "solver_run_not_found"}, status=404)
-        with perf_span("replay_compose_ms"):
-            frames, metrics = build_lab_replay_frames_for_project(
-                int(project.pk),
-                solver_run_id=int(run.pk),
-            )
+        run_pk = int(run.pk)
+        project_pk = int(project.pk)
+        with perf_span("replay_cache_load_ms"):
+            decode_ms = 0.0
+            t0 = time.monotonic()
+            frames = load_composed_frames_for_run_id(run_pk)
+            decode_ms += (time.monotonic() - t0) * 1000.0
+            t0 = time.monotonic()
+            summary = load_manifest_summary_for_run_id(run_pk)
+            decode_ms += (time.monotonic() - t0) * 1000.0
+        record_perf_ms("replay_cache_json_decode_ms", decode_ms)
+        record_perf_meta(
+            lab_replay_cache_frames_bytes=serialized_json_utf8_bytes(frames),
+            lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(summary),
+        )
+        if frames is not None and is_cache_summary_valid(summary):
+            assert summary is not None
+            metrics = dict(summary.get("replay_track_metrics") or {})
+        else:
+            with perf_span("replay_cache_miss_compose_ms"):
+                frames, metrics = build_lab_replay_frames_for_project(
+                    project_pk,
+                    solver_run_id=run_pk,
+                )
+                persist_composed_replay_for_run_id(run_pk, frames=frames, metrics=metrics)
         payload: dict[str, Any] = {
             "schema_version": 1,
             "run_id": int(run.pk),

@@ -33,6 +33,10 @@ from django_apps.asteroid_lab.services.experiment_service import (
     create_or_replace_solver_run,
     create_solver_run,
 )
+from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
+    build_manifest_summary_from_compose,
+    persist_composed_replay_for_run_id,
+)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
@@ -243,8 +247,12 @@ def run_layer02_solver_for_project(
         layer04=layer04,
     )
 
-    from django_apps.asteroid_lab.observability.lab_perf_trace import perf_span, record_perf_ms
-
+    from django_apps.asteroid_lab.observability.lab_perf_trace import (
+        perf_span,
+        record_perf_meta,
+        record_perf_ms,
+        serialized_json_utf8_bytes,
+    )
     with perf_span("replay_artifact_build_ms"):
         lab_serialized = [
             replay_timeline_frame_to_json_dict(fr)
@@ -321,8 +329,14 @@ def run_layer02_solver_for_project(
     record_perf_ms("layer_03_ms", float(l3_elapsed_ms))
     record_perf_ms("layer_04_ms", float(l4_elapsed_ms))
 
-    with perf_span("post_replay_compose_ms"):
+    with perf_span("replay_compose_once_ms"):
         frames, metrics = build_lab_replay_frames_for_project(pid, solver_run_id=run_id)
+        persist_composed_replay_for_run_id(run_id, frames=frames, metrics=metrics)
+        manifest_summary = build_manifest_summary_from_compose(frames=frames, metrics=metrics)
+        record_perf_meta(
+            lab_replay_cache_frames_bytes=serialized_json_utf8_bytes(frames),
+            lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(manifest_summary),
+        )
     return SolverRuntimeEntryResult(
         ok=True,
         solver_run_id=run_id,

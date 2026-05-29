@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any, cast
 
 from django.db.models import Count, Prefetch
@@ -11,11 +12,22 @@ from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
     MINER_SEED_SCHEMA_V2,
 )
 from django_apps.asteroid_lab.models import GeneticSample, ReplayFrame, ReplayTrack
-from django_apps.asteroid_lab.observability.lab_perf_trace import perf_span
+from django_apps.asteroid_lab.observability.lab_perf_trace import (
+    perf_span,
+    record_perf_meta,
+    record_perf_ms,
+    serialized_json_utf8_bytes,
+)
 from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
     build_lab_replay_lazy_handle,
+    build_lab_replay_lazy_handle_from_summary,
     lab_replay_manifest_json_dict,
     lab_replay_payload_mode,
+)
+from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
+    is_cache_summary_valid,
+    load_manifest_summary_for_run_id,
+    persist_composed_replay_for_run_id,
 )
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
@@ -198,15 +210,18 @@ def lab_page_context(*, project_id: int | None = None, project_slug: str = "") -
 
     with perf_span("get_latest_lab_replay_track_ms"):
         track = get_latest_lab_replay_track_for_project(int(project_id))
-    with perf_span("build_lab_replay_frames_for_project_ms"):
-        frames_json, track_metrics = build_lab_replay_frames_for_project(int(project_id))
-    ctx["replay_track_metrics"] = track_metrics
 
     if track is not None:
         ctx["lab_replay_track_id"] = int(track.pk)
         ctx["lab_replay_track_key"] = str(track.track_key)
 
+    slug_str = str(project_slug)
+    pid = int(project_id)
+
     if mode == "inline":
+        with perf_span("build_lab_replay_frames_for_project_ms"):
+            frames_json, track_metrics = build_lab_replay_frames_for_project(pid)
+        ctx["replay_track_metrics"] = track_metrics
         if frames_json:
             first = frames_json[0]
             n = len(frames_json)
@@ -230,12 +245,65 @@ def lab_page_context(*, project_id: int | None = None, project_slug: str = "") -
             ui_total = 0
             ui_has_replay = False
     else:
-        handle = build_lab_replay_lazy_handle(
-            mode="lazy",
-            frames=frames_json,
-            project_slug=str(project_slug),
-            solver_run_id=solver_run_id,
-        )
+        manifest_summary: dict[str, Any] | None = None
+        if solver_run_id is not None:
+            t0 = time.monotonic()
+            manifest_summary = load_manifest_summary_for_run_id(int(solver_run_id))
+            record_perf_ms("replay_cache_json_decode_ms", (time.monotonic() - t0) * 1000.0)
+            if manifest_summary is not None:
+                record_perf_meta(
+                    lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(
+                        manifest_summary
+                    ),
+                )
+
+        if is_cache_summary_valid(manifest_summary):
+            assert manifest_summary is not None
+            track_metrics = dict(manifest_summary.get("replay_track_metrics") or {})
+            handle = build_lab_replay_lazy_handle_from_summary(
+                project_slug=slug_str,
+                solver_run_id=solver_run_id,
+                manifest_summary=manifest_summary,
+            )
+        else:
+            frames_json: list[dict[str, Any]] = []
+            with perf_span("replay_cache_miss_compose_ms"):
+                frames_json, track_metrics = build_lab_replay_frames_for_project(pid)
+                if solver_run_id is not None:
+                    persist_composed_replay_for_run_id(
+                        int(solver_run_id),
+                        frames=frames_json,
+                        metrics=track_metrics,
+                    )
+                    t0 = time.monotonic()
+                    manifest_summary = load_manifest_summary_for_run_id(int(solver_run_id))
+                    record_perf_ms("replay_cache_json_decode_ms", (time.monotonic() - t0) * 1000.0)
+            if frames_json:
+                record_perf_meta(
+                    lab_replay_cache_frames_bytes=serialized_json_utf8_bytes(frames_json),
+                )
+            if manifest_summary is not None:
+                record_perf_meta(
+                    lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(
+                        manifest_summary
+                    ),
+                )
+            if is_cache_summary_valid(manifest_summary):
+                assert manifest_summary is not None
+                handle = build_lab_replay_lazy_handle_from_summary(
+                    project_slug=slug_str,
+                    solver_run_id=solver_run_id,
+                    manifest_summary=manifest_summary,
+                )
+            else:
+                handle = build_lab_replay_lazy_handle(
+                    mode="lazy",
+                    frames=frames_json,
+                    project_slug=slug_str,
+                    solver_run_id=solver_run_id,
+                )
+
+        ctx["replay_track_metrics"] = track_metrics
         ctx["lab_replay_manifest_json"] = lab_replay_manifest_json_dict(
             handle=handle,
             replay_track_metrics=track_metrics,

@@ -111,6 +111,14 @@ def emit_lab_perf_trace(collector: _Collector) -> None:
         path.open("a", encoding="utf-8").write(line)
 
 
+def serialized_json_utf8_bytes(value: Any) -> int:
+    """UTF-8 size of ``value`` as compact JSON (perf meta only; not solver input)."""
+
+    if value is None:
+        return 0
+    return len(json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+
+
 def count_full_map_cells(frames: Sequence[Mapping[str, Any]]) -> int:
     """Cheap aggregate for perf records (not used by solver or replay logic)."""
 
@@ -131,4 +139,5 @@ __all__ = [
     "perf_span",
     "record_perf_meta",
     "record_perf_ms",
+    "serialized_json_utf8_bytes",
 ]

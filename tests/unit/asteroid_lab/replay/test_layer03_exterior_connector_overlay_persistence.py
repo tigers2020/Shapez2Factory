@@ -47,9 +47,7 @@ def test_l3_scan_begin_preserves_planned_exterior_connector_overlay() -> None:
 
 def test_l3_probe_window_preserves_connector_and_candidate_overlay() -> None:
     frames = _frames_with_plan()
-    probe = next(
-        f for f in frames if f["event_type"] == "layer03_rim_bundle_pool_probe_window"
-    )
+    probe = next(f for f in frames if f["event_type"] == "layer03_rim_bundle_pool_probe_window")
     assert _has_connector_overlay(probe)
     kinds = {
         str(c.get("kind"))

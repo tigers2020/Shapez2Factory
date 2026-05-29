@@ -61,11 +61,7 @@ def _dedupe_rows(rows: Sequence[Mapping[str, object]]) -> list[dict[str, object]
 def _non_connector_structural_rows(
     rows: Sequence[Mapping[str, object]],
 ) -> list[dict[str, object]]:
-    return [
-        dict(r)
-        for r in rows
-        if str(r.get("overlay_role") or "") != _CONNECTOR_ROLE
-    ]
+    return [dict(r) for r in rows if str(r.get("overlay_role") or "") != _CONNECTOR_ROLE]
 
 
 def compose_replay_overlay_cells(

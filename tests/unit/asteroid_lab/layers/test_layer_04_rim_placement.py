@@ -97,9 +97,20 @@ def test_build_layer04_rim_placement_result_sets_counts() -> None:
     assert result.rejected_budget_count == 0
 
 
-def test_select_rejects_lower_priority_on_physical_overlap() -> None:
-    high = succeeded_probe_at((3, 4), rank=1, equivalence_key="eq_high")
-    low = succeeded_probe_at((3, 4), rank=9, equivalence_key="eq_low", gene_key="miner_seed_m1e_01")
+def test_select_rejects_lower_mining_gain_on_physical_overlap() -> None:
+    high = succeeded_probe_at(
+        (3, 4),
+        rank=9,
+        equivalence_key="eq_high",
+        mining=frozenset({(3, 4), (2, 4), (1, 4)}),
+    )
+    low = succeeded_probe_at(
+        (3, 4),
+        rank=1,
+        equivalence_key="eq_low",
+        gene_key="miner_seed_m1e_01",
+        mining=frozenset({(3, 4)}),
+    )
     ctx = LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0)
     selected, rejected = select_non_overlapping_candidates(
         normal_candidates=(low, high),
@@ -108,8 +119,8 @@ def test_select_rejects_lower_priority_on_physical_overlap() -> None:
     assert [e.candidate.candidate_id for e in selected] == [high.candidate.candidate_id]
     assert len(rejected) == 1
     assert rejected[0].reason is RimPlacementRejectReason.PHYSICAL_OVERLAP
-    assert rejected[0].reason.value == "PHYSICAL_OVERLAP"
     assert rejected[0].conflicting_candidate_id == high.candidate.candidate_id
+    assert rejected[0].winner_selected_due_to_higher_mining_gain is True
 
 
 def test_select_does_not_dedupe_equivalence_when_cells_disjoint() -> None:

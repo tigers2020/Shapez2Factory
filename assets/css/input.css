@@ -128,7 +128,7 @@
     top: 50%;
     left: 100%;
     width: var(--lab-cell-gap);
-    height: 3px;
+    height: 2px;
     transform: translateY(-50%);
   }
 
@@ -136,14 +136,14 @@
     top: 50%;
     right: 100%;
     width: var(--lab-cell-gap);
-    height: 3px;
+    height: 2px;
     transform: translateY(-50%);
   }
 
   .lab-bundle-bridge-s {
     top: 100%;
     left: 50%;
-    width: 3px;
+    width: 2px;
     height: var(--lab-cell-gap);
     transform: translateX(-50%);
   }
@@ -151,7 +151,7 @@
   .lab-bundle-bridge-n {
     bottom: 100%;
     left: 50%;
-    width: 3px;
+    width: 2px;
     height: var(--lab-cell-gap);
     transform: translateX(-50%);
   }
@@ -187,43 +187,46 @@
 
   .lab-pattern-bundle-outline-path {
     fill: none;
-    stroke-width: 1.25;
+    stroke-width: 1.5;
     stroke-linejoin: round;
     stroke-linecap: round;
   }
 
+  /* Complementary pairs (blue↔orange, violet↔amber, green↔rose, cyan↔red). */
   .lab-pattern-bundle-outline-path[data-color-index="0"] {
-    stroke: rgba(250, 204, 21, 0.95);
+    stroke: rgba(96, 165, 250, 0.95);
   }
 
   .lab-pattern-bundle-outline-path[data-color-index="1"] {
-    stroke: rgba(190, 242, 100, 0.95);
-    stroke-dasharray: 5 3;
+    stroke: rgba(251, 146, 60, 0.95);
+    stroke-dasharray: 4 3;
   }
 
   .lab-pattern-bundle-outline-path[data-color-index="2"] {
-    stroke: rgba(103, 232, 249, 0.95);
+    stroke: rgba(192, 132, 252, 0.95);
   }
 
   .lab-pattern-bundle-outline-path[data-color-index="3"] {
-    stroke: rgba(240, 171, 252, 0.95);
-    stroke-dasharray: 5 3;
+    stroke: rgba(250, 204, 21, 0.95);
+    stroke-dasharray: 4 3;
   }
 
   .lab-pattern-bundle-outline-path[data-color-index="4"] {
-    stroke: rgba(251, 146, 60, 0.95);
+    stroke: rgba(74, 222, 128, 0.95);
   }
 
   .lab-pattern-bundle-outline-path[data-color-index="5"] {
-    stroke: rgba(125, 211, 252, 0.95);
+    stroke: rgba(251, 113, 133, 0.95);
+    stroke-dasharray: 4 3;
   }
 
   .lab-pattern-bundle-outline-path[data-color-index="6"] {
-    stroke: rgba(244, 114, 182, 0.95);
+    stroke: rgba(34, 211, 238, 0.95);
   }
 
   .lab-pattern-bundle-outline-path[data-color-index="7"] {
-    stroke: rgba(167, 243, 208, 0.95);
+    stroke: rgba(248, 113, 113, 0.95);
+    stroke-dasharray: 4 3;
   }
 
   /* Layer 02: subtle white ring at void_coord (spec §3.3 White marker; inset — viewport contain:paint). */

@@ -1278,34 +1278,40 @@
     }
   }
 
-  /** Bright per-bundle stroke on outer edges (``equipment_bundles`` from replay overlay). */
+  /** Per-bundle outer edges (1px; complementary pairs — matches pattern SVG palette). */
   var BUNDLE_EDGE_PALETTE = [
-    { n: "border-t-2 border-t-yellow-300", e: "border-r-2 border-r-yellow-300", s: "border-b-2 border-b-yellow-300", w: "border-l-2 border-l-yellow-300" },
-    { n: "border-t-2 border-t-lime-300", e: "border-r-2 border-r-lime-300", s: "border-b-2 border-b-lime-300", w: "border-l-2 border-l-lime-300" },
-    { n: "border-t-2 border-t-cyan-300", e: "border-r-2 border-r-cyan-300", s: "border-b-2 border-b-cyan-300", w: "border-l-2 border-l-cyan-300" },
-    { n: "border-t-2 border-t-fuchsia-300", e: "border-r-2 border-r-fuchsia-300", s: "border-b-2 border-b-fuchsia-300", w: "border-l-2 border-l-fuchsia-300" },
-    { n: "border-t-2 border-t-orange-300", e: "border-r-2 border-r-orange-300", s: "border-b-2 border-b-orange-300", w: "border-l-2 border-l-orange-300" },
-    { n: "border-t-2 border-t-sky-300", e: "border-r-2 border-r-sky-300", s: "border-b-2 border-b-sky-300", w: "border-l-2 border-l-sky-300" },
+    { n: "border-t border-t-blue-400", e: "border-r border-r-blue-400", s: "border-b border-b-blue-400", w: "border-l border-l-blue-400" },
+    { n: "border-t border-t-orange-400", e: "border-r border-r-orange-400", s: "border-b border-b-orange-400", w: "border-l border-l-orange-400" },
+    { n: "border-t border-t-violet-400", e: "border-r border-r-violet-400", s: "border-b border-b-violet-400", w: "border-l border-l-violet-400" },
+    { n: "border-t border-t-amber-300", e: "border-r border-r-amber-300", s: "border-b border-b-amber-300", w: "border-l border-l-amber-300" },
+    { n: "border-t border-t-green-400", e: "border-r border-r-green-400", s: "border-b border-b-green-400", w: "border-l border-l-green-400" },
+    { n: "border-t border-t-rose-400", e: "border-r border-r-rose-400", s: "border-b border-b-rose-400", w: "border-l border-l-rose-400" },
+    { n: "border-t border-t-cyan-400", e: "border-r border-r-cyan-400", s: "border-b border-b-cyan-400", w: "border-l border-l-cyan-400" },
+    { n: "border-t border-t-red-400", e: "border-r border-r-red-400", s: "border-b border-b-red-400", w: "border-l border-l-red-400" },
   ];
 
   /** Inset fill per bundle id (paired with ``BUNDLE_EDGE_PALETTE``); not Tailwind — avoids purge. */
   var BUNDLE_FILL_INSET_RGBA = [
-    "rgba(253, 224, 71, 0.14)",
-    "rgba(190, 242, 100, 0.14)",
-    "rgba(103, 232, 249, 0.14)",
-    "rgba(240, 171, 252, 0.14)",
-    "rgba(254, 215, 170, 0.14)",
-    "rgba(125, 211, 252, 0.14)",
+    "rgba(96, 165, 250, 0.12)",
+    "rgba(251, 146, 60, 0.12)",
+    "rgba(192, 132, 252, 0.12)",
+    "rgba(250, 204, 21, 0.12)",
+    "rgba(74, 222, 128, 0.12)",
+    "rgba(251, 113, 133, 0.12)",
+    "rgba(34, 211, 238, 0.12)",
+    "rgba(248, 113, 113, 0.12)",
   ];
 
   /** Solid bridge bars (paired with ``BUNDLE_EDGE_PALETTE`` / inset fill). */
   var BUNDLE_BRIDGE_HEX = [
-    "#fde047",
-    "#bef264",
-    "#67e8f9",
-    "#f0abfc",
-    "#fdba74",
-    "#7dd3fc",
+    "#60a5fa",
+    "#fb923c",
+    "#c084fc",
+    "#facc15",
+    "#4ade80",
+    "#fb7185",
+    "#22d3ee",
+    "#f87171",
   ];
 
   function clearLabCellBundleBridges(el) {

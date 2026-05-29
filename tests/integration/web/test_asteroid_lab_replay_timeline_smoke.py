@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 from django.test import Client
-from django.urls import reverse
 
 from tests.integration.web.test_lab_replay_ssr_manifest import (
     _project_page_html,

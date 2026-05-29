@@ -68,19 +68,21 @@ def assign_bundle_color_indices(
     n = len(bundle_occupied_sets)
     if n == 0:
         return ()
-    colors: list[int | None] = [None] * n
+    colors: list[int] = []
     for i in range(n):
         used: set[int] = set()
-        for j in range(n):
-            if j == i or colors[j] is None:
-                continue
+        for j in range(i):
             if _bundles_conflict(bundle_occupied_sets[i], bundle_occupied_sets[j]):
                 used.add(colors[j])
         pick = 0
-        while pick in used:
+        while pick < PALETTE_SIZE and pick in used:
             pick += 1
-        colors[i] = pick % PALETTE_SIZE
-    return tuple(c if c is not None else 0 for c in colors)
+        if pick < PALETTE_SIZE:
+            colors.append(pick)
+        else:
+            # Palette exhausted; do not wrap pick with modulo (can land in ``used``).
+            colors.append(0)
+    return tuple(colors)
 
 
 def build_pattern_bundle_highlights_wire(

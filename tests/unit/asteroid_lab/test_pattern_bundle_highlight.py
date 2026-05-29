@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import django_apps.asteroid_lab.replay.pattern_bundle_highlight as pattern_bundle_highlight
 from django_apps.asteroid_lab.replay.pattern_bundle_highlight import (
     METRICS_KEY,
     assign_bundle_color_indices,
@@ -28,6 +29,49 @@ def test_non_adjacent_bundles_may_share_color_index() -> None:
     b = frozenset({(10, 0)})
     indices = assign_bundle_color_indices((a, b))
     assert indices == (0, 0)
+
+
+def test_adjacent_line_never_reuses_neighbor_color() -> None:
+    """Regression: greedy must not wrap ``pick % PALETTE_SIZE`` into a conflicting slot."""
+
+    cells = tuple(frozenset({(i, 0)}) for i in range(6))
+    indices = assign_bundle_color_indices(cells)
+    for i in range(1, len(cells)):
+        assert indices[i] != indices[i - 1]
+
+
+def test_two_color_palette_colors_four_cell_line(monkeypatch) -> None:
+    monkeypatch.setattr(pattern_bundle_highlight, "PALETTE_SIZE", 2)
+    cells = tuple(frozenset({(i, 0)}) for i in range(4))
+    indices = assign_bundle_color_indices(cells)
+    assert indices == (0, 1, 0, 1)
+
+
+def test_palette_exhaustion_keeps_color_index_in_range_and_deterministic(
+    monkeypatch,
+) -> None:
+    """When greedy cannot avoid reuse, indices stay in palette range and are stable."""
+
+    monkeypatch.setattr(pattern_bundle_highlight, "PALETTE_SIZE", 2)
+    cell = frozenset({(0, 0)})
+    bundles = (cell, cell, cell)
+    first = assign_bundle_color_indices(bundles)
+    second = assign_bundle_color_indices(bundles)
+    assert first == second
+    assert first == (0, 1, 0)
+    for idx in first:
+        assert 0 <= idx < pattern_bundle_highlight.PALETTE_SIZE
+
+    wire = build_pattern_bundle_highlights_wire(
+        (
+            ("a", cell, None),
+            ("b", cell, None),
+            ("c", cell, None),
+        )
+    )
+    for entry in wire["bundles"]:
+        color_index = entry["color_index"]
+        assert 0 <= color_index < pattern_bundle_highlight.PALETTE_SIZE
 
 
 def test_wire_excludes_empty_and_has_version() -> None:

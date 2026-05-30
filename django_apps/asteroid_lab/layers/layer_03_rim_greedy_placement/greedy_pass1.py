@@ -202,6 +202,7 @@ def run_pass1_for_variant(
                     anchor=anchor.coord,
                     output_dir=output_dir,
                     complete_map=complete_map,
+                    extension_count=seed.extension_count,
                 )
                 if not isinstance(layout_result, SeedLayout):
                     _reject(

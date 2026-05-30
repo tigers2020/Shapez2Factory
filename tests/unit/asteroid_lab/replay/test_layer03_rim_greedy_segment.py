@@ -96,6 +96,78 @@ def _greedy_result_with_placements() -> IntegratedRimGreedyResult:
     )
 
 
+def _greedy_result_with_m3e_placement() -> IntegratedRimGreedyResult:
+    # m3e_01 chain: miner (6,4) + 3 inward (west) extensions, output east to void (7,4).
+    placement = CommittedRimSeedPlacement(
+        placement_id="rim_greedy_CW_TL_0",
+        variant_id="CW_TL",
+        anchor=(6, 4),
+        output_dir="E",
+        seed_id="m3e_01",
+        miner_cells=frozenset({(6, 4)}),
+        extension_cells=frozenset({(5, 4), (4, 4), (3, 4)}),
+        m_output_stub=(7, 4),
+        route_probe_path=((7, 4), (8, 4)),
+    )
+    placements = (placement,)
+    append_result = append_committed_rim_placements(committed_placements=placements)
+    overlay = provisional_overlay_from_append(
+        append_result,
+        transport_kind=TransportKind.SHAPE_BELT,
+    )
+    return IntegratedRimGreedyResult(
+        committed_placements=placements,
+        rejected_attempts=(),
+        occupied_equipment_cells=frozenset({(6, 4), (5, 4), (4, 4), (3, 4)}),
+        reserved_route_cells=frozenset({(7, 4), (8, 4)}),
+        append_result=append_result,
+        provisional_overlay=overlay,
+        pass2_report=RimGreedyPass2Report(
+            variant_id="CW_TL",
+            score=5.9,
+            hard_fail=False,
+            miner_count=1,
+            extension_count=3,
+            total_route_length=2,
+        ),
+        winning_variant_id="CW_TL",
+        metrics=RimGreedyMetrics(
+            rim_anchor_count=81,
+            committed_placement_count=1,
+            rejected_attempt_count=0,
+            reserved_route_cell_count=2,
+            winning_variant_id="CW_TL",
+            pass2_score=5.9,
+        ),
+        observability_events=(),
+    )
+
+
+def test_m3e_chain_extension_rotations_resolve_without_error() -> None:
+    # Before the chain-parent fix, ext2/ext3 (not adjacent to the miner) raised
+    # ValueError in placement_extension_rotation.
+    specs = build_layer03_rim_greedy_runtime_segment_specs(_greedy_result_with_m3e_placement())
+    complete = next(
+        s for s in specs if s.event_type.value == EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE
+    )
+    wire = finalize_segment_spec_to_json_dict(
+        complete,
+        structural_map_view=renderable_base_map_view_for_golden(),
+        structural_overlay_wire=(),
+        persistent_overlay_wire=(),
+        exterior_plan_wire=None,
+    )
+    overlay = wire["map_view"]["overlay_cells"]
+    ext_rows = [
+        row
+        for row in overlay
+        if isinstance(row, dict) and row.get("kind") == "shape_miner_extension"
+    ]
+    assert len(ext_rows) == 3
+    # A straight inward chain shares one extension rotation.
+    assert len({row.get("rotation") for row in ext_rows}) == 1
+
+
 def test_greedy_events_materialize_monotonic_frames() -> None:
     events = (
         RimGreedyObservationEvent(

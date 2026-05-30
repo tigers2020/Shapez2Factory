@@ -79,6 +79,7 @@ def layout_seed_at_anchor(
     anchor: Coord,
     output_dir: str,
     complete_map: ReconstructionCompleteMap,
+    extension_count: int = 1,
 ) -> SeedLayout | SeedLayoutReject:
     if output_dir not in _DIR_DELTA:
         return SeedLayoutReject(
@@ -87,14 +88,29 @@ def layout_seed_at_anchor(
         )
 
     dx, dy = _DIR_DELTA[output_dir]
+    field_cells = complete_map.field_cells
+    external_void = complete_map.external_void_cells
+
     miner_cells = frozenset({anchor})
-    extension_coord = (anchor[0] - dx, anchor[1] - dy)
-    extension_cells = frozenset({extension_coord})
+    # Extensions form a straight chain inward (opposite the void normal). Truncate at
+    # the first non-field cell so a short rim degrades extension_count 3 -> 2 -> 1.
+    inward_extensions: list[Coord] = []
+    for step in range(1, max(extension_count, 0) + 1):
+        candidate = (anchor[0] - dx * step, anchor[1] - dy * step)
+        if candidate not in field_cells:
+            break
+        inward_extensions.append(candidate)
+
+    if not inward_extensions:
+        return SeedLayoutReject(
+            reason=RimGreedyRejectReason.FOOTPRINT_OUT_OF_FIELD,
+            detail="no inward extension fits on field",
+        )
+
+    extension_cells = frozenset(inward_extensions)
     stub_coord = (anchor[0] + dx, anchor[1] + dy)
     transport_stub_cells = frozenset({stub_coord})
     equipment_cells = miner_cells | extension_cells
-    field_cells = complete_map.field_cells
-    external_void = complete_map.external_void_cells
 
     if not equipment_cells <= field_cells:
         return SeedLayoutReject(

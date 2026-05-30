@@ -18,7 +18,7 @@ from django_apps.asteroid_lab.layers.contracts.rim_greedy_append import (
 )
 from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKind
 from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.cardinal_map import (
-    direction_child_to_parent,
+    CARDINAL_DIR_DELTA,
 )
 from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.seed_orient import (
     placement_extension_rotation,
@@ -108,14 +108,19 @@ _APPEND_TO_REPLAY_KIND_COMMITTED: dict[AppendCellKind, str] = {
 GreedyReplayEquipmentWire = Literal["observation", "committed"]
 
 
-def _miner_coord_for_extension(
+def _parent_coord_for_extension(
     placement: CommittedRimSeedPlacement,
     extension_coord: Coord,
 ) -> Coord:
-    for miner_coord in placement.miner_cells:
-        if direction_child_to_parent(extension_coord, miner_coord) is not None:
-            return miner_coord
-    return placement.anchor
+    """Chain parent (one step toward the miner) for a straight inward extension.
+
+    Extensions extend inward as ``anchor - k * delta(output_dir)``, so the parent of
+    any extension is ``extension + delta(output_dir)``: the miner for the first
+    extension, or the preceding extension for deeper links. This keeps the parent a
+    4-neighbor so ``placement_extension_rotation`` resolves for m3e_01 chains.
+    """
+    dx, dy = CARDINAL_DIR_DELTA[placement.output_dir]
+    return (extension_coord[0] + dx, extension_coord[1] + dy)
 
 
 def _rotation_for_append_cell(
@@ -128,9 +133,9 @@ def _rotation_for_append_cell(
     if cell.kind is AppendCellKind.MINER:
         return miner_rotation
     if cell.kind is AppendCellKind.EXTENSION:
-        miner_coord = _miner_coord_for_extension(placement, cell.coord)
+        parent_coord = _parent_coord_for_extension(placement, cell.coord)
         return placement_extension_rotation(
-            miner_coord=miner_coord,
+            miner_coord=parent_coord,
             extension_coord=cell.coord,
             miner_rotation=miner_rotation,
         )

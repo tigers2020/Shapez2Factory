@@ -81,6 +81,7 @@ def score_variant(
             anchor=placement.anchor,
             output_dir=placement.output_dir,
             complete_map=complete_map,
+            extension_count=seed.extension_count,
         )
         if not isinstance(layout, SeedLayout):
             return RimGreedyPass2Report(

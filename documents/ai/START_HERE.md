@@ -1,48 +1,45 @@
 # AI Context Start Here
 
-This file is the entry point that new AI sessions, subagents, and Cursor work read first when establishing document context.
+This is the entry point for AI sessions and subagents when selecting current
+project context.
 
-## Reading order
+## Reading Order
 
 1. [`../../AGENTS.md`](../../AGENTS.md)
-2. [`../index/document_lifecycle.md`](../index/document_lifecycle.md)
-3. [`../index/document_inventory.md`](../index/document_inventory.md)
-3.5. [`contamination_policy.md`](contamination_policy.md) — forbidden patterns (on conflict, inventory topic row wins)
+2. [`../index/document_inventory.md`](../index/document_inventory.md)
+3. [`../index/document_lifecycle.md`](../index/document_lifecycle.md)
 4. Task-type-specific [`manuals/`](manuals/) documents
-5. The current task's [`current_plan.md`](current_plan.md) and [`checklist.md`](checklist.md)
-6. Required `CANON` documents
+5. The task's [`current_plan.md`](current_plan.md) and [`checklist.md`](checklist.md)
+6. Required current `CANON` documents
 
-## Authority rules
+## Authority Rules
 
-- Only `CANON` is the current system contract.
-- `ACTIVE` is an in-progress plan; it is not authoritative until complete.
-- `RESEARCH` is evidence and experiments; it is not an implementation contract.
-- `REPORT` is observation and log analysis; it is not design authority.
-- `ARCHIVED` and `SUPERSEDED` are for historical reference only. Do not use them for implementation decisions.
+- Only current `CANON` documents are system contracts.
+- `ACTIVE` documents are in-progress plans, not final authority.
+- `RESEARCH` and `REPORT` documents are evidence, not design authority.
+- Deleted plans, deleted specs, and deleted archive documents are not project
+  context for implementation decisions.
 
-## Asteroid Lab (reconstruction slice — post P0 decontamination)
+## Asteroid Lab
 
-1. [`current_plan.md`](current_plan.md) — runtime (`SOLVER_NOT_AVAILABLE`) and standing gates
-2. [`../index/document_inventory.md`](../index/document_inventory.md) — **§ Asteroid Lab authority by topic**
-3. [`contamination_policy.md`](contamination_policy.md) — forbidden patterns and PR playbook
-4. Normative specs: [`2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md`](../../docs/superpowers/specs/2026-05-27-asteroid-lab-reconstruction-complete-map-decontamination-design.md), [`2026-05-26-reconstruction-complete-map-dto-design.md`](../../docs/superpowers/specs/2026-05-26-reconstruction-complete-map-dto-design.md)
-5. Code: `django_apps/asteroid_lab/reconstruction/`, `cleanup/`, `replay/`, `services/solver_runtime_entry.py` + `tests/unit/asteroid_lab/` (reconstruction narrow gates)
+Current authority:
 
-**Active contracts (reconstruction):**
+1. [`current_plan.md`](current_plan.md)
+2. [`../index/document_inventory.md`](../index/document_inventory.md)
+3. Code under `django_apps/asteroid_lab/reconstruction/`, `cleanup/`, `replay/`,
+   `contracts/`, and `services/solver_runtime_entry.py`
+4. Task-specific manuals and current tests
 
-- `ReconstructionCompleteMap` is terrain/capacity SoT at pipeline boundaries
-- Replay/artifacts are output-only (not algorithm inputs)
-- `run_solver` is fail-closed stub only — **no RTTP pipeline**
+Active contracts:
 
-**Forbidden:** Do not implement RTTP / optimization runtime (queue and archive tree **hard-deleted** 2026-05-28; git history only). FROZEN MEG contract spec remains read-only reference.
+- `ReconstructionCompleteMap` is the terrain/capacity source of truth at pipeline
+  boundaries.
+- Replay and artifacts are output-only.
+- `run_solver` is fail-closed unless a current accepted contract says otherwise.
 
-**Forbidden:** Do not use `documents/plans/asteroid_lab_optimization/` as implementation authority.
+Forbidden:
 
-**Forbidden:** Do not use `django_apps.shapez_asteroid`, `django_apps/asteroid_lab/optimization/`, `tests/unit/shapez_asteroid` as current work paths.
-
-## Forbidden
-
-- Do not use content from `documents/archive/` as current implementation authority.
-- Do not promote `documents/debug/` or progress reports to spec status.
-- When you find competing specs, do not implement immediately; mark as `SUPERSEDED` candidates or leave an inventory cleanup item.
-- Do not add experiments, TODOs, or log analysis to grow canon. Canon holds only stable invariants and contracts.
+- Do not revive deleted solver algorithms from old plans, archive history, or
+  removed tests.
+- Do not use deleted document paths as implementation context.
+- Do not add experiments, TODOs, or log analysis to grow canon.

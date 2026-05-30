@@ -64,7 +64,7 @@ def test_enrich_skips_frames_before_l2_complete_index() -> None:
     assert len(out[0]["map_view"]["overlay_cells"]) == 0
 
 
-def test_deprecated_layer02_wrapper_omits_l3() -> None:
+def test_layer02_wrapper_omits_l3() -> None:
     from django_apps.asteroid_lab.services.lab_layer02_timeline import (
         build_layer02_runtime_replay_frames,
     )

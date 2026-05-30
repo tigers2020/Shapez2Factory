@@ -2606,7 +2606,7 @@
       }
       const msgidByCode = {
         throughput_target_shortfall: "throughput target shortfall",
-        rttp_validation_failed: "RTTP validation failed",
+        rttp_validation_failed: "Validation failed",
       };
       const msgid = msgidByCode[key] || key;
       const base = typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;

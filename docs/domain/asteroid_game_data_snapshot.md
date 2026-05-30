@@ -1,20 +1,26 @@
-# Asteroid Lab — `game_data` consumer snapshot
+# Asteroid Lab `game_data` Consumer Snapshot
 
-**Owner:** Dominic (domain) · **Consumers:** `asteroid_lab.contracts.game_data_snapshot`, `web.services.asteroid_game_data_snapshot`  
-**Status:** Phase 0 domain contract (v0)  
+**Owner:** domain
+**Consumers:** `asteroid_lab.contracts.game_data_snapshot`,
+`web.services.asteroid_game_data_snapshot`
+**Status:** Current domain contract
 **ADR:** [ADR-004: game_data snapshot boundary](../adr/ADR-004-game-data-snapshot-boundary.md)
 
 ## Purpose
 
-`AsteroidGameDataSnapshot` is the immutable, revision-pinned contract between normalized `game_data` ORM rows and the Asteroid Lab solver adapter. It carries **solver-relevant** building geometry and transport registry facts only. Presentation metadata (sprites, display keys, toolbar icons) stays out of this snapshot until a separate `PresentationSnapshot` is specified (see ADR-004 consequences).
+`AsteroidGameDataSnapshot` is the immutable, revision-pinned contract between
+normalized `game_data` ORM rows and Asteroid Lab consumer code. It carries only
+solver-relevant building geometry and transport registry facts. Presentation
+metadata stays outside this snapshot.
 
-Build path (v0):
+Build path:
 
-1. `game_data` selectors + `snapshots/builder` materialize ordered row tuples (ORM stays here).
+1. `game_data` selectors and snapshot builders materialize ordered row tuples.
 2. `web/services/asteroid_game_data_snapshot.py` assembles frozen consumer DTOs.
-3. `asteroid_lab/adapters/game_data_snapshot_adapter.py` maps DTOs to solver enums (no `game_data` import).
+3. `asteroid_lab/adapters/game_data_snapshot_adapter.py` maps DTOs to Asteroid
+   Lab enums without importing `game_data`.
 
-## Top-level shape
+## Top-level Shape
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -24,165 +30,85 @@ class AsteroidGameDataSnapshot:
     transport_registry: tuple[TransportRegistryEntry, ...]
 ```
 
-| Field | Type | Role |
-|-------|------|------|
-| `meta` | `SnapshotMeta` | Revision pin, provenance, deterministic `content_hash` |
-| `buildings` | `tuple[BuildingSnapshot, ...]` | Per-variant footprint + connectors (canonical order) |
-| `transport_registry` | `tuple[TransportRegistryEntry, ...]` | Transport kind → building variant mapping |
+| Field | Role |
+|---|---|
+| `meta` | Revision pin, provenance, deterministic `content_hash` |
+| `buildings` | Per-variant footprint and connectors in canonical order |
+| `transport_registry` | Transport kind to building variant mapping |
 
-Nested collections inside each `BuildingSnapshot` are also **`tuple`**, never `list`, `set`, or `frozenset` (see **Collection policy** below).
+Nested collections are tuples only. Lists, sets, frozensets, and nested dicts are
+not valid consumer DTO collections.
 
-## Canonical ordering (total order)
+## Canonical Ordering
 
-Every collection below is sorted by its sort key **before** the snapshot is considered valid. Sort keys define a **total order**; ties are broken by the next key in the tuple. No placeholder keys — these are the v0 contract.
-
-| Collection | Sort key (total order) |
-|------------|------------------------|
+| Collection | Sort key |
+|---|---|
 | `buildings` | `(internal_name, canonical_id)` |
-| `footprint_cells` per building | `(y, x, order_index)` — **game-local** Y/X, not server/world coords |
+| `footprint_cells` per building | `(y, x, order_index)` |
 | `connectors` per building | `(order_index,)` |
 | `transport_registry` rows | `(transport_kind,)` |
 
-### Footprint coordinates
+Input row order must not affect `content_hash` after canonicalization.
 
-- `x`, `y` on `BuildingFootprintCell` are **building-local** offsets (same frame as `game_data` footprint import).
-- Server/world placement applies later in the adapter via `coord_transform` (see [`asteroid_coord_transform_spec.md`](asteroid_coord_transform_spec.md)).
-- `order_index` is the tie-breaker when two cells share the same `(y, x)`; it must remain stable across imports for a given variant.
-
-### Validation
-
-- `asteroid_lab.contracts.game_data_snapshot` validation may reorder nested tuples to match the keys above; the returned snapshot must already satisfy these orders at the assembler boundary.
-- Input order of buildings or child rows must **not** affect `content_hash` after canonicalization.
-
-## `SnapshotMeta` (minimum fields)
-
-Frozen dataclass spec for provenance and solver-run pinning. Implement in `django_apps/asteroid_lab/contracts/game_data_snapshot.py`.
+## SnapshotMeta
 
 ```python
 @dataclass(frozen=True, slots=True)
 class SnapshotMeta:
-    schema_version: str          # "game_data_snapshot_v1"
-    data_revision: str           # ImportBatch.manifest_self_hash
-    db_alias: str                # "default"
-    built_at_utc: str            # ISO-8601 Z
-    content_hash: str            # sha256 canonical JSON of solver subset
-    game_version: str            # from ImportBatch
-    rule_version: str            # "asteroid_v0" — throughput allowlist gate
+    schema_version: str
+    data_revision: str
+    db_alias: str
+    built_at_utc: str
+    content_hash: str
+    game_version: str
+    rule_version: str
 ```
 
 | Field | Source / constraint |
-|-------|---------------------|
-| `schema_version` | Constant `game_data_snapshot_v1` |
-| `data_revision` | `ImportBatch.manifest_self_hash` of the pinned batch used for the build |
-| `db_alias` | v0: `"default"` only; replica reads forbidden until ADR-004 is extended |
-| `built_at_utc` | UTC build timestamp, ISO-8601 with `Z` suffix (e.g. `2026-05-21T12:00:00Z`) |
-| `content_hash` | SHA-256 hex of canonical JSON over the **solver subset** (see below) |
-| `game_version` | `ImportBatch.game_version` |
-| `rule_version` | Constant `asteroid_v0` (throughput / transport allowlist gate for adapter) |
+|---|---|
+| `schema_version` | `game_data_snapshot_v1` |
+| `data_revision` | Pinned `ImportBatch.manifest_self_hash` |
+| `db_alias` | `default` |
+| `built_at_utc` | UTC audit timestamp; excluded from `content_hash` |
+| `content_hash` | SHA-256 of canonical JSON over the solver-relevant subset |
+| `game_version` | Pinned import batch |
+| `rule_version` | `asteroid_v0` |
 
-Constants (implementation):
+## Content Hash Scope
 
-- `SCHEMA_VERSION = "game_data_snapshot_v1"`
-- `RULE_VERSION = "asteroid_v0"`
+Included:
 
-v0 note: snapshot **body** must not become algorithm input until a separate PatternLibrary / solver-input ADR approves it. Run **provenance** (below) is required on every RTTP `SolverRun`.
+- `buildings`: `canonical_id`, `internal_name`, footprint cells, and connector
+  fields carried by `BuildingConnectorSnapshot`.
+- `transport_registry`: `transport_kind`, `transport_category`, and
+  `building_variant_canonical_id`.
 
-## `GameDataSnapshotProvenance` (Track A)
+Excluded:
 
-Frozen contract: `django_apps/asteroid_lab/contracts/game_data_snapshot_provenance.py`.
+- Presentation fields such as display names, icons, sprites, and toolbar labels.
+- `SnapshotMeta` itself, including `built_at_utc`, `data_revision`, and
+  `content_hash`.
+- Import audit blobs and source row indexes.
 
-| Field | Role |
-|-------|------|
-| `snapshot_schema_version` | DTO wire schema (`game_data_snapshot_v1`) |
-| `rule_version` | Adapter gate (`asteroid_v0`) |
-| `data_revision` | `ImportBatch.manifest_self_hash` (content identity across DB rebuilds) |
-| `import_batch_id` | DB join key (positive int; wire as decimal string in JSON) |
-| `content_hash` | Solver-subset SHA-256 hex (64 chars) — see **`content_hash` scope** |
-| `game_version` | From pinned import batch |
-| `db_alias` | v0 `"default"` |
-| `built_at_utc` | Audit timestamp only — **excluded** from reproducibility key |
+## Malformed Row Policy
 
-**Wire key:** `SolverRun.config_json["game_data_snapshot_provenance"]`. Unknown keys inside the object are rejected at parse time.
-
-**Writer ownership:** Only `web/services/asteroid_game_data_snapshot.py` builds snapshot+provenance (single `pin_latest_import_batch` per build). `solver_runtime_entry` persists and validates; optimization code must not import `game_data`.
-
-**Reproducibility key (Track A / v1):** `reproducibility_key_v1()` → `(import_batch_id, snapshot_schema_version, content_hash)`.
-
-### Provenance v2 + `BuildingCatalogSlice` (Track B2)
-
-| Field | Role |
-|-------|------|
-| `catalog_slice_version` | `building_catalog_slice_v2` |
-| `catalog_slice_hash` | SHA-256 over slice JSON including `slice_version` |
-
-**Parser:** `parse_provenance_config` = strict 10-key v2 (RTTP). `parse_provenance_config_v1` = historical 8-key read-only.
-
-**Reproducibility key (B2):** `reproducibility_key()` → 5-tuple adds `catalog_slice_version`, `catalog_slice_hash`.
-
-**Slice:** `BuildingCatalogSlice` v2 — `transport_registry`, `variants`, and `variant_geometries` (per-variant `footprint_cells` + `connectors`); built via `catalog_slice_from_snapshot` (sole extractor of geometry from full snapshot). RTTP T1: empty-map default `TransportKind` from belt channel in registry (`resolve_default_asteroid_transport_kind`).
-
-**Track D (RTTP):** `catalog_footprint_policy.summarize_footprint_catalog` drives output-only metrics on `rttp.catalog_slice` (`catalog_variant_geometry_count`, `catalog_footprint_cell_count`, `catalog_connector_count`). Spec: [`2026-05-24-track-d-catalog-footprint-connector-design.md`](../superpowers/specs/2026-05-24-track-d-catalog-footprint-connector-design.md).
-
-**Track D+ PR-1 (RTTP):** `catalog_placement_audit` drives observe-only metrics on `rttp.catalog_placement_validation` (`catalog_validation_mode=observe_only`, matched/mismatch/unmapped counts). Does **not** change `validation_passed` or `run_success`. Spec: [`2026-05-24-track-d-plus-catalog-placement-validation-design.md`](../superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md).
-
-**T2 (RTTP):** Per transport cell, `resolve_cell_transport_kind` maps reconstruction `transport_kind` wire strings through `transport_registry` (`transport_kind` key → `transport_category` → `TransportKind`). Domain enum values (`shape_belt`, `fluid_pipe`) pass through. Unresolved transport tiles with a catalog slice fail closed (`catalog_transport_unresolved`; policy message includes optional coord + raw wire). Duplicate registry keys with the same resolved `TransportKind` use deterministic last-wins; conflicting kinds fail closed at lookup build. Spec: [`2026-05-24-b2-t2-per-cell-transport-resolution-design.md`](../superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md).
-
-**B2-T3 (RTTP):** Wrong-kind existing transport is excluded from trunk seeding (including ring overlap) and unioned into route-domain `blocked_cells`; incompatible coords are removed from `traversable_cells` even when they overlap lift coords. Metrics on `rttp.route_domain`: `mismatched_existing_transport_count`, `mismatched_existing_transport_by_kind`. Spec: [`2026-05-24-b2-t3-transport-aware-route-domain-design.md`](../superpowers/specs/2026-05-24-b2-t3-transport-aware-route-domain-design.md).
-
-## Collection policy — `tuple` only
-
-| Allowed | Forbidden on consumer DTO path |
-|---------|--------------------------------|
-| `tuple[...]` | `list`, `dict` (nested), `set`, **`frozenset`** |
-
-**`frozenset` must not be used** as the canonical collection type for snapshot data. Unordered sets cannot define a stable total order for hashing or replay. Use sorted `tuple` everywhere a collection is needed.
-
-## `content_hash` scope
-
-`content_hash` is the SHA-256 digest (hex) of **canonical JSON** (`sort_keys=True`, compact separators) over the **solver-relevant subset** of the snapshot body. It is **not** `ImportBatch.manifest_self_hash` (`data_revision`) and **not** a full `game_data` dump hash.
-
-### Included (solver subset)
-
-- **`buildings`:** `canonical_id`, `internal_name`, `footprint_cells` (`x`, `y`, `order_index`), `connectors` (all connector fields carried in `BuildingConnectorSnapshot`: role, directions, IO channel, local positions).
-- **`transport_registry`:** `transport_kind`, `transport_category`, `building_variant_canonical_id`.
-
-Rows must appear in the canonical orders defined above before hashing.
-
-### Excluded (presentation and non-solver)
-
-- Any field not mapped into the consumer DTOs (e.g. `display_name_key`, `icon_sprite_name`, sprite/static asset paths, toolbar labels, `source_row_index`, import audit blobs).
-- **`SnapshotMeta` itself** is not part of the hash payload (including `content_hash`, `built_at_utc`, and `data_revision` — revision is carried explicitly in `data_revision`).
-- Presentation-only ORM columns on `BuildingVariant`, groups, assets, and toolbar tables.
-
-Implementation: `game_data_snapshot_hash.snapshot_content_hash` walks explicit tuples (no `dataclasses.asdict` deep copy). Same logical DB rows → same `content_hash` after canonical ordering.
-
-## Malformed row policy — fail-fast
-
-At **snapshot build** time (selector row fetch, row tuple materialization, and web assembly):
-
-| Policy | Detail |
-|--------|--------|
-| **Fail-fast** | First invalid or inconsistent row aborts the entire build |
-| **No partial snapshot** | Do not emit a snapshot with some buildings omitted |
-| **No `raw_json` fallback** | Never hydrate missing normalized fields from raw import JSON |
-| **Error surface** | Raise `SnapshotBuildError` (or equivalent) with a stable issue code; no silent skip |
-
-Examples of build-time failures: missing import batch, orphan footprint/connector row, duplicate sort-key collision after normalization, type mismatch (e.g. `list` instead of `tuple`), unknown transport kind when adapter policy requires exhaustive mapping.
+Snapshot builds are fail-fast. The first invalid or inconsistent row aborts the
+build. Do not emit partial snapshots, do not hydrate missing normalized fields
+from raw import JSON, and surface stable error codes.
 
 ## Invariants
 
 | ID | Invariant |
-|----|-----------|
-| INV-SNP-01 | `data_revision` equals the pinned batch’s `manifest_self_hash` |
-| INV-SNP-02 | All collection fields on `AsteroidGameDataSnapshot` and nested DTOs are `tuple` |
-| INV-SNP-03 | Child collections satisfy the sort keys in **Canonical ordering** |
-| INV-SNP-04 | `content_hash` depends only on the solver subset, not presentation or `built_at_utc` |
-| INV-SNP-05 | Rebuild with the same pinned batch and code version yields identical `content_hash` |
-| INV-SNP-06 | `asteroid_lab` does not import `game_data` (ADR-004 / import matrix) |
+|---|---|
+| INV-SNP-01 | `data_revision` equals the pinned batch manifest hash |
+| INV-SNP-02 | Consumer DTO collections are tuples |
+| INV-SNP-03 | Child collections satisfy canonical ordering |
+| INV-SNP-04 | `content_hash` excludes presentation data and build timestamps |
+| INV-SNP-05 | Same pinned batch and code version yields the same `content_hash` |
+| INV-SNP-06 | `asteroid_lab` does not import `game_data` |
 
 ## References
 
 - [ADR-004: game_data snapshot boundary](../adr/ADR-004-game-data-snapshot-boundary.md)
-- Implementation plan: [`docs/superpowers/plans/2026-05-21-asteroid-lab-game-data-integration.md`](../superpowers/plans/2026-05-21-asteroid-lab-game-data-integration.md)
+- Import boundary test: `tests/unit/architecture/test_django_app_import_boundaries.py`
 - Asteroid Lab invariants: `.cursor/rules/asteroid-lab-invariants.mdc`
-- Django layering: `documents/ai/manuals/django.md`

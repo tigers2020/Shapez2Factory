@@ -11,7 +11,6 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 | [`AGENTS.md`](AGENTS.md) | Agent operating contract (highest priority for workflow); **not** the path map SoT |
 | [`structure.md`](structure.md) | **Repository map SoT** — paths, apps, URLs, tests, commands |
 | [`docs/`](docs/) | Domain, architecture, runbook, ADR summaries (agent-friendly) |
-| [`docs/superpowers/specs/`](docs/superpowers/specs/), [`docs/superpowers/plans/`](docs/superpowers/plans/) | Approved design specs and implementation plans |
 | [`documents/`](documents/README.md) | Canonical body text, CANON, plans, research |
 | [`src/shapez2_factory/`](src/shapez2_factory/) | Phase 2+ hexagonal extraction target (currently stub) |
 
@@ -35,7 +34,7 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 | `tests/golden/` | Deterministic regression datasets |
 | `tests/support/` | Shared test helpers and contracts |
 | `harness/validators/` | Golden comparators (e.g. `compare_golden.py`) |
-| `documents/` | Document authority, plans, research, reports, archive — [`documents/README.md`](documents/README.md) |
+| `documents/` | Current document authority, plans, research, reports — [`documents/README.md`](documents/README.md) |
 | `protocols/` | Multi-step pipeline ([`protocols/README.md`](protocols/README.md)) |
 | `persona/` | Role cards and routing ([`persona/README.md`](persona/README.md)) |
 | `.cursor/` | Cursor rules, skills, editor guidance |
@@ -113,15 +112,14 @@ Internationalized routes (`i18n_patterns`, default language without prefix) incl
 
 ## Documents map
 
-- [`documents/README.md`](documents/README.md): canonical document index and active-vs-archive comparison.
-- [`documents/index/document_lifecycle.md`](documents/index/document_lifecycle.md): `CANON`, `ACTIVE`, `RESEARCH`, `REPORT`, `COMPLETED`, `ARCHIVED`, `SUPERSEDED` definitions.
+- [`documents/README.md`](documents/README.md): canonical current document index.
+- [`documents/index/document_lifecycle.md`](documents/index/document_lifecycle.md): current-only lifecycle definitions.
 - [`documents/index/document_inventory.md`](documents/index/document_inventory.md): current authority inventory.
 - [`documents/ai/`](documents/ai/README.md): current plan, context notes, checklist, manuals, active AI plans.
 - [`documents/Algorithm/README.md`](documents/Algorithm/README.md): algorithm document slots (no canonical mining solver content at present).
 - [`documents/plans/`](documents/plans/): active or not-yet-confirmed implementation plans.
 - [`documents/research/`](documents/research/): active research and domain evidence.
 - [`documents/reports/`](documents/reports/README.md): observation/debug/audit reports, not canonical contracts.
-- [`documents/archive/`](documents/archive/README.md): completed, obsolete, superseded, or reference-only document sets.
 
 ## Common commands
 

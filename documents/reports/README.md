@@ -14,4 +14,4 @@ Add subdirectories only when needed. Some past bundles such as `documentation_au
 
 - For implementation decisions, read `CANON` documents in [`../index/document_inventory.md`](../index/document_inventory.md) first.
 - Do not apply drift confirmed in reports directly as implementation contracts; move to ADR or domain spec when needed.
-- For archive candidacy, see [`../archive/README.md`](../archive/README.md).
+- Remove reports that are no longer current evidence.

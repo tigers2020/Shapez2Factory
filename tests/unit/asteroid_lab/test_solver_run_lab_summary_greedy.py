@@ -1,4 +1,4 @@
-"""Lab summary cards for integrated rim greedy (L3 supersede)."""
+"""Lab summary cards for integrated rim greedy."""
 
 from __future__ import annotations
 

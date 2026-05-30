@@ -146,9 +146,6 @@ msgstr "출력"
 msgid "Output node"
 msgstr "출력 노드"
 
-msgid "RTTP validation failed"
-msgstr "RTTP 검증 실패"
-
 msgid "Run Dry-run or Save for server validation."
 msgstr "드라이런이나 저장으로 서버 검증을 돌리세요."
 

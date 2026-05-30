@@ -1,7 +1,0 @@
-# solver_timeline split research (2026-05-01)
-
-- Target file: [django_apps/web/static/web/js/solver_timeline.js](../../../../../django_apps/web/static/web/js/solver_timeline.js), currently ~576 lines.
-- External contract: preserve `data-solver-*`, `data-graph-*`, `data-shape-gltf-viewer` selectors in [django_apps/web/templates/web/solver.html](../../../../../django_apps/web/templates/web/solver.html) and filename [django_apps/web/static/web/js/solver_timeline.js](../../../../../django_apps/web/static/web/js/solver_timeline.js).
-- Five responsibility clusters: shared DOM utils (`escapeHtml`, `setBanner`, viewer dispose), graph markup (`renderShapeGraphNode`, `renderGraphEdges`, `renderSolverGraph`), viewport interaction (`resetGraphViewport`, `zoomGraphViewport`, `initGraphViewport`), selection detail panel (`connectedEdges`, `renderSelectedNodeDetail`, `mountGraph`), request/state handling (`renderThroughputSummary`, `requestTimeline`, `scheduleTimeline`, `initSolverTimeline`).
-- Worktree is dirty; [django_apps/web/static/web/js/solver_timeline.js](../../../../../django_apps/web/static/web/js/solver_timeline.js) already has quantity badge, throughput summary, and `target_count` logic. Move to modules while preserving those features.
-- Web smoke may fail unrelated to this frontend work due to `graph_builder` import failure in [django_apps/shapez_solver/services/factory_throughput_service.py](../../../../../django_apps/shapez_solver/services/factory_throughput_service.py).

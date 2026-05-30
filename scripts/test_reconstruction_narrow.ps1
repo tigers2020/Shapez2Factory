@@ -1,4 +1,4 @@
-# Reconstruction replay / topology / island_bbox narrow gate (no RTTP, no macro).
+# Reconstruction replay / topology / island_bbox narrow gate.
 # See documents/ai/current_plan.md § Reconstruction narrow gate.
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
@@ -9,8 +9,7 @@ $pytestPaths = @(
     "tests/unit/asteroid_lab/test_reconstruction_replay_merge.py",
     "tests/unit/asteroid_lab/test_island_bbox.py",
     "tests/unit/asteroid_lab/test_persistence_does_not_read_replay_frames.py",
-    "tests/unit/asteroid_lab/test_replay_snapshot_contract.py",
-    "tests/unit/asteroid_lab/test_b_cs4_reconstruction_replay_boundary.py"
+    "tests/unit/asteroid_lab/test_replay_snapshot_contract.py"
 )
 
 python -m pytest @pytestPaths -v --tb=short @args

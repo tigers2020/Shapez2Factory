@@ -93,16 +93,15 @@ Semantic canon: `documents/Algorithm/asteroid_lab_*.md` · [ADR-003](../../adr/A
 
 | Invariant | Canon | Representative tests / planned names |
 |-----------|-------|----------------------------------------|
-| Replay / NDJSON / artifact / metrics **output-only** — **forbidden as solver/algorithm input** | [`asteroid_lab_09_replay_timeline.md`](../../Algorithm/asteroid_lab_09_replay_timeline.md) | `test_manual_snapshot_replay_not_used_as_algorithm_input_doc`; `test_lab_page_context_*`; `asteroid_lab_10` checklist |
+| Replay / NDJSON / artifact / metrics **output-only** — **forbidden as solver/algorithm input** | current replay code and tests | `test_lab_page_context_*` |
 | Candidate: **no placement commit**; generate → local geometry → immediate route probe → reachable only in normal pool | [`asteroid_lab_03_candidate_generator.md`](../../Algorithm/asteroid_lab_03_candidate_generator.md) | generator-adjacent unit; Phase checklist |
 | Incremental commit: **commit-time latest `route_domain` re-probe**; candidate-phase reachable ≠ final proof | [`asteroid_lab_07_incremental_commit.md`](../../Algorithm/asteroid_lab_07_incremental_commit.md) | `test_incremental_commit_reprobes_latest_route_domain` (documented) |
 | Validation: **read-only assert**; **no** route/placement/topology **repair** | [`asteroid_lab_08_validation.md`](../../Algorithm/asteroid_lab_08_validation.md), ADR-003 | validation read-only checklist · pytest |
-| **Lab replay timeline**; global monotonic `frame_index`; every frame **2D map_view**; single play/scrubber (dual-track **deprecated**) | `asteroid_lab_09_replay_timeline` | `test_lab_js_replay_wiring_smoke`; `test_lab_page_context_*` |
-| After `OptimizationInput`, algorithm coordinates are **Server X/Y dense only**; raw conversion only at decode/import and final UI/export boundaries | [`asteroid_lab_01_optimization_input.md`](../../Algorithm/asteroid_lab_01_optimization_input.md), [`asteroid_lab_00_overview.md`](../../Algorithm/asteroid_lab_00_overview.md) | `test_optimization_input.py`, `test_seed_route_domain_*` |
+| Lab replay timeline; global monotonic `frame_index`; every frame **2D map_view**; single play/scrubber | current replay code and tests | `test_lab_js_replay_wiring_smoke`; `test_lab_page_context_*` |
 | `failure_reason` · `event_type` · `issue_code` etc. are **enum/const** — no free-form strings | Phase DTO docs | `test_invalid_event_type_rejected`; replay contract tests |
 | Same seed **deterministic** (+ tie-break) | evolution docs | explicit tests where needed |
 | **Regression fixture** — add at bug recurrence | this manual | `tests/fixtures/asteroid_lab/`; corridor · starvation · replay · coord · UI sync first |
-| **Replay truncation schema** — fixture envelope (`replay_summary` · top-level `truncation_reason`) **≠** runtime persist (frame `metrics` → track `metrics`) | [`asteroid_lab_12_runtime_replay_wiring.md`](../../Algorithm/asteroid_lab_12_runtime_replay_wiring.md) | `test_lab_replay_timeline_payload.py`, `test_timeline_composer.py`; `tests/fixtures/shapez_asteroid/replay*` = **planned** |
+| Replay truncation schema | current replay code and tests | `test_lab_replay_timeline_payload.py`, `test_timeline_composer.py` |
 | **Fitness vs commit survivability** — predictive penalties vs observed metrics; observed → solver input **forbidden** | [`asteroid_lab_05_genome_fitness.md`](../../Algorithm/asteroid_lab_05_genome_fitness.md) | `test_fitness_contracts.py` |
 
 **Unimplemented** invariant tests listed in the table are in scope for a later **implementation PR**. This document only fixes requirements and what must be protected.

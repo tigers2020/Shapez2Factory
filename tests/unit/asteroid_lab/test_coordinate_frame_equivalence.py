@@ -1,7 +1,7 @@
 """Island vs world topology equivalence — proof gate G3 (PR-D).
 
 Gate closed until an explicit ``island_to_world`` adapter is proven and this module's
-xfail markers are removed. See docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md.
+xfail markers are removed.
 """
 
 from __future__ import annotations

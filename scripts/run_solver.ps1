@@ -1,4 +1,4 @@
-# Run RTTP solver for one Lab project slug (wraps manage.py run_solver).
+# Run the Lab solver command for one project slug.
 # PR-4 ops: -DeferredRetryExecute -> manage.py --deferred-retry-execute
 param(
     [Parameter(Mandatory = $true, Position = 0)]

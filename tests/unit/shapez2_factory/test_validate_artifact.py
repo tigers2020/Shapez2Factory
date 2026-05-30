@@ -7,6 +7,7 @@ typed exit codes (``ExitCode``).
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -128,6 +129,33 @@ def test_validate_artifact_rejects_unknown_lifecycle_value(tmp_path: Path) -> No
     }
     (artifact_dir / MANIFEST_FILENAME).write_text(json.dumps(manifest), encoding="utf-8")
     assert main(["validate-artifact", "--dir", str(artifact_dir)]) == ExitCode.VALIDATION_FAILED
+
+
+def test_validate_artifact_rejects_traversal_relpath(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    final = _build_valid_artifact(tmp_path)
+    # Out-of-tree file that genuinely exists, with a *matching* hash. Without a
+    # containment guard, validation would hash this file and wrongly succeed (OK);
+    # the guard must reject the traversal relpath first → VALIDATION_FAILED.
+    escape_bytes = b"out-of-tree secret"
+    escape_file = final.parent / "escape.txt"
+    escape_file.write_bytes(escape_bytes)
+    manifest = {
+        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "run_key": "run-1",
+        "lifecycle_status": "artifact_written",
+        "created_at_utc": "2026-05-30T00:00:00Z",
+        "core_build_id": "test",
+        "content_hashes": {"../escape.txt": hashlib.sha256(escape_bytes).hexdigest()},
+        "paths": {},
+        "game_data_provenance": {},
+        "error_code": None,
+    }
+    (final / MANIFEST_FILENAME).write_text(json.dumps(manifest), encoding="utf-8")
+    assert main(["validate-artifact", "--dir", str(final)]) == ExitCode.VALIDATION_FAILED
+    stderr = capsys.readouterr().err
+    assert "../escape.txt" in stderr
 
 
 def test_validate_artifact_rejects_missing_required_field(tmp_path: Path) -> None:

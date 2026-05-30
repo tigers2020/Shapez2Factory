@@ -117,8 +117,20 @@ def validate_artifact(artifact_dir: Path) -> int:
         )
         return int(ExitCode.VALIDATION_FAILED)
 
+    artifact_root = artifact_dir.resolve()
     for relpath, expected_hash in manifest.content_hashes.items():
-        payload_path = artifact_dir / relpath
+        # Guard C discipline: content_hashes is attacker-controllable, so every
+        # payload path must stay inside the artifact dir. Use relative_to (not
+        # startswith) so a traversal/absolute relpath fails closed before hashing.
+        payload_path = (artifact_dir / relpath).resolve()
+        try:
+            payload_path.relative_to(artifact_root)
+        except ValueError:
+            print(
+                f"error: payload path escapes artifact dir: {relpath}",
+                file=sys.stderr,
+            )
+            return int(ExitCode.VALIDATION_FAILED)
         if not payload_path.is_file():
             print(f"error: missing payload file: {relpath}", file=sys.stderr)
             return int(ExitCode.VALIDATION_FAILED)

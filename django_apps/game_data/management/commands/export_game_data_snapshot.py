@@ -8,7 +8,7 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandParser
 
-from django_apps.asteroid_lab.adapters.orm_game_data_rules import (
+from django_apps.game_data.services.game_data_snapshot_export import (
     build_game_data_snapshot_payload,
 )
 

@@ -1,6 +1,8 @@
 """Reconstruction-complete display map: structural cleanup rows merged with recon overlay.
 
-Shared by replay ``reconstruction_final`` / ``reconstruction_complete`` and ORM persist.
+Viewer / persist side (Django). The pure cell-level merge + synthetic-field transforms now live in
+``shapez2_factory.domain.asteroid_lab.reconstruction.complete_map_merge`` (PR-CLI-2c) and are
+re-exported here for back-compat. Row-dict shaping (``rows_from_cells`` etc.) stays replay-side.
 """
 
 from __future__ import annotations
@@ -8,46 +10,21 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from django_apps.asteroid_lab.cleanup.result import CleanupResult
-from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
-from django_apps.asteroid_lab.replay.snapshot_map_replay import (
-    _replace_extensions_with_synthetic_fields as replace_extensions_with_synthetic_fields,
-)
-from django_apps.asteroid_lab.replay.snapshot_map_replay import (
-    _replace_miners_with_synthetic_fields as replace_miners_with_synthetic_fields,
-)
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     cell_key_xy_layer,
     decoded_cell_to_full_map_row,
     rows_from_cells,
 )
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.transport_components import (
-    is_transport_tile,
-    sort_key_xy_layer,
+from shapez2_factory.domain.asteroid_lab.cleanup.result import CleanupResult
+from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map_merge import (
+    merge_reconstruction_display_cells,
+    merged_display_cells_from_reconstruction,
+    replace_extensions_with_synthetic_fields,
+    replace_miners_with_synthetic_fields,
+    structural_cells_from_cleanup,
 )
-
-
-def structural_cells_from_cleanup(cleanup: CleanupResult) -> tuple[DecodedCellDTO, ...]:
-    """Post-extension-cleanup cells (replay ``row_extension`` parity)."""
-
-    after_transport = tuple(c for c in cleanup.original_cells if not is_transport_tile(c))
-    after_extractors = replace_miners_with_synthetic_fields(after_transport)
-    return replace_extensions_with_synthetic_fields(after_extractors)
-
-
-def merge_reconstruction_display_cells(
-    structural: Sequence[DecodedCellDTO],
-    recon_cells: Sequence[DecodedCellDTO],
-) -> tuple[DecodedCellDTO, ...]:
-    """Overlay recon on structural map; keep structural keys absent from ``recon_cells``."""
-
-    merged: dict[tuple[int, int, int | None], DecodedCellDTO] = {
-        (c.x, c.y, c.layer): c for c in structural
-    }
-    for cell in recon_cells:
-        merged[(cell.x, cell.y, cell.layer)] = cell
-    return tuple(sorted(merged.values(), key=sort_key_xy_layer))
+from shapez2_factory.domain.asteroid_lab.reconstruction.result import ReconstructionResult
 
 
 def merge_reconstruction_display_rows(
@@ -69,16 +46,6 @@ def merge_reconstruction_display_rows(
             decoded_cell_to_full_map_row(cell)
         )
     return sorted(merged.values(), key=lambda row: cell_key_xy_layer(row))
-
-
-def merged_display_cells_from_reconstruction(
-    cleanup: CleanupResult,
-    recon: ReconstructionResult,
-) -> tuple[DecodedCellDTO, ...]:
-    """Full topology cell set for persist (no replay frame reads)."""
-
-    structural = structural_cells_from_cleanup(cleanup)
-    return merge_reconstruction_display_cells(structural, recon.cells)
 
 
 def full_map_rows_from_reconstruction(

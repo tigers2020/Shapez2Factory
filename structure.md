@@ -43,8 +43,7 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 | `frontend/graph_layout/` | TypeScript graph layout engine source |
 | `locale/` | gettext catalog |
 | `scripts/` | Locale build, graph preview, diagnostics helpers |
-| `var/` | Local run traces/debug output — not source of truth |
-| `var/runs/<run_key>/` | Asteroid Lab CLI artifact directory (atomic `manifest.json` + `output/replay_core.jsonl`); staging in `var/runs/.tmp/` — see [artifact design spec](docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md) |
+| `var/` | Local run traces/debug output — not source of truth. Asteroid Lab CLI artifacts live under `var/runs/<run_key>/` (atomic `manifest.json` + `output/replay_core.jsonl`), staging in `var/runs/.tmp/` — see [artifact design spec](docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md) |
 
 `node_modules/`, `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`, `.graph_preview_cache*/`, `db.sqlite3`, `.env` are local/generated artifacts, not structural canon.
 

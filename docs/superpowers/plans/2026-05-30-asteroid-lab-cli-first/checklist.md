@@ -92,12 +92,14 @@ Depends: CLI-2a · File: [`pr-cli-2b-game-data-port.md`](pr-cli-2b-game-data-por
 ## PR-CLI-2c — cleanup + reconstruction move + `complete_map` serializer
 Depends: CLI-2a · File: [`pr-cli-2c-reconstruction-move.md`](pr-cli-2c-reconstruction-move.md)
 
-- [ ] Step 1 — audit each `reconstruction/*.py`; write explicit move allowlist (no wildcard)
-- [ ] Step 2 (BLOCKING) — split `display_map.py` → pure `complete_map_merge.py` (core) + viewer `display_map.py` (Django); merge parity test
-- [ ] Step 3 — move allowlisted pure modules incl. `complete_map`; shim originals
-- [ ] Step 4 (TDD) — `test_complete_map_serializer.py` round-trip
-- [ ] Step 5 — reconstruction narrow + decontamination scripts parity
-- [ ] Step 6 — purity gate (complete_map zero replay import) + ruff + mypy
+**Slice 1 (done):** prereq DTO/snapshots/leaf move + `display_map` pure split + parity. **Slice 2 (pending):** `complete_map` + `acceptance_topology` move + serializer.
+
+- [x] Step 1 — audited all 20 `reconstruction/*.py` + 3 `cleanup/*.py`; allowlist below (no wildcard)
+- [x] Step 2 (BLOCKING) — split `display_map.py` → pure `complete_map_merge.py` (core) + viewer `display_map.py` (Django); `snapshot_map_replay` transforms relocated to core; `test_complete_map_merge.py` parity (no-db)
+- [x] Step 3 (Slice 1 subset) — moved pure leaves to core + shimmed: `DecodedCellDTO`, `asteroid_map_coords`, `transport_components`, `reconstruction/{grid,result,evidence}`, `cleanup/result`. **Deferred to Slice 2:** `complete_map`, `acceptance_topology` (TYPE_CHECKING dep on `complete_map`)
+- [ ] Step 4 (TDD, Slice 2) — `test_complete_map_serializer.py` round-trip
+- [x] Step 5 — `scripts/test_reconstruction_narrow.ps1` green (25 passed); full asteroid_lab/replay suite parity green (235 + 509)
+- [x] Step 6 — purity gate + import-matrix gates + ruff + `mypy src` green (38 files). Also fixed pre-existing PR-CLI-2b import-matrix violations (game_data↔asteroid_lab) + `structure.md` `var/runs/` governance.
 - [ ] Done: pure recon in core; display/persist stay Django; serializer round-trips; recon gates green
 
 ## PR-CLI-2d — L2 + shared + contracts move (NO stack_runner)

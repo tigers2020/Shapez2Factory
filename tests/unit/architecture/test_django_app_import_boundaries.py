@@ -58,6 +58,8 @@ _IMPORT_MATRIX_SKIP: dict[str, frozenset[str]] = {
             "django_apps/asteroid_lab/optimization/commit/incremental_commit.py",
             # L2: EVTC row resolution (no cap literals in layer modules).
             "django_apps/asteroid_lab/layers/layer_02_exterior_transport/capacity.py",
+            # PR-CLI-2b: sole sanctioned ORM bridge that builds the game_data snapshot payload.
+            "django_apps/asteroid_lab/adapters/orm_game_data_rules.py",
         }
     ),
 }

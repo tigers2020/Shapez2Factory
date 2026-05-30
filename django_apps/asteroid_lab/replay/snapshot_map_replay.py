@@ -15,6 +15,10 @@ from django_apps.asteroid_lab.services.dto import (
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
 )
+from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map_merge import (
+    replace_extensions_with_synthetic_fields,
+    replace_miners_with_synthetic_fields,
+)
 
 
 def cell_key_xy_layer(row: dict[str, Any]) -> tuple[int, int, int | None]:
@@ -58,58 +62,6 @@ def diff_maps(prev: Sequence[dict[str, Any]], nxt: Sequence[dict[str, Any]]) -> 
 
 def _without_transport(c: DecodedCellDTO) -> bool:
     return not is_transport_tile(c)
-
-
-def _synthetic_asteroid_field_cell(source: DecodedCellDTO, field_cell_kind: str) -> DecodedCellDTO:
-    """Replay-only cell: same (x,y,layer) as removed miner/extension; not in decode BP."""
-
-    return DecodedCellDTO(
-        x=source.x,
-        y=source.y,
-        layer=source.layer,
-        rotation=0,
-        tile_type="",
-        cell_kind=field_cell_kind,
-        transport_kind="none",
-        has_nested_blueprint=False,
-        nested_entry_count=0,
-        nested_type_counts_json={},
-        raw_entry_json={"_replay_synthetic": True, "_from_cell_kind": source.cell_kind},
-    )
-
-
-def _field_cell_kind_for_miner(c: DecodedCellDTO) -> str:
-    return "asteroid_shape_field" if c.cell_kind == "shape_miner" else "asteroid_fluid_field"
-
-
-def _field_cell_kind_for_extension(c: DecodedCellDTO) -> str:
-    if c.cell_kind == "shape_miner_extension":
-        return "asteroid_shape_field"
-    return "asteroid_fluid_field"
-
-
-def _replace_miners_with_synthetic_fields(
-    cells: Sequence[DecodedCellDTO],
-) -> tuple[DecodedCellDTO, ...]:
-    out: list[DecodedCellDTO] = []
-    for c in cells:
-        if c.cell_kind in ("fluid_miner", "shape_miner"):
-            out.append(_synthetic_asteroid_field_cell(c, _field_cell_kind_for_miner(c)))
-        else:
-            out.append(c)
-    return tuple(out)
-
-
-def _replace_extensions_with_synthetic_fields(
-    cells: Sequence[DecodedCellDTO],
-) -> tuple[DecodedCellDTO, ...]:
-    out: list[DecodedCellDTO] = []
-    for c in cells:
-        if c.cell_kind in ("fluid_miner_extension", "shape_miner_extension"):
-            out.append(_synthetic_asteroid_field_cell(c, _field_cell_kind_for_extension(c)))
-        else:
-            out.append(c)
-    return tuple(out)
 
 
 def snapshot_summary_from_rows(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
@@ -164,8 +116,8 @@ def build_cleanup_and_reconstruction_rows(
 
     all_cells = snapshot.cells
     after_transport = tuple(c for c in all_cells if _without_transport(c))
-    after_extractors = _replace_miners_with_synthetic_fields(after_transport)
-    after_extensions = _replace_extensions_with_synthetic_fields(after_extractors)
+    after_extractors = replace_miners_with_synthetic_fields(after_transport)
+    after_extensions = replace_extensions_with_synthetic_fields(after_extractors)
     structural = rows_from_cells(after_extensions)
     cleanup = load_cleanup_result(snapshot)
     recon = run_topology_reconstruction(cleanup)

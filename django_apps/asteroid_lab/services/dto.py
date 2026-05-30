@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from shapez2_factory.domain.asteroid_lab.decoded_cell import DecodedCellDTO as DecodedCellDTO
+
 
 @dataclass(frozen=True, slots=True)
 class CreateProjectFromCopyCodeResultDTO:
@@ -183,23 +185,6 @@ class NormalizedBlueprintDTO:
     """Blueprint JSON ready to persist on ``AsteroidMapInput.decoded_json``."""
 
     decoded_json: dict[str, Any]
-
-
-@dataclass(frozen=True, slots=True)
-class DecodedCellDTO:
-    """One top-level ``BP.Entries`` cell row (A5); nested ``B.Entries`` are summary-only."""
-
-    x: int
-    y: int
-    layer: int | None
-    rotation: int
-    tile_type: str
-    cell_kind: str
-    transport_kind: str
-    has_nested_blueprint: bool
-    nested_entry_count: int
-    nested_type_counts_json: dict[str, int]
-    raw_entry_json: dict[str, Any]
 
 
 @dataclass(frozen=True, slots=True)

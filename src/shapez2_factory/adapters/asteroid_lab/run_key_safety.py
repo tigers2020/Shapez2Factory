@@ -39,7 +39,7 @@ def resolve_artifact_dir(allowed_root: Path, artifact_root: Path, run_key: str) 
     """
     if run_key in (".", "..") or "/" in run_key or "\\" in run_key:
         raise ArtifactPathError(run_key)
-    if not _RUN_KEY_RE.match(run_key):
+    if not _RUN_KEY_RE.fullmatch(run_key):
         raise ArtifactPathError(run_key)
     root = allowed_root.resolve()
     final = (artifact_root / run_key).resolve()

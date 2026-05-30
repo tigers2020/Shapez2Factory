@@ -45,11 +45,20 @@ def test_rejects_path_separators(tmp_path: Path) -> None:
             resolve_artifact_dir(allowed_root, allowed_root, bad)
 
 
-def test_rejects_traversal_chars(tmp_path: Path) -> None:
+def test_rejects_invalid_chars(tmp_path: Path) -> None:
     allowed_root = tmp_path / "runs"
     allowed_root.mkdir()
 
     for bad in ("a b", "a$b"):
+        with pytest.raises(ArtifactPathError):
+            resolve_artifact_dir(allowed_root, allowed_root, bad)
+
+
+def test_rejects_trailing_newline_and_control_chars(tmp_path: Path) -> None:
+    allowed_root = tmp_path / "runs"
+    allowed_root.mkdir()
+
+    for bad in ("abc\n", ""):
         with pytest.raises(ArtifactPathError):
             resolve_artifact_dir(allowed_root, allowed_root, bad)
 

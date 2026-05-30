@@ -1,14 +1,7 @@
-"""Integer ceiling division for Decimal throughput rates."""
+"""Shim: relocated to shapez2_factory.application.asteroid_lab.layers.shared.ceildiv."""
 
 from __future__ import annotations
 
-from decimal import ROUND_CEILING, Decimal
-
-
-def ceildiv_decimal(numerator: Decimal, denominator: Decimal) -> int:
-    if denominator <= 0 or numerator <= 0:
-        return 0
-    return int((numerator / denominator).to_integral_value(rounding=ROUND_CEILING))
-
+from shapez2_factory.application.asteroid_lab.layers.shared.ceildiv import ceildiv_decimal
 
 __all__ = ["ceildiv_decimal"]

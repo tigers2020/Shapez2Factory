@@ -1,17 +1,7 @@
-"""Enums for genetic sample gene templates (admin / fixtures; not solver runtime)."""
+"""Shim: relocated to shapez2_factory.domain.asteroid_lab.genetic_sample.enums."""
 
 from __future__ import annotations
 
-from enum import StrEnum
-
-
-class Direction(StrEnum):
-    """Cardinal direction on the raw island grid."""
-
-    N = "n"
-    E = "e"
-    S = "s"
-    W = "w"
-
+from shapez2_factory.domain.asteroid_lab.genetic_sample.enums import Direction
 
 __all__ = ["Direction"]

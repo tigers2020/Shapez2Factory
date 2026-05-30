@@ -1,13 +1,10 @@
-"""Layer 02 exterior connector role (required vs spare)."""
+"""Shim: relocated to
+shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connector_role."""
 
 from __future__ import annotations
 
-from enum import StrEnum
-
-
-class ExteriorConnectorRole(StrEnum):
-    REQUIRED = "required"
-    SPARE = "spare"
-
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connector_role import (
+    ExteriorConnectorRole,
+)
 
 __all__ = ["ExteriorConnectorRole"]

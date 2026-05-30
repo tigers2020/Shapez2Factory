@@ -1,12 +1,7 @@
-"""Stack run status codes for layer 2–5 orchestration."""
+"""Shim: relocated to shapez2_factory.application.asteroid_lab.layers.contracts.stack_status."""
 
 from __future__ import annotations
 
-from enum import StrEnum
+from shapez2_factory.application.asteroid_lab.layers.contracts.stack_status import StackRunStatus
 
-
-class StackRunStatus(StrEnum):
-    SUCCESS = "success"
-    TIMEOUT_FAIL_CLOSED = "timeout_fail_closed"
-    LAYER_FAILED_CLOSED = "layer_failed_closed"
-    VALIDATION_FAILED = "validation_failed"
+__all__ = ["StackRunStatus"]

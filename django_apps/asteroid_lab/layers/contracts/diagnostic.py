@@ -1,14 +1,9 @@
-"""Non-resumable diagnostic snapshots (observability only)."""
+"""Shim: relocated to shapez2_factory.application.asteroid_lab.layers.contracts.diagnostic."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from shapez2_factory.application.asteroid_lab.layers.contracts.diagnostic import (
+    DiagnosticLayerSnapshot,
+)
 
-
-@dataclass(frozen=True, slots=True)
-class DiagnosticLayerSnapshot:
-    """Output-only layer snapshot; not a valid stack restart input."""
-
-    layer_slug: str
-    layer_index: int
-    payload: dict[str, object]
+__all__ = ["DiagnosticLayerSnapshot"]

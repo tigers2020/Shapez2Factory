@@ -1,38 +1,13 @@
-"""Layer 03 resource vs transport kind enums and L2 plan string mapping."""
+"""Shim: relocated to shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind."""
 
 from __future__ import annotations
 
-from enum import StrEnum
-
-
-class ResourceKind(StrEnum):
-    SHAPE = "shape"
-    FLUID = "fluid"
-
-
-class TransportKind(StrEnum):
-    SHAPE_BELT = "shape_belt"
-    FLUID_PIPE = "fluid_pipe"
-
-
-def map_resource_kind_to_transport_kind(resource_kind: ResourceKind) -> TransportKind:
-    if resource_kind == ResourceKind.SHAPE:
-        return TransportKind.SHAPE_BELT
-    if resource_kind == ResourceKind.FLUID:
-        return TransportKind.FLUID_PIPE
-    msg = f"unknown resource_kind: {resource_kind!r}"
-    raise ValueError(msg)
-
-
-def resource_kind_from_plan_string(value: str) -> ResourceKind:
-    normalized = value.strip().lower()
-    if normalized == ResourceKind.SHAPE.value:
-        return ResourceKind.SHAPE
-    if normalized == ResourceKind.FLUID.value:
-        return ResourceKind.FLUID
-    msg = f"unknown plan transport_kind string: {value!r}"
-    raise ValueError(msg)
-
+from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import (
+    ResourceKind,
+    TransportKind,
+    map_resource_kind_to_transport_kind,
+    resource_kind_from_plan_string,
+)
 
 __all__ = [
     "ResourceKind",

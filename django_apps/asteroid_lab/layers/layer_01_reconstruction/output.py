@@ -1,14 +1,9 @@
-"""Layer 1 output DTO."""
+"""Shim: relocated to core layers.layer_01_reconstruction.output."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from shapez2_factory.application.asteroid_lab.layers.layer_01_reconstruction.output import (
+    Layer01ReconstructionOutput,
+)
 
-from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
-
-
-@dataclass(frozen=True, slots=True)
-class Layer01ReconstructionOutput:
-    complete_map: ReconstructionCompleteMap
-    capacity_envelope: dict[str, Any]
+__all__ = ["Layer01ReconstructionOutput"]

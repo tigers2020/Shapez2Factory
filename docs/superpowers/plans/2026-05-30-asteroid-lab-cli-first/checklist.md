@@ -28,7 +28,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` skipped (d
 
 ## 2. Structural amendments (2nd review)
 
-- [ ] SA-1 PR-CLI-2d drops `stack_runner` move (L2 + shared + contracts only)
+- [x] SA-1 PR-CLI-2d drops `stack_runner` move (L2 + shared + contracts only)
 - [ ] SA-2 `stack_runner` moves in PR-CLI-2e together with L3–L6 (no bridge ever)
 - [ ] SA-3 PR-CLI-3 split into 3a (artifact shell) + 3b (full run)
 - [ ] SA-4 PR-CLI-2c gains blocking `display_map` pure/viewer split
@@ -42,7 +42,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` skipped (d
 - [ ] Guard D — JSONL streaming-only (`test_ssr_does_not_inline_full_replay`) — PR-3b policy, enforced PR-5
 - [ ] Guard E — `replay_core` no django replay import (`test_replay_core_does_not_import_django_replay`) — PR-3b
 - [ ] run_key collision writer-level (`test_artifact_writer_rejects_existing_dir`) — PR-1 (+ `--replace-existing` PR-3a)
-- [ ] shim identity (`test_contract_shims_preserve_identity`) — PR-2d
+- [x] shim identity (`test_contract_shims_preserve_identity`) — PR-2d
 - [ ] replay loader iterator (`test_artifact_replay_loader_returns_iterator`) — PR-5
 
 ---
@@ -106,14 +106,14 @@ Depends: CLI-2a · File: [`pr-cli-2c-reconstruction-move.md`](pr-cli-2c-reconstr
 ## PR-CLI-2d — L2 + shared + contracts move (NO stack_runner)
 Depends: CLI-2b, CLI-2c · File: [`pr-cli-2d-l2-shared-contracts-move.md`](pr-cli-2d-l2-shared-contracts-move.md)
 
-- [ ] Step 1 — move contracts; rewrite intra-core imports; shim (re-export, not redefine)
-- [ ] Step 2 — move L1 facade + L2 + shared route_probe; wire L2 port; shim
-- [ ] Step 3 — split observability: pure metric builders → core; settings emit stays Django
-- [ ] Step 4 (TDD) — `test_contract_shim_identity.py` (all parametrized symbols `is`-identical)
-- [ ] Step 5 — confirm `stack_runner` (still Django) runs unchanged via core/current paths
-- [ ] Step 6 — purity gate green with ZERO `django_apps` exceptions (no bridge)
-- [ ] Step 7 — layer + budget + recon gates; ruff + mypy
-- [ ] Done: contracts + L1 + L2 + shared in core, pure; shim identity green; stack_runner still Django; no bridge
+- [x] Step 1 — move contracts (+ `genetic_sample.enums` prereq); rewrite intra-core imports; shim (re-export, not redefine). Deferred to 2e: `rim_placement`, `layer04_disabled` (import `services.dto`)
+- [x] Step 2 — move L1 `output.py` + full L2 + shared (ceildiv, route_probe, equivalence_key); wire L2 port via `rules`-required core + ORM default in django plan/run shim. L1 `run.py`/`__init__` stay Django (game_data ORM dep)
+- [x] Step 3 — split observability: 6 pure metric builders + behavior catalog → core; settings/timezone/file-I/O session + `build_layer04` (rim_placement dep) stay Django
+- [x] Step 4 (TDD) — `tests/unit/architecture/test_contract_shim_identity.py` (15 parametrized symbols `is`-identical; required 6 + Direction covered)
+- [x] Step 5 — `stack_runner` (still Django) unchanged; full asteroid_lab suite 719 passed (stack_runner skeleton green via django shim default rules)
+- [x] Step 6 — purity gate green with ZERO `django_apps` exceptions (no bridge); `mypy src` clean (83 files)
+- [x] Step 7 — layer + budget + recon gates 169/719 passed; ruff clean; mypy src clean
+- [x] Done: contracts + L1 output + L2 + shared + pure observability in core, pure; shim identity green; stack_runner still Django; no bridge. Note: full-gate `mypy django_apps config src` has ~1025 pre-existing unrelated errors (baseline)
 
 ## PR-CLI-2e — L3..L6 + stack_runner move (GATED)
 Depends: CLI-2d AND L3 boundary-m-repack PR-B/C merged+green · File: [`pr-cli-2e-l3-gated-move.md`](pr-cli-2e-l3-gated-move.md)

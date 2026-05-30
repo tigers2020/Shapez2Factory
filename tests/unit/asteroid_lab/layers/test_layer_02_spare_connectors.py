@@ -75,7 +75,9 @@ def test_partial_spare_placement_is_success_when_required_slots_fit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
-    from django_apps.asteroid_lab.layers.layer_02_exterior_transport import plan as plan_mod
+    from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport import (
+        plan as plan_mod,
+    )
 
     cm = build_rect_field_with_void_shell(width=10, height=10, void_pad=12)
     fake_slots = {

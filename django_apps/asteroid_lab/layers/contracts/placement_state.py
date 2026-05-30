@@ -1,15 +1,9 @@
-"""Placement commit lifecycle states (L4–L6)."""
+"""Shim: relocated to shapez2_factory.application.asteroid_lab.layers.contracts.placement_state."""
 
 from __future__ import annotations
 
-from enum import StrEnum
-
-
-class PlacementCommitState(StrEnum):
-    PROVISIONAL_PLACED = "PROVISIONAL_PLACED"
-    ROUTED_CONFIRMED = "ROUTED_CONFIRMED"
-    QUARANTINED_UNROUTED = "QUARANTINED_UNROUTED"
-    ROLLED_BACK = "ROLLED_BACK"
-
+from shapez2_factory.application.asteroid_lab.layers.contracts.placement_state import (
+    PlacementCommitState,
+)
 
 __all__ = ["PlacementCommitState"]

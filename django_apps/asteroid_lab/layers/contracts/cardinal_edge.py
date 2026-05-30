@@ -1,13 +1,7 @@
-"""Cardinal edge buckets for exterior connector placement."""
+"""Shim: relocated to shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge."""
 
-from enum import StrEnum
+from __future__ import annotations
 
-
-class CardinalEdge(StrEnum):
-    NORTH = "north"
-    EAST = "east"
-    SOUTH = "south"
-    WEST = "west"
-
+from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
 
 __all__ = ["CardinalEdge"]

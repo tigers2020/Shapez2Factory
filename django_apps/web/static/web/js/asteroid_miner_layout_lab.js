@@ -1003,6 +1003,7 @@
 
   var LAYER03_POOL_SUMMARY_EVENT = "layer03_rim_bundle_pool_summary";
   var LAYER03_POOL_PROBE_WINDOW_EVENT = "layer03_rim_bundle_pool_probe_window";
+  var LAYER03_GREEDY_EVENT_PREFIX = "layer03_rim_greedy_";
 
   /** Pre-candidate_* replay wire on L3 pool summary frames only. */
   var LEGACY_L3_POOL_OVERLAY_CELL_KINDS = {
@@ -1034,9 +1035,14 @@
     return String(frame.event_type || "") === LAYER03_POOL_PROBE_WINDOW_EVENT;
   }
 
-  /** Legacy pre-candidate_* overlay kinds apply only on probe-window frames. */
+  function isL3GreedyReplayFrame(frame) {
+    if (!frame) return false;
+    return String(frame.event_type || "").indexOf(LAYER03_GREEDY_EVENT_PREFIX) === 0;
+  }
+
+  /** Legacy pool windows + rim greedy placement preview frames. */
   function isL3PoolCandidateObservationFrame(frame) {
-    return isL3PoolProbeWindowFrame(frame);
+    return isL3PoolProbeWindowFrame(frame) || isL3GreedyReplayFrame(frame);
   }
 
   function isL3ProbeWindowBaseFieldCellKind(cellKind) {
@@ -1060,7 +1066,7 @@
 
   /** Stub/route tints are void-only; asteroid sprites stay unchanged unless miner. */
   function shouldSkipCandidateObservationOnSpriteCell(frame, cellKind, el) {
-    if (!isL3PoolProbeWindowFrame(frame)) return false;
+    if (!isL3PoolCandidateObservationFrame(frame)) return false;
     if (!labCellHasBaseSprite(el)) return false;
     return !isCandidateMinerOverlayKind(cellKind);
   }
@@ -1795,7 +1801,7 @@
       skipPlannedExteriorConnectors: true,
       plannedConnectorCoordKeys: plannedCoordKeys,
     });
-    if (isL3PoolProbeWindowFrame(frame) && ovCells.length > 1) {
+    if (isL3PoolCandidateObservationFrame(frame) && ovCells.length > 1) {
       ovCells = sortL3CandidateOverlayCellsForPaint(ovCells);
     }
     if (ovCells.length) {

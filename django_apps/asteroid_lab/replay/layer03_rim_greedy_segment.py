@@ -1,0 +1,286 @@
+"""Layer 03 rim greedy placement replay segment (transient overlay specs only)."""
+
+from __future__ import annotations
+
+from django_apps.asteroid_lab.layers.contracts.layer_slugs import LAYER_03_RIM_GREEDY_PLACEMENT
+from django_apps.asteroid_lab.layers.contracts.rim_greedy import (
+    CommittedRimSeedPlacement,
+    IntegratedRimGreedyResult,
+    RimGreedyObservationEvent,
+    RimGreedyObservationPhase,
+)
+from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKind
+from django_apps.asteroid_lab.replay.event_types import (
+    EVENT_TYPE_LAYER03_RIM_GREEDY_BEGIN,
+    EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE,
+    EVENT_TYPE_LAYER03_RIM_GREEDY_PASS1_COMPLETE,
+    EVENT_TYPE_LAYER03_RIM_GREEDY_SEED_COMMITTED,
+    assert_registered_event_type,
+)
+from django_apps.asteroid_lab.replay.layer03_overlay_cells import (
+    OVERLAY_KIND_CANDIDATE_MINER,
+    OVERLAY_KIND_CANDIDATE_ROUTE_PATH,
+    OVERLAY_KIND_CANDIDATE_TRANSPORT_STUB,
+)
+from django_apps.asteroid_lab.replay.pattern_bundle_highlight import (
+    METRICS_KEY,
+    build_pattern_bundle_highlights_wire,
+)
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.replay_limits import LAYER03_REPLAY_MAX_POOL_PREVIEW_WINDOWS
+from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
+from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
+from django_apps.asteroid_lab.snapshots.grid_contract import Coord
+
+LAYER03_GREEDY_PHASE = LAYER_03_RIM_GREEDY_PLACEMENT
+
+_PHASE_TO_EVENT: dict[RimGreedyObservationPhase, str] = {
+    RimGreedyObservationPhase.RIM_GREEDY_BEGIN: EVENT_TYPE_LAYER03_RIM_GREEDY_BEGIN,
+    RimGreedyObservationPhase.RIM_PASS1_COMPLETE: EVENT_TYPE_LAYER03_RIM_GREEDY_PASS1_COMPLETE,
+    RimGreedyObservationPhase.RIM_SEED_COMMITTED: EVENT_TYPE_LAYER03_RIM_GREEDY_SEED_COMMITTED,
+    RimGreedyObservationPhase.RIM_GREEDY_COMPLETE: EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE,
+}
+
+_GREEDY_INSPECTOR = {
+    "lab_phase": "rim_greedy_placement",
+    "lab_phase_step": LAYER03_GREEDY_PHASE,
+}
+
+
+def _event_type_for_phase(phase: RimGreedyObservationPhase) -> ReplayEventType:
+    wire = _PHASE_TO_EVENT[phase]
+    assert_registered_event_type(wire)
+    return ReplayEventType(wire)
+
+
+def _spec(
+    *,
+    event_type: ReplayEventType,
+    title: str,
+    description: str,
+    metrics: dict[str, object],
+    transient_overlay_cells: tuple[ReplayOverlayCell, ...] = (),
+) -> ReplaySegmentFrameSpec:
+    assert_registered_event_type(event_type.value)
+    return ReplaySegmentFrameSpec(
+        event_type=event_type,
+        phase=ReplayPhase.CANDIDATE_GENERATION,
+        title=title,
+        description=description,
+        metrics=metrics,
+        transient_overlay_cells=transient_overlay_cells,
+        inspector={**_GREEDY_INSPECTOR, "lab_event_type": event_type.value},
+    )
+
+
+def _transport_wire() -> str:
+    return TransportKind.SHAPE_BELT.value
+
+
+def _combined_overlay_for_placements(
+    placements: tuple[CommittedRimSeedPlacement, ...],
+) -> tuple[ReplayOverlayCell, ...]:
+    combined: list[ReplayOverlayCell] = []
+    for placement in placements:
+        combined.extend(_overlay_for_committed(placement))
+    return tuple(combined)
+
+
+def _overlay_for_committed(
+    placement: CommittedRimSeedPlacement,
+) -> tuple[ReplayOverlayCell, ...]:
+    transport = _transport_wire()
+    overlay: list[ReplayOverlayCell] = []
+    equipment = sorted(placement.miner_cells | placement.extension_cells)
+    for x, y in equipment:
+        overlay.append(
+            ReplayOverlayCell(
+                x=x,
+                y=y,
+                kind=OVERLAY_KIND_CANDIDATE_MINER,
+                transport=transport,
+            )
+        )
+    for x, y in sorted({placement.m_output_stub}):
+        overlay.append(
+            ReplayOverlayCell(
+                x=x,
+                y=y,
+                kind=OVERLAY_KIND_CANDIDATE_TRANSPORT_STUB,
+                transport=transport,
+            )
+        )
+    for x, y in placement.route_probe_path:
+        overlay.append(
+            ReplayOverlayCell(
+                x=x,
+                y=y,
+                kind=OVERLAY_KIND_CANDIDATE_ROUTE_PATH,
+                transport=transport,
+            )
+        )
+    return tuple(overlay)
+
+
+def _pattern_highlights_for_placements(
+    placements: tuple[CommittedRimSeedPlacement, ...],
+) -> dict[str, object]:
+    entries: list[tuple[str, frozenset[Coord], str | None]] = []
+    for placement in placements:
+        footprint = placement.miner_cells | placement.extension_cells
+        entries.append((placement.placement_id, footprint, placement.seed_id))
+    return build_pattern_bundle_highlights_wire(entries)
+
+
+def _chunk_placements(
+    placements: tuple[CommittedRimSeedPlacement, ...],
+    *,
+    max_windows: int,
+) -> list[tuple[CommittedRimSeedPlacement, ...]]:
+    if not placements or max_windows <= 0:
+        return []
+    count = len(placements)
+    window_count = min(max_windows, count)
+    chunk_size = max(1, (count + window_count - 1) // window_count)
+    chunks: list[tuple[CommittedRimSeedPlacement, ...]] = []
+    index = 0
+    while index < count:
+        chunks.append(placements[index : index + chunk_size])
+        index += chunk_size
+    return chunks
+
+
+def build_layer03_rim_greedy_runtime_segment_specs(
+    result: IntegratedRimGreedyResult,
+) -> tuple[ReplaySegmentFrameSpec, ...]:
+    """Winning-variant greedy replay with overlays (Lab map tint parity with legacy L3 pool)."""
+    placements = result.committed_placements
+    metrics = result.metrics
+    variant_id = result.winning_variant_id or "—"
+
+    begin = _spec(
+        event_type=ReplayEventType.LAYER03_RIM_GREEDY_BEGIN,
+        title="Layer 03 rim greedy begin",
+        description=f"variant winner={variant_id}",
+        metrics={
+            "layer": LAYER03_GREEDY_PHASE,
+            "phase": RimGreedyObservationPhase.RIM_GREEDY_BEGIN.value,
+            "variant_id": variant_id,
+            "rim_anchor_count": metrics.rim_anchor_count,
+        },
+    )
+
+    summary_metrics: dict[str, object] = {
+        "layer": LAYER03_GREEDY_PHASE,
+        "phase": "rim_greedy_summary",
+        "variant_id": variant_id,
+        "committed_placement_count": metrics.committed_placement_count,
+        "rejected_attempt_count": metrics.rejected_attempt_count,
+        "winning_variant_id": variant_id,
+        "pass2_score": metrics.pass2_score,
+    }
+    if placements:
+        summary_metrics[METRICS_KEY] = _pattern_highlights_for_placements(placements)
+
+    summary = _spec(
+        event_type=ReplayEventType.LAYER03_RIM_GREEDY_SUMMARY,
+        title="Layer 03 rim greedy summary",
+        description=(
+            f"Committed {metrics.committed_placement_count} · "
+            f"rejected {metrics.rejected_attempt_count} · variant {variant_id}"
+        ),
+        metrics=summary_metrics,
+    )
+
+    preview_frames: list[ReplaySegmentFrameSpec] = []
+    chunks = _chunk_placements(
+        placements,
+        max_windows=LAYER03_REPLAY_MAX_POOL_PREVIEW_WINDOWS,
+    )
+    logical_count = len(chunks)
+    for window_index, chunk in enumerate(chunks, start=1):
+        start = sum(len(c) for c in chunks[: window_index - 1]) + 1
+        end = start + len(chunk) - 1
+        cells: list[ReplayOverlayCell] = []
+        for placement in chunk:
+            cells.extend(_overlay_for_committed(placement))
+        preview_frames.append(
+            _spec(
+                event_type=ReplayEventType.LAYER03_RIM_GREEDY_SEED_COMMITTED,
+                title=(
+                    f"Layer 03 rim greedy · window {window_index} / {logical_count}"
+                ),
+                description=f"Placements {start}–{end} / {len(placements)}",
+                metrics={
+                    "layer": LAYER03_GREEDY_PHASE,
+                    "phase": RimGreedyObservationPhase.RIM_SEED_COMMITTED.value,
+                    "variant_id": variant_id,
+                    "window_index": window_index,
+                    "logical_window_count": logical_count,
+                    "placement_start_index": start,
+                    "placement_end_index": end,
+                    "committed_placement_count": len(placements),
+                },
+                transient_overlay_cells=tuple(cells),
+            )
+        )
+
+    complete_metrics: dict[str, object] = {
+        "layer": LAYER03_GREEDY_PHASE,
+        "phase": RimGreedyObservationPhase.RIM_GREEDY_COMPLETE.value,
+        "variant_id": variant_id,
+        "winning_variant_id": variant_id,
+        "pass2_score": metrics.pass2_score,
+        "layer_skip_reason": metrics.layer_skip_reason,
+        "committed_placement_count": metrics.committed_placement_count,
+        "rejected_attempt_count": metrics.rejected_attempt_count,
+    }
+    complete_highlights = _pattern_highlights_for_placements(placements)
+    if complete_highlights:
+        complete_metrics[METRICS_KEY] = complete_highlights
+
+    complete = _spec(
+        event_type=ReplayEventType.LAYER03_RIM_GREEDY_COMPLETE,
+        title="Layer 03 rim greedy complete",
+        description=f"Pass2 score={metrics.pass2_score}",
+        metrics=complete_metrics,
+        transient_overlay_cells=_combined_overlay_for_placements(placements),
+    )
+
+    return (begin, summary, *preview_frames, complete)
+
+
+def build_layer03_rim_greedy_segment_specs(
+    events: tuple[RimGreedyObservationEvent, ...],
+) -> tuple[ReplaySegmentFrameSpec, ...]:
+    """Legacy event-only projector (metrics frames); prefer runtime builder with overlays."""
+    specs: list[ReplaySegmentFrameSpec] = []
+    for event in events:
+        if event.phase not in _PHASE_TO_EVENT:
+            continue
+        event_type = _event_type_for_phase(event.phase)
+        specs.append(
+            ReplaySegmentFrameSpec(
+                event_type=event_type,
+                phase=ReplayPhase.CANDIDATE_GENERATION,
+                title=f"Rim greedy: {event.phase.value}",
+                description=f"variant={event.variant_id}",
+                metrics={
+                    "layer": LAYER03_GREEDY_PHASE,
+                    "phase": event.phase.value,
+                    "variant_id": event.variant_id,
+                    **event.payload,
+                },
+                inspector={
+                    **_GREEDY_INSPECTOR,
+                    "lab_event_type": event_type.value,
+                },
+            )
+        )
+    return tuple(specs)
+
+
+__all__ = [
+    "build_layer03_rim_greedy_runtime_segment_specs",
+    "build_layer03_rim_greedy_segment_specs",
+]

@@ -1,29 +1,17 @@
-"""Layer 3 stub — rim mining bundle candidate pool (rebuild from skeleton)."""
+"""Layer 3 legacy entry — delegates to rim greedy placement."""
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.candidates import (
-    Layer03ExpansionMetrics,
-    RimBundleCandidateSet,
-    build_rim_bundle_candidate_set,
-)
+import warnings
+
 from django_apps.asteroid_lab.layers.contracts.exterior_connection import ExteriorConnectionPlan
-from django_apps.asteroid_lab.layers.contracts.layer03_observability import (
-    build_layer03_observability,
-)
 from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
+from django_apps.asteroid_lab.layers.contracts.rim_greedy import IntegratedRimGreedyResult
 from django_apps.asteroid_lab.layers.contracts.transport_kind import ResourceKind
+from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
+    run_layer_03_rim_greedy_placement,
+)
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
-
-
-def _empty_candidate_set() -> RimBundleCandidateSet:
-    metrics = Layer03ExpansionMetrics.empty()
-    return build_rim_bundle_candidate_set(
-        normal_candidates=(),
-        diagnostic_rejected_candidates=(),
-        metrics=metrics,
-        observability=build_layer03_observability(metrics=metrics, normal_candidates=()),
-    )
 
 
 def run_layer_03_rim_mining_bundles(
@@ -33,9 +21,19 @@ def run_layer_03_rim_mining_bundles(
     budget_ctx: LayerBudgetContext,
     seed_catalog: object | None = None,
     resource_kind: ResourceKind | None = None,
-) -> RimBundleCandidateSet:
-    _ = (complete_map, exterior_plan, budget_ctx, seed_catalog, resource_kind)
-    return _empty_candidate_set()
+) -> IntegratedRimGreedyResult:
+    warnings.warn(
+        "layer_03_rim_mining_bundles is deprecated; use layer_03_rim_greedy_placement",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return run_layer_03_rim_greedy_placement(
+        complete_map=complete_map,
+        exterior_plan=exterior_plan,
+        budget_ctx=budget_ctx,
+        seed_catalog=seed_catalog,
+        resource_kind=resource_kind,
+    )
 
 
 __all__ = ["run_layer_03_rim_mining_bundles"]

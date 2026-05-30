@@ -6,7 +6,10 @@ import pytest
 from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.replay.event_types import EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_BEGIN
+from django_apps.asteroid_lab.replay.event_types import (
+    EVENT_TYPE_LAYER03_RIM_GREEDY_BEGIN,
+    EVENT_TYPE_LAYER03_RIM_GREEDY_SEED_COMMITTED,
+)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
@@ -29,4 +32,21 @@ def test_lab_replay_timeline_includes_layer03_runtime_after_solver_run() -> None
 
     frames, _metrics = build_lab_replay_frames_for_project(int(proj.pk))
     event_types = [str(f.get("event_type") or "") for f in frames]
-    assert EVENT_TYPE_LAYER03_RIM_BUNDLE_SCAN_BEGIN in event_types
+    assert EVENT_TYPE_LAYER03_RIM_GREEDY_BEGIN in event_types
+    run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
+    summary = dict(run.config_json or {}).get("solver_summary") or {}
+    committed = int(
+        summary.get("rim_greedy_committed_count")
+        or summary.get("normal_candidate_count")
+        or 0
+    )
+    if committed > 0:
+        assert EVENT_TYPE_LAYER03_RIM_GREEDY_SEED_COMMITTED in event_types
+    runtime_frames = dict(run.config_json or {}).get("solver_runtime_replay_frames") or []
+    assert isinstance(runtime_frames, list) and runtime_frames
+    runtime_types = [
+        str(item.get("event_type") or "")
+        for item in runtime_frames
+        if isinstance(item, dict)
+    ]
+    assert EVENT_TYPE_LAYER03_RIM_GREEDY_BEGIN in runtime_types

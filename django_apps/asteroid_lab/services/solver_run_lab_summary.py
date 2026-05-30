@@ -11,6 +11,7 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
     LAYER_02_EXTERIOR_TRANSPORT,
+    LAYER_03_RIM_GREEDY_PLACEMENT,
     LAYER_03_RIM_MINING_BUNDLES,
     LAYER_04_RIM_BUNDLE_PLACEMENT,
     LAYER_05_INNER_PATTERN_FILL,
@@ -342,6 +343,111 @@ def _layer03_skip_reason_label(solver_summary: dict[str, Any]) -> str:
     return str(raw)
 
 
+def _rim_greedy_summary_active(solver_summary: dict[str, Any]) -> bool:
+    if "rim_greedy_winning_variant_id" in solver_summary:
+        return True
+    completed = solver_summary.get("completed_layer_slugs")
+    return isinstance(completed, list) and LAYER_03_RIM_GREEDY_PLACEMENT in completed
+
+
+def _layer03_greedy_highlights(solver_summary: dict[str, Any]) -> list[dict[str, str]]:
+    return [
+        _highlight("Rim anchor slots", _obs_field_count(solver_summary, "rim_anchor_count")),
+        _highlight(
+            "Committed placements",
+            _obs_field_count(
+                solver_summary,
+                "rim_greedy_committed_count",
+                "normal_candidate_count",
+            ),
+        ),
+        _highlight(
+            "Rejected attempts",
+            _obs_field_count(
+                solver_summary,
+                "rim_greedy_rejected_count",
+                "route_probe_failed_count",
+            ),
+        ),
+        _highlight(
+            "Winning variant",
+            _obs_field_count(solver_summary, "rim_greedy_winning_variant_id"),
+        ),
+        _highlight(
+            "Pass2 score",
+            _obs_field_count(solver_summary, "rim_greedy_pass2_score"),
+        ),
+        _highlight(
+            "Reserved route cells",
+            _obs_field_count(solver_summary, "field_route_cell_count_total"),
+        ),
+        _highlight(
+            "Total route length",
+            _obs_field_count(solver_summary, "rim_greedy_total_route_length"),
+        ),
+        _highlight(
+            "Top reject reasons",
+            _format_layer03_reject_reason_counts(solver_summary),
+        ),
+        _highlight("Layer skip reason", _layer03_skip_reason_label(solver_summary)),
+    ]
+
+
+def _layer03_legacy_highlights(
+    solver_summary: dict[str, Any],
+    *,
+    target_placement: Any,
+    rim_anchor_slots: Any,
+    route_probed_pool: Any,
+    route_probe_succeeded: Any,
+    capacity_deficit_count: Any,
+) -> list[dict[str, str]]:
+    return [
+        _highlight("Target placements", target_placement),
+        _highlight("Rim anchor slots", rim_anchor_slots),
+        _highlight(
+            "Direction seed attempts",
+            _obs_field_count(solver_summary, "direction_seed_attempt_count"),
+        ),
+        _highlight(
+            "Exterior dir candidates",
+            _obs_field_count(solver_summary, "exterior_direction_candidate_count"),
+        ),
+        _highlight("Route-probed pool", route_probed_pool),
+        _highlight(
+            "Route probe attempts",
+            _obs_field_count(solver_summary, "route_probe_attempt_count"),
+        ),
+        _highlight(
+            "Field route cells",
+            _obs_field_count(solver_summary, "field_route_cell_count_total"),
+        ),
+        _highlight(
+            "Weighted route cost",
+            _obs_field_count(solver_summary, "weighted_route_cost_total"),
+        ),
+        _highlight("Route probe succeeded", route_probe_succeeded),
+        _highlight(
+            "Probe succeeded / Pool",
+            _ratio_display(left=route_probe_succeeded, right=route_probed_pool),
+        ),
+        _highlight(
+            "Seed projection attempts",
+            _obs_field_count(solver_summary, "seed_projection_attempt_count"),
+        ),
+        _highlight(
+            "Geometry rejected",
+            _obs_field_count(solver_summary, "local_geometry_rejected_count"),
+        ),
+        _highlight(
+            "Top reject reasons",
+            _format_layer03_reject_reason_counts(solver_summary),
+        ),
+        _highlight("Layer skip reason", _layer03_skip_reason_label(solver_summary)),
+        _highlight("Capacity deficit", capacity_deficit_count),
+    ]
+
+
 def _format_layer03_reject_reason_counts(solver_summary: dict[str, Any]) -> str:
     raw = solver_summary.get("layer03_reject_reason_counts")
     if not raw:
@@ -527,66 +633,56 @@ def _build_layer_summaries(
         ),
         (
             3,
-            LAYER_03_RIM_MINING_BUNDLES,
-            "Rim mining bundles",
-            outcome(LAYER_03_RIM_MINING_BUNDLES, "pending"),
-            [
-                _highlight("Target placements", target_placement),
-                _highlight("Rim anchor slots", rim_anchor_slots),
-                _highlight(
-                    "Direction seed attempts",
-                    _obs_field_count(solver_summary, "direction_seed_attempt_count"),
+            (
+                LAYER_03_RIM_GREEDY_PLACEMENT
+                if _rim_greedy_summary_active(solver_summary)
+                else LAYER_03_RIM_MINING_BUNDLES
+            ),
+            (
+                "Rim greedy placement"
+                if _rim_greedy_summary_active(solver_summary)
+                else "Rim mining bundles"
+            ),
+            outcome(
+                (
+                    LAYER_03_RIM_GREEDY_PLACEMENT
+                    if _rim_greedy_summary_active(solver_summary)
+                    else LAYER_03_RIM_MINING_BUNDLES
                 ),
-                _highlight(
-                    "Exterior dir candidates",
-                    _obs_field_count(solver_summary, "exterior_direction_candidate_count"),
-                ),
-                _highlight("Route-probed pool", route_probed_pool),
-                _highlight(
-                    "Route probe attempts",
-                    _obs_field_count(solver_summary, "route_probe_attempt_count"),
-                ),
-                _highlight(
-                    "Field route cells",
-                    _obs_field_count(solver_summary, "field_route_cell_count_total"),
-                ),
-                _highlight(
-                    "Weighted route cost",
-                    _obs_field_count(solver_summary, "weighted_route_cost_total"),
-                ),
-                _highlight("Route probe succeeded", route_probe_succeeded),
-                _highlight(
-                    "Probe succeeded / Pool",
-                    _ratio_display(left=route_probe_succeeded, right=route_probed_pool),
-                ),
-                _highlight(
-                    "Seed projection attempts",
-                    _obs_field_count(
-                        solver_summary,
-                        "seed_projection_attempt_count",
-                    ),
-                ),
-                _highlight(
-                    "Geometry rejected",
-                    _obs_field_count(
-                        solver_summary,
-                        "local_geometry_rejected_count",
-                    ),
-                ),
-                _highlight(
-                    "Top reject reasons",
-                    _format_layer03_reject_reason_counts(solver_summary),
-                ),
-                _highlight("Layer skip reason", _layer03_skip_reason_label(solver_summary)),
-                _highlight("Capacity deficit", capacity_deficit_count),
-            ],
+                "pending",
+            ),
+            (
+                _layer03_greedy_highlights(solver_summary)
+                if _rim_greedy_summary_active(solver_summary)
+                else _layer03_legacy_highlights(
+                    solver_summary,
+                    target_placement=target_placement,
+                    rim_anchor_slots=rim_anchor_slots,
+                    route_probed_pool=route_probed_pool,
+                    route_probe_succeeded=route_probe_succeeded,
+                    capacity_deficit_count=capacity_deficit_count,
+                )
+            ),
         ),
         (
             4,
             LAYER_04_RIM_BUNDLE_PLACEMENT,
             "Rim bundle placement",
-            outcome(LAYER_04_RIM_BUNDLE_PLACEMENT, "pending"),
+            (
+                "superseded"
+                if _rim_greedy_summary_active(solver_summary)
+                and LAYER_03_RIM_GREEDY_PLACEMENT in completed_layer_slugs
+                else outcome(LAYER_04_RIM_BUNDLE_PLACEMENT, "pending")
+            ),
             [
+                _highlight(
+                    "Status",
+                    (
+                        "Superseded by L3 rim greedy"
+                        if _rim_greedy_summary_active(solver_summary)
+                        else _PLACEHOLDER
+                    ),
+                ),
                 _highlight("Provisional placed", provisional_placed),
                 _highlight(
                     "Placed / Probe succeeded",

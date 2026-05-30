@@ -14,10 +14,10 @@ from django_apps.asteroid_lab.layers.contracts.candidates import (
     make_bundle_candidate_for_test,
 )
 from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKind
+from django_apps.asteroid_lab.replay.layer04_segment import _overlay_cells_for_placement
 from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
     rim_bundle_placement_from_probe,
 )
-from django_apps.asteroid_lab.replay.layer04_segment import _overlay_cells_for_placement
 
 
 def _succeeded_entry(*, placements: tuple[BundlePlacement, ...]) -> RouteProbedBundleCandidate:

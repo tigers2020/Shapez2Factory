@@ -38,6 +38,13 @@ class ReplayEventType(StrEnum):
     LAYER03_RIM_BUNDLE_POOL_SUMMARY = "layer03_rim_bundle_pool_summary"
     LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW = "layer03_rim_bundle_pool_probe_window"
 
+    # Layer 03 rim greedy placement (solver runtime segment)
+    LAYER03_RIM_GREEDY_BEGIN = "layer03_rim_greedy_begin"
+    LAYER03_RIM_GREEDY_SUMMARY = "layer03_rim_greedy_summary"
+    LAYER03_RIM_GREEDY_PASS1_COMPLETE = "layer03_rim_greedy_pass1_complete"
+    LAYER03_RIM_GREEDY_SEED_COMMITTED = "layer03_rim_greedy_seed_committed"
+    LAYER03_RIM_GREEDY_COMPLETE = "layer03_rim_greedy_complete"
+
     # Layer 04 rim provisional placement (solver runtime segment)
     LAYER04_RIM_PLACEMENT_BEGIN = "layer04_rim_placement_begin"
     LAYER04_RIM_CANDIDATE_SELECTED = "layer04_rim_candidate_selected"

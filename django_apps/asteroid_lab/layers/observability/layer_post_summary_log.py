@@ -22,6 +22,7 @@ from django_apps.asteroid_lab.layers.contracts.layer_post_summary import (
     LayerPostSummaryOutcome,
     LayerPostSummaryRecord,
 )
+from django_apps.asteroid_lab.layers.contracts.rim_greedy import IntegratedRimGreedyResult
 from django_apps.asteroid_lab.layers.contracts.rim_placement import Layer04RimPlacementResult
 from django_apps.asteroid_lab.layers.contracts.stack_result import StackRunResult
 from django_apps.asteroid_lab.layers.layer_01_reconstruction.output import (
@@ -129,6 +130,22 @@ def build_layer02_post_summary_metrics(plan: ExteriorConnectionPlan) -> dict[str
         "required_planned_count": required_planned,
         "spare_planned_count": spare_planned,
         "unmet_reason": plan.unmet_reason.value if plan.unmet_reason is not None else None,
+    }
+
+
+def build_layer03_rim_greedy_post_summary_metrics(
+    result: IntegratedRimGreedyResult,
+) -> dict[str, object]:
+    metrics = result.metrics
+    return {
+        "rim_anchor_count": metrics.rim_anchor_count,
+        "committed_placement_count": metrics.committed_placement_count,
+        "rejected_attempt_count": metrics.rejected_attempt_count,
+        "reserved_route_cell_count": metrics.reserved_route_cell_count,
+        "winning_variant_id": metrics.winning_variant_id,
+        "pass2_score": metrics.pass2_score,
+        "layer_skip_reason": metrics.layer_skip_reason,
+        "canonical_layer_slug": metrics.canonical_layer_slug,
     }
 
 

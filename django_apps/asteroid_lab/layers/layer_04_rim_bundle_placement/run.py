@@ -1,9 +1,12 @@
-"""Layer 4 stub — rim bundle provisional placement (rebuild from skeleton)."""
+"""Layer 4 — disabled shim (superseded by layer_03_rim_greedy_placement)."""
 
 from __future__ import annotations
 
+import warnings
+
 from django_apps.asteroid_lab.layers.contracts.candidates import RimBundleCandidateSet
 from django_apps.asteroid_lab.layers.contracts.exterior_connection import ExteriorConnectionPlan
+from django_apps.asteroid_lab.layers.contracts.layer04_disabled import Layer04DisabledResult
 from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
 from django_apps.asteroid_lab.layers.contracts.provisional_overlay import ProvisionalLayoutOverlay
 from django_apps.asteroid_lab.layers.contracts.rim_placement import (
@@ -24,13 +27,18 @@ def empty_layer04_rim_placement_result() -> Layer04RimPlacementResult:
 
 def run_layer_04_rim_bundle_placement(
     *,
-    complete_map: ReconstructionCompleteMap,
-    exterior_plan: ExteriorConnectionPlan | None,
-    candidate_set: RimBundleCandidateSet,
-    budget_ctx: LayerBudgetContext,
-) -> Layer04RimPlacementResult:
+    complete_map: ReconstructionCompleteMap | None = None,
+    exterior_plan: ExteriorConnectionPlan | None = None,
+    candidate_set: RimBundleCandidateSet | None = None,
+    budget_ctx: LayerBudgetContext | None = None,
+) -> Layer04DisabledResult:
     _ = (complete_map, exterior_plan, candidate_set, budget_ctx)
-    return empty_layer04_rim_placement_result()
+    warnings.warn(
+        "layer_04_rim_bundle_placement is disabled; use layer_03_rim_greedy_placement",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return Layer04DisabledResult.superseded()
 
 
 __all__ = ["empty_layer04_rim_placement_result", "run_layer_04_rim_bundle_placement"]

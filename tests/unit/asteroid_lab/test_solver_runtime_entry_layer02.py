@@ -55,8 +55,8 @@ def test_run_solver_layer02_persists_plan_and_summary() -> None:
     assert isinstance(runtime_frames, list)
     runtime_types = [str(f.get("event_type") or "") for f in runtime_frames]
     assert LAYER02_EVENT_TYPE in runtime_types
-    assert "layer03_rim_bundle_scan_begin" in runtime_types
-    assert runtime_types.index("layer03_rim_bundle_scan_begin") > runtime_types.index(
+    assert "layer03_rim_greedy_begin" in runtime_types
+    assert runtime_types.index("layer03_rim_greedy_begin") > runtime_types.index(
         LAYER02_EVENT_TYPE
     )
     summary = dict(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY) or {})

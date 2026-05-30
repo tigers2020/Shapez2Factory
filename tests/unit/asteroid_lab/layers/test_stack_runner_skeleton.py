@@ -11,7 +11,7 @@ from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_02_EXTERIOR_TRANSPORT,
-    LAYER_03_RIM_MINING_BUNDLES,
+    LAYER_03_RIM_GREEDY_PLACEMENT,
     LAYER_04_RIM_BUNDLE_PLACEMENT,
     LAYER_05_INNER_PATTERN_FILL,
     LAYER_06_COMMIT_VALIDATE,
@@ -55,8 +55,7 @@ def test_stack_runner_invokes_l1_then_l2_to_l6(
 
     runners = (
         _mk(LAYER_02_EXTERIOR_TRANSPORT),
-        _mk(LAYER_03_RIM_MINING_BUNDLES),
-        _mk(LAYER_04_RIM_BUNDLE_PLACEMENT),
+        _mk(LAYER_03_RIM_GREEDY_PLACEMENT),
         _mk(LAYER_05_INNER_PATTERN_FILL),
         _mk(LAYER_06_COMMIT_VALIDATE),
     )
@@ -103,11 +102,11 @@ def test_stack_runner_invokes_l1_then_l2_to_l6(
     assert stack.status == StackRunStatus.SUCCESS
     assert calls == [
         LAYER_02_EXTERIOR_TRANSPORT,
-        LAYER_03_RIM_MINING_BUNDLES,
-        LAYER_04_RIM_BUNDLE_PLACEMENT,
+        LAYER_03_RIM_GREEDY_PLACEMENT,
         LAYER_05_INNER_PATTERN_FILL,
         LAYER_06_COMMIT_VALIDATE,
     ]
+    assert LAYER_04_RIM_BUNDLE_PLACEMENT not in calls
 
 
 def test_layer_06_registered_in_stack_runner_source() -> None:
@@ -126,8 +125,7 @@ def test_remaining_budget_zero_skips_layer_without_call() -> None:
     layer03 = MagicMock()
     runners = (
         _Layer02To05Runner(LAYER_02_EXTERIOR_TRANSPORT, lambda **_k: None),
-        _Layer02To05Runner(LAYER_03_RIM_MINING_BUNDLES, layer03),
-        _Layer02To05Runner(LAYER_04_RIM_BUNDLE_PLACEMENT, lambda **_k: None),
+        _Layer02To05Runner(LAYER_03_RIM_GREEDY_PLACEMENT, layer03),
         _Layer02To05Runner(LAYER_05_INNER_PATTERN_FILL, lambda **_k: None),
         _Layer02To05Runner(LAYER_06_COMMIT_VALIDATE, lambda **_k: None),
     )
@@ -156,7 +154,7 @@ def test_stack_runner_timeout_records_failed_layer_slug() -> None:
 
     runners = (
         _Layer02To05Runner(LAYER_02_EXTERIOR_TRANSPORT, lambda **_k: tick.update({"t": 100.0})),
-        _Layer02To05Runner(LAYER_03_RIM_MINING_BUNDLES, lambda **_k: None),
+        _Layer02To05Runner(LAYER_03_RIM_GREEDY_PLACEMENT, lambda **_k: None),
     )
     cell = DecodedCellDTO(
         x=0,
@@ -175,5 +173,5 @@ def test_stack_runner_timeout_records_failed_layer_slug() -> None:
     ctx = LayerBudgetContext.from_budget_ms(60_000, now_fn=now_fn)
     result = run_layers_02_to_05(complete_map=complete, budget_ctx=ctx, runners=runners)
     assert result.status == StackRunStatus.TIMEOUT_FAIL_CLOSED
-    assert result.failed_layer_slug == LAYER_03_RIM_MINING_BUNDLES
+    assert result.failed_layer_slug == LAYER_03_RIM_GREEDY_PLACEMENT
     assert LAYER_02_EXTERIOR_TRANSPORT in result.completed_layer_slugs

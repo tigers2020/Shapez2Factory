@@ -214,11 +214,8 @@ def run_layer02_solver_for_project(
     )
 
     from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
-    from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.run import (
-        run_layer_03_rim_mining_bundles,
-    )
-    from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
-        run_layer_04_rim_bundle_placement,
+    from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
+        run_layer_03_rim_greedy_placement,
     )
     from django_apps.asteroid_lab.layers.stack_runner import LAYER_STACK_BUDGET_MS
     from django_apps.asteroid_lab.services.solver_runtime_rim_stack import (
@@ -227,24 +224,17 @@ def run_layer02_solver_for_project(
 
     rim_budget = LayerBudgetContext.from_budget_ms(LAYER_STACK_BUDGET_MS)
     t_l3 = time.monotonic()
-    layer03 = run_layer_03_rim_mining_bundles(
+    layer03 = run_layer_03_rim_greedy_placement(
         complete_map=layer01.complete_map,
         exterior_plan=plan,
         budget_ctx=rim_budget,
     )
     l3_elapsed_ms = timed_ms(t_l3)
-    t_l4 = time.monotonic()
-    layer04 = run_layer_04_rim_bundle_placement(
-        complete_map=layer01.complete_map,
-        exterior_plan=plan,
-        candidate_set=layer03,
-        budget_ctx=rim_budget,
-    )
-    l4_elapsed_ms = timed_ms(t_l4)
+    l4_elapsed_ms = 0
+    layer04 = None
     merge_rim_stack_into_solver_summary(
         solver_summary,
         layer03=layer03,
-        layer04=layer04,
     )
 
     from django_apps.asteroid_lab.observability.lab_perf_trace import (

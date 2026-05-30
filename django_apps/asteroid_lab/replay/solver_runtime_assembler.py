@@ -6,11 +6,15 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from django_apps.asteroid_lab.layers.contracts.candidates import RimBundleCandidateSet
+from django_apps.asteroid_lab.layers.contracts.rim_greedy import IntegratedRimGreedyResult
 from django_apps.asteroid_lab.layers.contracts.rim_placement import Layer04RimPlacementResult
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.replay.layer02_segment import (
     build_layer02_exterior_transport_frame,
     map_view_from_complete_map,
+)
+from django_apps.asteroid_lab.replay.layer03_rim_greedy_segment import (
+    build_layer03_rim_greedy_runtime_segment_specs,
 )
 from django_apps.asteroid_lab.replay.layer03_segment import build_layer03_runtime_segment_specs
 from django_apps.asteroid_lab.replay.layer04_segment import build_layer04_runtime_segment_specs
@@ -90,7 +94,7 @@ def build_solver_runtime_replay_frames(
     complete_map: ReconstructionCompleteMap,
     lab_frames_before_append: Sequence[Mapping[str, Any]],
     exterior_plan_wire: Mapping[str, Any] | None,
-    layer03: RimBundleCandidateSet | None,
+    layer03: RimBundleCandidateSet | IntegratedRimGreedyResult | None,
     layer04: Layer04RimPlacementResult | None,
 ) -> list[dict[str, Any]]:
     """JSON-serializable frames for ``SolverRun.config_json[solver_runtime_replay_frames]``."""
@@ -137,9 +141,12 @@ def build_solver_runtime_replay_frames(
     )
 
     if layer03 is not None:
-        l3_specs = build_layer03_runtime_segment_specs(
-            observability=layer03.observability,
-        )
+        if isinstance(layer03, IntegratedRimGreedyResult):
+            l3_specs = build_layer03_rim_greedy_runtime_segment_specs(layer03)
+        else:
+            l3_specs = build_layer03_runtime_segment_specs(
+                observability=layer03.observability,
+            )
         out.extend(
             _finalize_specs(
                 l3_specs,

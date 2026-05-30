@@ -8,11 +8,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
-from django_apps.asteroid_lab.layers.contracts.candidates import (
-    Layer03ExpansionMetrics,
-    RimBundleCandidateSet,
-    build_rim_bundle_candidate_set,
-)
 from django_apps.asteroid_lab.layers.contracts.diagnostic import DiagnosticLayerSnapshot
 from django_apps.asteroid_lab.layers.contracts.exterior_connection import ExteriorConnectionPlan
 from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
@@ -20,13 +15,14 @@ from django_apps.asteroid_lab.layers.contracts.layer_post_summary import LayerPo
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
     LAYER_02_EXTERIOR_TRANSPORT,
+    LAYER_03_RIM_GREEDY_PLACEMENT,
     LAYER_03_RIM_MINING_BUNDLES,
     LAYER_04_RIM_BUNDLE_PLACEMENT,
     LAYER_05_INNER_PATTERN_FILL,
     LAYER_06_COMMIT_VALIDATE,
 )
 from django_apps.asteroid_lab.layers.contracts.provisional_overlay import ProvisionalLayoutOverlay
-from django_apps.asteroid_lab.layers.contracts.rim_placement import Layer04RimPlacementResult
+from django_apps.asteroid_lab.layers.contracts.rim_greedy import IntegratedRimGreedyResult
 from django_apps.asteroid_lab.layers.contracts.stack_result import StackRunResult
 from django_apps.asteroid_lab.layers.contracts.stack_status import StackRunStatus
 from django_apps.asteroid_lab.layers.layer_01_reconstruction.output import (
@@ -36,11 +32,11 @@ from django_apps.asteroid_lab.layers.layer_01_reconstruction.run import run_laye
 from django_apps.asteroid_lab.layers.layer_02_exterior_transport.run import (
     run_layer_02_exterior_transport,
 )
-from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.run import (
-    run_layer_03_rim_mining_bundles,
+from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
+    run_layer_03_rim_greedy_placement,
 )
 from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
-    run_layer_04_rim_bundle_placement,
+    empty_layer04_rim_placement_result,
 )
 from django_apps.asteroid_lab.layers.layer_05_inner_pattern_fill.run import (
     run_layer_05_inner_pattern_fill,
@@ -52,8 +48,7 @@ from django_apps.asteroid_lab.layers.observability.layer_post_summary_log import
     LayerPostSummaryLogSession,
     build_layer01_post_summary_metrics,
     build_layer02_post_summary_metrics,
-    build_layer03_post_summary_metrics,
-    build_layer04_post_summary_metrics,
+    build_layer03_rim_greedy_post_summary_metrics,
     build_layer05_post_summary_metrics,
     build_layer06_post_summary_metrics,
     create_layer_post_summary_log_session,
@@ -67,25 +62,12 @@ LAYER_STACK_BUDGET_MS = 60_000
 _LAYER_INDEX: dict[str, int] = {
     LAYER_01_RECONSTRUCTION: 1,
     LAYER_02_EXTERIOR_TRANSPORT: 2,
-    LAYER_03_RIM_MINING_BUNDLES: 3,
-    LAYER_04_RIM_BUNDLE_PLACEMENT: 4,
+    LAYER_03_RIM_GREEDY_PLACEMENT: 3,
+    LAYER_03_RIM_MINING_BUNDLES: 3,  # deprecated alias; same index
+    LAYER_04_RIM_BUNDLE_PLACEMENT: 4,  # inactive / reserved
     LAYER_05_INNER_PATTERN_FILL: 5,
     LAYER_06_COMMIT_VALIDATE: 6,
 }
-
-
-def _empty_candidate_set() -> RimBundleCandidateSet:
-    from django_apps.asteroid_lab.layers.contracts.layer03_observability import (
-        build_layer03_observability,
-    )
-
-    metrics = Layer03ExpansionMetrics.empty()
-    return build_rim_bundle_candidate_set(
-        normal_candidates=(),
-        diagnostic_rejected_candidates=(),
-        metrics=metrics,
-        observability=build_layer03_observability(metrics=metrics, normal_candidates=()),
-    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,8 +82,7 @@ _Layer02To05Runner = _LayerStackRunner
 
 _DEFAULT_RUNNERS: tuple[_LayerStackRunner, ...] = (
     _LayerStackRunner(LAYER_02_EXTERIOR_TRANSPORT, run_layer_02_exterior_transport),
-    _LayerStackRunner(LAYER_03_RIM_MINING_BUNDLES, run_layer_03_rim_mining_bundles),
-    _LayerStackRunner(LAYER_04_RIM_BUNDLE_PLACEMENT, run_layer_04_rim_bundle_placement),
+    _LayerStackRunner(LAYER_03_RIM_GREEDY_PLACEMENT, run_layer_03_rim_greedy_placement),
     _LayerStackRunner(LAYER_05_INNER_PATTERN_FILL, run_layer_05_inner_pattern_fill),
     _LayerStackRunner(LAYER_06_COMMIT_VALIDATE, run_layer_06_commit_validate),
 )
@@ -110,7 +91,7 @@ _DEFAULT_RUNNERS: tuple[_LayerStackRunner, ...] = (
 def _diagnostic_for_slug(slug: str) -> DiagnosticLayerSnapshot:
     return DiagnosticLayerSnapshot(
         layer_slug=slug,
-        layer_index=_LAYER_INDEX[slug],
+        layer_index=_LAYER_INDEX.get(slug, 0),
         payload={"stub": True},
     )
 
@@ -125,8 +106,7 @@ def run_layers_02_to_06(
     completed: list[str] = []
     last_diagnostic: DiagnosticLayerSnapshot | None = None
     last_exterior_plan: ExteriorConnectionPlan | None = None
-    last_candidate_set: RimBundleCandidateSet = _empty_candidate_set()
-    last_placement_result: Layer04RimPlacementResult | None = None
+    last_rim_greedy: IntegratedRimGreedyResult | None = None
 
     for entry in runners:
         if budget_ctx.remaining_budget_ms() <= 0:
@@ -151,39 +131,21 @@ def run_layers_02_to_06(
             last_exterior_plan = entry.run(complete_map=complete_map, budget_ctx=budget_ctx)
             if isinstance(last_exterior_plan, ExteriorConnectionPlan):
                 post_metrics = build_layer02_post_summary_metrics(last_exterior_plan)
-        elif entry.slug == LAYER_03_RIM_MINING_BUNDLES:
-            layer03_result = entry.run(
+        elif entry.slug == LAYER_03_RIM_GREEDY_PLACEMENT:
+            last_rim_greedy = entry.run(
                 complete_map=complete_map,
                 budget_ctx=budget_ctx,
                 exterior_plan=last_exterior_plan,
             )
-            if isinstance(layer03_result, RimBundleCandidateSet):
-                last_candidate_set = layer03_result
-                post_metrics = build_layer03_post_summary_metrics(layer03_result)
-        elif entry.slug == LAYER_04_RIM_BUNDLE_PLACEMENT:
-            last_placement_result = entry.run(
-                complete_map=complete_map,
-                exterior_plan=last_exterior_plan,
-                candidate_set=last_candidate_set,
-                budget_ctx=budget_ctx,
-            )
-            if isinstance(last_placement_result, Layer04RimPlacementResult):
-                post_metrics = build_layer04_post_summary_metrics(last_placement_result)
+            if isinstance(last_rim_greedy, IntegratedRimGreedyResult):
+                post_metrics = build_layer03_rim_greedy_post_summary_metrics(last_rim_greedy)
         elif entry.slug == LAYER_05_INNER_PATTERN_FILL:
             overlay = (
-                last_placement_result.provisional_overlay
-                if last_placement_result is not None
+                last_rim_greedy.provisional_overlay
+                if last_rim_greedy is not None
                 else ProvisionalLayoutOverlay.empty()
             )
-            from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
-                empty_layer04_rim_placement_result,
-            )
-
-            placement_result = (
-                last_placement_result
-                if last_placement_result is not None
-                else empty_layer04_rim_placement_result()
-            )
+            placement_result = empty_layer04_rim_placement_result()
             entry.run(
                 complete_map=complete_map,
                 exterior_plan=last_exterior_plan,

@@ -11,6 +11,7 @@ from django.core.management.base import CommandError
 from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
+
 pytestmark = pytest.mark.django_db
 
 

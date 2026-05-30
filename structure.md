@@ -12,7 +12,7 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 | [`structure.md`](structure.md) | **Repository map SoT** — paths, apps, URLs, tests, commands |
 | [`docs/`](docs/) | Domain, architecture, runbook, ADR summaries (agent-friendly) |
 | [`documents/`](documents/README.md) | Canonical body text, CANON, plans, research |
-| [`src/shapez2_factory/`](src/shapez2_factory/) | Phase 2+ hexagonal extraction target (currently stub) |
+| [`src/shapez2_factory/`](src/shapez2_factory/) | Hexagonal solver-core extraction target; Asteroid Lab CLI-first migration in progress ([`docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/`](docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/README.md)) — Django-free (BA-1) |
 
 ## Top-level layout
 
@@ -27,7 +27,7 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 | `django_apps/asteroid_lab/` | Asteroid lab ORM, decode, replay (separate from recipe solver) |
 | `django_apps/game_data/` | Canonical game dump ORM, importers, validators, staff browse |
 | `django_apps/web/` | Page templates, static assets, thin views, staff tooling |
-| `src/shapez2_factory/` | Hexagonal extraction target (Phase 2+, stub) |
+| `src/shapez2_factory/` | Hexagonal solver-core (Django-free, BA-1); Asteroid Lab CLI entry + pure run stack land here per the CLI-first plan set |
 | `tests/unit/` | Unit tests by app/domain |
 | `tests/integration/` | Django request/response, page/API smoke |
 | `tests/fixtures/` | Shared test inputs |
@@ -44,6 +44,7 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 | `locale/` | gettext catalog |
 | `scripts/` | Locale build, graph preview, diagnostics helpers |
 | `var/` | Local run traces/debug output — not source of truth |
+| `var/runs/<run_key>/` | Asteroid Lab CLI artifact directory (atomic `manifest.json` + `output/replay_core.jsonl`); staging in `var/runs/.tmp/` — see [artifact design spec](docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md) |
 
 `node_modules/`, `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`, `.graph_preview_cache*/`, `db.sqlite3`, `.env` are local/generated artifacts, not structural canon.
 

@@ -28,6 +28,8 @@ archive and outdated documents are not valid implementation context.
 | [`documents/ai/checklist.md`](../ai/checklist.md) | `ACTIVE` | checklist | NO | Progress state and verification gates |
 | [`documents/plans/`](../plans/) | `ACTIVE` | plans/backlog | NO | Current or pending implementation plans |
 | [`documents/ai/plans/`](../ai/plans/) | `ACTIVE` | scoped plans | NO | Scoped implementation plans |
+| [`docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md`](../../docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md) | `ACTIVE` | design spec | YES | CLI-first artifact contract (BA-1…8, manifest/replay_core schema); paired [ADR-006](../../docs/adr/ADR-006-asteroid-lab-cli-first-artifact.md) |
+| [`docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/`](../../docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/README.md) | `ACTIVE` | plan set | NO | Per-PR plan set (PR-CLI-0…6) + master `checklist.md` |
 
 ## Asteroid Lab Authority By Topic
 

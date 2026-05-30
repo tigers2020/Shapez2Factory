@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from shapez2_factory.adapters.asteroid_lab.artifact_manifest import (
     MANIFEST_FILENAME,
     MANIFEST_SCHEMA_VERSION,
@@ -39,16 +41,26 @@ def test_validate_artifact_accepts_valid_artifact(tmp_path: Path) -> None:
     assert main(["validate-artifact", "--dir", str(final)]) == ExitCode.OK
 
 
-def test_validate_artifact_rejects_tampered_file(tmp_path: Path) -> None:
+def test_validate_artifact_rejects_tampered_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     final = _build_valid_artifact(tmp_path)
     (final / "outputs" / "a.json").write_bytes(b'{"x":999}')
     assert main(["validate-artifact", "--dir", str(final)]) == ExitCode.VALIDATION_FAILED
+    stderr = capsys.readouterr().err
+    assert "hash mismatch" in stderr
+    assert "outputs/a.json" in stderr
 
 
-def test_validate_artifact_rejects_missing_payload_file(tmp_path: Path) -> None:
+def test_validate_artifact_rejects_missing_payload_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     final = _build_valid_artifact(tmp_path)
     (final / "outputs" / "a.json").unlink()
     assert main(["validate-artifact", "--dir", str(final)]) == ExitCode.VALIDATION_FAILED
+    stderr = capsys.readouterr().err
+    assert "missing" in stderr
+    assert "outputs/a.json" in stderr
 
 
 def test_validate_artifact_rejects_non_written_lifecycle(tmp_path: Path) -> None:
@@ -100,6 +112,41 @@ def test_validate_artifact_rejects_malformed_json(tmp_path: Path) -> None:
     assert main(["validate-artifact", "--dir", str(artifact_dir)]) == ExitCode.VALIDATION_FAILED
 
 
+def test_validate_artifact_rejects_unknown_lifecycle_value(tmp_path: Path) -> None:
+    artifact_dir = tmp_path / "bogus_lifecycle"
+    artifact_dir.mkdir()
+    manifest = {
+        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "run_key": "run-1",
+        "lifecycle_status": "bogus",
+        "created_at_utc": "2026-05-30T00:00:00Z",
+        "core_build_id": "test",
+        "content_hashes": {},
+        "paths": {},
+        "game_data_provenance": {},
+        "error_code": None,
+    }
+    (artifact_dir / MANIFEST_FILENAME).write_text(json.dumps(manifest), encoding="utf-8")
+    assert main(["validate-artifact", "--dir", str(artifact_dir)]) == ExitCode.VALIDATION_FAILED
+
+
+def test_validate_artifact_rejects_missing_required_field(tmp_path: Path) -> None:
+    artifact_dir = tmp_path / "missing_field"
+    artifact_dir.mkdir()
+    manifest = {
+        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "lifecycle_status": "artifact_written",
+        "created_at_utc": "2026-05-30T00:00:00Z",
+        "core_build_id": "test",
+        "content_hashes": {},
+        "paths": {},
+        "game_data_provenance": {},
+        "error_code": None,
+    }
+    (artifact_dir / MANIFEST_FILENAME).write_text(json.dumps(manifest), encoding="utf-8")
+    assert main(["validate-artifact", "--dir", str(artifact_dir)]) == ExitCode.VALIDATION_FAILED
+
+
 def test_run_subcommand_returns_stack_unavailable(tmp_path: Path) -> None:
     assert (
         main(
@@ -125,9 +172,23 @@ def test_run_subcommand_rejects_unsafe_run_key(tmp_path: Path) -> None:
 
 
 def test_run_subcommand_rejects_out_of_root_artifact_root(tmp_path: Path) -> None:
-    # No --allowed-root: defaults to var/runs sandbox. tmp_path is outside it, so
-    # Guard C threat-2 containment must reject even a syntactically valid run_key.
+    # Two sibling dirs: artifact_root is NOT nested under allowed_root, so Guard C
+    # threat-2 containment must reject even a syntactically valid run_key.
+    allowed = tmp_path / "allowed"
+    outside = tmp_path / "outside"
+    allowed.mkdir()
+    outside.mkdir()
     assert (
-        main(["run", "--artifact-root", str(tmp_path), "--run-key", "run-1"])
+        main(
+            [
+                "run",
+                "--allowed-root",
+                str(allowed),
+                "--artifact-root",
+                str(outside),
+                "--run-key",
+                "run-1",
+            ]
+        )
         == ExitCode.VALIDATION_FAILED
     )

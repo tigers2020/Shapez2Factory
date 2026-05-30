@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import sys
 from enum import IntEnum
 from pathlib import Path
@@ -96,14 +95,17 @@ def validate_artifact(artifact_dir: Path) -> int:
         print(f"error: manifest not found: {manifest_path}", file=sys.stderr)
         return int(ExitCode.VALIDATION_FAILED)
 
-    text = manifest_path.read_text(encoding="utf-8")
+    # Fail-closed: any read/parse/decode failure must map to VALIDATION_FAILED, never
+    # leak a raw traceback. json.JSONDecodeError is a ValueError subclass; a bad enum
+    # value also raises ValueError and a missing required key raises KeyError.
     try:
+        text = manifest_path.read_text(encoding="utf-8")
         manifest = parse_manifest_checked(text)
     except ManifestSchemaVersionError as exc:
         print(f"error: invalid manifest schema: {exc}", file=sys.stderr)
         return int(ExitCode.VALIDATION_FAILED)
-    except json.JSONDecodeError as exc:
-        print(f"error: malformed manifest JSON: {exc}", file=sys.stderr)
+    except (ValueError, KeyError, OSError) as exc:
+        print(f"error: unreadable or malformed manifest: {exc!r}", file=sys.stderr)
         return int(ExitCode.VALIDATION_FAILED)
 
     if manifest.lifecycle_status != RunLifecycleStatus.ARTIFACT_WRITTEN:

@@ -2,8 +2,8 @@
 # Forwards all arguments to the Python module and propagates its exit code.
 param(
     [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$Args
+    [string[]]$Arguments
 )
 
-python -m shapez2_factory.interfaces.cli.asteroid_solve @Args
+python -m shapez2_factory.interfaces.cli.asteroid_solve @Arguments
 exit $LASTEXITCODE

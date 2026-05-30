@@ -111,7 +111,7 @@ Depends: CLI-2b, CLI-2c · File: [`pr-cli-2d-l2-shared-contracts-move.md`](pr-cl
 - [x] Step 3 — split observability: 6 pure metric builders + behavior catalog → core; settings/timezone/file-I/O session + `build_layer04` (rim_placement dep) stay Django
 - [x] Step 4 (TDD) — `tests/unit/architecture/test_contract_shim_identity.py` (15 parametrized symbols `is`-identical; required 6 + Direction covered)
 - [x] Step 5 — `stack_runner` (still Django) unchanged; full asteroid_lab suite 719 passed (stack_runner skeleton green via django shim default rules)
-- [x] Step 6 — purity gate green with ZERO `django_apps` exceptions (no bridge); `mypy src` clean (83 files)
+- [x] Step 6 — purity gate green with ZERO `django_apps` exceptions (no bridge); `mypy src` clean (83 files). Added `src/shapez2_factory/py.typed` (PEP 561) → django↔core imports type-checked instead of `import-untyped` (review fix)
 - [x] Step 7 — layer + budget + recon gates 169/719 passed; ruff clean; mypy src clean
 - [x] Done: contracts + L1 output + L2 + shared + pure observability in core, pure; shim identity green; stack_runner still Django; no bridge. Note: full-gate `mypy django_apps config src` has ~1025 pre-existing unrelated errors (baseline)
 

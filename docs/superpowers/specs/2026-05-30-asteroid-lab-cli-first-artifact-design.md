@@ -36,8 +36,9 @@ the solver state source of truth.
 | BA-4 | `output/replay_core.jsonl` is core/deterministic; Django performs enrichment only; no web-ready core payload. |
 | BA-5 | Atomic write: staging `.tmp/<run_key>` → hash payloads → manifest written **last** → rename to final; DB ingest only after `ARTIFACT_WRITTEN`. |
 | BA-6 | Phase D (Django) manifest parsing uses `artifact_manifest_reader.py` (Option 1); reader MUST NOT import core. |
-| BA-7 | Subprocess: `shell=False`, list args, `sys.executable`, fixed cwd, timeout, log capture, path-traversal guard, typed exit codes. |
+| BA-7 | Subprocess: `shell=False`, list args, `sys.executable`, fixed cwd, timeout, log capture (+ parent TTY tee per BA-9), path-traversal guard, typed exit codes. |
 | BA-8 | `game_data_snapshot.json` is fail-closed; single path ORM → export → JSON adapter. |
+| BA-9 | Console observability: stderr access-log one-liners; verbose layer lines opt-in; subprocess tee. See §11. Plan: [`obs-console-log.md`](../plans/2026-05-30-asteroid-lab-cli-first/obs-console-log.md). |
 
 ---
 
@@ -147,7 +148,10 @@ QUEUED | RUNNING | ARTIFACT_WRITING | ARTIFACT_WRITTEN | INDEXED | SUCCEEDED | F
 
 - Invocation: `shell=False`, **list** args (never a joined string), `sys.executable`, fixed cwd
   (repo root), explicit timeout.
-- stdout + stderr captured to `logs/subprocess.log`.
+- stdout + stderr captured to `logs/subprocess.log` (canonical artifact record).
+- **Additionally (BA-9):** while the parent process stderr is a TTY (e.g. `runserver`), stream tee
+  mirrors child stdout/stderr to the parent terminal in real time. Disable tee with
+  `ASTEROID_LAB_CLI_SUBPROCESS_TEE=0`; the artifact log is still written.
 - Path-traversal guard on `run_key` and artifact root before spawning.
 - Exit code → `SolverRuntimeEntryErrorCode` mapping (see table below). Today only `DECODE_FAILED`
   exists in [`solver_runtime_types.py`](../../../django_apps/asteroid_lab/services/solver_runtime_types.py);
@@ -217,6 +221,56 @@ Core produces only the deterministic core stream; all UI/web-ready shaping is Dj
 - This keeps the Django side decoupled from core internals: the manifest JSON schema (§2) is the
   only contract crossing the boundary.
 
+## 11. BA-9 console observability (output-only)
+
+Observability for developer terminals. **MUST NOT** feed solver, replay, or ingest logic.
+
+### Surfaces
+
+| Surface | Emits on |
+|---------|----------|
+| Pure CLI (`asteroid_solve`) | child stderr |
+| HTTP `POST …/run-solver/` (`in_process`) | Django process stderr (visible in `runserver`) |
+| `subprocess` solver mode | child stderr (teed to parent per §6) + `logs/subprocess.log` |
+
+`python manage.py run_solver` is **not** required to implement BA-9.
+
+### Default: access-log one-liners
+
+When `ASTEROID_LAB_CLI_CONSOLE_LOG` is enabled (default on unless env `0`/`false`/`no`):
+
+- Exactly **one start** and **one end** line per invocation on **stderr**.
+- Format: `[DD/Mon/YYYY HH:MM:SS] asteroid_cli <event> key=value …` (Django dev-server style timestamp).
+- End line includes `elapsed_ms`, typed `exit` / `error_code`, and when applicable `solver_run_id`, `ok`, `run_key`, `slug`.
+
+Existing user-facing CLI `print` error lines remain; BA-9 lines are additive.
+
+### Verbose: layer progress (opt-in only)
+
+Extra stderr lines (`layer_done`, `layer_slug`, `elapsed_ms`) when **any** of:
+
+- CLI `--verbose`
+- `ASTEROID_LAB_CLI_VERBOSE=1`
+- Django `DEBUG=True`
+- HTTP JSON `cli_verbose: true` (optional POST field; no UI requirement)
+
+Does **not** replace `var/log/asteroid_lab_layer_stack` JSONL.
+
+### Core module
+
+- `src/shapez2_factory/adapters/asteroid_lab/cli_console.py` — stdlib-only `emit_cli_line`.
+- Django imports this module; core MUST NOT import Django.
+
+### Settings (implemented in PR-CLI-4)
+
+| Setting / env | Role |
+|---------------|------|
+| `ASTEROID_LAB_CLI_CONSOLE_LOG` | Master switch for one-liners |
+| `ASTEROID_LAB_CLI_VERBOSE` | Force verbose layer lines |
+| `ASTEROID_LAB_CLI_SUBPROCESS_TEE` | Parent TTY tee (§6) |
+
+Detail: [`obs-console-log.md`](../plans/2026-05-30-asteroid-lab-cli-first/obs-console-log.md).
+
 ---
 
 ## Cross-cutting guards (where each lands)
@@ -231,6 +285,7 @@ Core produces only the deterministic core stream; all UI/web-ready shaping is Dj
 | run_key collision (writer) | PR-CLI-1 (+ `--replace-existing` PR-CLI-3a) | `test_artifact_writer_rejects_existing_dir` |
 | shim identity | PR-CLI-2d | `test_contract_shims_preserve_identity` |
 | replay loader iterator | PR-CLI-5 | `test_artifact_replay_loader_returns_iterator` |
+| BA-9 console stderr | PR-CLI-3a amend, 3b, 4 | `test_cli_console`, `test_cli_invoke_trace`, `test_subprocess_stream_tee` |
 
 ## Invariant references
 

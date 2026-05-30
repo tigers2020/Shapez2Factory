@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import sys
+import time
 from enum import IntEnum
 from pathlib import Path
 
@@ -28,6 +29,7 @@ from shapez2_factory.adapters.asteroid_lab.artifact_manifest import (
     ManifestSchemaVersionError,
     parse_manifest_checked,
 )
+from shapez2_factory.adapters.asteroid_lab.cli_console import emit_cli_line
 from shapez2_factory.adapters.asteroid_lab.run_key_safety import (
     ArtifactPathError,
     resolve_artifact_dir,
@@ -177,19 +179,47 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "validate-artifact":
-        return validate_artifact(args.dir)
+        # BA-9: one start + one end stderr one-liner per invocation. These lines are
+        # additive observability — existing print() error/success lines are unchanged.
+        emit_cli_line("validate-artifact start")
+        started = time.monotonic()
+        code = validate_artifact(args.dir)
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        emit_cli_line(
+            "validate-artifact end",
+            exit=code,
+            elapsed_ms=elapsed_ms,
+            ok=code == int(ExitCode.OK),
+        )
+        return code
 
     if args.command == "run":
+        # The start line echoes the raw run_key *before* Guard C validation
+        # (resolve_artifact_dir below); an unsafe value is observed here then
+        # rejected. Acceptable for output-only observability.
+        emit_cli_line("run start", run_key=args.run_key)
+        started = time.monotonic()
         try:
-            return _run_stub(
+            code = _run_stub(
                 args.artifact_root,
                 args.run_key,
                 args.allowed_root,
                 args.replace_existing,
             )
         except ArtifactPathError as exc:
+            # The end line must still reflect the actual returned exit code on the
+            # error/exception path, so map the failure here before emitting it.
             print(f"error: {exc}", file=sys.stderr)
-            return int(ExitCode.VALIDATION_FAILED)
+            code = int(ExitCode.VALIDATION_FAILED)
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        emit_cli_line(
+            "run end",
+            run_key=args.run_key,
+            exit=code,
+            elapsed_ms=elapsed_ms,
+            ok=code == int(ExitCode.OK),
+        )
+        return code
 
     parser.error(f"unknown command: {args.command!r}")
     return int(ExitCode.VALIDATION_FAILED)  # pragma: no cover - parser.error exits

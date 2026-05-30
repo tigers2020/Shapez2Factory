@@ -15,7 +15,7 @@ has a single source of truth. No solver code moves in this PR.
 ## Behavior contract
 
 - Define artifact directory layout, `manifest.json` schema, `replay_core.jsonl` line schema, run lifecycle enum.
-- Define BA-1…BA-8 as normative rules.
+- Define BA-1…BA-9 as normative rules (BA-9 console observability added 2026-05-30; see spec §11).
 - Define subprocess invocation + typed exit-code mapping table.
 - Define `game_data_snapshot.json` schema + fail-closed rules.
 
@@ -63,12 +63,14 @@ has a single source of truth. No solver code moves in this PR.
      `manifest.json`.** `validate-artifact` therefore only ever expects `ARTIFACT_WRITTEN` in the manifest.
 5. **Atomic write protocol (BA-5)** — temp → hash → manifest last → rename → ingest.
 6. **Subprocess contract (BA-7)** — `shell=False`, list args, `sys.executable`, fixed cwd, timeout,
-   stdout/stderr → `logs/subprocess.log`, path-traversal guard, exit-code → `SolverRuntimeEntryErrorCode` table
+   stdout/stderr → `logs/subprocess.log` (+ BA-9 parent TTY tee when enabled), path-traversal guard,
+   exit-code → `SolverRuntimeEntryErrorCode` table
    (align with [`solver_runtime_types.py`](../../../../django_apps/asteroid_lab/services/solver_runtime_types.py)).
 7. **game_data_snapshot.json (BA-8)** — schema + fail-closed (missing / unsupported version / hash mismatch).
 8. **BA-1 core purity** — forbidden import prefixes list.
 9. **BA-4 replay boundary** — core vs viewer responsibility table.
 10. **BA-6 manifest reader** — Option 1 location and no-core-import rule.
+11. **BA-9 console observability** — stderr access-log one-liners; verbose opt-in; subprocess tee (see [`obs-console-log.md`](obs-console-log.md)).
 
 ## Exit-code mapping table (spec)
 

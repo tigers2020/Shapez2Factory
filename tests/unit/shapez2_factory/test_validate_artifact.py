@@ -175,6 +175,44 @@ def test_validate_artifact_rejects_missing_required_field(tmp_path: Path) -> Non
     assert main(["validate-artifact", "--dir", str(artifact_dir)]) == ExitCode.VALIDATION_FAILED
 
 
+def test_validate_artifact_emits_ba9_start_and_end_lines(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # BA-9: additive stderr observability around a successful validate-artifact run.
+    final = _build_valid_artifact(tmp_path)
+    assert main(["validate-artifact", "--dir", str(final)]) == ExitCode.OK
+    stderr = capsys.readouterr().err
+    assert "asteroid_cli validate-artifact start" in stderr
+    end_lines = [ln for ln in stderr.splitlines() if "validate-artifact end" in ln]
+    assert len(end_lines) == 1
+    assert "exit=0" in end_lines[0]
+    assert "ok=true" in end_lines[0]
+
+
+def test_validate_artifact_emits_ba9_end_line_on_failure(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    empty_dir = tmp_path / "empty"
+    empty_dir.mkdir()
+    assert main(["validate-artifact", "--dir", str(empty_dir)]) == ExitCode.VALIDATION_FAILED
+    stderr = capsys.readouterr().err
+    end_lines = [ln for ln in stderr.splitlines() if "validate-artifact end" in ln]
+    assert len(end_lines) == 1
+    assert "exit=10" in end_lines[0]
+    assert "ok=false" in end_lines[0]
+
+
+def test_validate_artifact_ba9_disabled_emits_no_console_line(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ASTEROID_LAB_CLI_CONSOLE_LOG", "0")
+    final = _build_valid_artifact(tmp_path)
+    assert main(["validate-artifact", "--dir", str(final)]) == ExitCode.OK
+    assert "asteroid_cli" not in capsys.readouterr().err
+
+
 def test_run_subcommand_returns_stack_unavailable(tmp_path: Path) -> None:
     assert (
         main(

@@ -125,6 +125,11 @@ GATE (BA-3) — all must be true before starting:
 - [ ] Lab gate green on master with new L3
 - [ ] no open PR editing `layer_03_rim_mining_bundles/**`
 
+GATE evidence (2026-05-30): PR-B (m3e_01 inward-chain greedy, algorithm enhancement) algorithm body is
+green on working branch — Gate A `pytest tests/unit/asteroid_lab/layers/ -v` passed; combined
+layers+replay 173 passed. **Not yet merged to master**; gate stays closed until PR-B merged + Lab gate
+green on master. Design/plan: [`../2026-05-30-layer-03-boundary-m-repack-greedy/`](../2026-05-30-layer-03-boundary-m-repack-greedy/README.md).
+
 Tasks:
 - [ ] Step 0 — verify GATE; record merged boundary-m-repack SHA in PR description
 - [ ] Step 1 — move L3–L6; rewrite imports to core paths; shim originals

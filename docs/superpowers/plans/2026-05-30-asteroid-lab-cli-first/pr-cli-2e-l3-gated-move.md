@@ -19,6 +19,17 @@
 If the gate cannot be met but the initiative must proceed, the **only** alternative is to move L3 as
 **legacy-only** with a retirement banner docstring + tracking issue — never mix algorithm edits here.
 
+### GATE evidence (updated 2026-05-30)
+
+- PR-B = **algorithm enhancement** (m3e_01 inward-chain greedy), design + plan:
+  [`../2026-05-30-layer-03-boundary-m-repack-greedy/README.md`](../2026-05-30-layer-03-boundary-m-repack-greedy/README.md).
+- PR-B **algorithm body is green (Gate A)** on the working branch but **NOT yet merged to master**:
+  - `python -m pytest tests/unit/asteroid_lab/layers/ -v` — passed (Gate A)
+  - additional replay regression `tests/unit/asteroid_lab/replay/ -v` — passed
+  - combined `tests/unit/asteroid_lab/layers/ tests/unit/asteroid_lab/replay/` — 173 passed, 2 warnings
+- GATE checkboxes stay unchecked until PR-B is merged + Lab gate green on master, and PR-C is merged or
+  declared out of scope. PR-CLI-2e MUST NOT start before then.
+
 ## Goal
 
 Relocate `layer_03..layer_06` **and** `stack_runner` into core **in one PR**, so that the moment

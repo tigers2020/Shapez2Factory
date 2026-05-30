@@ -25,6 +25,16 @@ directory (`var/runs/<run_key>/`); DB demotes to run registry / artifact index o
 - Plan set + tracker: [`docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/`](../../docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/README.md)
 - Done: PR-CLI-0 (spec/ADR/BA-1 purity gate) · PR-CLI-1 (scaffold + `AtomicArtifactWriter` BA-5 + ports/use-case stub). Next: PR-CLI-2a pure DTO move.
 
+## Active Work — Layer 03 boundary-m-repack (PR-B)
+
+**ACTIVE.** Algorithm enhancement: place the highest-yield canonical bundle `m3e_01` (miner + 3
+extensions) along the outer rim with in-layout degradation 3→2→1, keeping all M/E equipment on the
+field and using exterior void only for the output stub + transport route. Unblocks (gates) PR-CLI-2e.
+
+- Design (SoT): [`docs/superpowers/specs/2026-05-30-layer-03-boundary-m-repack-greedy-design.md`](../../docs/superpowers/specs/2026-05-30-layer-03-boundary-m-repack-greedy-design.md)
+- Plan + checklist: [`docs/superpowers/plans/2026-05-30-layer-03-boundary-m-repack-greedy/`](../../docs/superpowers/plans/2026-05-30-layer-03-boundary-m-repack-greedy/README.md)
+- Status: algorithm body green (Gate A: `pytest tests/unit/asteroid_lab/layers/ -v` passed; combined layers+replay 173 passed); docs landed; Gate C manual DB smoke recorded not-reproducible (no deterministic project slug), covered by deterministic run-solver L3 runtime tests (7 passed). Not merged; no commit/PR yet.
+
 ## Authority Precedence
 
 1. Code under `django_apps/asteroid_lab/reconstruction/`, `cleanup/`, `replay/`,

@@ -27,8 +27,11 @@ def sort_seeds_by_priority(seeds: tuple[GreedyMinerSeed, ...]) -> tuple[GreedyMi
     )
 
 
+# m3e_01 (miner + 3 extensions) is the highest-yield canonical bundle. Shorter rims
+# degrade in-layout (extension_count 3 -> 2 -> 1), so no separately-named fallback seed
+# is required; see layer_03_rim_greedy_placement.seed_orient.layout_seed_at_anchor.
 DEFAULT_GREEDY_SEEDS: tuple[GreedyMinerSeed, ...] = (
-    GreedyMinerSeed("rim_greedy_m1e1", intrinsic_priority_rank=1),
+    GreedyMinerSeed("m3e_01", intrinsic_priority_rank=1, miner_count=1, extension_count=3),
 )
 
 

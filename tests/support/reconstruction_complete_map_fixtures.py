@@ -6,15 +6,15 @@ from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
     acceptance_topology_from_decoded_cells,
 )
-from django_apps.asteroid_lab.reconstruction.complete_map import (
+from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
+from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
+from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
     _count_by_resource,
     _field_cells_from_decoded_cells,
     build_reconstruction_complete_map,
 )
-from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
-from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 
 
 def minimal_complete_map_from_cells(

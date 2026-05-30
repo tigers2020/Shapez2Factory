@@ -9,7 +9,6 @@ from django_apps.asteroid_lab.layers.contracts.rim_greedy import (
     RimGreedyObservationEvent,
     RimGreedyObservationPhase,
     RimGreedyPass2Report,
-    build_empty_integrated_rim_greedy_result,
 )
 from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKind
 from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.append import (
@@ -117,9 +116,7 @@ def test_greedy_events_materialize_monotonic_frames() -> None:
         structural_map_view=renderable_base_map_view_for_golden(),
     )
     assert len(frames) == 2
-    assert all(
-        frames[i].frame_index <= frames[i + 1].frame_index for i in range(len(frames) - 1)
-    )
+    assert all(frames[i].frame_index <= frames[i + 1].frame_index for i in range(len(frames) - 1))
 
 
 def test_runtime_segment_includes_summary_and_overlay_windows() -> None:

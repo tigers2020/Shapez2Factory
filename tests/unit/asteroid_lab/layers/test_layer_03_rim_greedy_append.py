@@ -73,9 +73,7 @@ def test_append_committed_placement_cells() -> None:
 
 def test_stub_wins_over_route_on_same_coord() -> None:
     result = append_committed_rim_placements(
-        committed_placements=(
-            _placement(stub=(7, 4), route=((7, 4), (8, 4))),
-        ),
+        committed_placements=(_placement(stub=(7, 4), route=((7, 4), (8, 4))),),
     )
     at_stub = [c for c in result.cells if c.coord == (7, 4)]
     assert len(at_stub) == 1

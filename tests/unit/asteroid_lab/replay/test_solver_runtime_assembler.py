@@ -341,9 +341,7 @@ def test_layer03_probe_windows_cover_full_replay_pool_by_candidate_ids() -> None
     from django_apps.asteroid_lab.replay.pattern_bundle_highlight import METRICS_KEY
 
     multi_candidates = [
-        fr
-        for fr in window_frames
-        if len((fr.get("metrics") or {}).get("candidate_ids") or []) >= 2
+        fr for fr in window_frames if len((fr.get("metrics") or {}).get("candidate_ids") or []) >= 2
     ]
     if multi_candidates:
         highlights = (multi_candidates[0].get("metrics") or {}).get(METRICS_KEY)

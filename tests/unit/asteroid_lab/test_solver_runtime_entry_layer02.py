@@ -56,9 +56,7 @@ def test_run_solver_layer02_persists_plan_and_summary() -> None:
     runtime_types = [str(f.get("event_type") or "") for f in runtime_frames]
     assert LAYER02_EVENT_TYPE in runtime_types
     assert "layer03_rim_greedy_begin" in runtime_types
-    assert runtime_types.index("layer03_rim_greedy_begin") > runtime_types.index(
-        LAYER02_EVENT_TYPE
-    )
+    assert runtime_types.index("layer03_rim_greedy_begin") > runtime_types.index(LAYER02_EVENT_TYPE)
     summary = dict(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY) or {})
     assert summary.get("stack_run_status") == "success"
     completed = list(summary.get("completed_layer_slugs") or [])

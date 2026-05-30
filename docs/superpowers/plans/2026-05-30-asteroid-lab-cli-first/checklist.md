@@ -81,13 +81,13 @@ Depends: CLI-1 · File: [`pr-cli-2a-dto-move.md`](pr-cli-2a-dto-move.md)
 ## PR-CLI-2b — `GameDataRulesPort` + JSON snapshot adapter (L2 decouple)
 Depends: CLI-2a · File: [`pr-cli-2b-game-data-port.md`](pr-cli-2b-game-data-port.md)
 
-- [ ] Step 1 (TDD) — `test_layer_02_capacity_snapshot.py` (fixture JSON == ORM-derived value)
-- [ ] Step 2 — implement adapter + `ExteriorCapacityRow`; refactor `capacity.py` to take port
-- [ ] Step 3 — `export_game_data_snapshot` command; `orm_game_data_rules.py` single path
-- [ ] Step 4 — parity test ORM export → adapter == EVTC service
-- [ ] Step 5 — fail-closed tests (missing / unsupported / mismatch)
-- [ ] Step 6 — ruff + mypy + purity gate (`capacity.py` core-pure)
-- [ ] Done: `capacity.py` core-pure; no-db + ORM-parity green; export works; fail-closed covered
+- [x] Step 1 (TDD) — `test_layer_02_capacity_snapshot.py` (fixture JSON via adapter + `resolve_per_connector_capacity`)
+- [x] Step 2 — implemented adapter + domain `ExteriorCapacityRow`; `capacity.py` takes injected port; `plan.py` default wiring
+- [x] Step 3 — `export_game_data_snapshot` command; `orm_game_data_rules.py` single path (export → JSON adapter)
+- [x] Step 4 — parity tests ORM export → adapter == EVTC service (shape 5760 / fluid 345600 confirmed)
+- [x] Step 5 — fail-closed tests (missing / unsupported / mismatch / malformed + hash-match accept)
+- [x] Step 6 — ruff clean; `mypy src` clean; full mypy +0 new; purity gate green; FIX-1 missing-row rewritten
+- [x] Done: `capacity.py` ORM-decoupled (port-injected); no-db + ORM-parity green; export works; fail-closed covered
 
 ## PR-CLI-2c — cleanup + reconstruction move + `complete_map` serializer
 Depends: CLI-2a · File: [`pr-cli-2c-reconstruction-move.md`](pr-cli-2c-reconstruction-move.md)

@@ -1,7 +1,13 @@
-"""EVTC capacity adapter tests."""
+"""EVTC capacity adapter tests (PR-CLI-2b: port injection + ORM/snapshot parity)."""
+
+from decimal import Decimal
 
 import pytest
 
+from django_apps.asteroid_lab.adapters.orm_game_data_rules import (
+    build_game_data_snapshot_payload,
+    build_orm_game_data_rules,
+)
 from django_apps.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionShortfallReason,
 )
@@ -15,35 +21,66 @@ from django_apps.game_data.services.exterior_transport_capacity import (
     get_active_exterior_shape_transport_capacity,
     space_belt_connector_capacity_per_min_from_row,
 )
+from shapez2_factory.domain.asteroid_lab.exterior_capacity_row import ExteriorCapacityRow
+
+
+class _RaisingRules:
+    """Port stub whose row lookup always fails (no DB)."""
+
+    def exterior_connector_capacity(
+        self,
+        *,
+        resource_kind: str,
+        speed_tier: int,
+    ) -> ExteriorCapacityRow:
+        raise LookupError(f"no row for {resource_kind!r} {speed_tier!r}")
 
 
 @pytest.mark.django_db
-def test_shape_capacity_uses_evtc_service() -> None:
-    row = get_active_exterior_shape_transport_capacity(speed_tier=1)
-    expected = space_belt_connector_capacity_per_min_from_row(row)
+def test_orm_snapshot_parity_matches_evtc_service() -> None:
+    expected_row = get_active_exterior_shape_transport_capacity(speed_tier=1)
+    expected = space_belt_connector_capacity_per_min_from_row(expected_row)
 
-    got = resolve_per_connector_capacity(resource_kind="shape", speed_tier=1)
+    rules = build_orm_game_data_rules()
+    got = rules.exterior_connector_capacity(resource_kind="shape", speed_tier=1)
+
+    assert got.per_connector_capacity_per_min == expected
+    assert got.per_connector_capacity_per_min > 0
+
+
+@pytest.mark.django_db
+def test_snapshot_payload_carries_resolver_output() -> None:
+    payload = build_game_data_snapshot_payload()
+    shape_rows = [
+        r for r in payload["exterior_transport_capacity"] if r["resource_kind"] == "shape"
+    ]
+    expected = space_belt_connector_capacity_per_min_from_row(
+        get_active_exterior_shape_transport_capacity(speed_tier=1)
+    )
+
+    tier1 = next(r for r in shape_rows if r["speed_tier"] == 1)
+    assert Decimal(tier1["per_connector_capacity_per_min"]) == expected
+
+
+@pytest.mark.django_db
+def test_shape_capacity_via_injected_orm_rules() -> None:
+    rules = build_orm_game_data_rules()
+    expected = space_belt_connector_capacity_per_min_from_row(
+        get_active_exterior_shape_transport_capacity(speed_tier=1)
+    )
+
+    got = resolve_per_connector_capacity(rules=rules, resource_kind="shape", speed_tier=1)
 
     assert got.shortfall_reason is None
     assert got.capacity_per_min == expected
-    assert got.capacity_per_min is not None
-    assert got.capacity_per_min > 0
 
 
-@pytest.mark.django_db
-def test_missing_evtc_row_returns_missing_evtc_reason(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def _boom(**_kwargs: object) -> object:
-        raise LookupError("no row")
-
-    monkeypatch.setattr(
-        "django_apps.asteroid_lab.layers.layer_02_exterior_transport.capacity."
-        "get_active_exterior_shape_transport_capacity",
-        _boom,
+def test_missing_evtc_row_returns_missing_evtc_reason() -> None:
+    got = resolve_per_connector_capacity(
+        rules=_RaisingRules(),
+        resource_kind="shape",
+        speed_tier=99,
     )
-
-    got = resolve_per_connector_capacity(resource_kind="shape", speed_tier=99)
 
     assert got.capacity_per_min is None
     assert got.shortfall_reason == ExteriorConnectionShortfallReason.MISSING_EVTC_ROW

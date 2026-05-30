@@ -77,12 +77,12 @@ expected_hash given && != dump_hash  → GAME_DATA_SNAPSHOT_INVALID (hash_mismat
 
 ## Tasks
 
-- [ ] **Step 1 (TDD):** `test_layer_02_capacity_snapshot.py` — feed fixture JSON to `JsonSnapshotGameDataRulesAdapter`; assert capacity equals current ORM-derived value (copy expected from a one-off ORM run).
-- [ ] **Step 2:** Implement adapter + `ExteriorCapacityRow`; refactor `capacity.py` to take port (default param wiring in bootstrap).
-- [ ] **Step 3:** Implement `export_game_data_snapshot` command; `orm_game_data_rules.py` calls export then delegates to JSON adapter (single path).
-- [ ] **Step 4:** Parity test: ORM export → adapter == direct EVTC service (guard against drift) in `test_layer_02_capacity.py`.
-- [ ] **Step 5:** Add fail-closed unit tests (missing/unsupported/mismatch).
-- [ ] **Step 6:** ruff + mypy + purity gate (capacity.py now core-pure).
+- [x] **Step 1 (TDD):** `test_layer_02_capacity_snapshot.py` — feeds fixture JSON to `JsonSnapshotGameDataRulesAdapter`; asserts shape/fluid capacity from the snapshot and via `resolve_per_connector_capacity`.
+- [x] **Step 2:** Implemented `JsonSnapshotGameDataRulesAdapter` + domain `ExteriorCapacityRow`; `capacity.py` now takes an injected `GameDataRulesPort`; `plan.py` lazily defaults to the ORM adapter.
+- [x] **Step 3:** Implemented `export_game_data_snapshot` command; `orm_game_data_rules.py` builds the payload from the ORM resolver and delegates to the JSON adapter (single path).
+- [x] **Step 4:** Parity tests in `test_layer_02_capacity.py`: ORM export → adapter == direct EVTC service (shape tier-1 = 5760, fluid tier-1 = 345600 confirmed via real export).
+- [x] **Step 5:** Fail-closed unit tests (missing file / unsupported schema / hash mismatch / malformed) + hash-match accept.
+- [x] **Step 6:** ruff clean on changed paths; `mypy src` clean (28 files); full `mypy django_apps config src` adds 0 new errors (1025 baseline); core-purity gate green. FIX-1: missing-row test rewritten to inject a `LookupError`-raising port (no DB).
 
 ## Tests / verification
 

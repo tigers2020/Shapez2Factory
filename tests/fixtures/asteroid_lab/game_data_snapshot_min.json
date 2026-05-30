@@ -1,0 +1,16 @@
+{
+  "schema_version": "game_data_snapshot_v1",
+  "game_data_dump_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "exterior_transport_capacity": [
+    {
+      "resource_kind": "shape",
+      "speed_tier": 1,
+      "per_connector_capacity_per_min": "5760"
+    },
+    {
+      "resource_kind": "fluid",
+      "speed_tier": 1,
+      "per_connector_capacity_per_min": "7200"
+    }
+  ]
+}

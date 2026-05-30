@@ -33,6 +33,7 @@ from django_apps.asteroid_lab.layers.layer_02_exterior_transport.slots import (
 from django_apps.asteroid_lab.layers.shared.ceildiv import ceildiv_decimal
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
+from shapez2_factory.application.asteroid_lab.ports.game_data_rules import GameDataRulesPort
 
 _EDGES_ORDER: tuple[CardinalEdge, ...] = (
     CardinalEdge.NORTH,
@@ -49,8 +50,19 @@ def build_exterior_connection_plan(
     terrain_upper_bound_per_min: Decimal,
     throughput_target_percent: int,
     speed_tier: int = 1,
+    rules: GameDataRulesPort | None = None,
 ) -> ExteriorConnectionPlan:
-    cap_res = resolve_per_connector_capacity(resource_kind=resource_kind, speed_tier=speed_tier)
+    if rules is None:
+        from django_apps.asteroid_lab.adapters.orm_game_data_rules import (
+            build_orm_game_data_rules,
+        )
+
+        rules = build_orm_game_data_rules()
+    cap_res = resolve_per_connector_capacity(
+        rules=rules,
+        resource_kind=resource_kind,
+        speed_tier=speed_tier,
+    )
     planning_target = (
         terrain_upper_bound_per_min * Decimal(throughput_target_percent) / Decimal(100)
     )

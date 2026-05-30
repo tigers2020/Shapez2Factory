@@ -1,25 +1,27 @@
-"""``GameDataRulesPort`` — solver-facing game-data rules (L2 decouple).
+"""``GameDataRulesPort`` — solver-facing game-data rules (L2 decouple, PR-CLI-2b).
 
-The full ``ExteriorCapacityRow`` and the JSON-snapshot adapter land in PR-CLI-2b; the row below is a
-minimal placeholder so the port type-checks while the use case is still a stub.
+The core satisfies this port via a frozen ``game_data_snapshot.json`` (see
+``JsonSnapshotGameDataRulesAdapter``); the Django side produces the same snapshot from the ORM via a
+single export path. ``ExteriorCapacityRow`` is re-exported here for callers that imported it from
+the PR-CLI-1 placeholder location.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Protocol
 
-
-@dataclass(frozen=True, slots=True)
-class ExteriorCapacityRow:
-    """Placeholder capacity row; full field set finalized in PR-CLI-2b."""
-
-    speed_tier: int
-    shapes_per_minute: float
+from shapez2_factory.domain.asteroid_lab.exterior_capacity_row import ExteriorCapacityRow
 
 
 class GameDataRulesPort(Protocol):
-    def exterior_shape_capacity(self, *, speed_tier: int) -> ExteriorCapacityRow: ...
+    def exterior_connector_capacity(
+        self,
+        *,
+        resource_kind: str,
+        speed_tier: int,
+    ) -> ExteriorCapacityRow:
+        """Return the per-connector capacity row; raise ``LookupError`` when no row exists."""
+        ...
 
 
 __all__ = ["ExteriorCapacityRow", "GameDataRulesPort"]

@@ -75,8 +75,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--allowed-root",
         dest="allowed_root",
         type=Path,
-        default=None,
-        help="Containment root for run_key (Guard C); defaults to --artifact-root.",
+        default=Path("var/runs"),
+        help="Configured sandbox root that artifacts must nest under (Guard C).",
     )
     run.add_argument("--replace-existing", dest="replace_existing", action="store_true")
 
@@ -139,17 +139,17 @@ def validate_artifact(artifact_dir: Path) -> int:
 def _run_stub(
     artifact_root: Path,
     run_key: str,
-    allowed_root: Path | None,
+    allowed_root: Path,
     replace_existing: bool,
 ) -> int:
     """Stub ``run`` handler — enforces Guard C, then reports stack unavailable.
 
-    Guard C is wired now so unsafe ``run_key`` values fail fast even though the
-    full solver stack does not land until PR-CLI-3b. ``allowed_root`` defaults to
-    ``artifact_root`` (the directory under which run artifacts are created).
+    Guard C is wired now so unsafe ``run_key`` values and out-of-sandbox
+    ``artifact_root`` values fail fast even though the full solver stack does not
+    land until PR-CLI-3b. ``allowed_root`` is the configured sandbox (Guard C
+    threat-2 containment) and the resolved artifact dir must nest under it.
     """
-    containment_root = allowed_root if allowed_root is not None else artifact_root
-    resolve_artifact_dir(containment_root, artifact_root, run_key)
+    resolve_artifact_dir(allowed_root, artifact_root, run_key)
     print(
         "error: the full solver stack is not available until PR-CLI-3b; "
         "'run' cannot produce an artifact yet",

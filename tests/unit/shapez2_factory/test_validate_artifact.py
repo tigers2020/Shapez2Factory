@@ -93,9 +93,26 @@ def test_validate_artifact_rejects_missing_manifest(tmp_path: Path) -> None:
     assert main(["validate-artifact", "--dir", str(empty_dir)]) == ExitCode.VALIDATION_FAILED
 
 
+def test_validate_artifact_rejects_malformed_json(tmp_path: Path) -> None:
+    artifact_dir = tmp_path / "broken"
+    artifact_dir.mkdir()
+    (artifact_dir / MANIFEST_FILENAME).write_text("{not json", encoding="utf-8")
+    assert main(["validate-artifact", "--dir", str(artifact_dir)]) == ExitCode.VALIDATION_FAILED
+
+
 def test_run_subcommand_returns_stack_unavailable(tmp_path: Path) -> None:
     assert (
-        main(["run", "--artifact-root", str(tmp_path), "--run-key", "run-1"])
+        main(
+            [
+                "run",
+                "--allowed-root",
+                str(tmp_path),
+                "--artifact-root",
+                str(tmp_path),
+                "--run-key",
+                "run-1",
+            ]
+        )
         == ExitCode.STACK_UNAVAILABLE
     )
 
@@ -103,5 +120,14 @@ def test_run_subcommand_returns_stack_unavailable(tmp_path: Path) -> None:
 def test_run_subcommand_rejects_unsafe_run_key(tmp_path: Path) -> None:
     assert (
         main(["run", "--artifact-root", str(tmp_path), "--run-key", "../evil"])
+        == ExitCode.VALIDATION_FAILED
+    )
+
+
+def test_run_subcommand_rejects_out_of_root_artifact_root(tmp_path: Path) -> None:
+    # No --allowed-root: defaults to var/runs sandbox. tmp_path is outside it, so
+    # Guard C threat-2 containment must reject even a syntactically valid run_key.
+    assert (
+        main(["run", "--artifact-root", str(tmp_path), "--run-key", "run-1"])
         == ExitCode.VALIDATION_FAILED
     )

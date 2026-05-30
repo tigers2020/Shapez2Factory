@@ -31,4 +31,5 @@ jobs:
             tests/unit/asteroid_lab/layers/ \
             tests/unit/architecture/test_reconstruction_decontamination_gates.py \
             tests/unit/asteroid_lab/test_solver_decontamination_stub.py \
-            tests/unit/asteroid_lab/test_run_solver_management_command.py
+            tests/unit/asteroid_lab/test_run_solver_management_command.py \
+            tests/unit/asteroid_lab/test_solver_run_fast_cache.py

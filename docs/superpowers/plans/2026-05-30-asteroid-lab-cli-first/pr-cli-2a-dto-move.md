@@ -54,12 +54,11 @@ from shapez2_factory.domain.asteroid_lab.grid_contract import Coord, BBox  # exp
 
 ## Tasks
 
-- [ ] **Step 1:** For each module: confirm zero Django import; copy to `domain/asteroid_lab/`; adjust intra-core imports.
-- [ ] **Step 2:** Replace original with shim re-export.
-- [ ] **Step 3:** Run existing import-matrix + reconstruction tests to confirm no breakage:
-  [`test_layer_import_matrix.py`](../../../../tests/unit/asteroid_lab/layers/test_layer_import_matrix.py).
-- [ ] **Step 4:** Add `tests/unit/shapez2_factory/test_dto_importable_without_django.py` — import each moved module in a subprocess with `DJANGO_SETTINGS_MODULE` unset.
-- [ ] **Step 5:** Purity gate + ruff + mypy.
+- [x] **Step 1:** For each module: confirm zero Django import; copy to `domain/asteroid_lab/`; adjust intra-core imports. (6 modules; deps all within move set)
+- [x] **Step 2:** Replace original with shim re-export. (explicit `__all__` re-exports; importers untouched)
+- [x] **Step 3:** Run existing import-matrix + reconstruction tests to confirm no breakage (game_data/coord/catalog importer suites green).
+- [x] **Step 4:** Add `tests/unit/shapez2_factory/test_dto_importable_without_django.py` — import each moved module in a subprocess with `DJANGO_SETTINGS_MODULE` unset. (6 params, no `django.*` leakage)
+- [x] **Step 5:** Purity gate + ruff + mypy. (53 pytest pass · ruff clean · `mypy src` clean; repo-wide `mypy django_apps config src` red at pre-existing baseline, no new errors in changed files)
 
 ## Tests / verification
 

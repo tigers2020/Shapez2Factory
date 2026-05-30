@@ -71,12 +71,12 @@ Depends: CLI-0 · File: [`pr-cli-1-core-scaffold.md`](pr-cli-1-core-scaffold.md)
 ## PR-CLI-2a — Pure DTO move (coord / grid / snapshot contracts)
 Depends: CLI-1 · File: [`pr-cli-2a-dto-move.md`](pr-cli-2a-dto-move.md)
 
-- [ ] Step 1 — per module: confirm zero django import; copy to `domain/asteroid_lab/`; adjust intra-core imports
-- [ ] Step 2 — replace originals with shim re-exports (explicit names, not `*`)
-- [ ] Step 3 — run import-matrix + reconstruction tests, no breakage
-- [ ] Step 4 — `test_dto_importable_without_django.py` (subprocess, `DJANGO_SETTINGS_MODULE` unset)
-- [ ] Step 5 — purity gate + ruff + mypy
-- [ ] Done: DTOs in core; shims green; `tests/unit/asteroid_lab` unchanged; BA-1 green
+- [x] Step 1 — per module: confirm zero django import; copy to `domain/asteroid_lab/`; adjust intra-core imports
+- [x] Step 2 — replace originals with shim re-exports (explicit names, not `*`)
+- [x] Step 3 — run import-matrix + reconstruction tests, no breakage
+- [x] Step 4 — `test_dto_importable_without_django.py` (subprocess, `DJANGO_SETTINGS_MODULE` unset)
+- [x] Step 5 — purity gate + ruff + mypy (`mypy src` clean; repo-wide mypy red at pre-existing baseline only)
+- [x] Done: DTOs in core; shims green; `tests/unit/asteroid_lab` unchanged; BA-1 green
 
 ## PR-CLI-2b — `GameDataRulesPort` + JSON snapshot adapter (L2 decouple)
 Depends: CLI-2a · File: [`pr-cli-2b-game-data-port.md`](pr-cli-2b-game-data-port.md)

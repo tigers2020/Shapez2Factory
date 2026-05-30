@@ -43,7 +43,7 @@ def test_manifest_rejects_unknown_schema_version() -> None:
     with pytest.raises(ManifestSchemaVersionError) as exc_info:
         parse_manifest_checked(text)
     message = str(exc_info.value)
-    assert "1" in message
+    assert str(MANIFEST_SCHEMA_VERSION) in message
     assert "999" in message
 
 
@@ -61,3 +61,15 @@ def test_parse_manifest_checked_rejects_non_int_schema_version() -> None:
     text = json.dumps(payload)
     with pytest.raises(ManifestSchemaVersionError):
         parse_manifest_checked(text)
+
+
+def test_parse_manifest_checked_propagates_malformed_json() -> None:
+    with pytest.raises(json.JSONDecodeError):
+        parse_manifest_checked("{not json")
+
+
+def test_parse_manifest_checked_rejects_non_dict_toplevel() -> None:
+    with pytest.raises(ManifestSchemaVersionError):
+        parse_manifest_checked("[1, 2, 3]")
+    with pytest.raises(ManifestSchemaVersionError):
+        parse_manifest_checked("5")

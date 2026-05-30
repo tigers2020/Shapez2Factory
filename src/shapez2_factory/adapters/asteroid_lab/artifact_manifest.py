@@ -76,8 +76,16 @@ def parse_manifest_checked(text: str) -> ArtifactManifest:
     misreading a future/foreign manifest. Unlike :meth:`ArtifactManifest.from_json`,
     a missing or non-int-coercible ``schema_version`` also raises
     :class:`ManifestSchemaVersionError`.
+
+    Genuinely malformed JSON propagates as :class:`json.JSONDecodeError`; a
+    well-formed but non-object top-level (e.g. a list or number) is rejected.
     """
-    payload: dict[str, Any] = json.loads(text)
+    payload: Any = json.loads(text)
+    if not isinstance(payload, dict):
+        raise ManifestSchemaVersionError(
+            f"manifest top-level is not a JSON object (got {type(payload).__name__}); "
+            f"supported version is {MANIFEST_SCHEMA_VERSION}"
+        )
     try:
         schema_version = int(payload["schema_version"])
     except (KeyError, TypeError, ValueError) as exc:

@@ -162,6 +162,22 @@ class SolverRun(models.Model):
         default=RunStatus.PENDING,
     )
     config_json = models.JSONField(default=dict, blank=True)
+    lab_replay_manifest_summary_json = models.JSONField(
+        default=dict,
+        help_text="UI cache mirror of lab replay manifest summary (not solver input).",
+    )
+    lab_replay_payload_json = models.JSONField(
+        default=dict,
+        help_text="UI cache mirror of composed lab replay payload (not solver input).",
+    )
+    solver_summary_json = models.JSONField(
+        default=dict,
+        help_text="UI cache mirror of solver_summary (not solver input).",
+    )
+    solver_runtime_replay_frames_json = models.JSONField(
+        default=list,
+        help_text="UI cache mirror of solver_runtime_replay_frames (not solver input).",
+    )
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -6,16 +6,47 @@ from dataclasses import dataclass
 
 from django_apps.asteroid_lab.genetic_sample.enums import Direction
 from django_apps.asteroid_lab.layers.contracts.rim_greedy import RimGreedyRejectReason
+from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.cardinal_map import (
+    CARDINAL_DIR_DELTA,
+    direction_child_to_parent,
+)
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
+from django_apps.asteroid_lab.snapshots.equipment_bundles import ports_compatible
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
-_DIR_DELTA: dict[str, tuple[int, int]] = {
-    "N": (0, 1),
-    "E": (1, 0),
-    "S": (0, -1),
-    "W": (-1, 0),
-}
+_DIR_DELTA = CARDINAL_DIR_DELTA
 _OUTPUT_TO_ROTATION: dict[str, int] = {"E": 0, "S": 1, "W": 2, "N": 3}
+
+
+def placement_output_rotation(output_dir: str) -> int:
+    return _OUTPUT_TO_ROTATION[output_dir]
+
+
+def placement_extension_rotation(
+    *,
+    miner_coord: Coord,
+    extension_coord: Coord,
+    miner_rotation: int,
+    extension_kind: str = "shape_miner_extension",
+    miner_kind: str = "shape_miner",
+) -> int:
+    """Quarter-turn ``R`` so extension ports link to the parent miner (lab decode contract)."""
+
+    dir_child_to_parent = direction_child_to_parent(extension_coord, miner_coord)
+    if dir_child_to_parent is None:
+        msg = "extension and miner are not 4-neighbors on the map grid"
+        raise ValueError(msg)
+    for rotation in range(4):
+        if ports_compatible(
+            extension_kind,
+            rotation,
+            miner_kind,
+            miner_rotation,
+            dir_child_to_parent,
+        ):
+            return rotation
+    msg = "no extension rotation links extension to miner"
+    raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,5 +135,7 @@ __all__ = [
     "SeedLayout",
     "SeedLayoutReject",
     "layout_seed_at_anchor",
+    "placement_extension_rotation",
+    "placement_output_rotation",
     "str_output_dir_to_direction",
 ]

@@ -12,10 +12,16 @@ from django_apps.asteroid_lab.layers.contracts.rim_greedy import (
     RimGreedyPolicy,
     build_empty_integrated_rim_greedy_result,
 )
+from django_apps.asteroid_lab.layers.contracts.rim_greedy_append import (
+    build_empty_layer03_append_result,
+)
 from django_apps.asteroid_lab.layers.contracts.route_goal import build_layer03_route_goals
 from django_apps.asteroid_lab.layers.contracts.transport_kind import ResourceKind, TransportKind
+from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.append import (
+    append_committed_rim_placements,
+    provisional_overlay_from_append,
+)
 from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.greedy_pass1 import (
-    build_provisional_overlay_from_state,
     run_pass1_for_variant,
 )
 from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.greedy_pass2 import score_variant
@@ -114,8 +120,14 @@ def run_layer_03_rim_greedy_placement(
             best_report = report
 
     assert best_state is not None and best_report is not None
-    overlay = build_provisional_overlay_from_state(
-        best_state,
+    committed = tuple(best_state.committed_placements)
+    append_result = (
+        append_committed_rim_placements(committed_placements=committed)
+        if committed
+        else build_empty_layer03_append_result()
+    )
+    overlay = provisional_overlay_from_append(
+        append_result,
         transport_kind=effective_transport,
     )
     all_events.append(
@@ -141,6 +153,7 @@ def run_layer_03_rim_greedy_placement(
         rejected_attempts=tuple(best_state.rejected_attempts),
         occupied_equipment_cells=frozenset(best_state.occupied_equipment_cells),
         reserved_route_cells=frozenset(best_state.reserved_route_cells),
+        append_result=append_result,
         provisional_overlay=overlay,
         pass2_report=best_report,
         winning_variant_id=best_state.variant_id,

@@ -137,6 +137,7 @@ def build_layer03_rim_greedy_post_summary_metrics(
     result: IntegratedRimGreedyResult,
 ) -> dict[str, object]:
     metrics = result.metrics
+    append = result.append_result
     return {
         "rim_anchor_count": metrics.rim_anchor_count,
         "committed_placement_count": metrics.committed_placement_count,
@@ -146,6 +147,9 @@ def build_layer03_rim_greedy_post_summary_metrics(
         "pass2_score": metrics.pass2_score,
         "layer_skip_reason": metrics.layer_skip_reason,
         "canonical_layer_slug": metrics.canonical_layer_slug,
+        "append_placement_count": append.placement_count,
+        "append_cell_count": len(append.cells),
+        "append_route_reserved_cell_count": append.route_reserved_cell_count,
     }
 
 

@@ -53,6 +53,7 @@ class BundleCellRole(StrEnum):
     MINER = "miner"
     EXTENSION = "extension"
     TRANSPORT_STUB = "transport_stub"
+    ROUTE_RESERVED = "route_reserved"
 
 
 @dataclass(frozen=True, slots=True)

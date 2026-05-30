@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import LAYER_03_RIM_GREEDY_PLACEMENT
 from django_apps.asteroid_lab.layers.contracts.rim_greedy import (
     CommittedRimSeedPlacement,
@@ -9,7 +11,19 @@ from django_apps.asteroid_lab.layers.contracts.rim_greedy import (
     RimGreedyObservationEvent,
     RimGreedyObservationPhase,
 )
+from django_apps.asteroid_lab.layers.contracts.rim_greedy_append import (
+    AppendCellKind,
+    AppendedPlacementCell,
+    Layer03AppendResult,
+)
 from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKind
+from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.cardinal_map import (
+    direction_child_to_parent,
+)
+from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.seed_orient import (
+    placement_extension_rotation,
+    placement_output_rotation,
+)
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_LAYER03_RIM_GREEDY_BEGIN,
     EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE,
@@ -75,6 +89,104 @@ def _spec(
 
 def _transport_wire() -> str:
     return TransportKind.SHAPE_BELT.value
+
+
+_APPEND_TO_REPLAY_KIND_OBSERVATION: dict[AppendCellKind, str] = {
+    AppendCellKind.MINER: OVERLAY_KIND_CANDIDATE_MINER,
+    AppendCellKind.EXTENSION: OVERLAY_KIND_CANDIDATE_MINER,
+    AppendCellKind.OUTPUT_STUB: OVERLAY_KIND_CANDIDATE_TRANSPORT_STUB,
+    AppendCellKind.ROUTE_RESERVED: OVERLAY_KIND_CANDIDATE_ROUTE_PATH,
+}
+
+_APPEND_TO_REPLAY_KIND_COMMITTED: dict[AppendCellKind, str] = {
+    AppendCellKind.MINER: "shape_miner",
+    AppendCellKind.EXTENSION: "shape_miner_extension",
+    AppendCellKind.OUTPUT_STUB: OVERLAY_KIND_CANDIDATE_TRANSPORT_STUB,
+    AppendCellKind.ROUTE_RESERVED: OVERLAY_KIND_CANDIDATE_ROUTE_PATH,
+}
+
+GreedyReplayEquipmentWire = Literal["observation", "committed"]
+
+
+def _miner_coord_for_extension(
+    placement: CommittedRimSeedPlacement,
+    extension_coord: Coord,
+) -> Coord:
+    for miner_coord in placement.miner_cells:
+        if direction_child_to_parent(extension_coord, miner_coord) is not None:
+            return miner_coord
+    return placement.anchor
+
+
+def _rotation_for_append_cell(
+    cell: AppendedPlacementCell,
+    placement: CommittedRimSeedPlacement | None,
+) -> int:
+    if placement is None:
+        return 0
+    miner_rotation = placement_output_rotation(placement.output_dir)
+    if cell.kind is AppendCellKind.MINER:
+        return miner_rotation
+    if cell.kind is AppendCellKind.EXTENSION:
+        miner_coord = _miner_coord_for_extension(placement, cell.coord)
+        return placement_extension_rotation(
+            miner_coord=miner_coord,
+            extension_coord=cell.coord,
+            miner_rotation=miner_rotation,
+        )
+    return 0
+
+
+def _replay_overlay_from_append(
+    append_result: Layer03AppendResult,
+    *,
+    placements: tuple[CommittedRimSeedPlacement, ...] = (),
+    placement_ids: frozenset[str] | None = None,
+    equipment_wire: GreedyReplayEquipmentWire = "observation",
+) -> tuple[ReplayOverlayCell, ...]:
+    """Lab replay wire from append cells (same coord collapse as provisional overlay)."""
+
+    transport = _transport_wire()
+    kind_map = (
+        _APPEND_TO_REPLAY_KIND_COMMITTED
+        if equipment_wire == "committed"
+        else _APPEND_TO_REPLAY_KIND_OBSERVATION
+    )
+    placement_by_id = {p.placement_id: p for p in placements}
+    cells = append_result.cells
+    if placement_ids is not None:
+        cells = tuple(c for c in cells if c.placement_id in placement_ids)
+    overlay: list[ReplayOverlayCell] = []
+    for cell in cells:
+        placement = placement_by_id.get(cell.placement_id)
+        rotation = _rotation_for_append_cell(cell, placement)
+        overlay.append(
+            ReplayOverlayCell(
+                x=cell.coord[0],
+                y=cell.coord[1],
+                kind=kind_map[cell.kind],
+                transport=transport,
+                rotation=rotation,
+            )
+        )
+    return tuple(overlay)
+
+
+def _transient_overlay_for_greedy_result(
+    result: IntegratedRimGreedyResult,
+    *,
+    placements: tuple[CommittedRimSeedPlacement, ...],
+    equipment_wire: GreedyReplayEquipmentWire = "observation",
+) -> tuple[ReplayOverlayCell, ...]:
+    if result.append_result.cells:
+        placement_ids = frozenset(p.placement_id for p in placements)
+        return _replay_overlay_from_append(
+            result.append_result,
+            placements=result.committed_placements,
+            placement_ids=placement_ids,
+            equipment_wire=equipment_wire,
+        )
+    return _combined_overlay_for_placements(placements)
 
 
 def _combined_overlay_for_placements(
@@ -153,6 +265,7 @@ def _chunk_placements(
 def build_layer03_rim_greedy_runtime_segment_specs(
     result: IntegratedRimGreedyResult,
 ) -> tuple[ReplaySegmentFrameSpec, ...]:
+    """Runtime greedy replay; transient overlays follow ``result.append_result`` when set."""
     """Winning-variant greedy replay with overlays (Lab map tint parity with legacy L3 pool)."""
     placements = result.committed_placements
     metrics = result.metrics
@@ -201,9 +314,6 @@ def build_layer03_rim_greedy_runtime_segment_specs(
     for window_index, chunk in enumerate(chunks, start=1):
         start = sum(len(c) for c in chunks[: window_index - 1]) + 1
         end = start + len(chunk) - 1
-        cells: list[ReplayOverlayCell] = []
-        for placement in chunk:
-            cells.extend(_overlay_for_committed(placement))
         preview_frames.append(
             _spec(
                 event_type=ReplayEventType.LAYER03_RIM_GREEDY_SEED_COMMITTED,
@@ -221,7 +331,10 @@ def build_layer03_rim_greedy_runtime_segment_specs(
                     "placement_end_index": end,
                     "committed_placement_count": len(placements),
                 },
-                transient_overlay_cells=tuple(cells),
+                transient_overlay_cells=_transient_overlay_for_greedy_result(
+                    result,
+                    placements=chunk,
+                ),
             )
         )
 
@@ -244,7 +357,11 @@ def build_layer03_rim_greedy_runtime_segment_specs(
         title="Layer 03 rim greedy complete",
         description=f"Pass2 score={metrics.pass2_score}",
         metrics=complete_metrics,
-        transient_overlay_cells=_combined_overlay_for_placements(placements),
+        transient_overlay_cells=_transient_overlay_for_greedy_result(
+            result,
+            placements=placements,
+            equipment_wire="committed",
+        ),
     )
 
     return (begin, summary, *preview_frames, complete)

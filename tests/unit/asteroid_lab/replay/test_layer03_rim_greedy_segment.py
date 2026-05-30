@@ -11,6 +11,11 @@ from django_apps.asteroid_lab.layers.contracts.rim_greedy import (
     RimGreedyPass2Report,
     build_empty_integrated_rim_greedy_result,
 )
+from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKind
+from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.append import (
+    append_committed_rim_placements,
+    provisional_overlay_from_append,
+)
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_LAYER03_RIM_GREEDY_BEGIN,
     EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE,
@@ -35,7 +40,6 @@ from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
 
 
 def _greedy_result_with_placements() -> IntegratedRimGreedyResult:
-    base = build_empty_integrated_rim_greedy_result()
     placements = (
         CommittedRimSeedPlacement(
             placement_id="rim_greedy_CW_TL_0",
@@ -60,12 +64,18 @@ def _greedy_result_with_placements() -> IntegratedRimGreedyResult:
             route_probe_path=((6, 6), (7, 6), (8, 4)),
         ),
     )
+    append_result = append_committed_rim_placements(committed_placements=placements)
+    overlay = provisional_overlay_from_append(
+        append_result,
+        transport_kind=TransportKind.SHAPE_BELT,
+    )
     return IntegratedRimGreedyResult(
         committed_placements=placements,
         rejected_attempts=(),
         occupied_equipment_cells=frozenset({(6, 4), (5, 4), (6, 5)}),
         reserved_route_cells=frozenset({(7, 4), (8, 4), (6, 6), (7, 6)}),
-        provisional_overlay=base.provisional_overlay,
+        append_result=append_result,
+        provisional_overlay=overlay,
         pass2_report=RimGreedyPass2Report(
             variant_id="CW_TL",
             score=10.0,
@@ -149,4 +159,5 @@ def test_runtime_complete_frame_carries_all_placement_overlays() -> None:
     overlay = wire["map_view"]["overlay_cells"]
     assert len(overlay) > 0
     kinds = {row.get("kind") for row in overlay if isinstance(row, dict)}
-    assert OVERLAY_KIND_CANDIDATE_MINER in kinds
+    assert "shape_miner" in kinds
+    assert "shape_miner_extension" in kinds

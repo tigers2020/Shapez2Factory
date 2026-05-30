@@ -8,6 +8,10 @@ from typing import Any
 
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import LAYER_03_RIM_GREEDY_PLACEMENT
 from django_apps.asteroid_lab.layers.contracts.provisional_overlay import ProvisionalLayoutOverlay
+from django_apps.asteroid_lab.layers.contracts.rim_greedy_append import (
+    Layer03AppendResult,
+    build_empty_layer03_append_result,
+)
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
 LAYER_03_GREEDY_SOURCE = LAYER_03_RIM_GREEDY_PLACEMENT
@@ -113,6 +117,7 @@ class IntegratedRimGreedyResult:
     rejected_attempts: tuple[RimGreedyReject, ...]
     occupied_equipment_cells: frozenset[Coord]
     reserved_route_cells: frozenset[Coord]
+    append_result: Layer03AppendResult
     provisional_overlay: ProvisionalLayoutOverlay
     pass2_report: RimGreedyPass2Report
     winning_variant_id: str
@@ -174,6 +179,7 @@ def build_empty_integrated_rim_greedy_result(
         rejected_attempts=(),
         occupied_equipment_cells=frozenset(),
         reserved_route_cells=frozenset(),
+        append_result=build_empty_layer03_append_result(),
         provisional_overlay=overlay,
         pass2_report=report,
         winning_variant_id="",
@@ -193,6 +199,7 @@ def build_empty_integrated_rim_greedy_result(
 __all__ = [
     "CommittedRimSeedPlacement",
     "IntegratedRimGreedyResult",
+    "Layer03AppendResult",
     "LAYER_03_GREEDY_SOURCE",
     "RimGreedyMetrics",
     "RimGreedyObservationEvent",

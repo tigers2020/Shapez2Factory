@@ -4,19 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.cardinal_map import (
+    CARDINAL_DIR_DELTA,
+    CARDINAL_ORDER,
+)
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.reconstruction.rim_topology import field_rim_cells
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
 DEGRADED_BOUNDARY_ORDER_SEGMENT = "DEGRADED_BOUNDARY_ORDER"
 
-_CARDINAL_ORDER = ("N", "E", "S", "W")
-_DIR_DELTA: dict[str, tuple[int, int]] = {
-    "E": (1, 0),
-    "N": (0, 1),
-    "W": (-1, 0),
-    "S": (0, -1),
-}
+_DIR_DELTA = CARDINAL_DIR_DELTA
+_CARDINAL_ORDER = CARDINAL_ORDER
 _LEFT_TURN = {"E": "N", "N": "W", "W": "S", "S": "E"}
 _RIGHT_TURN = {"E": "S", "S": "W", "W": "N", "N": "E"}
 

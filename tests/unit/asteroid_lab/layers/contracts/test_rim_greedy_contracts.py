@@ -26,6 +26,7 @@ def test_empty_result_has_canonical_overlay_source() -> None:
     assert result.provisional_overlay.source_layer == LAYER_03_GREEDY_SOURCE
     assert len(result.observability_events) == 2
     assert result.metrics.canonical_layer_slug == LAYER_03_RIM_GREEDY_PLACEMENT
+    assert result.append_result.placement_count == 0
 
 
 def test_reject_reason_is_strenum() -> None:

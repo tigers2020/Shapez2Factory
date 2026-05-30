@@ -32,10 +32,10 @@ GOLDEN_FULL_5X5_ORDER: tuple[tuple[int, int], ...] = (
 )
 
 GOLDEN_FULL_5X5_CORNER_VOID_DIRS: dict[tuple[int, int], tuple[str, ...]] = {
-    (2, 6): ("N", "W"),
-    (6, 6): ("N", "E"),
-    (6, 2): ("E", "S"),  # N,E,S,W enum order
-    (2, 2): ("S", "W"),
+    (2, 6): ("S", "W"),
+    (6, 6): ("E", "S"),
+    (6, 2): ("N", "E"),
+    (2, 2): ("N", "W"),
 }
 
 
@@ -68,7 +68,7 @@ def test_interior_void_neighbor_not_counted_as_void_normal() -> None:
     for anchor in anchors:
         x, y = anchor.coord
         for direction in anchor.void_dirs:
-            dx, dy = {"N": (0, 1), "E": (1, 0), "S": (0, -1), "W": (-1, 0)}[direction]
+            dx, dy = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0)}[direction]
             neighbor = (x + dx, y + dy)
             assert neighbor in complete_map.external_void_cells
             assert neighbor not in complete_map.field_cells

@@ -110,6 +110,10 @@ def _merge_integrated_greedy(
     solver_summary["layer04_selected_count"] = metrics.committed_placement_count
     solver_summary["layer04_rejected_overlap_count"] = 0
     solver_summary["layer04_rejected_budget_count"] = 0
+    append = rim_greedy.append_result
+    solver_summary["layer03_append_placement_count"] = append.placement_count
+    solver_summary["layer03_append_cell_count"] = len(append.cells)
+    solver_summary["layer03_append_route_reserved_count"] = append.route_reserved_cell_count
     solver_summary["overlay_occupied_cell_count"] = len(
         rim_greedy.provisional_overlay.occupied_cells
     )

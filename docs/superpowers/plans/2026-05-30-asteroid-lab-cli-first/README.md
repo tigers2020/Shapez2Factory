@@ -29,8 +29,9 @@ amendments, guards, per-PR steps, done criteria). Use it to track progress; PR f
 | BA-4 | `output/replay_core.jsonl` is core/deterministic; Django enrichment only; no web-ready core payload. |
 | BA-5 | Atomic write `.tmp/<run_key>` → hash → manifest last → rename; DB ingest after `ARTIFACT_WRITTEN`. |
 | BA-6 | Phase D manifest parsing via `artifact_manifest_reader.py` (Option 1, no core import). |
-| BA-7 | Subprocess: `shell=False`, list args, `sys.executable`, fixed cwd, timeout, log capture, path-traversal guard, typed exit codes. |
+| BA-7 | Subprocess: `shell=False`, list args, `sys.executable`, fixed cwd, timeout, log capture (+ parent TTY tee per BA-9), path-traversal guard, typed exit codes. |
 | BA-8 | `game_data_snapshot.json` fail-closed; ORM → export → JSON adapter single path. |
+| BA-9 | Console observability: stderr access-log one-liners (start/end); verbose layer lines opt-in; subprocess tee to parent TTY + `logs/subprocess.log`. See [`obs-console-log.md`](obs-console-log.md). |
 
 ## Structural amendments (2nd review, 2026-05-30)
 
@@ -54,6 +55,7 @@ amendments, guards, per-PR steps, done criteria). Use it to track progress; PR f
 | shim identity | 2d | `test_contract_shims_preserve_identity` |
 | replay_core no-django | 3b | `test_replay_core_does_not_import_django_replay` |
 | replay loader is iterator | 5 | `test_artifact_replay_loader_returns_iterator` |
+| BA-9 console log | 3a amend, 3b, 4 | `test_cli_console`, `test_cli_invoke_trace`, `test_subprocess_stream_tee` |
 
 ## PR index
 
@@ -71,6 +73,8 @@ amendments, guards, per-PR steps, done criteria). Use it to track progress; PR f
 | PR-CLI-4 | [`pr-cli-4-django-subprocess-ingest.md`](pr-cli-4-django-subprocess-ingest.md) | CLI-3b | subprocess + ingest |
 | PR-CLI-5 | [`pr-cli-5-db-demotion-replay.md`](pr-cli-5-db-demotion-replay.md) | CLI-4 | DB demotion + JSONL streaming |
 | PR-CLI-6 | [`pr-cli-6-subprocess-only-default.md`](pr-cli-6-subprocess-only-default.md) | CLI-5 | subprocess_only (Option A) |
+
+**Cross-cutting (not a standalone PR):** [`obs-console-log.md`](obs-console-log.md) — BA-9 console / tee contract (lands 3a amend → 3b → 4).
 
 ## Dependency graph
 

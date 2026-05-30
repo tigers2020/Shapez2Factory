@@ -88,6 +88,11 @@ def persist_composed_replay_for_run_id(
     config[SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY] = summary
     run.config_json = config
     run.save(update_fields=["config_json"])
+    from django_apps.asteroid_lab.services.solver_run_fast_cache import (
+        sync_solver_run_fast_cache_from_config_json,
+    )
+
+    sync_solver_run_fast_cache_from_config_json(run)
 
 
 __all__ = [

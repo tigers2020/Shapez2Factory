@@ -317,9 +317,7 @@ def build_layer03_rim_greedy_runtime_segment_specs(
         preview_frames.append(
             _spec(
                 event_type=ReplayEventType.LAYER03_RIM_GREEDY_SEED_COMMITTED,
-                title=(
-                    f"Layer 03 rim greedy · window {window_index} / {logical_count}"
-                ),
+                title=(f"Layer 03 rim greedy · window {window_index} / {logical_count}"),
                 description=f"Placements {start}–{end} / {len(placements)}",
                 metrics={
                     "layer": LAYER03_GREEDY_PHASE,

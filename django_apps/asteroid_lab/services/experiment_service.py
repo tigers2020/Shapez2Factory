@@ -12,6 +12,10 @@ from django.db import transaction
 
 from django_apps.asteroid_lab.models import AsteroidProject, ReplayTrack, SolverRun
 from django_apps.asteroid_lab.services.dto import ReplayTrackRefDTO, SolverRunDTO
+from django_apps.asteroid_lab.services.solver_run_fast_cache import (
+    empty_solver_run_fast_cache_kwargs,
+    sync_solver_run_fast_cache_from_config_json,
+)
 
 
 @transaction.atomic
@@ -37,7 +41,9 @@ def create_solver_run(
         run_key=run_key,
         algorithm_label=algorithm_label,
         config_json=dict(config or {}),
+        **empty_solver_run_fast_cache_kwargs(),
     )
+    sync_solver_run_fast_cache_from_config_json(run)
     track = ensure_default_replay_track(
         project_id,
         run.id,

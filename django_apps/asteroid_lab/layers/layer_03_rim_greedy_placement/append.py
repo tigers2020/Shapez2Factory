@@ -134,9 +134,7 @@ def provisional_overlay_from_append(
             placement_state=PlacementCommitState.PROVISIONAL_PLACED,
         )
     occupied = frozenset(by_cell.keys())
-    extractors = frozenset(
-        c for c, cell in by_cell.items() if cell.role is BundleCellRole.MINER
-    )
+    extractors = frozenset(c for c, cell in by_cell.items() if cell.role is BundleCellRole.MINER)
     extensions = frozenset(
         c for c, cell in by_cell.items() if cell.role is BundleCellRole.EXTENSION
     )

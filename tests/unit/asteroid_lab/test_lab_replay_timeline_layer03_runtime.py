@@ -36,17 +36,13 @@ def test_lab_replay_timeline_includes_layer03_runtime_after_solver_run() -> None
     run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
     summary = dict(run.config_json or {}).get("solver_summary") or {}
     committed = int(
-        summary.get("rim_greedy_committed_count")
-        or summary.get("normal_candidate_count")
-        or 0
+        summary.get("rim_greedy_committed_count") or summary.get("normal_candidate_count") or 0
     )
     if committed > 0:
         assert EVENT_TYPE_LAYER03_RIM_GREEDY_SEED_COMMITTED in event_types
     runtime_frames = dict(run.config_json or {}).get("solver_runtime_replay_frames") or []
     assert isinstance(runtime_frames, list) and runtime_frames
     runtime_types = [
-        str(item.get("event_type") or "")
-        for item in runtime_frames
-        if isinstance(item, dict)
+        str(item.get("event_type") or "") for item in runtime_frames if isinstance(item, dict)
     ]
     assert EVENT_TYPE_LAYER03_RIM_GREEDY_BEGIN in runtime_types

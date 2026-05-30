@@ -64,8 +64,47 @@ class ArtifactManifest:
         return cls.from_json_dict(parsed)
 
 
+class ManifestSchemaVersionError(Exception):
+    """Raised when a manifest declares an unsupported ``schema_version``."""
+
+
+def parse_manifest_checked(text: str) -> ArtifactManifest:
+    """Parse a manifest JSON string, rejecting unsupported schema versions.
+
+    Schema version is fail-closed (BA-1/Guard A): an unknown ``schema_version``
+    must be rejected rather than best-effort parsed, to avoid silently
+    misreading a future/foreign manifest. Unlike :meth:`ArtifactManifest.from_json`,
+    a missing or non-int-coercible ``schema_version`` also raises
+    :class:`ManifestSchemaVersionError`.
+
+    Genuinely malformed JSON propagates as :class:`json.JSONDecodeError`; a
+    well-formed but non-object top-level (e.g. a list or number) is rejected.
+    """
+    payload: Any = json.loads(text)
+    if not isinstance(payload, dict):
+        raise ManifestSchemaVersionError(
+            f"manifest top-level is not a JSON object (got {type(payload).__name__}); "
+            f"supported version is {MANIFEST_SCHEMA_VERSION}"
+        )
+    try:
+        schema_version = int(payload["schema_version"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ManifestSchemaVersionError(
+            f"manifest schema_version is missing or invalid; "
+            f"supported version is {MANIFEST_SCHEMA_VERSION}"
+        ) from exc
+    if schema_version != MANIFEST_SCHEMA_VERSION:
+        raise ManifestSchemaVersionError(
+            f"unsupported manifest schema_version {schema_version}; "
+            f"supported version is {MANIFEST_SCHEMA_VERSION}"
+        )
+    return ArtifactManifest.from_json_dict(payload)
+
+
 __all__ = [
     "MANIFEST_FILENAME",
     "MANIFEST_SCHEMA_VERSION",
     "ArtifactManifest",
+    "ManifestSchemaVersionError",
+    "parse_manifest_checked",
 ]

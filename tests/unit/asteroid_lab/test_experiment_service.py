@@ -23,6 +23,8 @@ def test_create_solver_run_dto() -> None:
     assert dto.replay_track_id > 0
     row = m.SolverRun.objects.get(pk=dto.id)
     assert row.status == m.SolverRun.RunStatus.PENDING
+    assert isinstance(row.lab_replay_manifest_summary_json, dict)
+    assert row.solver_runtime_replay_frames_json == []
     track = m.ReplayTrack.objects.get(pk=dto.replay_track_id)
     assert track.track_key == "run-1"
     assert track.solver_run_id == dto.id

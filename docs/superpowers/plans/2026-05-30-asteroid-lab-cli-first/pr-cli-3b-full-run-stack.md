@@ -23,6 +23,7 @@ end-to-end with **no Django required**, writing the full atomic artifact directo
   `output/replay_core.jsonl`, `output/solver_summary.json` via atomic writer (BA-5).
 - `replay_core.jsonl` deterministic, output-only, monotonic `frame_index` (BA-4 + guard B).
 - Exit codes per CLI-0 / BA-7 mapping; snapshot fail-closed per BA-8.
+- BA-9: `run` emits stderr start/end one-liners (from 3a amend `cli_console`); `--verbose` adds per-layer `layer_done` lines ([`obs-console-log.md`](obs-console-log.md)).
 
 ## Non-goals
 
@@ -38,7 +39,8 @@ end-to-end with **no Django required**, writing the full atomic artifact directo
 | Implement | `src/shapez2_factory/application/asteroid_lab/run_stack.py` | real `RunStackUseCase` (replaces 3a stub) |
 | Create | `src/shapez2_factory/application/asteroid_lab/replay_core.py` | core JSONL replay emitter (deterministic) |
 | Create | `src/shapez2_factory/adapters/asteroid_lab/copy_decode_adapter.py` | pure decode wrap |
-| Modify | `src/shapez2_factory/interfaces/cli/asteroid_solve.py` | `run` now executes full stack |
+| Modify | `src/shapez2_factory/interfaces/cli/asteroid_solve.py` | `run` now executes full stack; `--verbose` (BA-9) |
+| Modify | in-core stack / `run_stack.py` | optional `layer_done` via `cli_console` when verbose |
 | Create | `tests/unit/shapez2_factory/test_cli_run_artifact.py` | full round-trip |
 | Create | `tests/unit/shapez2_factory/test_cli_exit_codes.py` | BA-7 mapping |
 | Create | `tests/unit/shapez2_factory/test_replay_core_monotonic.py` | guard B |
@@ -98,7 +100,7 @@ python -m shapez2_factory.interfaces.cli.asteroid_solve run \
   --snapshot <game_data_snapshot.json> \
   [--expected-snapshot-hash sha256:...] \
   --artifact-root var/runs --run-key <key> \
-  [--throughput-target-percent 80] [--budget-ms 60000] [--replace-existing]
+  [--throughput-target-percent 80] [--budget-ms 60000] [--replace-existing] [--verbose]
 ```
 
 ## Tasks
@@ -108,7 +110,8 @@ python -m shapez2_factory.interfaces.cli.asteroid_solve run \
 - [ ] **Step 3:** Implement `replay_core` emitter; pull core event construction from former
   [`replay/solver_runtime_assembler.py`](../../../../django_apps/asteroid_lab/replay/solver_runtime_assembler.py) core portion; leave Django enrichment behind.
 - [ ] **Step 4 (TDD):** `test_replay_core_monotonic.py` (guard B) + `test_cli_exit_codes.py` (BA-7) + `test_replay_core_no_django_replay.py` (guard E).
-- [ ] **Step 5:** ruff + mypy + purity gate.
+- [ ] **Step 5 (BA-9):** `--verbose`; `layer_done` stderr lines from stack when verbose; assert no verbose lines without flag (`capsys`).
+- [ ] **Step 6:** ruff + mypy + purity gate.
 
 ## Tests / verification
 

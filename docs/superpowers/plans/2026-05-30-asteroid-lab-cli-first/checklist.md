@@ -23,22 +23,23 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` skipped (d
 - [ ] BA-4 `output/replay_core.jsonl` is core/deterministic; Django enrichment only; no web-ready core payload
 - [ ] BA-5 atomic write `.tmp/<run_key>` → hash → manifest last → rename; DB ingest after `ARTIFACT_WRITTEN`
 - [ ] BA-6 Phase D manifest parsing via `artifact_manifest_reader.py` (Option 1, no core import)
-- [ ] BA-7 subprocess: `shell=False`, list args, `sys.executable`, fixed cwd, timeout, log capture, traversal guard, typed exit codes
+- [ ] BA-7 subprocess: `shell=False`, list args, `sys.executable`, fixed cwd, timeout, log capture (+ BA-9 parent tee), traversal guard, typed exit codes
 - [ ] BA-8 `game_data_snapshot.json` fail-closed; ORM → export → JSON adapter single path
+- [ ] BA-9 console observability — stderr start/end one-liners; verbose opt-in; subprocess parent tee + `logs/subprocess.log` ([`obs-console-log.md`](obs-console-log.md))
 
 ## 2. Structural amendments (2nd review)
 
 - [x] SA-1 PR-CLI-2d drops `stack_runner` move (L2 + shared + contracts only)
 - [ ] SA-2 `stack_runner` moves in PR-CLI-2e together with L3–L6 (no bridge ever)
-- [ ] SA-3 PR-CLI-3 split into 3a (artifact shell) + 3b (full run)
+- [x] SA-3 PR-CLI-3 split into 3a (artifact shell) + 3b (full run) — 3a landed as standalone PR; 3b remains planned
 - [ ] SA-4 PR-CLI-2c gains blocking `display_map` pure/viewer split
 - [ ] SA-5 PR-CLI-6 uses Option A (in-process removed from request path entirely)
 
 ## 3. Cross-cutting guards (land in listed PR, stay green after)
 
-- [ ] Guard A — schema version reject (`test_manifest_rejects_unknown_schema_version`) — PR-3a
+- [x] Guard A — schema version reject (`test_manifest_rejects_unknown_schema_version`) — PR-3a (`parse_manifest_checked` fail-closed)
 - [ ] Guard B — replay monotonic (`test_replay_core_rejects_non_monotonic_frame_index`) — PR-3b
-- [ ] Guard C — artifact root + run_key safety (`test_run_key_safety`, sibling-prefix variant) — PR-3a (reused PR-4)
+- [x] Guard C — artifact root + run_key safety (`test_run_key_safety`, sibling-prefix variant) — PR-3a (reused PR-4); `resolve_artifact_dir` via `Path.relative_to`, `fullmatch` anchor
 - [ ] Guard D — JSONL streaming-only (`test_ssr_does_not_inline_full_replay`) — PR-3b policy, enforced PR-5
 - [ ] Guard E — `replay_core` no django replay import (`test_replay_core_does_not_import_django_replay`) — PR-3b
 - [ ] run_key collision writer-level (`test_artifact_writer_rejects_existing_dir`) — PR-1 (+ `--replace-existing` PR-3a)
@@ -136,13 +137,21 @@ Tasks:
 ## PR-CLI-3a — CLI artifact shell + `validate-artifact`
 Depends: CLI-1 (+CLI-2a) · File: [`pr-cli-3a-artifact-shell.md`](pr-cli-3a-artifact-shell.md)
 
-- [ ] Step 1 (TDD) — `test_run_key_safety.py` (traversal/separator/dot rejected; sibling-prefix variant)
-- [ ] Step 2 (TDD) — `test_manifest_schema_version.py` (guard A)
-- [ ] Step 3 (TDD) — `test_validate_artifact.py` (hash mismatch + lifecycle != ARTIFACT_WRITTEN fail)
-- [ ] Step 4 — implement CLI shell + `validate-artifact`; `run` returns typed "stack unavailable"
-- [ ] Step 5 — collision policy + `--replace-existing` (delete-then-rename on Windows)
-- [ ] Step 6 — ruff + mypy + purity gate
-- [ ] Done: CLI shell + validate-artifact work; run_key/root/schema/collision guards green; core-pure
+- [x] Step 1 (TDD) — `test_run_key_safety.py` (traversal/separator/dot/trailing-newline/empty rejected; sibling-prefix variant; 6 tests). `fullmatch` anchor closes `$`+`\n` bypass
+- [x] Step 2 (TDD) — `test_manifest_schema_version.py` (guard A): `parse_manifest_checked` rejects unknown/missing/non-int schema_version + non-dict top-level; malformed JSON → `JSONDecodeError` (6 tests). Lenient `from_json` left intact
+- [x] Step 3 (TDD) — `test_validate_artifact.py` (12 tests): hash mismatch / missing payload / lifecycle != ARTIFACT_WRITTEN / unknown schema / missing manifest / malformed JSON / bad lifecycle enum / missing required field all → VALIDATION_FAILED (branch pinned via `capsys` stderr substring)
+- [x] Step 4 — CLI shell `interfaces/cli/asteroid_solve.py` + `__main__.py` + `scripts/asteroid_solve.ps1`; `ExitCode` IntEnum (OK=0/VALIDATION_FAILED=10/STACK_UNAVAILABLE=20, 2 reserved for argparse); `run` enforces Guard C then returns typed STACK_UNAVAILABLE; `--allowed-root` default = configured sandbox `var/runs` (containment active by default)
+- [~] Step 5 — `--replace-existing` flag exposed on `run`; delete-then-rename collision policy already lives in `AtomicArtifactWriter` (PR-1). CLI flag is parsed/forwarded but inert in the 3a stub — real write-path wiring lands in PR-3b
+- [x] Step 6 — ruff clean; `mypy src` clean (87 files); black clean; purity + import-matrix + shim-identity gates green (51 passed)
+- [~] Done: CLI shell + validate-artifact fully fail-closed + core-pure; run_key/root/schema guards green; writer-level collision green (PR-1). Deferred to 3b: `--replace-existing` real wiring through CLI `run`
+
+### PR-CLI-3a amend — BA-9 console (pure CLI shell)
+
+Contract: [`obs-console-log.md`](obs-console-log.md)
+
+- [x] Step A1 (TDD) — `test_cli_console.py` (18 tests): formatter shape/field-order/null-omission/bool-lowercase + env gate ON default / OFF for `0`/`false`/`no` (case-insensitive) + no-op when disabled. Verbose gate deferred to 3b (out of amend scope)
+- [x] Step A2 — `cli_console.py` (stdlib-only `emit_cli_line` + `console_logging_enabled`, BA-1) + wired `validate-artifact` / `run` stub start/end stderr lines (end carries `exit`/`elapsed_ms`/`ok`, `run` carries `run_key`; end reflects exit code even on `ArtifactPathError` path)
+- [x] Step A3 — extended `test_validate_artifact.py` (3 `capsys` tests: success start/end `exit=0 ok=true`; failure `exit=10 ok=false`; disabled → no `asteroid_cli` line)
 
 ## PR-CLI-3b — Full pure CLI `run` (decode → stack → artifacts)
 Depends: CLI-2e AND CLI-3a · File: [`pr-cli-3b-full-run-stack.md`](pr-cli-3b-full-run-stack.md)
@@ -151,8 +160,9 @@ Depends: CLI-2e AND CLI-3a · File: [`pr-cli-3b-full-run-stack.md`](pr-cli-3b-fu
 - [ ] Step 2 — implement `run_stack` use case (decode/cleanup/recon/in-core stack_runner + JSON snapshot adapter)
 - [ ] Step 3 — implement `replay_core` emitter (core event construction only; Django enrichment left behind)
 - [ ] Step 4 (TDD) — `test_replay_core_monotonic.py` (B) + `test_cli_exit_codes.py` (BA-7) + `test_replay_core_no_django_replay.py` (E)
-- [ ] Step 5 — ruff + mypy + purity gate
-- [ ] Done: full pure CLI produces valid atomic artifact incl. streaming JSONL; exit codes mapped; no Django reachable
+- [ ] Step 5 (BA-9) — `--verbose` on `run`; `layer_done` stderr lines from stack (see [`obs-console-log.md`](obs-console-log.md)); no change to layer-stack JSONL files
+- [ ] Step 6 — ruff + mypy + purity gate
+- [ ] Done: full pure CLI produces valid atomic artifact incl. streaming JSONL; exit codes mapped; no Django reachable; BA-9 verbose path green
 
 ## PR-CLI-4 — Django subprocess mode + artifact ingest
 Depends: CLI-3b · File: [`pr-cli-4-django-subprocess-ingest.md`](pr-cli-4-django-subprocess-ingest.md)
@@ -162,9 +172,10 @@ Depends: CLI-3b · File: [`pr-cli-4-django-subprocess-ingest.md`](pr-cli-4-djang
 - [ ] Step 3 (TDD) — `solver_subprocess_runner` (mock: `shell=False`, list args, timeout, traversal rejected) (BA-7)
 - [ ] Step 4 (TDD) — `artifact_ingest` (hash mismatch fail-closed; partial rejected; index-only writes) (BA-5)
 - [ ] Step 5 — wire HTTP/management opt-in flags
+- [ ] Step 5b (BA-9) — `cli_invoke_trace` + `ASTEROID_LAB_CLI_*` settings; verbose in layer02; `subprocess_stream_tee` in runner; tests ([`obs-console-log.md`](obs-console-log.md))
 - [ ] Step 6 — integration test subprocess mode end-to-end (small fixture)
 - [ ] Step 7 — ruff + mypy + full gate
-- [ ] Done: both modes work; subprocess produces + ingests safely; index-only DB writes; integration green
+- [ ] Done: both modes work; subprocess produces + ingests safely; index-only DB writes; integration green; BA-9 HTTP + subprocess tee green
 
 ## PR-CLI-5 — DB demotion + artifact-first replay
 Depends: CLI-4 · File: [`pr-cli-5-db-demotion-replay.md`](pr-cli-5-db-demotion-replay.md)

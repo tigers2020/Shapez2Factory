@@ -1,9 +1,16 @@
 # PR-CLI-3b — Full Pure CLI `run` (decode → stack → artifacts)
 
 **Type:** implementation change
-**Depends on:** PR-CLI-2e (L3–L6 + stack_runner in core) **AND** PR-CLI-3a
+**Depends on:** PR-CLI-2e (L3–L6 + stack_runner in core) **AND** PR-CLI-2f (decode/cleanup/reconstruction in core) **AND** PR-CLI-3a
 **Enables:** PR-CLI-4
 **Branch (suggested):** `feat/asteroid-cli-first-full-run`
+
+> **BLOCKED until PR-CLI-2f merges (SA-6, 2026-05-30).** An audit on the post-2e branch found the
+> decode / cleanup / reconstruction **algorithm bodies still in `django_apps`** (core had DTO +
+> `complete_map` merge only). Assembling the full run in core before 2f would force a `django_apps`
+> import → BA-1 violation. PR-CLI-2f relocates that pipeline first; only then can `run_stack.py` chain
+> decode→cleanup→recon→core stack with no Django. See
+> [`pr-cli-2f-decode-cleanup-reconstruction-move.md`](pr-cli-2f-decode-cleanup-reconstruction-move.md).
 
 ---
 
@@ -36,9 +43,9 @@ end-to-end with **no Django required**, writing the full atomic artifact directo
 
 | Action | Path | Why |
 |--------|------|-----|
-| Implement | `src/shapez2_factory/application/asteroid_lab/run_stack.py` | real `RunStackUseCase` (replaces 3a stub) |
+| Implement | `src/shapez2_factory/application/asteroid_lab/run_stack.py` | real `RunStackUseCase` (replaces 3a stub); chains the **PR-CLI-2f** core decode/cleanup/recon + core stack_runner |
 | Create | `src/shapez2_factory/application/asteroid_lab/replay_core.py` | core JSONL replay emitter (deterministic) |
-| Create | `src/shapez2_factory/adapters/asteroid_lab/copy_decode_adapter.py` | pure decode wrap |
+| (from 2f) | `src/shapez2_factory/adapters/asteroid_lab/copy_decode_adapter.py` | pure decode wrap — **created in PR-CLI-2f**, consumed here |
 | Modify | `src/shapez2_factory/interfaces/cli/asteroid_solve.py` | `run` now executes full stack; `--verbose` (BA-9) |
 | Modify | in-core stack / `run_stack.py` | optional `layer_done` via `cli_console` when verbose |
 | Create | `tests/unit/shapez2_factory/test_cli_run_artifact.py` | full round-trip |
@@ -106,7 +113,7 @@ python -m shapez2_factory.interfaces.cli.asteroid_solve run \
 ## Tasks
 
 - [ ] **Step 1 (TDD):** `test_cli_run_artifact.py` — run on fixture; final dir only after success; manifest hashes valid; all output files present; JSONL parses per line.
-- [ ] **Step 2:** Implement `run_stack` use case (decode/cleanup/recon/in-core stack_runner + JSON snapshot adapter).
+- [ ] **Step 2:** Implement `run_stack` use case — **wire** the core decode/cleanup/recon pipeline (relocated in PR-CLI-2f) + in-core stack_runner + `JsonSnapshotGameDataRulesAdapter.from_file` (no `build_orm_game_data_rules`). Note: core `run_layer_02_exterior_transport` needs `capacity_envelope` + `throughput_target_percent` + `rules`; resolve the L2 real-planning wiring here (capacity envelope source per 2f "Open item").
 - [ ] **Step 3:** Implement `replay_core` emitter; pull core event construction from former
   [`replay/solver_runtime_assembler.py`](../../../../django_apps/asteroid_lab/replay/solver_runtime_assembler.py) core portion; leave Django enrichment behind.
 - [ ] **Step 4 (TDD):** `test_replay_core_monotonic.py` (guard B) + `test_cli_exit_codes.py` (BA-7) + `test_replay_core_no_django_replay.py` (guard E).

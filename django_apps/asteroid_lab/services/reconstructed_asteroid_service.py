@@ -12,6 +12,7 @@ from django_apps.asteroid_lab.adapters.reconstruction_blueprint_export import (
     load_reconstruction_cells_from_decoded_json,
 )
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
+from django_apps.asteroid_lab.observability.boundary_jsonl import DJANGO_BOUNDARY_SINK
 from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
@@ -47,6 +48,7 @@ def run_reconstruction_for_map_input(
         boundary_run_id=rid,
         boundary_map_input_id=snap.map_input_id,
         boundary_project_id=snap.project_id,
+        boundary_sink=DJANGO_BOUNDARY_SINK,
     )
     return cleanup, recon
 

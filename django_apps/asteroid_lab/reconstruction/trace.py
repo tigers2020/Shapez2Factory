@@ -1,34 +1,10 @@
-"""Output-only reconstruction trace (never algorithm input)."""
+"""Shim — relocated to ``shapez2_factory.domain.asteroid_lab.reconstruction.trace`` (PR-CLI-2f)."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from shapez2_factory.domain.asteroid_lab.reconstruction.trace import (
+    ReconstructionTraceCollector,
+    ReconstructionTraceEvent,
+)
 
-from django_apps.asteroid_lab.reconstruction.grid import Coord
-
-
-@dataclass(frozen=True, slots=True)
-class ReconstructionTraceEvent:
-    """One logical trace step for replay assembly."""
-
-    phase: str
-    trace_event_type: str
-    coords: frozenset[Coord]
-    summary_json: dict[str, Any]
-
-
-class ReconstructionTraceCollector:
-    """Append-only collector; optional on ``reconstruct_after_cleanup``."""
-
-    __slots__ = ("_events",)
-
-    def __init__(self) -> None:
-        self._events: list[ReconstructionTraceEvent] = []
-
-    def append(self, event: ReconstructionTraceEvent) -> None:
-        self._events.append(event)
-
-    @property
-    def events(self) -> tuple[ReconstructionTraceEvent, ...]:
-        return tuple(self._events)
+__all__ = ["ReconstructionTraceCollector", "ReconstructionTraceEvent"]

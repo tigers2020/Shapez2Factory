@@ -19,7 +19,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` skipped (d
 
 - [ ] BA-1 `src/shapez2_factory/**` imports no `django`, `django_apps`, `config`, ORM, settings, web/replay UI (one-direction shims only)
 - [ ] BA-2 no monolithic move PR; 2a–2e split + CLI as own PR
-- [ ] BA-3 no active L3 relocation during boundary-m-repack PR-B/C; PR-CLI-2e gated
+- [x] BA-3 no active L3 relocation during boundary-m-repack PR-B/C; PR-CLI-2e gated — GATE opened after PR #133 (`895a5ecb`) merged; 2e executed post-merge
 - [ ] BA-4 `output/replay_core.jsonl` is core/deterministic; Django enrichment only; no web-ready core payload
 - [ ] BA-5 atomic write `.tmp/<run_key>` → hash → manifest last → rename; DB ingest after `ARTIFACT_WRITTEN`
 - [ ] BA-6 Phase D manifest parsing via `artifact_manifest_reader.py` (Option 1, no core import)
@@ -30,10 +30,11 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` skipped (d
 ## 2. Structural amendments (2nd review)
 
 - [x] SA-1 PR-CLI-2d drops `stack_runner` move (L2 + shared + contracts only)
-- [ ] SA-2 `stack_runner` moves in PR-CLI-2e together with L3–L6 (no bridge ever)
+- [x] SA-2 `stack_runner` moves in PR-CLI-2e together with L3–L6 (no bridge ever) — done via Approach A (core returns records; Django wrapper writes); core has zero `django_apps` imports
 - [x] SA-3 PR-CLI-3 split into 3a (artifact shell) + 3b (full run) — 3a landed as standalone PR; 3b remains planned
 - [ ] SA-4 PR-CLI-2c gains blocking `display_map` pure/viewer split
 - [ ] SA-5 PR-CLI-6 uses Option A (in-process removed from request path entirely)
+- [ ] SA-6 PR-CLI-2f inserted before 3b — decode/cleanup/reconstruction pipeline move to core; 3b now depends on 2f (audit: algorithm bodies still in `django_apps`; decision C→A 2026-05-30)
 
 ## 3. Cross-cutting guards (land in listed PR, stay green after)
 
@@ -119,25 +120,41 @@ Depends: CLI-2b, CLI-2c · File: [`pr-cli-2d-l2-shared-contracts-move.md`](pr-cl
 ## PR-CLI-2e — L3..L6 + stack_runner move (GATED)
 Depends: CLI-2d AND L3 boundary-m-repack PR-B/C merged+green · File: [`pr-cli-2e-l3-gated-move.md`](pr-cli-2e-l3-gated-move.md)
 
-GATE (BA-3) — all must be true before starting:
-- [ ] boundary-m-repack PR-B merged to master
-- [ ] PR-C merged or explicitly out of scope
-- [ ] Lab gate green on master with new L3
-- [ ] no open PR editing `layer_03_rim_mining_bundles/**`
+GATE (BA-3) — all verified OPEN (2026-05-30):
+- [x] boundary-m-repack PR-B merged to master — **PR #133** (`895a5ecba7f2022adfa97fd584bc84eedaf9b8f6`)
+- [x] PR-C merged or explicitly out of scope — no separate PR-C; m3e_01 fully in #133 (out of scope)
+- [x] Lab gate green on master with new L3 — layers+replay 173 + core 85 green @ `895a5ecb`
+- [x] no open PR editing `layer_03_*` — `gh pr list --state open` = []
 
-GATE evidence (2026-05-30): PR-B (m3e_01 inward-chain greedy, algorithm enhancement) algorithm body is
-green on working branch — Gate A `pytest tests/unit/asteroid_lab/layers/ -v` passed; combined
-layers+replay 173 passed. **Not yet merged to master**; gate stays closed until PR-B merged + Lab gate
-green on master. Design/plan: [`../2026-05-30-layer-03-boundary-m-repack-greedy/`](../2026-05-30-layer-03-boundary-m-repack-greedy/README.md).
+GATE evidence: opened after PR #133 (m3e_01 inward-chain greedy) merged to master `2026-05-30T22:21:45Z`.
+Active L3 is `layer_03_rim_greedy_placement` (12 files); legacy `layer_03_rim_mining_bundles` + `layer_04`
+are stubs. Design/plan: [`../2026-05-30-layer-03-boundary-m-repack-greedy/`](../2026-05-30-layer-03-boundary-m-repack-greedy/README.md).
+Merge integration SHA on this branch: `b566d4f8` (includes #134 L3–L6 + #135 pipeline).
 
 Tasks:
-- [ ] Step 0 — verify GATE; record merged boundary-m-repack SHA in PR description
-- [ ] Step 1 — move L3–L6; rewrite imports to core paths; shim originals
-- [ ] Step 2 — move `stack_runner`; point at in-core L3–L6; inject clock/flags
-- [ ] Step 3 — confirm no `_l3_l6_bridge` anywhere; purity gate zero `django_apps` exceptions
-- [ ] Step 4 — full layer + stack_runner budget + L3 repack tests
-- [ ] Step 5 — ruff + mypy + recon gates
-- [ ] Done: L3–L6 + stack_runner in core; no bridge; purity clean; behavior identical to master
+- [x] Step 0 — GATE verified OPEN; SHA `895a5ecb` recorded (#133)
+- [x] Step 1 — moved L3 greedy(12)+legacy+L4/L5/L6; shims at all originals
+- [x] Step 2 — `stack_runner` in core; Django wrapper owns L1/session/settings/write
+- [x] Step 3 — no `_l3_l6_bridge`; core zero `django_apps`/`from django` imports; purity gate green
+- [x] Step 4 — full layer + stack_runner budget + L3 repack tests green
+- [x] Step 5 — ruff + mypy + recon gates
+- [x] Done: L3–L6 + stack_runner in core; no bridge; purity clean; behavior identical to master
+
+## PR-CLI-2f — Decode / Cleanup / Reconstruction pipeline core move
+Depends: CLI-2e · File: [`pr-cli-2f-decode-cleanup-reconstruction-move.md`](pr-cli-2f-decode-cleanup-reconstruction-move.md) · PR [#135](https://github.com/tigers2020/Shapez2Factory/pull/135)
+
+Inserted 2026-05-30 (SA-6) to unblock 3b's "no Django" full run. Audit found decode (`decode_adapter`),
+cleanup (`cleanup/pipeline`), reconstruction (`reconstruction/pipeline`) algorithm bodies still in
+`django_apps`; core had DTO + `complete_map` merge only.
+
+- [x] Step 1 (audit) — DONE 2026-05-30: **15-module** move set confirmed (decode/input 5: `decode_adapter`, `normalization`, `decoded_blueprint_snapshot`, `cell_classifier`, `copy_json_coords`; cleanup 1: `cleanup/pipeline`; reconstruction 9: `pipeline`, `confidence`, `fill`, `flood_fill`, `island`, `perimeter_closing`, `shell`, `trace`, `topology_contract`). Zero direct django/ORM/settings in bodies; boundary side-effect = 3 emit sites; DTOs + `display_map` helpers already core. No stop condition.
+- [x] Step 2 (TDD, tests-first → red) — 5 target tests added; RED-for-right-reason confirmed pre-move
+- [x] Step 3 (BLOCKING) — core `BoundaryTraceSink` Protocol (default no-op); `summarize_cell_kind_transitions` in core; 3 emit sites rewired; `DJANGO_BOUNDARY_SINK` adapter
+- [x] Step 4 (move) — 15 modules in core; intra-core imports; lazy `display_map`→`complete_map_merge`; explicit shims
+- [x] Step 5 (TDD, parity) — 19 target tests green; Django-free subprocess full-pipeline green
+- [x] Step 6 — `pytest tests/unit/asteroid_lab tests/unit/architecture`: 791 passed, 1 xfailed; purity + shim-identity gates green
+- [x] Step 7 — ruff + `mypy src` + black clean
+- [x] Done: decode+cleanup+reconstruction in pure core; observability via injected sink; shims preserve surface; parity + Django-free subprocess green; purity zero `django_apps` exceptions
 
 ## PR-CLI-3a — CLI artifact shell + `validate-artifact`
 Depends: CLI-1 (+CLI-2a) · File: [`pr-cli-3a-artifact-shell.md`](pr-cli-3a-artifact-shell.md)
@@ -159,7 +176,10 @@ Contract: [`obs-console-log.md`](obs-console-log.md)
 - [x] Step A3 — extended `test_validate_artifact.py` (3 `capsys` tests: success start/end `exit=0 ok=true`; failure `exit=10 ok=false`; disabled → no `asteroid_cli` line)
 
 ## PR-CLI-3b — Full pure CLI `run` (decode → stack → artifacts)
-Depends: CLI-2e AND CLI-3a · File: [`pr-cli-3b-full-run-stack.md`](pr-cli-3b-full-run-stack.md)
+Depends: CLI-2e AND CLI-2f AND CLI-3a · File: [`pr-cli-3b-full-run-stack.md`](pr-cli-3b-full-run-stack.md)
+
+> **Blocked until PR-CLI-2f merges** (SA-6): decode/cleanup/reconstruction must be in core first, else
+> `run_stack.py` would import `django_apps` (BA-1 violation).
 
 - [ ] Step 1 (TDD) — `test_cli_run_artifact.py` (final dir only after success; manifest hashes; outputs present; JSONL parses per line)
 - [ ] Step 2 — implement `run_stack` use case (decode/cleanup/recon/in-core stack_runner + JSON snapshot adapter)

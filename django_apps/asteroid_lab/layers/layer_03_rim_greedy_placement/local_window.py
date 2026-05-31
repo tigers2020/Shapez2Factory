@@ -1,26 +1,10 @@
-"""Local DPS search window for rim greedy route probe."""
+"""Shim: relocated to
+shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.local_window."""
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.snapshots.grid_contract import (
-    BBox,
-    Coord,
-    bbox_from_coords,
-    expand_bbox,
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.local_window import (  # noqa: E501
+    compute_greedy_search_bbox,
 )
-
-
-def compute_greedy_search_bbox(
-    *,
-    equipment_cells: frozenset[Coord],
-    stub_cells: frozenset[Coord],
-    goal_coords: frozenset[Coord],
-    margin: int,
-) -> BBox:
-    """Inclusive bbox over footprint, stubs, goals, expanded by policy margin."""
-    seed_coords = equipment_cells | stub_cells | goal_coords
-    base = bbox_from_coords(seed_coords)
-    return expand_bbox(base, margin)
-
 
 __all__ = ["compute_greedy_search_bbox"]

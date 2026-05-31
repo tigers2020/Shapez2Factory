@@ -1,18 +1,10 @@
-"""Layer 6 stub — commit / validate (PR-1 skeleton; renumbered PR-3c)."""
+"""Shim: relocated to
+shapez2_factory.application.asteroid_lab.layers.layer_06_commit_validate.run."""
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
-from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
-
-
-def run_layer_06_commit_validate(
-    *,
-    complete_map: ReconstructionCompleteMap,
-    budget_ctx: LayerBudgetContext,
-) -> None:
-    _ = complete_map
-    _ = budget_ctx
-
+from shapez2_factory.application.asteroid_lab.layers.layer_06_commit_validate.run import (
+    run_layer_06_commit_validate,
+)
 
 __all__ = ["run_layer_06_commit_validate"]

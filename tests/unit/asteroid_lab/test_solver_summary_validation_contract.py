@@ -100,6 +100,39 @@ def test_layer_outcomes_derive_completed_slugs_from_layer_summaries() -> None:
     assert layers[LAYER_06_COMMIT_VALIDATE]["outcome"] == "failed"
 
 
+def test_layer02_highlights_read_shortfall_metrics_from_cli_layer_summaries() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=2,
+        status="completed",
+        solver_summary={
+            "stack_run_status": "success",
+            "completed_layer_slugs": [LAYER_02_EXTERIOR_TRANSPORT],
+            "layer_summaries": [
+                {
+                    "layer_slug": LAYER_02_EXTERIOR_TRANSPORT,
+                    "outcome": "completed",
+                    "metrics": {
+                        "required_connector_count": 866,
+                        "required_planned_count": 120,
+                        "planned_connector_count": 120,
+                        "candidate_slot_count": 120,
+                        "connector_shortfall_count": 746,
+                        "unmet_reason": "insufficient_connector_sites",
+                    },
+                }
+            ],
+        },
+    )
+    layers = {layer["layer_slug"]: layer for layer in row["layer_summaries"]}
+    l2 = layers[LAYER_02_EXTERIOR_TRANSPORT]
+    labels = {item["label"]: item["value"] for item in l2["highlights"]}
+    assert labels["Required planned"] == "120"
+    assert labels["Planned connectors"] == "120"
+    assert labels["Candidate slots"] == "120"
+    assert labels["Connector shortfall"] == "746"
+    assert labels["Unmet reason"] == "insufficient_connector_sites"
+
+
 def test_layer03_highlights_read_nested_cli_layer_summaries() -> None:
     row = lab_run_summary_from_solver_summary(
         run_id=1,

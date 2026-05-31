@@ -8,6 +8,9 @@ from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
 from django_apps.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionShortfallReason,
 )
+from django_apps.asteroid_lab.layers.contracts.exterior_connector_role import (
+    ExteriorConnectorRole,
+)
 from django_apps.asteroid_lab.layers.layer_02_exterior_transport.layout_t import (
     default_exterior_connector_layout_t,
 )
@@ -19,6 +22,9 @@ from django_apps.asteroid_lab.layers.layer_02_exterior_transport.rotation import
 )
 from django_apps.asteroid_lab.layers.layer_02_exterior_transport.wire import (
     exterior_connector_plan_to_metrics_dict,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport import (
+    plan as plan_mod,
 )
 from tests.unit.asteroid_lab.layers.helpers.l02_complete_map_fixtures import (
     build_rect_field_with_void_shell,
@@ -42,8 +48,18 @@ def test_required_connectors_uses_evtc_ceildiv_shape() -> None:
 
 
 @pytest.mark.django_db
-def test_insufficient_slots_fail_closed() -> None:
+def test_zero_candidate_slots_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     cm = build_rect_field_with_void_shell(width=2, height=2, void_pad=3)
+    monkeypatch.setattr(
+        plan_mod,
+        "build_candidate_slots_by_edge",
+        lambda _cm: {
+            CardinalEdge.NORTH: [],
+            CardinalEdge.EAST: [],
+            CardinalEdge.SOUTH: [],
+            CardinalEdge.WEST: [],
+        },
+    )
     plan = build_exterior_connection_plan(
         complete_map=cm,
         resource_kind="shape",
@@ -53,6 +69,38 @@ def test_insufficient_slots_fail_closed() -> None:
     )
     assert plan.unmet_reason == ExteriorConnectionShortfallReason.NO_FEASIBLE_CONNECTOR_SITES
     assert plan.planned_connectors == ()
+    assert plan.required_connector_count > 0
+
+
+@pytest.mark.django_db
+def test_insufficient_slots_places_partial_required(monkeypatch: pytest.MonkeyPatch) -> None:
+    cm = build_rect_field_with_void_shell(width=10, height=10, void_pad=12)
+    fake_slots = {
+        CardinalEdge.NORTH: [(0, -12), (5, -12), (10, -12)],
+        CardinalEdge.EAST: [(22, 5), (22, 10)],
+        CardinalEdge.SOUTH: [],
+        CardinalEdge.WEST: [],
+    }
+    monkeypatch.setattr(
+        plan_mod,
+        "build_candidate_slots_by_edge",
+        lambda _cm: fake_slots,
+    )
+    total_slots = 5
+    plan = build_exterior_connection_plan(
+        complete_map=cm,
+        resource_kind="shape",
+        terrain_upper_bound_per_min=Decimal("999999"),
+        throughput_target_percent=100,
+        speed_tier=1,
+    )
+    required_planned = sum(
+        1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.REQUIRED
+    )
+    assert plan.required_connector_count > total_slots
+    assert plan.unmet_reason == ExteriorConnectionShortfallReason.INSUFFICIENT_CONNECTOR_SITES
+    assert required_planned == total_slots
+    assert len(plan.planned_connectors) == total_slots
 
 
 @pytest.mark.django_db
@@ -71,6 +119,36 @@ def test_planned_connector_snapshot_fields() -> None:
     assert row.coords == (row.void_coord,)
     assert row.layout_t == "SpaceBelt_Forward"
     assert 0 <= row.rotation <= 3
+
+
+@pytest.mark.django_db
+def test_wire_includes_shortfall_metrics_when_insufficient_slots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cm = build_rect_field_with_void_shell(width=10, height=10, void_pad=12)
+    fake_slots = {
+        CardinalEdge.NORTH: [(0, -12), (5, -12)],
+        CardinalEdge.EAST: [(22, 5)],
+        CardinalEdge.SOUTH: [],
+        CardinalEdge.WEST: [],
+    }
+    monkeypatch.setattr(
+        plan_mod,
+        "build_candidate_slots_by_edge",
+        lambda _cm: fake_slots,
+    )
+    plan = build_exterior_connection_plan(
+        complete_map=cm,
+        resource_kind="shape",
+        terrain_upper_bound_per_min=Decimal("999999"),
+        throughput_target_percent=100,
+        speed_tier=1,
+    )
+    wire = exterior_connector_plan_to_metrics_dict(plan)["exterior_connector_plan"]
+    assert wire["unmet_reason"] == "insufficient_connector_sites"
+    assert wire["candidate_slot_count"] == 3
+    assert wire["connector_shortfall_count"] == plan.required_connector_count - 3
+    assert wire["required_planned_count"] == 3
 
 
 @pytest.mark.django_db

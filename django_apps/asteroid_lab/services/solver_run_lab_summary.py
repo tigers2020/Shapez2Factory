@@ -717,6 +717,30 @@ def _build_layer_summaries(
                     ),
                 ),
                 _highlight(
+                    "Candidate slots",
+                    (
+                        l2_plan.get("candidate_slot_count", _PLACEHOLDER)
+                        if isinstance(l2_plan, dict)
+                        else _PLACEHOLDER
+                    ),
+                ),
+                _highlight(
+                    "Connector shortfall",
+                    (
+                        l2_plan.get("connector_shortfall_count", _PLACEHOLDER)
+                        if isinstance(l2_plan, dict)
+                        else _PLACEHOLDER
+                    ),
+                ),
+                _highlight(
+                    "Unmet reason",
+                    (
+                        l2_plan.get("unmet_reason", _PLACEHOLDER)
+                        if isinstance(l2_plan, dict)
+                        else _PLACEHOLDER
+                    ),
+                ),
+                _highlight(
                     "Required normal lines",
                     capacity.get("external_line_count") if primary == "shape" else _PLACEHOLDER,
                 ),

@@ -82,7 +82,7 @@ def build_exterior_connection_plan(
     edge_slots = build_candidate_slots_by_edge(complete_map)
     total_slots = sum(len(slots) for slots in edge_slots.values())
 
-    if total_slots < required:
+    if total_slots == 0:
         return _empty_plan(
             transport_kind=resource_kind,
             terrain_upper_bound_per_min=terrain_upper_bound_per_min,
@@ -94,10 +94,11 @@ def build_exterior_connection_plan(
             unmet_reason=ExteriorConnectionShortfallReason.NO_FEASIBLE_CONNECTOR_SITES,
         )
 
+    required_to_place = min(required, total_slots)
     connectors = _place_connectors_for_role(
         resource_kind=resource_kind,
         edge_slots=edge_slots,
-        count=required,
+        count=required_to_place,
         capacity_per_min=cap_res.capacity_per_min,
         role=ExteriorConnectorRole.REQUIRED,
         seq_start=0,
@@ -121,6 +122,10 @@ def build_exterior_connection_plan(
                 )
             )
 
+    unmet_reason: ExteriorConnectionShortfallReason | None = None
+    if required_to_place < required:
+        unmet_reason = ExteriorConnectionShortfallReason.INSUFFICIENT_CONNECTOR_SITES
+
     return ExteriorConnectionPlan(
         transport_kind=resource_kind,
         terrain_upper_bound_per_min=terrain_upper_bound_per_min,
@@ -130,7 +135,8 @@ def build_exterior_connection_plan(
         reference_connector_count=reference,
         spare_connector_count=spare,
         planned_connectors=tuple(connectors),
-        unmet_reason=None,
+        unmet_reason=unmet_reason,
+        candidate_slot_count=total_slots,
     )
 
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import GeneCatalogSnapshot
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import GeneticSampleSeedSnapshot
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
@@ -22,10 +22,10 @@ from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
 )
 
 
-def _present_gene_catalog() -> GeneCatalogSnapshot:
-    return GeneCatalogSnapshot.from_payload(
+def _present_gene_catalog() -> GeneticSampleSeedSnapshot:
+    return GeneticSampleSeedSnapshot.from_payload(
         {
-            "schema_version": "gene_catalog_v1",
+            "schema_version": "genetic_sample_seed_v1",
             "entries": [
                 {
                     "gene_id": "m3e_01",
@@ -49,7 +49,7 @@ def test_layer_03_v2_commits_provisional_placement_with_present_catalog() -> Non
         complete_map=golden_5x5_complete_map(),
         exterior_plan=minimal_l2_plan_for_golden(),
         budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
-        gene_catalog=_present_gene_catalog(),
+        genetic_sample_seeds=_present_gene_catalog(),
     )
     assert result.metrics.committed_placement_count == 1
     assert result.metrics.layer_skip_reason is None

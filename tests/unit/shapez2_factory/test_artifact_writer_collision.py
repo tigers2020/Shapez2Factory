@@ -1,4 +1,4 @@
-"""PR-CLI-1 Step 3 — writer-level collision policy + content_hashes excludes manifest."""
+"""PR-CLI-1 Step 3 ??writer-level collision policy + content_hashes excludes manifest."""
 
 from __future__ import annotations
 

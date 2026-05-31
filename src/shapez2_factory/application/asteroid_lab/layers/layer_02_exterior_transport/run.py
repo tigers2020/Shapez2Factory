@@ -1,4 +1,4 @@
-"""Layer 2 exterior transport — builds ExteriorConnectionPlan from complete map."""
+"""Layer 2 exterior transport ??builds ExteriorConnectionPlan from complete map."""
 
 from __future__ import annotations
 

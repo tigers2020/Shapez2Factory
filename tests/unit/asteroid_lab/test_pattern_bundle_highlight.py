@@ -1,4 +1,4 @@
-"""Pattern bundle highlight wire — replay/UI artifact only."""
+"""Pattern bundle highlight wire ??replay/UI artifact only."""
 
 from __future__ import annotations
 

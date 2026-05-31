@@ -4,18 +4,18 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
-from django_apps.asteroid_lab.layers.contracts.exterior_connection import (
-    ExteriorConnectionPlan,
-    ExteriorConnector,
-)
-from django_apps.asteroid_lab.layers.contracts.exterior_connector_role import (
-    ExteriorConnectorRole,
-)
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.reconstruction.rim_topology import field_rim_cells
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
+from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
+    ExteriorConnectionPlan,
+    ExteriorConnector,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connector_role import (
+    ExteriorConnectorRole,
+)
 
 _FIELD_ORIGIN = 2
 _FIELD_SIZE = 5

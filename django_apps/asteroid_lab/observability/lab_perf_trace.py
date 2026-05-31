@@ -6,6 +6,7 @@ Enable with ``ASTEROID_LAB_PERF_TRACE=1``. Lines append under
 
 from __future__ import annotations
 
+import contextvars
 import json
 import threading
 import time
@@ -17,7 +18,10 @@ from pathlib import Path
 from typing import Any
 
 _write_lock = threading.Lock()
-_active: _Collector | None = None
+_active_var: contextvars.ContextVar[_Collector | None] = contextvars.ContextVar(
+    "lab_perf_trace_active",
+    default=None,
+)
 
 
 @dataclass
@@ -46,53 +50,56 @@ def lab_perf_trace_log_path() -> Path:
 def record_perf_meta(**fields: Any) -> None:
     """Attach scalar metadata to the active request trace (no-op when disabled)."""
 
-    if _active is None:
+    active = _active_var.get()
+    if active is None:
         return
     for key, value in fields.items():
-        _active.meta[key] = value
+        active.meta[key] = value
 
 
 def record_perf_ms(phase: str, elapsed_ms: float) -> None:
     """Record a pre-measured phase duration in milliseconds."""
 
-    if _active is None:
+    active = _active_var.get()
+    if active is None:
         return
-    _active.phases_ms[str(phase)] = float(elapsed_ms)
+    active.phases_ms[str(phase)] = float(elapsed_ms)
 
 
 @contextmanager
 def perf_span(phase: str) -> Iterator[None]:
     """Time one phase when a ``lab_perf_trace_request`` context is active."""
 
-    if _active is None:
+    active = _active_var.get()
+    if active is None:
         yield
         return
     t0 = time.monotonic()
     try:
         yield
     finally:
-        _active.phases_ms[str(phase)] = (time.monotonic() - t0) * 1000.0
+        current = _active_var.get()
+        if current is not None:
+            current.phases_ms[str(phase)] = (time.monotonic() - t0) * 1000.0
 
 
 @contextmanager
 def lab_perf_trace_request(*, request_kind: str, **meta: Any) -> Iterator[None]:
     """Collect phase timings for one HTTP handler; emit one JSONL line on exit."""
 
-    global _active
     if not lab_perf_trace_enabled():
         yield
         return
 
     col = _Collector(request_kind=str(request_kind), meta=dict(meta))
-    previous = _active
-    _active = col
+    token = _active_var.set(col)
     t0 = time.monotonic()
     try:
         yield
     finally:
         col.phases_ms["total_ms"] = (time.monotonic() - t0) * 1000.0
         emit_lab_perf_trace(col)
-        _active = previous
+        _active_var.reset(token)
 
 
 def emit_lab_perf_trace(collector: _Collector) -> None:

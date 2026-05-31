@@ -1,0 +1,27 @@
+---
+description: "Vercel Web Interface Guidelines — MUST reference when building/reviewing Django web UI (templates, static JS/CSS, frontend) (auto-applies on matched globs)"
+globs:
+  - django_apps/web/templates/**
+  - django_apps/web/static/**
+  - frontend/**
+alwaysApply: false
+---
+
+# Web interface guidelines (MUST)
+
+Persona: **Gina** ([persona/README.md](mdc:persona/README.md)). Manual: [frontend.md](mdc:documents/ai/manuals/frontend.md).
+
+When building or reviewing **any Django web interface** (HTML templates, static JS/CSS, `frontend/**`), **always reference** the canonical checklist:
+
+- Source of truth (fetch latest): https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md
+
+Repo canonical docs ([frontend.md](mdc:documents/ai/manuals/frontend.md), [architecture.mdc](mdc:.cursor/rules/architecture.mdc), [django.md](mdc:documents/ai/manuals/django.md)) take precedence on conflict; the guidelines are the default UI quality bar otherwise.
+
+## MUST
+
+- ⬜ Check changed files against guideline categories: **Accessibility · Focus States · Forms · Animation · Typography · Content Handling · Images · Performance · Navigation & State · Touch & Interaction · Safe Areas & Layout · Dark Mode & Theming · Locale & i18n · Hydration Safety · Hover & Interactive States · Content & Copy**
+- ⬜ Flag anti-patterns: `user-scalable=no` / `maximum-scale=1`, `transition: all`, `outline-none` without `focus-visible`, icon-only buttons without `aria-label`, form inputs without labels, `<img>` without `width`/`height`, large `.map()` without virtualization, hardcoded date/number (use `Intl.*`)
+- ✅ Keep business policy out of UI ([architecture.mdc](mdc:.cursor/rules/architecture.mdc))
+- ✅ Keep views thin ([django.md](mdc:documents/ai/manuals/django.md))
+
+Closing: [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc) Caveman six sections.

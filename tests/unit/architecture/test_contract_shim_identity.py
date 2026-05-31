@@ -42,7 +42,7 @@ _CONTRACT_CASES = [
     ("IntegratedRimGreedyResult", "rim_greedy"),
 ]
 
-# (symbol, django_dotted_path, core_dotted_path) — full triples (paths differ from contracts base).
+# (symbol, django_dotted_path, core_dotted_path) ??full triples (paths differ from contracts base).
 _FULL_PATH_CASES = [
     (
         "Direction",

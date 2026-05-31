@@ -9,7 +9,7 @@ from django_apps.asteroid_lab.services.solver_subprocess_runner import (
     SolverSubprocessRequest,
     build_solver_cli_args,
 )
-from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import GeneCatalogSnapshot
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import GeneticSampleSeedSnapshot
 from shapez2_factory.adapters.asteroid_lab.json_snapshot_rules import (
     JsonSnapshotGameDataRulesAdapter,
 )
@@ -19,8 +19,8 @@ _FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab
 _SNAPSHOT_FIXTURE = _FIXTURE_ROOT / "game_data_snapshot_min.json"
 _COPY_FIXTURE = _FIXTURE_ROOT / "reconstruction_required_.txt"
 
-_GENE_CATALOG_PAYLOAD = {
-    "schema_version": "gene_catalog_v1",
+_GENETIC_SAMPLE_SEEDS_PAYLOAD = {
+    "schema_version": "genetic_sample_seed_v1",
     "entries": [],
 }
 
@@ -30,7 +30,7 @@ def test_cli_args_include_gene_catalog(tmp_path: Path) -> None:
         run_key="k1",
         copy_code="SHAPEZ2-4-x",
         game_data_snapshot={"schema_version": "game_data_snapshot_v1"},
-        gene_catalog=_GENE_CATALOG_PAYLOAD,
+        genetic_sample_seeds=_GENETIC_SAMPLE_SEEDS_PAYLOAD,
         artifact_root=tmp_path,
         allowed_root=tmp_path,
         timeout_seconds=5.0,
@@ -39,27 +39,27 @@ def test_cli_args_include_gene_catalog(tmp_path: Path) -> None:
         req,
         copy_path=tmp_path / "c.txt",
         snapshot_path=tmp_path / "s.json",
-        gene_catalog_path=tmp_path / "g.json",
+        genetic_sample_seeds_path=tmp_path / "g.json",
     )
-    assert "--gene-catalog" in args
-    idx = args.index("--gene-catalog")
+    assert "--genetic-sample-seeds" in args
+    idx = args.index("--genetic-sample-seeds")
     assert args[idx + 1] == str(tmp_path / "g.json")
 
 
 def test_run_stack_accepts_gene_catalog_kwarg() -> None:
     sig = inspect.signature(RunStackUseCase.run)
-    assert "gene_catalog" in sig.parameters
+    assert "genetic_sample_seeds" in sig.parameters
 
 
 def test_run_stack_runs_with_gene_catalog_none_and_snapshot() -> None:
     rules = JsonSnapshotGameDataRulesAdapter.from_file(_SNAPSHOT_FIXTURE)
     copy_text = _COPY_FIXTURE.read_text(encoding="utf-8").strip().splitlines()[0]
-    snapshot = GeneCatalogSnapshot.from_payload(_GENE_CATALOG_PAYLOAD)
+    snapshot = GeneticSampleSeedSnapshot.from_payload(_GENETIC_SAMPLE_SEEDS_PAYLOAD)
 
     use_case = RunStackUseCase(game_data_rules=rules)
 
-    result_none = use_case.run(copy_text=copy_text, gene_catalog=None)
-    result_snapshot = use_case.run(copy_text=copy_text, gene_catalog=snapshot)
+    result_none = use_case.run(copy_text=copy_text, genetic_sample_seeds=None)
+    result_snapshot = use_case.run(copy_text=copy_text, genetic_sample_seeds=snapshot)
 
     assert result_none.ok is True
     assert result_snapshot.ok is True

@@ -1,7 +1,7 @@
 """VOID_DEEP_SLOTS_V1 slot catalog tests."""
 
-from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.slots import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.slots import (
     VOID_DEPTH_MIN,
     build_candidate_slots_by_edge,
     compute_void_depth_entries,

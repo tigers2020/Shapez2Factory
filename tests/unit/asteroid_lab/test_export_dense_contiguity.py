@@ -1,4 +1,4 @@
-﻿"""Export ``X`` columns: dense index set must have no gaps (west-branch spread regression)."""
+"""Export ``X`` columns: dense index set must have no gaps (west-branch spread regression)."""
 
 from __future__ import annotations
 

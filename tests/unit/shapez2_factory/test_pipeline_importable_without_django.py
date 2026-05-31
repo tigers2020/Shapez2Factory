@@ -1,4 +1,4 @@
-"""PR-CLI-2f — core decode/cleanup/reconstruction import Django-free (BA-1).
+"""PR-CLI-2f ??core decode/cleanup/reconstruction import Django-free (BA-1).
 
 Proves the relocated pipeline imports with ``DJANGO_SETTINGS_MODULE`` unset and pulls **no**
 ``django`` module into ``sys.modules``.

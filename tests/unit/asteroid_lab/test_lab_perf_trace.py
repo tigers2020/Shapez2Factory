@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -54,6 +56,44 @@ def test_lab_perf_trace_log_path_under_var_log() -> None:
     path = lab_perf_trace_log_path()
     assert "asteroid_lab_perf" in path.as_posix()
     assert path.name == "lab_perf.jsonl"
+
+
+@override_settings(ASTEROID_LAB_PERF_TRACE=True)
+def test_lab_perf_trace_concurrent_requests_do_not_corrupt_active(perf_log_path: Path) -> None:
+    """Regression: module-global _active broke perf_span under overlapping HTTP handlers."""
+
+    errors: list[BaseException] = []
+
+    def slow_request() -> None:
+        try:
+            with lab_perf_trace_request(request_kind="project_page", project_slug="slow"):
+                with perf_span("replay_compose_ms"):
+                    time.sleep(0.05)
+        except BaseException as exc:
+            errors.append(exc)
+
+    def fast_request() -> None:
+        try:
+            with lab_perf_trace_request(request_kind="run_solver", project_slug="fast"):
+                with perf_span("game_data_snapshot_ms"):
+                    pass
+        except BaseException as exc:
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=slow_request),
+        threading.Thread(target=fast_request),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert not errors
+    assert perf_log_path.exists()
+    lines = perf_log_path.read_text(encoding="utf-8").strip().splitlines()
+    kinds = {json.loads(line)["request_kind"] for line in lines[-2:]}
+    assert kinds == {"project_page", "run_solver"}
 
 
 def test_serialized_json_utf8_bytes_none_is_zero() -> None:

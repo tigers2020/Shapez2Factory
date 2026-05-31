@@ -50,11 +50,10 @@ class Layer03SkipReason(StrEnum):
     NONE = "none"
     MISSING_EXTERIOR_CONNECTION_PLAN = "missing_exterior_connection_plan"
     NO_ROUTE_GOALS = "no_route_goals"
-    EMPTY_MINER_SEED_CATALOG = "empty_miner_seed_catalog"
     BUDGET_EXHAUSTED = "budget_exhausted"
     ALGORITHM_RESET = "algorithm_reset"
-    MISSING_GENE_CATALOG = "missing_gene_catalog"
-    INVALID_GENE_CATALOG = "invalid_gene_catalog"
+    MISSING_GENETIC_SAMPLE_SEEDS = "missing_genetic_sample_seeds"
+    INVALID_GENETIC_SAMPLE_SEED_SNAPSHOT = "invalid_genetic_sample_seed_snapshot"
 
 
 class BundleCellRole(StrEnum):

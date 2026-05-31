@@ -1,4 +1,4 @@
-﻿"""Unit tests for ``django_apps.asteroid_lab.lab_screen_grid`` (mini-map grid + rotation deg)."""
+"""Unit tests for ``django_apps.asteroid_lab.lab_screen_grid`` (mini-map grid + rotation deg)."""
 
 from __future__ import annotations
 

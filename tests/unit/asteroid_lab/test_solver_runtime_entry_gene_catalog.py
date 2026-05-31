@@ -12,7 +12,7 @@ from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     ExhaustiveGenerationStats,
     GeneratedSampleGene,
 )
-from django_apps.asteroid_lab.models import GeneticSample
+from django_apps.asteroid_lab.models import GeneSeed
 from django_apps.asteroid_lab.services import solver_runtime_entry
 from django_apps.asteroid_lab.services.artifact_ingest import ArtifactIngestResult
 from django_apps.asteroid_lab.services.artifact_manifest_reader import ArtifactManifestRecord
@@ -37,7 +37,7 @@ def _seed_one_sample(
     genes, _ = exhaustive_genes_ext0_belt
     assert genes, "exhaustive generator must produce at least one gene for seeding"
     g = genes[0]
-    GeneticSample.objects.update_or_create(
+    GeneSeed.objects.update_or_create(
         gene_key=g.key,
         defaults={
             "name": g.name,
@@ -114,5 +114,5 @@ def test_run_solver_injects_db_gene_catalog_into_request(
     assert result.ok is True
     assert calls
     request = calls[0]["request"]
-    assert request.gene_catalog["schema_version"] == "gene_catalog_v1"
-    assert len(request.gene_catalog["entries"]) >= 1
+    assert request.genetic_sample_seeds["schema_version"] == "genetic_sample_seed_v1"
+    assert len(request.genetic_sample_seeds["entries"]) >= 1

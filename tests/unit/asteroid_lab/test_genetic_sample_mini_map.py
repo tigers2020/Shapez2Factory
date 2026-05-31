@@ -1,4 +1,4 @@
-﻿"""Genetic sample admin mini-map: ``data-*`` contract, grid neighbors, rotation degrees."""
+"""Genetic sample admin mini-map: ``data-*`` contract, grid neighbors, rotation degrees."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def _by_raw(cells: list[dict[str, int | str]]) -> dict[tuple[int, int], dict[str
 def test_for_list_wrap_includes_four_by_four_viewport_css(
     lab_sprite_identifiers_for_admin: object,
 ) -> None:
-    """Changelist mini-map: outer box fits 4횞4 cells at 52px (see genetic_sample_mini_map)."""
+    """Changelist mini-map: outer box fits 4×4 cells at 52px (see genetic_sample_mini_map)."""
 
     decoded = {
         "V": 88,

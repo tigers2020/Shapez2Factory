@@ -2937,18 +2937,49 @@
       return null;
     }
 
+    function frameHasSpriteCapableCells(fr) {
+      if (!fr || typeof fr !== "object") return false;
+      const targets = collectFrameSpatialTargets(fr);
+      for (let i = 0; i < targets.length; i++) {
+        if (labSpriteRelpathForCell(targets[i].cell, fr)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function lastFrameWithSpriteCapableCells(upToArrayIndex) {
+      const cap = Math.min(upToArrayIndex, replayFrames.length - 1);
+      for (let i = cap; i >= 0; i--) {
+        const fr = replayFrames[i];
+        if (frameHasSpriteCapableCells(fr)) {
+          return fr;
+        }
+      }
+      return null;
+    }
+
     function buildCanvasPaintPlan(frame) {
       const overlays = [];
       const sprites = [];
       const seen = new Set();
-      function consider(cell, role) {
+      function consider(cell, role, sourceFrame) {
         if (!cell || typeof cell !== "object") return;
-        if (isLabStaticTerrainCell(cell, frame)) return;
+        const paintFrame = sourceFrame || frame;
+        if (isLabStaticTerrainCell(cell, paintFrame)) return;
         const idx = resolveCellIndex(cell);
-        if (idx == null || idx < 0 || seen.has(idx)) return;
-        seen.add(idx);
+        if (idx == null || idx < 0) return;
         const ck = overlayCellKind(cell);
         const diffRole = role || "";
+        const rel = labSpriteRelpathForCell(cell, paintFrame);
+        if (rel) {
+          if (seen.has(idx)) return;
+          seen.add(idx);
+          sprites.push({ idx: idx, rel: rel, rotation: cell.rotation });
+          return;
+        }
+        if (seen.has(idx)) return;
+        seen.add(idx);
         if (
           diffRole === "diff_removed" ||
           diffRole === "diff_added" ||
@@ -2969,20 +3000,27 @@
           });
           return;
         }
-        const rel = labSpriteRelpathForCell(cell, frame);
-        if (rel) {
-          sprites.push({ idx: idx, rel: rel, rotation: cell.rotation });
-        } else {
-          overlays.push({
-            idx: idx,
-            kind: ck,
-            fill: canvasOverlayFillForCell(cell, frame, ""),
-          });
+        overlays.push({
+          idx: idx,
+          kind: ck,
+          fill: canvasOverlayFillForCell(cell, frame, ""),
+        });
+      }
+      const layoutFrame =
+        frameHasSpriteCapableCells(frame) || !hasServerReplay
+          ? null
+          : lastFrameWithSpriteCapableCells(replayArrayIndex);
+      if (layoutFrame && layoutFrame !== frame) {
+        const carryTargets = collectFrameSpatialTargets(layoutFrame);
+        for (let c = 0; c < carryTargets.length; c++) {
+          const t = carryTargets[c];
+          if (!labSpriteRelpathForCell(t.cell, layoutFrame)) continue;
+          consider(t.cell, "", layoutFrame);
         }
       }
       const targets = collectFrameSpatialTargets(frame);
       for (let i = 0; i < targets.length; i++) {
-        consider(targets[i].cell, targets[i].role);
+        consider(targets[i].cell, targets[i].role, frame);
       }
       return { overlays: overlays, sprites: sprites };
     }

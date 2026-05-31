@@ -1,4 +1,4 @@
-"""PR-CLI-3a — CLI shell + ``validate-artifact`` command (BA-1 pure core).
+"""PR-CLI-3a ??CLI shell + ``validate-artifact`` command (BA-1 pure core).
 
 These tests build real artifacts with :class:`AtomicArtifactWriter` and drive the
 CLI ``main()`` entry point, asserting fail-closed validation behaviour and the
@@ -141,7 +141,7 @@ def test_validate_artifact_rejects_traversal_relpath(
     final = _build_valid_artifact(tmp_path)
     # Out-of-tree file that genuinely exists, with a *matching* hash. Without a
     # containment guard, validation would hash this file and wrongly succeed (OK);
-    # the guard must reject the traversal relpath first → VALIDATION_FAILED.
+    # the guard must reject the traversal relpath first ??VALIDATION_FAILED.
     escape_bytes = b"out-of-tree secret"
     escape_file = final.parent / "escape.txt"
     escape_file.write_bytes(escape_bytes)

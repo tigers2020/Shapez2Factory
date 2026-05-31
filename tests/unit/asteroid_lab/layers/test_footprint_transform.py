@@ -1,4 +1,4 @@
-"""Footprint transform contract (spec §T / Amendment 6) — pure geometry.
+"""Footprint transform contract (spec §T / Amendment 6) ??pure geometry.
 
 Locks the full-footprint D4 transform primitives (``rotate_xy`` / ``rotate_r`` /
 ``mirror_xy`` / ``mirror_r``) and the deduplicated D4 enumeration. A rotation/mirror

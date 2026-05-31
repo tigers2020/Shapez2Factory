@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.layer_slugs import LAYER_03_RIM_GREEDY_PLACEMENT
-from django_apps.asteroid_lab.layers.contracts.rim_greedy import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_03_RIM_GREEDY_PLACEMENT,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
     build_empty_integrated_rim_greedy_result,
 )
-from django_apps.asteroid_lab.layers.contracts.rim_greedy_append import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy_append import (
     APPEND_CELL_KIND_PRIORITY,
     LAYER_03_APPEND_SOURCE,
     AppendCellKind,

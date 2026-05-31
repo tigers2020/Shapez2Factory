@@ -1,4 +1,4 @@
-"""PR-CLI-3a Guard A — fail-closed manifest schema-version parse (BA-1)."""
+"""PR-CLI-3a Guard A ??fail-closed manifest schema-version parse (BA-1)."""
 
 from __future__ import annotations
 

@@ -121,6 +121,14 @@ def compose_lab_replay_frames_from_artifact_run(run: SolverRun) -> list[dict[str
         return None
     if not complete_map_path.is_file() or not replay_core_path.is_file():
         return None
+    from django_apps.asteroid_lab.services.artifact_runtime_replay_compose import (
+        build_solver_runtime_replay_frames_from_artifact_run,
+    )
+
+    runtime_frames = build_solver_runtime_replay_frames_from_artifact_run(run)
+    if runtime_frames:
+        return runtime_frames
+
     try:
         complete_map = _load_complete_map(complete_map_path)
         core_records = list(iter_replay_core_frames(replay_core_path))

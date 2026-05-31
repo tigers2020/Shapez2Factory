@@ -51,6 +51,17 @@
     -webkit-user-drag: none;
   }
 
+  /* Canvas hybrid: DOM grid is hit-test only; sprites paint on #lab-replay-sprite-canvas. */
+  #lab-replay-grid.lab-replay-grid--canvas-mode {
+    pointer-events: none;
+  }
+
+  #lab-replay-grid.lab-replay-grid--canvas-mode .lab-replay-canvas-hit-layer {
+    pointer-events: auto;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
   .lab-cell-sprite {
     user-select: none;
     -webkit-user-select: none;

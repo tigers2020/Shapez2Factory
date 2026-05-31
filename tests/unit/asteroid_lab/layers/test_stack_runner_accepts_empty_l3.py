@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import GeneCatalogSnapshot
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import GeneticSampleSeedSnapshot
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )
@@ -39,10 +39,10 @@ def _stub_layer02(**_kwargs: object) -> ExteriorConnectionPlan:
     return minimal_l2_plan_for_golden()
 
 
-def _nonempty_gene_catalog() -> GeneCatalogSnapshot:
-    return GeneCatalogSnapshot.from_payload(
+def _nonempty_gene_catalog() -> GeneticSampleSeedSnapshot:
+    return GeneticSampleSeedSnapshot.from_payload(
         {
-            "schema_version": "gene_catalog_v1",
+            "schema_version": "genetic_sample_seed_v1",
             "entries": [
                 {
                     "gene_id": "m3e_01",
@@ -84,7 +84,7 @@ def test_stack_runner_accepts_empty_l3_and_reaches_l5() -> None:
         complete_map=complete_map,
         budget_ctx=budget_ctx,
         runners=runners,
-        gene_catalog=_nonempty_gene_catalog(),
+        genetic_sample_seeds=_nonempty_gene_catalog(),
     )
     assert core.stack_result.status == StackRunStatus.SUCCESS
     assert LAYER_03_RIM_GREEDY_PLACEMENT in core.stack_result.completed_layer_slugs

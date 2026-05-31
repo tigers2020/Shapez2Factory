@@ -145,7 +145,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 SHAPE_PART_SPRITE_STATIC_ROOT = BASE_DIR / "django_apps" / "web" / "static" / "web"
 SHAPE_PART_SPRITE_URL_PREFIX = "/static/web/"
 
-# Deprecated: Run Solver now reads gene templates from GeneticSample DB only.
+# Deprecated: Run Solver now reads gene templates from GeneSeed DB only.
 # This setting is no longer used by the runtime path; kept for backwards compatibility.
 ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH = Path(
     os.environ.get(
@@ -154,7 +154,7 @@ ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH = Path(
     )
 ).resolve()
 
-# Generator version used when loading GeneticSample rows for the Run Solver runtime.
+# Generator version used when loading GeneSeed rows for the Run Solver runtime.
 ASTEROID_LAB_RUNTIME_GENE_GENERATOR_VERSION = os.environ.get(
     "ASTEROID_LAB_RUNTIME_GENE_GENERATOR_VERSION",
     "exhaustive_sample_gene_v1",
@@ -184,13 +184,21 @@ ASTEROID_LAB_SOLVER_MODE = (
 if ASTEROID_LAB_SOLVER_MODE not in ("subprocess_only", "subprocess"):
     ASTEROID_LAB_SOLVER_MODE = "subprocess_only"
 ASTEROID_LAB_ARTIFACT_ROOT = BASE_DIR / "var" / "runs"
+# Subprocess kill + reconcile deadline must exceed LAYER_STACK_BUDGET_MS (60s) plus ingest.
+_ASTEROID_LAB_SUBPROCESS_TIMEOUT_DEFAULT = "90"
 ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS = float(
-    os.environ.get("ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS", "30")
+    os.environ.get(
+        "ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS",
+        _ASTEROID_LAB_SUBPROCESS_TIMEOUT_DEFAULT,
+    )
 )
 ASTEROID_LAB_SUBPROCESS_MAX_RUNTIME_SECONDS = float(
     os.environ.get(
         "ASTEROID_LAB_SUBPROCESS_MAX_RUNTIME_SECONDS",
-        os.environ.get("ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS", "30"),
+        os.environ.get(
+            "ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS",
+            _ASTEROID_LAB_SUBPROCESS_TIMEOUT_DEFAULT,
+        ),
     )
 )
 ASTEROID_LAB_SOLVER_ASYNC_DEFAULT = os.environ.get(

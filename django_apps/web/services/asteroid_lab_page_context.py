@@ -11,7 +11,7 @@ from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
     CANONICAL_MINER_SEED_COUNT,
     MINER_SEED_SCHEMA_V2,
 )
-from django_apps.asteroid_lab.models import GeneticSample, ReplayFrame, ReplayTrack
+from django_apps.asteroid_lab.models import GeneSeed, ReplayFrame, ReplayTrack
 from django_apps.asteroid_lab.observability.lab_perf_trace import (
     perf_span,
     record_perf_meta,
@@ -41,7 +41,7 @@ from django_apps.asteroid_lab.services.solver_run_lab_summary import solver_runs
 
 def _gene_template_catalog() -> dict[str, Any]:
     """Read-only DB summary of miner seed patterns (display only, never solver input)."""
-    seed_qs = GeneticSample.objects.filter(
+    seed_qs = GeneSeed.objects.filter(
         gene_key__isnull=False,
         metadata_json__schema=MINER_SEED_SCHEMA_V2,
         metadata_json__is_seed=True,

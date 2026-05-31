@@ -1,4 +1,4 @@
-"""PR-CLI-2e Step 2 — core/Django boundary for stack_runner.
+"""PR-CLI-2e Step 2 ??core/Django boundary for stack_runner.
 
 The Django ``stack_runner`` is a thin wrapper that delegates orchestration to the pure core runner
 and owns only the log-writing side effect; the layer-4 disabled result lives entirely in core.

@@ -12,7 +12,10 @@ from django_apps.asteroid_lab.models import SolverRun
 from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
     lab_replay_frames_are_renderable,
 )
-from django_apps.asteroid_lab.services.lab_replay_lazy_handle import LAB_REPLAY_PAYLOAD_VERSION
+from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
+    LAB_REPLAY_PAYLOAD_VERSION,
+    preview_frame_index_for_lab_replay,
+)
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY,
     SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY,
@@ -27,7 +30,7 @@ def build_manifest_summary_from_compose(
     metrics: dict[str, Any],
 ) -> dict[str, Any]:
     count = len(frames)
-    preview_index = max(0, count - 1) if count else 0
+    preview_index = preview_frame_index_for_lab_replay(frames)
     preview = dict(frames[preview_index]) if count else None
     return {
         "replay_payload_version": LAB_REPLAY_PAYLOAD_VERSION,

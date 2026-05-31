@@ -2,7 +2,7 @@
 
 This document is **on-demand reference** placed in `documents/ai/manuals/` **to avoid growing the rules the agent reads every turn**. The canonical always-on rules are [`AGENTS.md`](../../../AGENTS.md) and [`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc).
 
-The **Agent-Native Engineering (Summary)** section in root [`AGENTS.md`](../../../AGENTS.md) and the body below share the same philosophy.
+Root [`AGENTS.md`](../../../AGENTS.md) defines **Spec-first · Small PR · Test-gated · Review-driven** workflow; this manual is on-demand detail.
 
 ## 1. Why Do Token Limits Deplete Quickly?
 
@@ -13,12 +13,12 @@ Concrete **plan limits, per-model pricing, and multipliers** change over time �
 
 ## 2. Harness Perspective (Human ↔ Agent ↔ Harness)
 
-The agent operates through a combination of prompts, rules, code search, terminal, and model. In this repo, [`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc), [`AGENTS.md`](../../../AGENTS.md), [`protocols/README.md`](../../../protocols/README.md), and skills ([`.cursor/skills/shapez2-harness/SKILL.md`](../../../.cursor/skills/shapez2-harness/SKILL.md), [`.cursor/skills/cursor-shapez2-harness/SKILL.md`](../../../.cursor/skills/cursor-shapez2-harness/SKILL.md)) comprise the **harness**.
+The agent operates through prompts, rules, code search, terminal, and model. Harness = [`.cursor/rules/workflow.mdc`](../../../.cursor/rules/workflow.mdc) + [`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) + [`AGENTS.md`](../../../AGENTS.md) + [`protocols/README.md`](../../../protocols/README.md) + [`.cursor/skills/`](../../../.cursor/skills/) (e.g. `quality-check`, `cli-boundary`, `write-tests`).
 
 ## 3. Intent Precision and Prompts
 
-- **Bad example**: A one-line request that invites broad exploration and speculative implementation.
-- **Good example**: Specify paths/symbols pointing to existing patterns, logs or reproduction steps, desired structure, prohibitions (e.g. no solver behavior changes, no underscore toggle renames like `func`↔`_func`), and completion criteria (e.g. `pytest` path to run).
+- **Bad example**: "Fix this" with no spec, scope, or acceptance.
+- **Good example**: Link CANON spec or [`contract-brief.md`](../templates/contract-brief.md); declare **Position · Authority · Acceptance**; list paths/symbols; prohibitions; `pytest` path; PR purpose (e.g. "PR-3: failing tests only — no production edits").
 
 Higher intent precision reduces hallucination and unrelated exploration, making architectural consistency easier to maintain.
 
@@ -45,18 +45,20 @@ Run broad exploration and impact analysis in **separate context** (subagents, ba
 
 Agents may duplicate utilities they don't know about, ignore layers/patterns, or cause **architecture drift**.
 
-In this repo's mining/placement solver, replay, recovery, routing, protected corridor, reclaim, Pass, etc. are **intertwined**, so changes without confirming call relationships and `documents/` canon are risky. Project rule: meaningful changes follow **research · plan · approval gates** ([`AGENTS.md`](../../../AGENTS.md), [`protocols/README.md`](../../../protocols/README.md)).
+Solver, replay, CLI, and layer placement are intertwined — confirm call relationships and **CANON spec** before edits. Workflow: **contract brief → failing test → small PR** ([`AGENTS.md`](../../../AGENTS.md), [`workflow.mdc`](../../../.cursor/rules/workflow.mdc)).
 
-## 8. Feature Development Flow (Recommended)
+## 8. Feature Development Flow (Canonical)
 
-1. Planning (clarify questions · scope)
-2. Clarifying questions
-3. Execution plan broken into **self-verifiable steps**
-4. Implementation
-5. Verification — **Contract-first TDD** ([`testing.md`](testing.md)): iterative narrow `pytest` → PR full gate (`ruff` → `black --check` → `mypy` → full `pytest`). **No `-q` / `--quiet` / `--tb=no`** (hides failure detail).
-6. Iterate
+1. **Problem + contract brief** ([`templates/contract-brief.md`](../templates/contract-brief.md) or CANON spec)
+2. **PR plan** — one purpose ([`templates/pr-plan.md`](../templates/pr-plan.md))
+3. Human scope approval (non-trivial contract changes)
+4. Audit (read-only) if behavior uncertain
+5. **Failing tests** when behavior changes
+6. Minimal implementation for **this PR only**
+7. Verification — narrow `pytest` → `ruff`; PR full gate per [`testing.md`](testing.md). **No `-q` / `--quiet` / `--tb=no`**
+8. Review → merge → doc sync if public contract changed
 
-Don't implement big features in one shot; set pass criteria at each step for safety.
+Split large work into PR-1 audit · PR-2 contract · PR-3 tests · PR-4 implement · PR-5 cleanup.
 
 ## 9. Debugging Principles
 
@@ -110,11 +112,13 @@ Do not duplicate long bodies in rule files; put them in manuals/plans and link.
 
 | Idea | Mapping in this repo |
 |----------|-------------------|
-| Plan-first | `documents/` plans · approval, [`checklist.md`](../checklist.md) |
-| Context separation | threads · subagents · phase documents |
-| Instrumentation · replay | computation_cycle, events · recovery traces, etc. (follow module canon) |
-| Verification gates | [`testing.md`](testing.md) dual gate: iterative narrow `pytest` / PR `ruff`→`black --check`→`mypy`→`pytest` |
-| Abstraction boundaries | recovery · replay · routing · corridor etc. **watch for duplicate abstractions** ([`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) simplicity) |
+| Spec-first | CANON spec · [`contract-brief.md`](../templates/contract-brief.md) · [`pr-plan.md`](../templates/pr-plan.md) |
+| Small PR | One contract change or one refactor purpose per PR |
+| Test-gated | Failing test before production (contract/regression) |
+| Position not persona | Task prompt: scope · authority · acceptance · stop conditions |
+| Context separation | New thread per PR purpose · subagents for broad audit |
+| Verification gates | [`testing.md`](testing.md) dual gate |
+| Authority | Superseded docs ≠ implementation context ([`START_HERE.md`](../START_HERE.md)) |
 
 ## 16. Related Manuals
 
@@ -134,9 +138,20 @@ Applies to Cursor Cloud / remote VM only.
 - **Graph preview**: default `playwright_png`. Without Playwright, set `SOLVER_GRAPH_PREVIEW_RENDERER=noop` in `.env.debug` (see `.env.debug.example`, [`environment.md`](environment.md)).
 - **Verification commands**: [`testing.md`](testing.md) table. `black --check .` may have 1 existing format issue in `django_apps/web/views/macro_staff.py`.
 
-## 17. Caveman Output (Required)
+## 17. Caveman Communication (Required)
 
-**Purpose**: Reduce **output tokens** in chat/closing reports (practical 15–40% target; no exaggeration). **Keep internal reasoning · gate quality**, compress narration only.
+**Purpose**: Reduce **output tokens** in chat and closing reports (practical 15–40% target; no exaggeration). **Keep internal reasoning · gate quality**; compress narration only.
+
+### Two layers (do not conflate)
+
+| Layer | When | Canon |
+|------|------|------|
+| **Chat style** | Every user-facing turn | [`AGENTS.md` Communication](../../../AGENTS.md) · [shapez2-core.mdc Caveman chat](../../../.cursor/rules/shapez2-core.mdc) — Korean, terse, high-signal |
+| **Six-section close** | End of implementation / review turns | Headings below; same titles in shapez2-core |
+
+**Off switch:** `stop caveman` or `normal mode`. **Auto-clarity:** security warnings, irreversible actions, multi-step instructions where fragments mislead — then resume caveman.
+
+**Global skill:** when user attaches `/caveman` or `.agents/skills/caveman/SKILL.md`, follow it for phrasing; **do not** replace six-section titles.
 
 ### 3 Layers (cross-reference)
 
@@ -161,14 +176,14 @@ For repo work, prioritize **AGENTS + shapez2-core** over long prose.
 
 | Section | Content |
 |----|------|
-| Summary | 1–3 bullets; for 3-step implementation use `[Simon]` · `[owner]` bullets before code |
+| Summary | 1–3 bullets; state classification + PR purpose |
 | Files | `path — why` |
 | Contracts | invariants · DTO · schema |
 | Tests | `cmd — pass\|fail\|skipped — note` |
 | Risks | regression · `uncertain:` · `assumption:` |
 | Next | what follows; use 「complete」 only when finished |
 
-**Closing without 6 sections = incomplete** ([`checklist.md`](../checklist.md)).
+**Closing without 6 sections = incomplete** ([`workflow.mdc`](../../../.cursor/rules/workflow.mdc) checklists).
 
 ### Exceptions (6-section omission)
 
@@ -178,4 +193,4 @@ For repo work, prioritize **AGENTS + shapez2-core** over long prose.
 
 ### On-demand
 
-Long replay/DTO sessions: [`.cursor/skills/caveman-mode/SKILL.md`](../../../.cursor/skills/caveman-mode/SKILL.md) (`@caveman-mode`).
+Long replay/DTO sessions: optional link hub [`.cursor/skills/_archive/caveman-mode/SKILL.md`](../../../.cursor/skills/_archive/caveman-mode/SKILL.md) (`@caveman-mode`) — checklist only; chat + close canon stays AGENTS + shapez2-core.

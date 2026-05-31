@@ -11,7 +11,6 @@ from unittest.mock import patch
 import pytest
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.layers.contracts.layer_slugs import LAYER_02_EXTERIOR_TRANSPORT
 from django_apps.asteroid_lab.services.artifact_ingest import (
     ArtifactIngestError,
     ingest_artifact_for_project,
@@ -20,6 +19,9 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
 from django_apps.asteroid_lab.services.solver_run_lab_summary import lab_run_summary_from_orm
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_02_EXTERIOR_TRANSPORT,
+)
 
 pytestmark = pytest.mark.django_db
 

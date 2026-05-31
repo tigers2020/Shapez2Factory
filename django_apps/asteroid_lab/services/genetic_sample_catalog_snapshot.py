@@ -1,10 +1,12 @@
-"""ORM -> GeneCatalogSnapshot payload serializer (adapter boundary; ORM allowed here only).
+"""ORM -> GeneticSampleSeedSnapshot payload serializer (adapter boundary; ORM allowed here only).
 
-Serializes ``GeneticSample`` rows into a pure ``gene_catalog_v1`` JSON payload that core
-``GeneCatalogSnapshot.from_payload`` can parse. Resolution currently flows through
-``load_gene_templates_from_genetic_samples``, which only resolves ``gene_key``s present in the
-exhaustive generator cache; ``miner_seed_*`` rows are skipped today. Including miner-seed genes in
-the catalog is a future extension and is intentionally NOT implemented here.
+Serializes ``GeneSeed`` rows into a pure ``genetic_sample_seed_v1`` JSON payload that core
+``GeneticSampleSeedSnapshot.from_payload`` can parse.
+
+Priority:
+1. ``miner_seed_v2`` canonical rows (18) -> canonical-E templates (D4 expansion stays in L3).
+2. Otherwise exhaustive ``gene_key`` rows resolved via the exhaustive generator cache.
+3. Empty ``entries`` when neither path yields templates (L3 ``missing_genetic_sample_seeds``).
 """
 
 from __future__ import annotations
@@ -17,13 +19,15 @@ from typing import Any
 from django.db.models import QuerySet
 
 from django_apps.asteroid_lab.genetic_sample.gene_template import GeneTemplate
-from django_apps.asteroid_lab.models import GeneticSample
+from django_apps.asteroid_lab.models import GeneSeed
 from django_apps.asteroid_lab.services.genetic_sample_gene_export import (
-    load_gene_templates_from_genetic_samples,
+    load_gene_templates_from_gene_seeds,
+    queryset_has_miner_seed_v2,
 )
 
-SCHEMA_VERSION = "gene_catalog_v1"
+SCHEMA_VERSION = "genetic_sample_seed_v1"
 SORT_KEY = "by_gene_id_then_throughput_desc"
+MINER_SOURCE_BATCH_ID = "miner_seed_v2"
 
 
 def _entry_from_template(template: GeneTemplate) -> dict[str, Any]:
@@ -32,11 +36,10 @@ def _entry_from_template(template: GeneTemplate) -> dict[str, Any]:
         if hasattr(template.output_dir, "value")
         else str(template.output_dir)
     )
-    # Core schema requires canonical "E"; the Direction StrEnum stores lowercase "e".
     output_dir = raw_output_dir.upper()
     return {
         "gene_id": template.gene_id,
-        "resource_kind": "both",
+        "resource_kind": template.resource_kind,
         "canonical_output_dir": output_dir,
         "occupied_offsets": sorted([list(o) for o in template.occupied_offsets]),
         "extractor_offset": list(template.extractor_offset),
@@ -48,16 +51,14 @@ def _entry_from_template(template: GeneTemplate) -> dict[str, Any]:
     }
 
 
-def build_gene_catalog_snapshot(
-    queryset: QuerySet[GeneticSample],
+def build_genetic_sample_seed_snapshot(
+    queryset: QuerySet[GeneSeed],
     *,
     source_batch_id: str = "exhaustive_sample_gene_v1",
 ) -> dict[str, Any]:
-    """Build a ``gene_catalog_v1`` payload from a ``GeneticSample`` queryset.
-
-    Entries are sorted by ``(gene_id, -throughput_factor)`` (the ``deterministic_sort_key``).
-    """
-    templates, _skipped, _errors = load_gene_templates_from_genetic_samples(queryset)
+    """Build a ``genetic_sample_seed_v1`` payload from a ``GeneSeed`` queryset."""
+    templates, _skipped, _errors = load_gene_templates_from_gene_seeds(queryset)
+    batch_id = MINER_SOURCE_BATCH_ID if queryset_has_miner_seed_v2(queryset) else source_batch_id
     entries = sorted(
         (_entry_from_template(t) for t in templates),
         key=lambda e: (e["gene_id"], -e["throughput_factor"]),
@@ -69,10 +70,15 @@ def build_gene_catalog_snapshot(
         "schema_version": SCHEMA_VERSION,
         "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "provenance_hash": provenance_hash,
-        "source_batch_id": source_batch_id,
+        "source_batch_id": batch_id,
         "deterministic_sort_key": SORT_KEY,
         "entries": entries,
     }
 
 
-__all__ = ["SCHEMA_VERSION", "SORT_KEY", "build_gene_catalog_snapshot"]
+__all__ = [
+    "MINER_SOURCE_BATCH_ID",
+    "SCHEMA_VERSION",
+    "SORT_KEY",
+    "build_genetic_sample_seed_snapshot",
+]

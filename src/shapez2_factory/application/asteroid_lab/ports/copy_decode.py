@@ -1,4 +1,4 @@
-"""``CopyDecodePort`` — decode a shapez2 copy string into a pure payload.
+"""``CopyDecodePort`` ??decode a shapez2 copy string into a pure payload.
 
 The full decoded-map DTO lands in PR-CLI-2a; ``DecodedCopy`` below is a minimal placeholder so the
 port type-checks while the use case is still a stub.

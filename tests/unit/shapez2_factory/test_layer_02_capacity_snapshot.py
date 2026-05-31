@@ -1,4 +1,4 @@
-"""PR-CLI-2b — L2 capacity from a frozen snapshot (no DB) + fail-closed adapter contract."""
+"""PR-CLI-2b ??L2 capacity from a frozen snapshot (no DB) + fail-closed adapter contract."""
 
 from __future__ import annotations
 
@@ -57,13 +57,17 @@ def test_adapter_reads_fluid_capacity_from_fixture() -> None:
 
 
 def test_resolve_per_connector_capacity_uses_injected_port() -> None:
-    from django_apps.asteroid_lab.layers.layer_02_exterior_transport.capacity import (
-        resolve_per_connector_capacity,
+    from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport import (
+        capacity,
     )
 
     adapter = JsonSnapshotGameDataRulesAdapter.from_file(_FIXTURE)
 
-    got = resolve_per_connector_capacity(rules=adapter, resource_kind="shape", speed_tier=1)
+    got = capacity.resolve_per_connector_capacity(
+        rules=adapter,
+        resource_kind="shape",
+        speed_tier=1,
+    )
 
     assert got.shortfall_reason is None
     assert got.capacity_per_min == Decimal("5760")

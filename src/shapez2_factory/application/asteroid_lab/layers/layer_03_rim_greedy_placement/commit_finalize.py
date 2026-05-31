@@ -1,11 +1,11 @@
-"""Layer 03 Phase D — commit-time re-probe + provisional result assembly.
+"""Layer 03 Phase D ??commit-time re-probe + provisional result assembly.
 
 The beam selector (Phase C1) chooses a non-conflicting subset of the route-feasible normal
 pool, but its per-candidate route probes were run in isolation against the *empty* field.
 Phase D re-probes the chosen bundles **in selection order on the latest route domain**: each
 commit adds its equipment as a hard blocker and its route path as a reserved corridor, so a
 later bundle whose only route would cross an already-committed corridor is dropped (candidate
-reachability is never the final commit proof — spec D/forbidden shortcuts). Survivors become
+reachability is never the final commit proof ??spec D/forbidden shortcuts). Survivors become
 provisional ``committed_placements``; this layer still commits nothing downstream (L5/L6 own
 interior fill and final mutation).
 """
@@ -13,12 +13,12 @@ interior fill and final mutation).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     BundleCandidate,
     BundleCellRole,
     RouteProbedBundleCandidate,
-    RouteProbeStatus,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
@@ -47,19 +47,19 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy_append
     AppendedPlacementCell,
     Layer03AppendResult,
 )
-from shapez2_factory.application.asteroid_lab.layers.contracts.route_goal import (
-    RouteGoal,
-    build_layer03_route_goals,
-)
 from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import TransportKind
-from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transport_route_domain import (  # noqa: E501
-    WeightedTransportRouteDomain,
+
+if TYPE_CHECKING:
+    from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.beam_selector import (  # noqa: E501
+        BeamSelectionResult,
+    )
+
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_reprobe import (  # noqa: E501
+    CommitDomainState,
+    build_commit_reprobe_context,
+    try_commit_reprobe,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.beam_selector import (  # noqa: E501
-    BeamSelectionResult,
-)
-from shapez2_factory.application.asteroid_lab.layers.shared.route_probe import weighted_route_probe
-from shapez2_factory.domain.asteroid_lab.grid_contract import Coord, bbox_from_coords
+from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (  # noqa: E501
     ReconstructionCompleteMap,
 )
@@ -77,12 +77,6 @@ def _cells_for_role(probed: RouteProbedBundleCandidate, role: BundleCellRole) ->
     return frozenset(p.coord for p in probed.candidate.placements if p.cell_role is role)
 
 
-def _build_route_goals(exterior_plan: ExteriorConnectionPlan) -> tuple[RouteGoal, ...]:
-    return build_layer03_route_goals(
-        exterior_plan, transport_kind=TransportKind.SHAPE_BELT
-    ) + build_layer03_route_goals(exterior_plan, transport_kind=TransportKind.FLUID_PIPE)
-
-
 def finalize_selection(
     *,
     selected: tuple[RouteProbedBundleCandidate, ...],
@@ -96,62 +90,51 @@ def finalize_selection(
     the later bundle (``ROUTE_CROSSES_HARD_BLOCKER`` / ``DPS_UNREACHABLE``).
     """
 
-    field_cells = complete_map.field_cells
-    external_void = complete_map.external_void_cells
-    base_walkable = field_cells | external_void
-    if not base_walkable or not selected:
+    if not selected:
         return FinalizeResult(
             committed_placements=(),
             rejected_attempts=(),
             occupied_equipment_cells=frozenset(),
             reserved_route_cells=frozenset(),
         )
-    search_bbox = bbox_from_coords(base_walkable)
-    route_goals = _build_route_goals(exterior_plan)
+    commit_ctx = build_commit_reprobe_context(
+        complete_map=complete_map,
+        exterior_plan=exterior_plan,
+    )
+    if commit_ctx is None:
+        return FinalizeResult(
+            committed_placements=(),
+            rejected_attempts=(),
+            occupied_equipment_cells=frozenset(),
+            reserved_route_cells=frozenset(),
+        )
 
-    committed_equipment: set[Coord] = set()
-    reserved_route: set[Coord] = set()
+    domain_state = CommitDomainState()
     committed: list[CommittedRimSeedPlacement] = []
     rejects: list[RimGreedyReject] = []
 
     for probed in selected:
         cand = probed.candidate
         own_equipment = cand.mining_occupied_cells | cand.transport_stub_cells
-        # Hard blockers for this re-probe: prior committed equipment + reserved corridors +
-        # this bundle's own equipment (a belt may not route through its own miner).
-        if committed_equipment & set(own_equipment):
+        if domain_state.occupied & set(own_equipment):
             rejects.append(_reject(cand, RimGreedyRejectReason.EQUIPMENT_COLLISION))
             continue
-        blockers = committed_equipment | reserved_route | set(own_equipment)
-        walkable = base_walkable - blockers
-        field_cost = field_cells - blockers
-        domain = WeightedTransportRouteDomain(
-            search_bbox=search_bbox,
-            blocked_cells=frozenset(blockers),
-            walkable_cells=walkable,
-            field_cost_cells=field_cost,
+        ok, next_state, path = try_commit_reprobe(
+            ctx=commit_ctx,
+            state=domain_state,
+            probed=probed,
         )
-        reprobed = weighted_route_probe(
-            candidate=cand,
-            route_goals=route_goals,
-            domain=domain,
-            field_cells=field_cells,
-        )
-        if reprobed.route_probe_status != RouteProbeStatus.SUCCEEDED or (
-            reprobed.route_probe_result is None
-        ):
+        if not ok:
             rejects.append(_reject(cand, RimGreedyRejectReason.ROUTE_CROSSES_HARD_BLOCKER))
             continue
-        path = reprobed.route_probe_result.path_coords
-        committed_equipment |= set(own_equipment)
-        reserved_route |= set(path) - set(own_equipment)
+        domain_state = next_state
         committed.append(_committed_placement(probed, path))
 
     return FinalizeResult(
         committed_placements=tuple(committed),
         rejected_attempts=tuple(rejects),
-        occupied_equipment_cells=frozenset(committed_equipment),
-        reserved_route_cells=frozenset(reserved_route),
+        occupied_equipment_cells=domain_state.occupied,
+        reserved_route_cells=domain_state.corridor,
     )
 
 

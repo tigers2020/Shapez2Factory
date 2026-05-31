@@ -27,9 +27,9 @@ from shapez2_factory.adapters.asteroid_lab.cli_console import (
     emit_cli_line,
     verbose_logging_enabled,
 )
-from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import (
-    GeneCatalogInvalid,
-    GeneCatalogSnapshot,
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedInvalid,
+    GeneticSampleSeedSnapshot,
 )
 from shapez2_factory.adapters.asteroid_lab.json_snapshot_rules import (
     GameDataSnapshotInvalid,
@@ -81,7 +81,20 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--run-key", dest="run_key", type=str, required=True)
     run.add_argument("--copy-file", dest="copy_file", type=Path, required=True)
     run.add_argument("--snapshot", dest="snapshot", type=Path, required=True)
-    run.add_argument("--gene-catalog", dest="gene_catalog", type=Path, default=None)
+    run.add_argument(
+        "--genetic-sample-seeds",
+        dest="genetic_sample_seeds",
+        type=Path,
+        default=None,
+        help="Frozen JSON export of DB GeneSeed rows (genetic_sample_seed_v1).",
+    )
+    run.add_argument(
+        "--gene-catalog",
+        dest="genetic_sample_seeds",
+        type=Path,
+        default=None,
+        help=argparse.SUPPRESS,
+    )
     run.add_argument("--expected-snapshot-hash", dest="expected_snapshot_hash", default=None)
     run.add_argument(
         "--throughput-target-percent",
@@ -192,7 +205,7 @@ def _run_artifact(
     throughput_target_percent: int,
     budget_ms: int,
     verbose: bool,
-    gene_catalog_path: Path | None = None,
+    genetic_sample_seeds_path: Path | None = None,
 ) -> int:
     """Execute the pure stack and write a finalized artifact directory."""
 
@@ -204,16 +217,20 @@ def _run_artifact(
         snapshot_payload,
         expected_hash=expected_snapshot_hash,
     )
-    gene_catalog_text: str | None = None
-    gene_catalog: GeneCatalogSnapshot | None = None
-    if gene_catalog_path is not None:
-        gene_catalog_text = _read_text_file(gene_catalog_path, label="gene_catalog")
-        gene_catalog = GeneCatalogSnapshot.from_payload(json.loads(gene_catalog_text))
+    genetic_sample_seeds_text: str | None = None
+    genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None
+    if genetic_sample_seeds_path is not None:
+        genetic_sample_seeds_text = _read_text_file(
+            genetic_sample_seeds_path, label="genetic_sample_seeds"
+        )
+        genetic_sample_seeds = GeneticSampleSeedSnapshot.from_payload(
+            json.loads(genetic_sample_seeds_text)
+        )
     result = RunStackUseCase(game_data_rules=rules).run(
         copy_text=copy_text,
         throughput_target_percent=throughput_target_percent,
         budget_ms=budget_ms,
-        gene_catalog=gene_catalog,
+        genetic_sample_seeds=genetic_sample_seeds,
     )
     if verbose or verbose_logging_enabled():
         for record in result.solver_summary.get("layer_summaries", []):
@@ -236,8 +253,11 @@ def _run_artifact(
     writer.open_staging()
     writer.write_output("input/copy.txt", copy_text.encode("utf-8"))
     writer.write_output("input/game_data_snapshot.json", snapshot_text.encode("utf-8"))
-    if gene_catalog_text is not None:
-        writer.write_output("input/gene_catalog.json", gene_catalog_text.encode("utf-8"))
+    if genetic_sample_seeds_text is not None:
+        writer.write_output(
+            "input/genetic_sample_seeds.json",
+            genetic_sample_seeds_text.encode("utf-8"),
+        )
     writer.write_output("output/layer01_complete_map.json", _json_bytes(result.complete_map_json))
     writer.write_output("output/stack_result.json", _json_bytes(result.stack_result_json))
     writer.write_output("output/solver_summary.json", _json_bytes(result.solver_summary))
@@ -250,8 +270,8 @@ def _run_artifact(
         "solver_summary": "output/solver_summary.json",
         "replay_core": "output/replay_core.jsonl",
     }
-    if gene_catalog_text is not None:
-        manifest_paths["gene_catalog"] = "input/gene_catalog.json"
+    if genetic_sample_seeds_text is not None:
+        manifest_paths["genetic_sample_seeds"] = "input/genetic_sample_seeds.json"
     manifest = ArtifactManifest(
         schema_version=MANIFEST_SCHEMA_VERSION,
         run_key=run_key,
@@ -299,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.throughput_target_percent,
                 args.budget_ms,
                 args.verbose,
-                args.gene_catalog,
+                args.genetic_sample_seeds,
             )
         except ArtifactPathError as exc:
             print(f"error: {exc}", file=sys.stderr)
@@ -308,7 +328,7 @@ def main(argv: list[str] | None = None) -> int:
             ArtifactWriterError,
             FileNotFoundError,
             GameDataSnapshotInvalid,
-            GeneCatalogInvalid,
+            GeneticSampleSeedInvalid,
             ValueError,
             json.JSONDecodeError,
         ) as exc:

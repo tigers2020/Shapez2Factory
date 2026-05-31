@@ -3,11 +3,6 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.genetic_sample.enums import Direction
-from django_apps.asteroid_lab.layers.contracts.rim_placement import (
-    Layer04PackingObservability,
-    RimPlacementRejection,
-    RimPlacementRejectReason,
-)
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_LAYER04_RIM_CANDIDATE_SELECTED,
     EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN,
@@ -27,6 +22,11 @@ from django_apps.asteroid_lab.replay.runtime_frame_finalize import (
     transient_overlay_cells_to_wire,
 )
 from django_apps.asteroid_lab.replay.timeline_dtos import replay_map_view_is_renderable
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_placement import (
+    Layer04PackingObservability,
+    RimPlacementRejection,
+    RimPlacementRejectReason,
+)
 from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
     rim_bundle_placement_from_probe,
     succeeded_probe_at,

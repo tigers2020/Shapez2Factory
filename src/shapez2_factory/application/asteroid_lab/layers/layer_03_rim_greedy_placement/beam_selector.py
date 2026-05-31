@@ -1,4 +1,4 @@
-"""Layer 03 Phase C1 — deterministic beam selector over the route-feasible normal pool.
+"""Layer 03 Phase C1 ??deterministic beam selector over the route-feasible normal pool.
 
 Spec Phase C1 (v2 MVP): pick a non-conflicting subset of the route-feasible normal pool
 that maximizes routed throughput minus predictive penalties. Equipment overlap is a HARD
@@ -8,7 +8,7 @@ penalty too. The selector is fully deterministic: candidates are pre-sorted by a
 fitness key (independent of input order), a fixed-width beam explores add/skip branches,
 and ties break on the selected ``candidate_id`` sequence.
 
-This is Phase C1 only — it does not commit. Commit-time re-probe on the latest route domain
+This is Phase C1 only ??it does not commit. Commit-time re-probe on the latest route domain
 is Phase D. The selection order is derived from fitness/conflict state, never from the raw
 D1 enumeration order (spec D2).
 """
@@ -20,14 +20,22 @@ from dataclasses import dataclass, field, replace
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     RouteProbedBundleCandidate,
 )
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_reprobe import (  # noqa: E501
+    CommitDomainState,
+    CommitReprobeContext,
+    try_commit_reprobe,
+)
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 
-# Fitness weights (integer arithmetic keeps selection deterministic — no float rounding).
+# Fitness weights (integer arithmetic keeps selection deterministic ??no float rounding).
 # Throughput dominates; route cost and shared-corridor pressure only break near-ties.
 _THROUGHPUT_WEIGHT = 1000
 _ROUTE_COST_WEIGHT = 1
 _CORRIDOR_PRESSURE_WEIGHT = 10
 _DEFAULT_BEAM_WIDTH = 16
+# Commit-aware beam reprobes per (candidate x beam state) and times out on large pools.
+# Greedy commit selection is O(n) reprobes and matches Phase D domain semantics.
+_DEFAULT_COMMIT_GREEDY_CAP = 512
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,8 +62,7 @@ class BeamSelectionResult:
 
 @dataclass(frozen=True, slots=True)
 class _BeamState:
-    occupied: frozenset[Coord]
-    corridor: frozenset[Coord]
+    domain: CommitDomainState
     selected: tuple[RouteProbedBundleCandidate, ...] = ()
     fitness: tuple[FitnessBreakdown, ...] = ()
     total_throughput: int = 0
@@ -96,8 +103,9 @@ def _extend(
     *,
     equipment: frozenset[Coord],
     corridor: frozenset[Coord],
+    domain: CommitDomainState,
 ) -> _BeamState:
-    shared = len(state.corridor & corridor)
+    shared = len(state.domain.corridor & corridor)
     route_cost = _route_cost(probed)
     throughput = probed.candidate.throughput_factor
     net = (
@@ -114,8 +122,7 @@ def _extend(
     )
     return replace(
         state,
-        occupied=state.occupied | equipment,
-        corridor=state.corridor | corridor,
+        domain=domain,
         selected=(*state.selected, probed),
         fitness=(*state.fitness, breakdown),
         total_throughput=state.total_throughput + throughput,
@@ -124,20 +131,60 @@ def _extend(
     )
 
 
-def select_bundles(
-    normal_candidates: tuple[RouteProbedBundleCandidate, ...],
+def _select_bundles_commit_greedy(
+    ordered: tuple[RouteProbedBundleCandidate, ...],
     *,
-    beam_width: int = _DEFAULT_BEAM_WIDTH,
+    commit_ctx: CommitReprobeContext,
+    max_candidates: int = _DEFAULT_COMMIT_GREEDY_CAP,
 ) -> BeamSelectionResult:
-    """Deterministically select a non-conflicting, throughput-maximizing subset (Phase C1).
+    """Greedy Phase C1 under commit-time route domain (O(n) reprobes; Phase D aligned)."""
 
-    Equipment overlap is a hard constraint; shared route corridors and route cost are soft
-    penalties folded into the fitness score. Returns the chosen bundles in selection order
-    (derived from fitness/conflict state, not the D1 enumeration order — spec D2).
-    """
+    state = _BeamState(domain=CommitDomainState())
+    for probed in ordered[:max_candidates]:
+        equipment = _equipment_cells(probed)
+        corridor = _corridor_cells(probed)
+        if state.domain.occupied & equipment:
+            continue
+        ok, next_domain, _path = try_commit_reprobe(
+            ctx=commit_ctx,
+            state=state.domain,
+            probed=probed,
+        )
+        if not ok:
+            continue
+        state = _extend(
+            state,
+            probed,
+            equipment=equipment,
+            corridor=corridor,
+            domain=next_domain,
+        )
 
-    ordered = sorted(normal_candidates, key=_fitness_sort_key)
-    beam: list[_BeamState] = [_BeamState(occupied=frozenset(), corridor=frozenset())]
+    selected_equipment = state.domain.occupied
+    selected_ids = set(state.selected_ids)
+    rejected_overlap = sum(
+        1
+        for probed in ordered[:max_candidates]
+        if probed.candidate.candidate_id not in selected_ids
+        and bool(_equipment_cells(probed) & selected_equipment)
+    )
+    return BeamSelectionResult(
+        selected=state.selected,
+        fitness=state.fitness,
+        total_throughput=state.total_throughput,
+        total_net_score=state.total_net_score,
+        rejected_overlap_count=rejected_overlap,
+    )
+
+
+def _select_bundles_beam(
+    ordered: tuple[RouteProbedBundleCandidate, ...],
+    *,
+    beam_width: int,
+) -> BeamSelectionResult:
+    """Classic beam search using isolated Phase B corridors (no commit reprobe)."""
+
+    beam: list[_BeamState] = [_BeamState(domain=CommitDomainState())]
 
     for probed in ordered:
         equipment = _equipment_cells(probed)
@@ -145,13 +192,24 @@ def select_bundles(
         next_beam: list[_BeamState] = []
         for state in beam:
             next_beam.append(state)  # skip branch
-            if not (state.occupied & equipment):  # add branch (hard overlap forbidden)
-                next_beam.append(_extend(state, probed, equipment=equipment, corridor=corridor))
+            if not (state.domain.occupied & equipment):
+                next_beam.append(
+                    _extend(
+                        state,
+                        probed,
+                        equipment=equipment,
+                        corridor=corridor,
+                        domain=CommitDomainState(
+                            occupied=state.domain.occupied | equipment,
+                            corridor=state.domain.corridor | corridor,
+                        ),
+                    )
+                )
         next_beam.sort(key=_BeamState.rank_key)
         beam = next_beam[:beam_width]
 
     best = min(beam, key=_BeamState.rank_key)
-    selected_equipment = best.occupied
+    selected_equipment = best.domain.occupied
     selected_ids = set(best.selected_ids)
     rejected_overlap = sum(
         1
@@ -166,6 +224,28 @@ def select_bundles(
         total_net_score=best.total_net_score,
         rejected_overlap_count=rejected_overlap,
     )
+
+
+def select_bundles(
+    normal_candidates: tuple[RouteProbedBundleCandidate, ...],
+    *,
+    beam_width: int = _DEFAULT_BEAM_WIDTH,
+    commit_ctx: CommitReprobeContext | None = None,
+) -> BeamSelectionResult:
+    """Deterministically select a non-conflicting, throughput-maximizing subset (Phase C1).
+
+    Equipment overlap is a hard constraint; shared route corridors and route cost are soft
+    penalties folded into the fitness score. Returns the chosen bundles in selection order
+    (derived from fitness/conflict state, not the D1 enumeration order ??spec D2).
+
+    When ``commit_ctx`` is set, uses commit-greedy (bounded, Phase-D-aligned) instead of
+    commit reprobe inside beam search, which is O(pool x beam_width) and times out on maps.
+    """
+
+    ordered = sorted(normal_candidates, key=_fitness_sort_key)
+    if commit_ctx is not None:
+        return _select_bundles_commit_greedy(ordered, commit_ctx=commit_ctx)
+    return _select_bundles_beam(ordered, beam_width=beam_width)
 
 
 __all__ = [

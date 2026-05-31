@@ -1,35 +1,35 @@
 # Cursor Usage
 
-## Plan first
+## Spec-first · scoped tasks
 
-- Complex work: divide scope + owners in `[Simon]` briefing before implementation.
-- User asks "plan only": no code mods; present plan only.
-- Large changes needing spec: leave research/plan docs in `documents/` first.
-- Min order before implementation: research doc → plan MD → human approval → implementation. See canonical 10-stage pipeline in [protocols/README.md](mdc:protocols/README.md).
+- ⬜ Fill [`contract-brief.md`](mdc:documents/ai/templates/contract-brief.md) or link CANON spec before code
+- ⬜ One PR purpose per session when possible ([`pr-plan.md`](mdc:documents/ai/templates/pr-plan.md))
+- ⬜ "plan only" / "audit only" → **no production edits**; tests-only when scoped
+- ⬜ Task prompt includes **Position · Authority · Acceptance · Stop conditions** ([`AGENTS.md`](mdc:AGENTS.md))
 
 ## @ References
 
-- Check character roles in `@persona/README.md` + each card.
-- UI work: also read `@persona/gina-gui.md`.
-- Architecture decisions: prioritize `@.cursor/rules/architecture.mdc`.
+- Workflow: [`workflow.mdc`](mdc:.cursor/rules/workflow.mdc) · [`protocols/README.md`](mdc:protocols/README.md)
+- Domain lenses: [`persona/README.md`](mdc:persona/README.md) + matching manual
+- UI: [`frontend.md`](mdc:documents/ai/manuals/frontend.md) + [web-interface.mdc](mdc:.cursor/rules/web-interface.mdc)
+- Architecture: [architecture.mdc](mdc:.cursor/rules/architecture.mdc)
 
 ## Memo
 
-- Reflect recurring mistakes, project decisions, next tasks in `documents/CURSOR_MEMO.md` when user requests.
-- When updating memo, leave date + short reason.
+- Recurring mistakes → `documents/CURSOR_MEMO.md` when user requests (date + reason).
 
 ## Multiple chats
 
-- Maintain layer boundaries even when conversations split by area.
-- Applying conclusions from another chat: re-verify against files.
+- New thread per PR purpose or topic change.
+- Conclusions from another chat: re-verify against files + CANON spec.
 
 ## Bugbot
 
-- Follow [bugbot-policy.mdc](mdc:.cursor/rules/bugbot-policy.mdc): not every PR — only high-risk, large diff, user asks, or similar; no default checklist item.
+- [bugbot-policy.mdc](mdc:.cursor/rules/bugbot-policy.mdc) — selective, not default on every PR.
 
 ## Completion report
 
-- Briefly report changed files, validation commands, reasons for anything not run.
-- Validation fails: note failing command, reason, next responsible character.
-- Validation not run: note commands not executed, reason, remaining risk.
-- If `black .` changes files, note format changes separately from pass/fail.
+- ⬜ Caveman six sections ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc))
+- ⬜ Goal status + exact commands run
+- ⬜ Failures: command · reason · next step
+- ⬜ Skipped gates: list + risk

@@ -1,4 +1,4 @@
-"""Layer 03 Phase D — commit-time re-probe + integrated result assembly + v2 run wiring.
+"""Layer 03 Phase D ??commit-time re-probe + integrated result assembly + v2 run wiring.
 
 Covers: surviving bundles become provisional committed_placements, the re-probe blocks a
 later bundle that collides with already-committed equipment (candidate reachability is never
@@ -7,9 +7,9 @@ the final commit proof), and the canonical IntegratedRimGreedyResult is well-for
 
 from __future__ import annotations
 
-from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import (
-    GeneCatalogEntry,
-    GeneCatalogSnapshot,
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedEntry,
+    GeneticSampleSeedSnapshot,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
@@ -37,8 +37,8 @@ from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
 )
 
 
-def _m0e_entry() -> GeneCatalogEntry:
-    return GeneCatalogEntry(
+def _m0e_entry() -> GeneticSampleSeedEntry:
+    return GeneticSampleSeedEntry(
         gene_id="m0e",
         resource_kind="both",
         canonical_output_dir="E",
@@ -52,8 +52,8 @@ def _m0e_entry() -> GeneCatalogEntry:
     )
 
 
-def _m3e_entry() -> GeneCatalogEntry:
-    return GeneCatalogEntry(
+def _m3e_entry() -> GeneticSampleSeedEntry:
+    return GeneticSampleSeedEntry(
         gene_id="m3e",
         resource_kind="shape",
         canonical_output_dir="E",
@@ -67,9 +67,9 @@ def _m3e_entry() -> GeneCatalogEntry:
     )
 
 
-def _catalog() -> GeneCatalogSnapshot:
-    return GeneCatalogSnapshot(
-        schema_version="gene_catalog_v1",
+def _catalog() -> GeneticSampleSeedSnapshot:
+    return GeneticSampleSeedSnapshot(
+        schema_version="genetic_sample_seed_v1",
         generated_at="",
         provenance_hash="",
         source_batch_id="",
@@ -82,7 +82,7 @@ def _golden_normal() -> tuple:
     result = generate_candidates(
         complete_map=golden_5x5_complete_map(),
         exterior_plan=minimal_l2_plan_for_golden(),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
     return result.normal_candidates
 
@@ -144,12 +144,34 @@ def test_build_integrated_result_is_well_formed() -> None:
     assert result.append_result.placement_count == 1
 
 
+def test_commit_aware_beam_finalize_has_no_rejects_on_golden() -> None:
+    from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_reprobe import (  # noqa: E501
+        build_commit_reprobe_context,
+    )
+
+    complete_map = golden_5x5_complete_map()
+    exterior_plan = minimal_l2_plan_for_golden()
+    commit_ctx = build_commit_reprobe_context(
+        complete_map=complete_map,
+        exterior_plan=exterior_plan,
+    )
+    assert commit_ctx is not None
+    selection = select_bundles(_golden_normal(), commit_ctx=commit_ctx)
+    finalize = finalize_selection(
+        selected=selection.selected,
+        complete_map=complete_map,
+        exterior_plan=exterior_plan,
+    )
+    assert len(finalize.committed_placements) >= 1
+    assert finalize.rejected_attempts == ()
+
+
 def test_run_layer_03_v2_end_to_end_commits_one_placement() -> None:
     result = run_layer_03_rim_greedy_placement(
         complete_map=golden_5x5_complete_map(),
         exterior_plan=minimal_l2_plan_for_golden(),
         budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
     assert result.metrics.layer_skip_reason is None
     assert result.metrics.committed_placement_count == 1
@@ -157,12 +179,15 @@ def test_run_layer_03_v2_end_to_end_commits_one_placement() -> None:
     assert result.metrics.rim_anchor_count > 0
 
 
-def test_run_layer_03_v2_missing_gene_catalog_skips() -> None:
+def test_run_layer_03_v2_MISSING_GENETIC_SAMPLE_SEEDS_skips() -> None:
     result = run_layer_03_rim_greedy_placement(
         complete_map=golden_5x5_complete_map(),
         exterior_plan=minimal_l2_plan_for_golden(),
         budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
-        gene_catalog=None,
+        genetic_sample_seeds=None,
     )
-    assert result.metrics.layer_skip_reason == Layer03SkipReason.MISSING_GENE_CATALOG
+    assert (
+        result.metrics.layer_skip_reason
+        == Layer03SkipReason.MISSING_GENETIC_SAMPLE_SEEDS.value
+    )
     assert result.committed_placements == ()

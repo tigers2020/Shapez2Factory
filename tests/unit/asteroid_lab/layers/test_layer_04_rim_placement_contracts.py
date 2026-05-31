@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.provisional_overlay import ProvisionalLayoutOverlay
-from django_apps.asteroid_lab.layers.contracts.rim_placement import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.provisional_overlay import (
+    ProvisionalLayoutOverlay,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_placement import (
     Layer04PackingObservability,
     RimComponentSelectionRecord,
     RimPackingRejectionKind,

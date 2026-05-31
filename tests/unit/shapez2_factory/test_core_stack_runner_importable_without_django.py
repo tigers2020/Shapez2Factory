@@ -1,4 +1,4 @@
-"""PR-CLI-2e Step 2 — core ``stack_runner`` imports in a Django-free subprocess (BA-1).
+"""PR-CLI-2e Step 2 ??core ``stack_runner`` imports in a Django-free subprocess (BA-1).
 
 The relocated core orchestrator must import with ``DJANGO_SETTINGS_MODULE`` unset and without
 pulling any ``django`` module into ``sys.modules``.

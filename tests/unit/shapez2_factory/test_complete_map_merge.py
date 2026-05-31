@@ -1,4 +1,4 @@
-"""PR-CLI-2c — pure parity for the display_map split (no Django).
+"""PR-CLI-2c ??pure parity for the display_map split (no Django).
 
 Locks the synthetic-field transforms + cell-level merge extracted from the Django viewer /
 replay row shaping into ``complete_map_merge`` so reconstruction-complete cells are identical.

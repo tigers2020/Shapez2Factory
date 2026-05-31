@@ -5,16 +5,16 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
-    LAYER_02_EXTERIOR_TRANSPORT,
-    LAYER_03_RIM_GREEDY_PLACEMENT,
-    LAYER_06_COMMIT_VALIDATE,
-)
 from django_apps.asteroid_lab.services.solver_run_lab_summary import (
     lab_run_summary_from_orm,
     lab_run_summary_from_solver_summary,
     solver_runs_for_lab_project,
     validation_passed_from_solver_summary,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_02_EXTERIOR_TRANSPORT,
+    LAYER_03_RIM_GREEDY_PLACEMENT,
+    LAYER_06_COMMIT_VALIDATE,
 )
 
 pytestmark = pytest.mark.django_db

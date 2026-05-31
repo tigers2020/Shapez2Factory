@@ -1,4 +1,4 @@
-"""Stack run status codes for layer 2–5 orchestration."""
+"""Stack run status codes for layer 2-5 orchestration."""
 
 from __future__ import annotations
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.layer04_disabled import LAYER04_DISABLED_REASON
-from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_disabled import (
+    LAYER04_DISABLED_REASON,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
     run_layer_04_rim_bundle_placement,
 )
 

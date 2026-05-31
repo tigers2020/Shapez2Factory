@@ -1,4 +1,4 @@
-"""Thumbnail sync — hash skip, regen, clear, failure containment."""
+"""Thumbnail sync ??hash skip, regen, clear, failure containment."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
-"""Layer 03 v2 — E1 determinism + E2 L3-rim-only golden benchmark metrics.
+"""Layer 03 v2 ??E1 determinism + E2 L3-rim-only golden benchmark metrics.
 
-Spec E (rim-only benchmark, NOT a 1:1 golden_map_result match — that needs L4-L6, out of
+Spec E (rim-only benchmark, NOT a 1:1 golden_map_result match ??that needs L4-L6, out of
 scope): routed rim throughput, committed rim placement count, route-feasible output count,
 ``invalid_overlap_count == 0``, and a stable deterministic output hash. The full origin->result
 golden equivalence is intentionally excluded here.
@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import hashlib
 
-from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import (
-    GeneCatalogEntry,
-    GeneCatalogSnapshot,
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedEntry,
+    GeneticSampleSeedSnapshot,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
@@ -31,15 +31,15 @@ from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
 _THROUGHPUT_BY_GENE = {"m3e": 16, "m0e": 4}
 
 
-def _catalog() -> GeneCatalogSnapshot:
-    return GeneCatalogSnapshot(
-        schema_version="gene_catalog_v1",
+def _catalog() -> GeneticSampleSeedSnapshot:
+    return GeneticSampleSeedSnapshot(
+        schema_version="genetic_sample_seed_v1",
         generated_at="",
         provenance_hash="",
         source_batch_id="",
         deterministic_sort_key="by_gene_id_then_throughput_desc",
         entries=(
-            GeneCatalogEntry(
+            GeneticSampleSeedEntry(
                 gene_id="m3e",
                 resource_kind="shape",
                 canonical_output_dir="E",
@@ -51,7 +51,7 @@ def _catalog() -> GeneCatalogSnapshot:
                 throughput_factor=16,
                 topology_signature_base="m3e_base",
             ),
-            GeneCatalogEntry(
+            GeneticSampleSeedEntry(
                 gene_id="m0e",
                 resource_kind="both",
                 canonical_output_dir="E",
@@ -72,7 +72,7 @@ def _run() -> IntegratedRimGreedyResult:
         complete_map=golden_5x5_complete_map(),
         exterior_plan=minimal_l2_plan_for_golden(),
         budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
 
 

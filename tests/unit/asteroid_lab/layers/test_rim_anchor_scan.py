@@ -1,4 +1,4 @@
-"""Layer 03 rim anchor scan — solver-frame anchor enumeration (spec R1 / D1)."""
+"""Layer 03 rim anchor scan ??solver-frame anchor enumeration (spec R1 / D1)."""
 
 from __future__ import annotations
 

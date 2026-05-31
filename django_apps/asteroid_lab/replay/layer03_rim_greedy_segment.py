@@ -71,6 +71,27 @@ _MAP_FACING_DIR_TO_PORT: dict[str, str] = {
     "W": "w",
 }
 _OUTPUT_TO_ROTATION: dict[str, int] = {"E": 0, "S": 1, "W": 2, "N": 3}
+_CARDINAL_DIR_ALIASES: dict[str, str] = {
+    "n": "N",
+    "e": "E",
+    "s": "S",
+    "w": "W",
+    "N": "N",
+    "E": "E",
+    "S": "S",
+    "W": "W",
+}
+
+
+def _canonical_cardinal_dir(output_dir: str) -> str:
+    """Normalize ``Direction`` wire (``n``/``e``/``s``/``w``) to uppercase grid keys."""
+
+    key = output_dir.strip()
+    canon = _CARDINAL_DIR_ALIASES.get(key) or _CARDINAL_DIR_ALIASES.get(key.lower())
+    if canon is None:
+        msg = f"unsupported output_dir={output_dir!r}"
+        raise ValueError(msg)
+    return canon
 
 
 def _event_type_for_phase(phase: RimGreedyObservationPhase) -> ReplayEventType:
@@ -104,7 +125,7 @@ def _transport_wire() -> str:
 
 
 def _placement_output_rotation(output_dir: str) -> int:
-    return _OUTPUT_TO_ROTATION[output_dir]
+    return _OUTPUT_TO_ROTATION[_canonical_cardinal_dir(output_dir)]
 
 
 def _direction_child_to_parent(child: Coord, parent: Coord) -> str | None:
@@ -169,7 +190,7 @@ def _parent_coord_for_extension(
     extension, or the preceding extension for deeper links. This keeps the parent a
     4-neighbor so ``placement_extension_rotation`` resolves for m3e_01 chains.
     """
-    dx, dy = _CARDINAL_DIR_DELTA[placement.output_dir]
+    dx, dy = _CARDINAL_DIR_DELTA[_canonical_cardinal_dir(placement.output_dir)]
     return (extension_coord[0] + dx, extension_coord[1] + dy)
 
 

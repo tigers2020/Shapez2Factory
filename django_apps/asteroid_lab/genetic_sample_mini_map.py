@@ -1,4 +1,4 @@
-﻿"""HTML mini-map for :class:`~django_apps.asteroid_lab.models.GeneticSample` admin (readonly)."""
+﻿"""HTML mini-map for :class:`~django_apps.asteroid_lab.models.GeneSeed` admin (readonly)."""
 
 from __future__ import annotations
 

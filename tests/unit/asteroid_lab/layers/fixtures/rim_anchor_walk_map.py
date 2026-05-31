@@ -8,7 +8,7 @@ from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionC
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord, neighbors4
 
-# 5×5 field block at (2,2)..(6,6) with interior void at (4,4) — not external.
+# 5×5 field block at (2,2)..(6,6) with interior void at (4,4) ??not external.
 _FIELD_ORIGIN = 2
 _FIELD_SIZE = 5
 _INTERIOR_VOID = (4, 4)

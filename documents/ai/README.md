@@ -1,80 +1,36 @@
 # AI Work Hub (`documents/ai`)
 
+Root [`AGENTS.md`](../../AGENTS.md) — **Spec-first · Small PR · Test-gated** operating contract + manual routing.
 
+Detailed procedures live here and in [`manuals/`](manuals/). Full `documents/` map: [`../README.md`](../README.md).
 
-Root [`AGENTS.md`](../../AGENTS.md) holds **short rules + manual routing** only; detailed procedures and domain notes live here and in [`manuals/`](manuals/).
+Markdown in this directory: **English**.
 
+## Workflow entry
 
+| Resource | Purpose |
+|----------|---------|
+| [`START_HERE.md`](START_HERE.md) | Session reading order + authority rules |
+| [`templates/contract-brief.md`](templates/contract-brief.md) | Problem · Goal · Contract · Acceptance |
+| [`templates/pr-plan.md`](templates/pr-plan.md) | One-purpose PR plan |
+| [`current_plan.md`](current_plan.md) | ACTIVE work tracker (not CANON authority) |
+| [`../../protocols/README.md`](../../protocols/README.md) | Workflow stages 1–11 |
+| [`../../.cursor/rules/workflow.mdc`](../../.cursor/rules/workflow.mdc) | Always-on workflow rule |
 
-Full `documents/` folder map, archive, and plan-research pairs: [`../README.md`](../README.md).
-
-
-
-Per project convention, Markdown body text in this directory is written in **English**.
-
-
-
-## Files
-
-
-
-| File | Purpose |
-
-|------|---------|
-
-| [`current_plan.md`](current_plan.md) | Goals, scope, and forbidden items for this session/task |
-
-| [`context_notes.md`](context_notes.md) | Assumptions, decisions, related issues and path links |
-
-| [`checklist.md`](checklist.md) | Step-by-step completion checks and quality gates |
-
-| [`manuals/cursor_usage.md`](manuals/cursor_usage.md) | Cursor and agent workflow summary |
-
-| [`.cursor/rules/shapez2-core.mdc`](../../.cursor/rules/shapez2-core.mdc) | Always-on rules and Caveman 6 sections (§17 [`cursor_usage.md`](manuals/cursor_usage.md)) |
-
-
-
-Mapping to harness engineering four elements and the 10-stage pipeline: see canonical [`protocols/README.md`](../../protocols/README.md).
-
-
-
-## Manuals
-
-
-
-[`manuals/`](manuals/) — open **only the chapters needed** for the task type (do not read everything every time).
-
-
+## Manuals (open by task type only)
 
 | Manual | Purpose |
-
 |--------|---------|
+| [`manuals/testing.md`](manuals/testing.md) | Contract-first TDD · dual gate · pytest output rules |
+| [`manuals/cursor_usage.md`](manuals/cursor_usage.md) | Cursor habits · scoped task prompts |
+| [`manuals/django.md`](manuals/django.md) | Django runtime |
+| [`manuals/solver.md`](manuals/solver.md) | Solver / algorithm |
+| [`manuals/frontend.md`](manuals/frontend.md) | UI / web |
 
-| [`manuals/testing.md`](manuals/testing.md) | **Contract-first TDD** · invariant · dual gate · PR checklist · **pytest output rules** (`-q` forbidden) — canonical |
-
-| [`manuals/cursor_usage.md`](manuals/cursor_usage.md) | Cursor, context, and agent-native engineering |
-
-| [`manuals/django.md`](manuals/django.md) § References | External Django references (DEV Cursor rules, django-rules) — for `django` work |
-
-| [`manuals/cursor_slim_setup.md`](manuals/cursor_slim_setup.md) | MCP, plugins, and User Rules slim setup guide |
-
-
+Position lenses (domain routing): [`../../persona/README.md`](../../persona/README.md)
 
 ## Runbooks
 
+[`runbooks/dev_commands.md`](runbooks/dev_commands.md) — pytest, runserver, build commands.
 
-
-[`runbooks/`](runbooks/) — repeatable development procedures.
-
-
-
-| Runbook | Purpose |
-
-|---------|---------|
-
-| [`runbooks/dev_commands.md`](runbooks/dev_commands.md) | Quick reference for pytest, runserver, pycache, and build commands |
-
-
-
-See also: [`AGENTS.md`](../../AGENTS.md) Manual Routing — task-type manual routing table.
-
+See [`AGENTS.md`](../../AGENTS.md) for domain routing table.

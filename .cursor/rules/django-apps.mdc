@@ -17,16 +17,16 @@ Persona: [denny.md](mdc:persona/denny.md). Manual: [django.md](mdc:documents/ai/
 
 ## MUST before editing
 
-1. `@persona/denny.md`, `@documents/ai/manuals/django.md`
-2. Models/migrations: `@documents/ai/manuals/database.md`
-3. `game_data`: `@django_apps/game_data/services/validators.py`, `tests/unit/game_data/`
+- ⬜ `@persona/denny.md`, `@documents/ai/manuals/django.md`
+- ⬜ Models/migrations: `@documents/ai/manuals/database.md`
+- ⬜ `game_data`: `@django_apps/game_data/services/validators.py`, `tests/unit/game_data/`
 
 ## Forbidden shortcuts
 
-- `JSONField`, `raw_json`, `audit_blob`, `payload`, `data`, `source_dump` on domain models — forbidden without `ALLOWED_JSON_MODELS` + plan approval ([validators.py](mdc:django_apps/game_data/services/validators.py))
-- Implementing contract changes without plan + approval
-- No skipping `test_no_raw_json_domain_storage`, `test_admin_browse` when touching `game_data`, browse, admin, or importer
-- Cross-app imports violating [django.md](mdc:documents/ai/manuals/django.md) import matrix
+- ❌ `JSONField`, `raw_json`, `audit_blob`, `payload`, `data`, `source_dump` on domain models — without `ALLOWED_JSON_MODELS` + plan approval ([validators.py](mdc:django_apps/game_data/services/validators.py))
+- ❌ Implementing contract changes without plan + approval
+- ❌ Skipping `test_no_raw_json_domain_storage`, `test_admin_browse` when touching `game_data`, browse, admin, or importer
+- ❌ Cross-app imports violating [django.md](mdc:documents/ai/manuals/django.md) import matrix
 
 ## Thin view
 

@@ -1,4 +1,4 @@
-"""Layer 03 candidate generation (spec R2/R3/R4/R5/D1/D2) — Phase 1, no commit.
+"""Layer 03 candidate generation (spec R2/R3/R4/R5/D1/D2) ??Phase 1, no commit.
 
 For each ``(rim anchor, gene entry, output direction in anchor.void_dirs)`` this module:
 
@@ -17,7 +17,7 @@ reject pool. This module never commits (R6) and never consumes replay/metrics as
 
 Determinism (D1): the normal pool is emitted sorted by
 ``(anchor_row, anchor_col, output_dir_rank, -throughput_factor, gene_id)`` in the canonical
-solver frame. This enumeration order is NOT a commit selector (D2 — a later phase scores).
+solver frame. This enumeration order is NOT a commit selector (D2 ??a later phase scores).
 """
 
 from __future__ import annotations
@@ -74,9 +74,9 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
 )
 
 if TYPE_CHECKING:
-    from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import (
-        GeneCatalogEntry,
-        GeneCatalogSnapshot,
+    from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+        GeneticSampleSeedEntry,
+        GeneticSampleSeedSnapshot,
     )
     from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
         ExteriorConnectionPlan,
@@ -151,10 +151,10 @@ def rotate_offset_east_to(offset: Coord, edge: str) -> Coord:
     vector ``(1, 0)`` onto the target cardinal unit vector while remaining a proper
     rotation, so the inward extensions follow consistently:
 
-    * east  → identity        ``(x, y)``
-    * north → ``(y, -x)``
-    * west  → ``(-x, -y)``
-    * south → ``(-y, x)``
+    * east  ??identity        ``(x, y)``
+    * north ??``(y, -x)``
+    * west  ??``(-x, -y)``
+    * south ??``(-y, x)``
     """
 
     x, y = offset
@@ -232,7 +232,7 @@ def _equipment_matches_field(
     field_kind: str,
     kind_by_coord: dict[Coord, str],
 ) -> bool:
-    """Equipment ⊆ field of the matching resource kind (R2).
+    """Equipment ??field of the matching resource kind (R2).
 
     When per-cell evidence is available (decoded ``cells``) every equipment cell whose
     kind is known must equal the anchor's field kind; otherwise field membership alone
@@ -253,7 +253,7 @@ def _equipment_matches_field(
 def _build_candidate(
     *,
     anchor: RimAnchor,
-    entry: GeneCatalogEntry,
+    entry: GeneticSampleSeedEntry,
     out_edge: str,
     orientation_k: int,
     mirrored: bool,
@@ -365,7 +365,7 @@ def generate_candidates(
     *,
     complete_map: ReconstructionCompleteMap,
     exterior_plan: ExteriorConnectionPlan | None,
-    gene_catalog: GeneCatalogSnapshot,
+    genetic_sample_seeds: GeneticSampleSeedSnapshot,
     anchors: tuple[RimAnchor, ...] | None = None,
 ) -> RimBundleCandidateSet:
     """Deterministic rim candidate pool with immediate route probe (no commit).
@@ -401,7 +401,7 @@ def generate_candidates(
 
     for anchor in anchors:
         ax, ay = anchor.coord
-        for entry in gene_catalog.entries:
+        for entry in genetic_sample_seeds.entries:
             if not _resource_eligible(entry.resource_kind, anchor.field_kind):
                 continue
             resource_kind = _FIELD_KIND_TO_RESOURCE[anchor.field_kind]
@@ -462,7 +462,7 @@ def generate_candidates(
                         route_probe_start=route_probe_start,
                     )
 
-                    # R2: equipment ⊆ matching-resource field.
+                    # R2: equipment ??matching-resource field.
                     if not equipment_on_field:
                         geometry_rejected += 1
                         diagnostics.append(
@@ -474,7 +474,7 @@ def generate_candidates(
                         )
                         continue
 
-                    # R3: output stub ⊆ external void.
+                    # R3: output stub ??external void.
                     if out_edge not in void_sides:
                         geometry_rejected += 1
                         diagnostics.append(

@@ -35,6 +35,7 @@ class GeneTemplate:
     throughput_factor: int
     topology_signature_base: str
     extension_attachments: tuple[ExtensionAttachment, ...] = ()
+    resource_kind: str = "both"
 
     def __post_init__(self) -> None:
         if self.output_dir is not Direction.E:
@@ -54,6 +55,9 @@ class GeneTemplate:
             raise ValueError(msg)
         if len(self.occupied_offsets) != len({self.extractor_offset, *self.extension_offsets}):
             msg = "occupied_offsets must equal extractor + extensions without overlap"
+            raise ValueError(msg)
+        if self.resource_kind not in ("shape", "fluid", "both"):
+            msg = "resource_kind must be shape, fluid, or both"
             raise ValueError(msg)
 
 

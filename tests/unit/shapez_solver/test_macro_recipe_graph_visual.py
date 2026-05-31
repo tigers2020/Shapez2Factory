@@ -70,7 +70,7 @@ def test_serialize_macro_recipe_visual_rotate_chain() -> None:
 def test_serialize_macro_recipe_visual_validates_document_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """회귀 방지: 직렬화 경로에서 ``validate_graph_document``·deepcopy 이중 호출 금지."""
+    """?��? 방�?: 직렬??경로?�서 ``validate_graph_document``·deepcopy ?�중 ?�출 금�?."""
     calls = 0
     real_validate = macro_recipe_graph_visual.validate_graph_document
 

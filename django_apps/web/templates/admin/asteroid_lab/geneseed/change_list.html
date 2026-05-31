@@ -1,0 +1,44 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="module" style="margin-bottom: 16px;">
+  <form method="post" action="{% url 'admin:asteroid_lab_geneseed_seed_miner_patterns' %}">
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      <h2>Miner seed pattern ingest</h2>
+      <p class="help">
+        <code>manage.py seed_miner_patterns</code>와 동일: bootstrap 18개 SHAPEZ2 copy string을
+        <code>gene_key</code> (<code>miner_seed_m0e_01</code> … <code>miner_seed_m3e_13</code>, <code>m3e_10</code> 제외) 기준으로
+        <code>GeneSeed</code>에 upsert합니다.
+        (<code>metadata_json.schema</code> = <code>miner_seed_v2</code>)
+      </p>
+      <div class="form-row">
+        <label>
+          <input type="checkbox" name="dry_run" />
+          dry-run (DB 쓰기 없음, 검증만)
+        </label>
+      </div>
+      <div class="form-row">
+        <label>
+          <input type="checkbox" name="replace_stale" checked />
+          <code>exhaustive_sample_gene_v1</code> generator 행 삭제
+        </label>
+      </div>
+      <div class="form-row">
+        <label>
+          <input type="checkbox" name="purge_non_seed" checked />
+          stale <code>miner_seed_*</code> v1/v2 행만 삭제 (18개 canonical 외; 수동 샘플 유지)
+        </label>
+      </div>
+      <p class="help">
+        목록에는 <code>miner_seed_v2</code> 시드 18건만 표시됩니다. 시드 실행 후 changelist에서 미니맵을 확인하세요.
+      </p>
+      <div class="submit-row">
+        <input type="submit" class="default" value="Miner seed 패턴 시드 실행" />
+      </div>
+    </fieldset>
+  </form>
+</div>
+{{ block.super }}
+{% endblock %}

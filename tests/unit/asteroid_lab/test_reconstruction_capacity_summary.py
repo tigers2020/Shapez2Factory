@@ -1,4 +1,4 @@
-"""PR-2a — reconstruction capacity from complete map + MiningExtractionRule only."""
+"""PR-2a ??reconstruction capacity from complete map + MiningExtractionRule only."""
 
 from __future__ import annotations
 

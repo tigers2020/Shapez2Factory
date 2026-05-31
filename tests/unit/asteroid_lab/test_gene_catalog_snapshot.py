@@ -1,14 +1,14 @@
 import pytest
 
-from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import (
-    GeneCatalogInvalid,
-    GeneCatalogSnapshot,
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedInvalid,
+    GeneticSampleSeedSnapshot,
 )
 
 
 def _valid_payload():
     return {
-        "schema_version": "gene_catalog_v1",
+        "schema_version": "genetic_sample_seed_v1",
         "generated_at": "2026-05-31T00:00:00Z",
         "provenance_hash": "abc123",
         "source_batch_id": "exhaustive_sample_gene_v1",
@@ -31,8 +31,8 @@ def _valid_payload():
 
 
 def test_from_payload_roundtrip():
-    snap = GeneCatalogSnapshot.from_payload(_valid_payload())
-    assert snap.schema_version == "gene_catalog_v1"
+    snap = GeneticSampleSeedSnapshot.from_payload(_valid_payload())
+    assert snap.schema_version == "genetic_sample_seed_v1"
     assert len(snap.entries) == 1
     assert snap.entries[0].gene_id == "m3e_01"
     assert snap.entries[0].canonical_output_dir == "E"
@@ -42,26 +42,34 @@ def test_from_payload_roundtrip():
 def test_unsupported_schema_rejected():
     payload = _valid_payload()
     payload["schema_version"] = "gene_catalog_v999"
-    with pytest.raises(GeneCatalogInvalid):
-        GeneCatalogSnapshot.from_payload(payload)
+    with pytest.raises(GeneticSampleSeedInvalid):
+        GeneticSampleSeedSnapshot.from_payload(payload)
 
 
 def test_missing_canonical_output_dir_rejected():
     payload = _valid_payload()
     del payload["entries"][0]["canonical_output_dir"]
-    with pytest.raises(GeneCatalogInvalid):
-        GeneCatalogSnapshot.from_payload(payload)
+    with pytest.raises(GeneticSampleSeedInvalid):
+        GeneticSampleSeedSnapshot.from_payload(payload)
 
 
 def test_bad_throughput_factor_rejected():
     payload = _valid_payload()
     payload["entries"][0]["throughput_factor"] = 5
-    with pytest.raises(GeneCatalogInvalid):
-        GeneCatalogSnapshot.from_payload(payload)
+    with pytest.raises(GeneticSampleSeedInvalid):
+        GeneticSampleSeedSnapshot.from_payload(payload)
 
 
 def test_empty_entries_is_valid_but_has_no_usable_genes():
     payload = _valid_payload()
     payload["entries"] = []
-    snap = GeneCatalogSnapshot.from_payload(payload)
+    snap = GeneticSampleSeedSnapshot.from_payload(payload)
     assert snap.entries == ()
+
+
+def test_legacy_gene_catalog_v1_schema_still_parses():
+    payload = _valid_payload()
+    payload["schema_version"] = "gene_catalog_v1"
+    snap = GeneticSampleSeedSnapshot.from_payload(payload)
+    assert snap.schema_version == "gene_catalog_v1"
+    assert len(snap.entries) == 1

@@ -4,31 +4,32 @@ from decimal import Decimal
 
 import pytest
 
-from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
-from django_apps.asteroid_lab.layers.contracts.exterior_connection import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionShortfallReason,
 )
-from django_apps.asteroid_lab.layers.contracts.exterior_connector_role import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connector_role import (
     ExteriorConnectorRole,
-)
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.layout_t import (
-    default_exterior_connector_layout_t,
-)
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.plan import (
-    build_exterior_connection_plan,
-)
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.rotation import (
-    FIELDWARD_ROTATION_BY_EDGE,
-)
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.wire import (
-    exterior_connector_plan_to_metrics_dict,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport import (
     plan as plan_mod,
 )
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.layout_t import (
+    default_exterior_connector_layout_t,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.plan import (
+    build_exterior_connection_plan,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.rotation import (
+    FIELDWARD_ROTATION_BY_EDGE,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.wire import (
+    exterior_connector_plan_to_metrics_dict,
+)
 from tests.unit.asteroid_lab.layers.helpers.l02_complete_map_fixtures import (
     build_rect_field_with_void_shell,
 )
+from tests.unit.asteroid_lab.layers.helpers.l02_rules import snapshot_rules_for_test
 
 
 @pytest.mark.django_db
@@ -40,6 +41,7 @@ def test_required_connectors_uses_evtc_ceildiv_shape() -> None:
         terrain_upper_bound_per_min=Decimal("10000"),
         throughput_target_percent=100,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     assert plan.unmet_reason is None
     assert len(plan.planned_connectors) == plan.reference_connector_count
@@ -66,6 +68,7 @@ def test_zero_candidate_slots_fail_closed(monkeypatch: pytest.MonkeyPatch) -> No
         terrain_upper_bound_per_min=Decimal("999999"),
         throughput_target_percent=100,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     assert plan.unmet_reason == ExteriorConnectionShortfallReason.NO_FEASIBLE_CONNECTOR_SITES
     assert plan.planned_connectors == ()
@@ -93,6 +96,7 @@ def test_insufficient_slots_places_partial_required(monkeypatch: pytest.MonkeyPa
         terrain_upper_bound_per_min=Decimal("999999"),
         throughput_target_percent=100,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     required_planned = sum(
         1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.REQUIRED
@@ -112,6 +116,7 @@ def test_planned_connector_snapshot_fields() -> None:
         terrain_upper_bound_per_min=Decimal("5000"),
         throughput_target_percent=50,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     assert plan.planned_connectors
     row = plan.planned_connectors[0]
@@ -143,6 +148,7 @@ def test_wire_includes_shortfall_metrics_when_insufficient_slots(
         terrain_upper_bound_per_min=Decimal("999999"),
         throughput_target_percent=100,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     wire = exterior_connector_plan_to_metrics_dict(plan)["exterior_connector_plan"]
     assert wire["unmet_reason"] == "insufficient_connector_sites"
@@ -160,6 +166,7 @@ def test_wire_uses_lowercase_edge_slug() -> None:
         terrain_upper_bound_per_min=Decimal("3000"),
         throughput_target_percent=100,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     wire = exterior_connector_plan_to_metrics_dict(plan)["exterior_connector_plan"]
     assert isinstance(wire, dict)

@@ -1,4 +1,4 @@
-"""PR-CLI-2a Step 4 — moved DTOs import in a Django-free subprocess (BA-1).
+"""PR-CLI-2a Step 4 ??moved DTOs import in a Django-free subprocess (BA-1).
 
 Each relocated core module must import with ``DJANGO_SETTINGS_MODULE`` unset and without pulling any
 ``django`` module into ``sys.modules``.

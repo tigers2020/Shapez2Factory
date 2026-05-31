@@ -1,4 +1,4 @@
-"""TDD for Guard C — run_key + artifact-root safety.
+"""TDD for Guard C ??run_key + artifact-root safety.
 
 Verifies that ``resolve_artifact_dir`` rejects unsafe run_keys and any
 artifact_root that does not actually nest under the allowed_root, using

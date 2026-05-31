@@ -1,4 +1,4 @@
-﻿"""Unit tests for ``django_apps.asteroid_lab.reconstruction`` topology fill."""
+"""Unit tests for ``django_apps.asteroid_lab.reconstruction`` topology fill."""
 
 from __future__ import annotations
 

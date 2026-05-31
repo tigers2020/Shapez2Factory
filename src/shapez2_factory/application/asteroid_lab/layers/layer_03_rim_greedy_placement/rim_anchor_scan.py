@@ -1,4 +1,4 @@
-"""Layer 03 rim anchor scan — deterministic outer-rim enumeration (spec R1 / D1).
+"""Layer 03 rim anchor scan ??deterministic outer-rim enumeration (spec R1 / D1).
 
 Enumerates field cells adjacent to external void in the canonical solver coordinate
 frame of ``ReconstructionCompleteMap``. No ORM, no Lab-render/dense coordinates: all

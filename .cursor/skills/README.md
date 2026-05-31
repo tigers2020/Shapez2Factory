@@ -1,27 +1,35 @@
 # Skills Index
 
-이 디렉터리는 Cursor가 자동 발견하는 프로젝트 수준 스킬 저장소다.
+Cursor project skills — open when task matches; not read every turn.
 
-## 활성 스킬 (phase1)
+## Active skills
 
-| 스킬 | 경로 | 목적 |
+| Skill | Path | Purpose |
 |---|---|---|
-| bug-fix | `bug-fix/SKILL.md` | 실패 로그/재현 절차 기반 최소 수정 + 회귀 테스트 추가 |
-| write-tests | `write-tests/SKILL.md` | 구현 전/후 테스트 작성·보강 |
-| doc-update | `doc-update/SKILL.md` | 코드 변경 후 문서·ADR·runbook 동기화 |
+| bug-fix | `bug-fix/SKILL.md` | Minimal fix from failure log + regression test |
+| write-tests | `write-tests/SKILL.md` | Contract/failing/regression tests (often PR-3 scope) |
+| doc-update | `doc-update/SKILL.md` | Sync docs/ADR when public contract changes |
+| quality-check | `quality-check/SKILL.md` | REVIEW ONLY — contract/scope audit on diff |
+| cli-boundary | `cli-boundary/SKILL.md` | Thin CLI adapter — import/serialization/exit/determinism |
 
-## 비활성 스킬 (phase3 이후 활성화)
+## Workflow alignment
 
-아래 스킬은 `tests/golden/`에 결정적 회귀 검증 데이터셋이 갖춰진 뒤에 추가한다.
+- **PR-3 (tests only):** `write-tests` · no production edits unless user expands scope
+- **Pre-merge review:** `quality-check` · `cli-boundary` when CLI touched
+- **Post-contract-change:** `doc-update`
 
-| 스킬 | 게이트 조건 |
+Templates: [`documents/ai/templates/`](../documents/ai/templates/) · Workflow: [`AGENTS.md`](../../AGENTS.md)
+
+## Inactive (phase 3+)
+
+| Skill | Gate |
 |---|---|
-| feature-add | golden test 또는 acceptance criteria 기반 테스트 최소 1개 이상 |
-| refactor | characterization test 또는 golden diff 확보 |
+| feature-add | golden or acceptance test minimum |
+| refactor | characterization or golden diff |
 
-## 스킬 추가 절차
+## Adding a skill
 
-1. `research.md` 또는 `docs/domain/`에 근거 문서를 먼저 작성한다.
-2. `SKILL.md` 초안을 작성하고 시몬이 승인한다.
-3. `references/`, `scripts/`는 스킬이 실제로 사용될 때 추가한다.
-4. 스킬 본문은 짧게 유지하고 세부 내용은 `references/`로 분리한다.
+1. CANON spec or research doc first.
+2. Short `SKILL.md`; details in `references/`.
+3. Declare **Position · Authority · Acceptance** in skill body.
+4. Register here.

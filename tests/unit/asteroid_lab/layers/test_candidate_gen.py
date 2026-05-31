@@ -1,6 +1,6 @@
-"""Layer 03 candidate generation (Task B2) — geometry + immediate route probe.
+"""Layer 03 candidate generation (Task B2) ??geometry + immediate route probe.
 
-Covers spec rules R2 (equipment ⊆ matching-resource field), R3 (output stub ⊆
+Covers spec rules R2 (equipment ??matching-resource field), R3 (output stub ??
 external void), R5 (only route-feasible candidates enter the normal pool), and D1
 (deterministic candidate enumeration order in the canonical solver frame).
 
@@ -9,9 +9,9 @@ Geometry expectations are computed from the actual golden 5×5 fixture, not assu
 
 from __future__ import annotations
 
-from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import (
-    GeneCatalogEntry,
-    GeneCatalogSnapshot,
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedEntry,
+    GeneticSampleSeedSnapshot,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     BundleCellRole,
@@ -40,8 +40,8 @@ _ROUTE_FAILURE_REASONS = frozenset(
 )
 
 
-def _m0e_entry() -> GeneCatalogEntry:
-    return GeneCatalogEntry(
+def _m0e_entry() -> GeneticSampleSeedEntry:
+    return GeneticSampleSeedEntry(
         gene_id="m0e",
         resource_kind="both",
         canonical_output_dir="E",
@@ -55,8 +55,8 @@ def _m0e_entry() -> GeneCatalogEntry:
     )
 
 
-def _m3e_entry() -> GeneCatalogEntry:
-    return GeneCatalogEntry(
+def _m3e_entry() -> GeneticSampleSeedEntry:
+    return GeneticSampleSeedEntry(
         gene_id="m3e",
         resource_kind="shape",
         canonical_output_dir="E",
@@ -70,9 +70,9 @@ def _m3e_entry() -> GeneCatalogEntry:
     )
 
 
-def _catalog() -> GeneCatalogSnapshot:
-    return GeneCatalogSnapshot(
-        schema_version="gene_catalog_v1",
+def _catalog() -> GeneticSampleSeedSnapshot:
+    return GeneticSampleSeedSnapshot(
+        schema_version="genetic_sample_seed_v1",
         generated_at="",
         provenance_hash="",
         source_batch_id="",
@@ -139,7 +139,7 @@ def test_placement_rotation_is_transformed_r_not_nesw_rank_t4() -> None:
     result = generate_candidates(
         complete_map=complete_map,
         exterior_plan=minimal_l2_plan_for_golden(),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
     assert result.normal_candidates
     for probed in result.normal_candidates:
@@ -190,7 +190,7 @@ def test_independent_output_face_diverges_miner_and_extension_r_t7() -> None:
     result = generate_candidates(
         complete_map=complete_map,
         exterior_plan=minimal_l2_plan_for_golden(),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
     diverged = next(
         probed
@@ -224,7 +224,7 @@ def test_normal_pool_equipment_in_matching_field_r2() -> None:
     result = generate_candidates(
         complete_map=complete_map,
         exterior_plan=minimal_l2_plan_for_golden(),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
     assert result.normal_candidates, "expected at least one route-feasible candidate"
     for probed in result.normal_candidates:
@@ -237,7 +237,7 @@ def test_normal_pool_output_stub_in_external_void_r3() -> None:
     result = generate_candidates(
         complete_map=complete_map,
         exterior_plan=minimal_l2_plan_for_golden(),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
     for probed in result.normal_candidates:
         cand = probed.candidate
@@ -249,7 +249,7 @@ def test_only_route_feasible_candidates_enter_normal_pool_r5() -> None:
     result = generate_candidates(
         complete_map=complete_map,
         exterior_plan=minimal_l2_plan_for_golden(),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
     for probed in result.normal_candidates:
         assert probed.route_probe_status == RouteProbeStatus.SUCCEEDED
@@ -273,7 +273,7 @@ def test_candidate_enumeration_order_equals_d1_sort_key() -> None:
     result = generate_candidates(
         complete_map=complete_map,
         exterior_plan=minimal_l2_plan_for_golden(),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
 
     def d1_key(probed: object) -> tuple[int, int, int, int, str]:
@@ -291,7 +291,7 @@ def test_candidate_enumeration_order_equals_d1_sort_key() -> None:
 
 
 def test_golden_normal_pool_stage_funnel() -> None:
-    # STAGE-AWARE contract test (B2.1c-3): the final pool of 2 is not a magic number —
+    # STAGE-AWARE contract test (B2.1c-3): the final pool of 2 is not a magic number ??
     # it is the tail of the B2.1c-0 audit funnel. Each assertion below pins a stage so a
     # future regression localizes the broken stage rather than just "count changed":
     #
@@ -308,7 +308,7 @@ def test_golden_normal_pool_stage_funnel() -> None:
     result = generate_candidates(
         complete_map=complete_map,
         exterior_plan=minimal_l2_plan_for_golden(),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
     metrics = result.metrics
 
@@ -336,10 +336,10 @@ def test_generate_candidates_is_deterministic() -> None:
     complete_map = golden_5x5_complete_map()
     plan = minimal_l2_plan_for_golden()
     first = generate_candidates(
-        complete_map=complete_map, exterior_plan=plan, gene_catalog=_catalog()
+        complete_map=complete_map, exterior_plan=plan, genetic_sample_seeds=_catalog()
     )
     second = generate_candidates(
-        complete_map=complete_map, exterior_plan=plan, gene_catalog=_catalog()
+        complete_map=complete_map, exterior_plan=plan, genetic_sample_seeds=_catalog()
     )
     assert [p.candidate.candidate_id for p in first.normal_candidates] == [
         p.candidate.candidate_id for p in second.normal_candidates
@@ -354,7 +354,7 @@ def test_metrics_counts_match_pools() -> None:
     result = generate_candidates(
         complete_map=complete_map,
         exterior_plan=minimal_l2_plan_for_golden(),
-        gene_catalog=_catalog(),
+        genetic_sample_seeds=_catalog(),
     )
     metrics = result.metrics
     assert metrics.normal_candidate_count == len(result.normal_candidates)

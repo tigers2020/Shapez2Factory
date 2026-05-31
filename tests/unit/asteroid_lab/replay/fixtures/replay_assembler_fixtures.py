@@ -2,20 +2,22 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.candidates import (
+from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
+from django_apps.asteroid_lab.replay.timeline_dtos import ReplayMapView
+from django_apps.asteroid_lab.replay.timeline_serialization import replay_map_view_from_json_dict
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     Layer03ExpansionMetrics,
     Layer03SkipReason,
     RimBundleCandidateSet,
     RouteProbedBundleCandidate,
 )
-from django_apps.asteroid_lab.layers.contracts.rim_placement import Layer04RimPlacementResult
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.wire import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_placement import (
+    Layer04RimPlacementResult,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.wire import (
     exterior_connector_plan_to_metrics_dict,
 )
-from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
-from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
-from django_apps.asteroid_lab.replay.timeline_dtos import ReplayMapView
-from django_apps.asteroid_lab.replay.timeline_serialization import replay_map_view_from_json_dict
 from tests.unit.asteroid_lab.layers.fixtures.layer_03_candidate_set_factory import (
     rim_bundle_candidate_set_for_test,
 )

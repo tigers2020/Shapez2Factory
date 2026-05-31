@@ -1,4 +1,4 @@
-﻿"""Exhaustive sample-gene generator and seed command (contract tests)."""
+"""Exhaustive sample-gene generator and seed command (contract tests)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     assert_blueprint_entries_raw_x_nonzero,
     build_layout_root,
 )
-from django_apps.asteroid_lab.models import GeneticSample
+from django_apps.asteroid_lab.models import GeneSeed
 
 pytestmark = pytest.mark.slow
 
@@ -169,20 +169,20 @@ def test_exhaustive_generator_copy_string_roundtrip(
 
 @pytest.mark.django_db
 def test_seed_exhaustive_sample_genes_dry_run_no_write() -> None:
-    before = GeneticSample.objects.count()
+    before = GeneSeed.objects.count()
     call_command(
         "seed_exhaustive_sample_genes",
         "--dry-run",
         verbosity=0,
     )
-    after = GeneticSample.objects.count()
+    after = GeneSeed.objects.count()
     assert after == before
 
 
 @pytest.mark.django_db
 def test_seed_exhaustive_sample_genes_idempotent_update_or_create() -> None:
     def _seeded() -> int:
-        return GeneticSample.objects.filter(
+        return GeneSeed.objects.filter(
             metadata_json__generator="exhaustive_sample_gene_v1",
         ).count()
 
@@ -196,9 +196,9 @@ def test_seed_exhaustive_sample_genes_idempotent_update_or_create() -> None:
 @pytest.mark.django_db
 def test_seed_exhaustive_sample_genes_overwrites_stale_decoded_json() -> None:
     call_command("seed_exhaustive_sample_genes", verbosity=0)
-    sample = GeneticSample.objects.filter(gene_key__isnull=False).first()
+    sample = GeneSeed.objects.filter(gene_key__isnull=False).first()
     assert sample is not None
-    GeneticSample.objects.filter(pk=sample.pk).update(decoded_json={"stale_marker": True})
+    GeneSeed.objects.filter(pk=sample.pk).update(decoded_json={"stale_marker": True})
     call_command("seed_exhaustive_sample_genes", verbosity=0)
     sample.refresh_from_db()
     assert "stale_marker" not in sample.decoded_json
@@ -212,14 +212,14 @@ def test_seed_exhaustive_sample_genes_stale_delete_respects_generator(
     call_command("seed_exhaustive_sample_genes", verbosity=0)
     genes, _ = exhaustive_genes_ext0
     assert len(genes) == 2
-    orphan = GeneticSample.objects.create(
+    orphan = GeneSeed.objects.create(
         gene_key="stale_test_only_key",
         name="stale",
         code=genes[0].encoded_copy_string,
         metadata_json={"generator": "exhaustive_sample_gene_v1"},
     )
     call_command("seed_exhaustive_sample_genes", "--delete-stale-generated", verbosity=0)
-    assert not GeneticSample.objects.filter(pk=orphan.pk).exists()
+    assert not GeneSeed.objects.filter(pk=orphan.pk).exists()
 
 
 def test_build_layout_minimal_entries_order_deterministic() -> None:

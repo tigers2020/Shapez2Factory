@@ -35,6 +35,11 @@ FORBIDDEN_REPLAY_CORE_PREFIXES = (
     "shapez2_factory.adapters.asteroid_lab",
 )
 
+LAYER_SHIM_FREE_DIRS = [
+    "django_apps/asteroid_lab/replay",
+    "django_apps/asteroid_lab/services",
+]
+
 
 def _imported_modules(tree: ast.AST) -> list[str]:
     modules: list[str] = []
@@ -101,4 +106,18 @@ def test_replay_modules_do_not_import_solver_execution_core() -> None:
                 continue
             if module.startswith(FORBIDDEN_REPLAY_CORE_PREFIXES):
                 offenders.append(f"{path.relative_to(root)}: import {module}")
+    assert offenders == []
+
+
+def test_viewer_services_do_not_import_django_layer_shims() -> None:
+    root = Path(__file__).resolve().parents[3]
+    offenders: list[str] = []
+    for rel_dir in LAYER_SHIM_FREE_DIRS:
+        for path in sorted((root / rel_dir).glob("*.py")):
+            if path.name == "__init__.py":
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+            for module in _imported_modules(tree):
+                if module.startswith("django_apps.asteroid_lab.layers"):
+                    offenders.append(f"{path.relative_to(root)}: import {module}")
     assert offenders == []

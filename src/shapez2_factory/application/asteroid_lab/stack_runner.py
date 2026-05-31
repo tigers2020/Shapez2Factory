@@ -1,4 +1,4 @@
-"""Pure core orchestration for layers 2–6 (Django-free).
+"""Pure core orchestration for layers 2?? (Django-free).
 
 The Django wrapper in ``django_apps.asteroid_lab.layers.stack_runner`` owns logs, settings, and
 files; this core module is ignorant of them. It collects per-layer post-summary records into a
@@ -12,7 +12,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import GeneCatalogSnapshot
+    from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+        GeneticSampleSeedSnapshot,
+    )
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.diagnostic import (
     DiagnosticLayerSnapshot,
@@ -101,7 +103,7 @@ def run_layers_02_to_06(
     complete_map: ReconstructionCompleteMap,
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
-    gene_catalog: GeneCatalogSnapshot | None = None,
+    genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
 ) -> CoreStackRunResult:
     completed: list[str] = []
     last_diagnostic: DiagnosticLayerSnapshot | None = None
@@ -141,7 +143,7 @@ def run_layers_02_to_06(
                 complete_map=complete_map,
                 budget_ctx=budget_ctx,
                 exterior_plan=last_exterior_plan,
-                gene_catalog=gene_catalog,
+                genetic_sample_seeds=genetic_sample_seeds,
             )
             if isinstance(last_rim_greedy, IntegratedRimGreedyResult):
                 post_metrics = build_layer03_rim_greedy_post_summary_metrics(last_rim_greedy)
@@ -195,14 +197,14 @@ def run_layers_02_to_05(
     complete_map: ReconstructionCompleteMap,
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
-    gene_catalog: GeneCatalogSnapshot | None = None,
+    genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
 ) -> CoreStackRunResult:
     """Deprecated alias for ``run_layers_02_to_06`` (PR-3c layer renumber)."""
     return run_layers_02_to_06(
         complete_map=complete_map,
         budget_ctx=budget_ctx,
         runners=runners,
-        gene_catalog=gene_catalog,
+        genetic_sample_seeds=genetic_sample_seeds,
     )
 
 

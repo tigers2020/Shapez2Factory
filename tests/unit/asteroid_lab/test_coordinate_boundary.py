@@ -1,4 +1,4 @@
-﻿"""Raw/import coordinate boundary contracts."""
+"""Raw/import coordinate boundary contracts."""
 
 from __future__ import annotations
 

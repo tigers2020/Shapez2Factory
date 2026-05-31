@@ -1,4 +1,4 @@
-"""Layer 4 — rim bundle provisional placement (skeleton; implementation rebuild pending)."""
+"""Layer 4 ??rim bundle provisional placement (skeleton; implementation rebuild pending)."""
 
 from shapez2_factory.application.asteroid_lab.layers.layer_04_rim_bundle_placement.run import (
     empty_layer04_rim_placement_result,

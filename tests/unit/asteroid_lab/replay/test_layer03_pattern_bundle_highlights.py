@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
-from django_apps.asteroid_lab.layers.contracts.layer03_observability import (
-    build_layer03_observability_for_test,
-)
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_LAYER03_RIM_BUNDLE_POOL_PROBE_WINDOW,
 )
 from django_apps.asteroid_lab.replay.layer03_segment import build_layer03_runtime_segment_specs
 from django_apps.asteroid_lab.replay.pattern_bundle_highlight import METRICS_KEY
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer03_observability import (
+    build_layer03_observability_for_test,
+)
 from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
     succeeded_probe_at,
 )

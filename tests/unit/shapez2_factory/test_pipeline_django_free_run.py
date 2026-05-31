@@ -1,7 +1,7 @@
-"""PR-CLI-2f Step 2 (tests-first) — full decode→cleanup→reconstruction runs Django-free (3b prereq).
+"""PR-CLI-2f Step 2 (tests-first) ??full decode?�cleanup?�reconstruction runs Django-free (3b prereq).
 
 This is the prerequisite that unblocks PR-CLI-3b's "no Django required" full CLI run: the relocated
-core pipeline must execute end-to-end (copy string → ``ReconstructionResult``) in a subprocess with
+core pipeline must execute end-to-end (copy string ??``ReconstructionResult``) in a subprocess with
 ``DJANGO_SETTINGS_MODULE`` unset and without importing any ``django`` module.
 
 RED until PR-CLI-2f Step 4: the core modules do not exist yet.

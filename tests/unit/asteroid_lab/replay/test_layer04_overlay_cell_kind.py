@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import replace
 
 from django_apps.asteroid_lab.genetic_sample.enums import Direction
-from django_apps.asteroid_lab.layers.contracts.candidates import (
+from django_apps.asteroid_lab.replay.layer04_segment import _overlay_cells_for_placement
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     BundleCellRole,
     BundlePlacement,
     RouteProbedBundleCandidate,
@@ -13,8 +14,7 @@ from django_apps.asteroid_lab.layers.contracts.candidates import (
     RouteProbeStatus,
     make_bundle_candidate_for_test,
 )
-from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKind
-from django_apps.asteroid_lab.replay.layer04_segment import _overlay_cells_for_placement
+from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import TransportKind
 from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import (
     rim_bundle_placement_from_probe,
 )

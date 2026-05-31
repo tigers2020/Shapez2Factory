@@ -2,12 +2,30 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
 from django.conf import settings
 from django.urls import reverse
+
+_TERRAIN_ONLY_KINDS = frozenset(
+    {
+        "asteroid_shape_field",
+        "asteroid_fluid_field",
+        "internal_void",
+    }
+)
+_SPRITE_LAYOUT_KINDS = frozenset(
+    {
+        "space_belt",
+        "space_pipe",
+        "shape_miner",
+        "shape_miner_extension",
+        "fluid_miner",
+        "fluid_miner_extension",
+    }
+)
 
 LAB_REPLAY_PAYLOAD_VERSION = 1
 LabReplayPayloadMode = Literal["inline", "lazy"]
@@ -26,6 +44,44 @@ class LabReplayLazyHandle:
 def lab_replay_payload_mode() -> LabReplayPayloadMode:
     raw = str(getattr(settings, "ASTEROID_LAB_REPLAY_PAYLOAD_MODE", "lazy")).strip().lower()
     return "inline" if raw == "inline" else "lazy"
+
+
+def _map_view_cell_rows(frame: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    map_view = frame.get("map_view")
+    if not isinstance(map_view, dict):
+        return []
+    rows: list[Mapping[str, Any]] = []
+    for key in ("full_cells", "overlay_cells"):
+        cells = map_view.get(key)
+        if isinstance(cells, list):
+            rows.extend(cell for cell in cells if isinstance(cell, dict))
+    return rows
+
+
+def frame_has_sprite_layout_cells(frame: Mapping[str, Any]) -> bool:
+    """True when a timeline frame still carries equipment sprites (not terrain-only)."""
+
+    for cell in _map_view_cell_rows(frame):
+        kind = str(cell.get("kind") or cell.get("cell_kind") or "")
+        if kind in _TERRAIN_ONLY_KINDS:
+            continue
+        if cell.get("tile_type") or cell.get("sprite_identifier"):
+            return True
+        if kind in _SPRITE_LAYOUT_KINDS:
+            return True
+    return False
+
+
+def preview_frame_index_for_lab_replay(frames: Sequence[Mapping[str, Any]]) -> int:
+    """Prefer the latest frame that still shows equipment; fall back to the last slot."""
+
+    count = len(frames)
+    if count <= 0:
+        return 0
+    for index in range(count - 1, -1, -1):
+        if frame_has_sprite_layout_cells(frames[index]):
+            return index
+    return count - 1
 
 
 def _lab_replay_fetch_url(
@@ -59,7 +115,7 @@ def build_lab_replay_lazy_handle(
     solver_run_id: int | None,
 ) -> LabReplayLazyHandle:
     count = len(frames)
-    preview_index = max(0, count - 1) if count else 0
+    preview_index = preview_frame_index_for_lab_replay(frames)
     preview = dict(frames[preview_index]) if count else None
     fetch_url = _lab_replay_fetch_url(
         mode=mode,

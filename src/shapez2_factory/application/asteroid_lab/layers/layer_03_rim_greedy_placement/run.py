@@ -1,15 +1,17 @@
-"""Layer 3 v2 — DB-gene, two-phase rim placement (spec 2026-05-31-layer-03-rim-placement-v2).
+"""Layer 3 v2 ??DB-gene, two-phase rim placement (spec 2026-05-31-layer-03-rim-placement-v2).
 
 Pipeline: rim anchor scan -> deterministic candidate generation + immediate route probe
 (Phase B) -> deterministic beam selection (Phase C1) -> commit-time re-probe on the latest
 route domain (Phase D) -> provisional ``committed_placements``. Gene templates arrive only
-as a pure-core ``GeneCatalogSnapshot`` (DB read stays at the Django boundary). This layer
+as a pure-core ``GeneticSampleSeedSnapshot`` (DB read stays at the Django boundary). This layer
 commits nothing downstream; interior fill / final mutation remain L5/L6.
 """
 
 from __future__ import annotations
 
-from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import GeneCatalogSnapshot
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedSnapshot,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
@@ -36,6 +38,9 @@ from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placeme
     build_integrated_rim_greedy_result,
     finalize_selection,
 )
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_reprobe import (  # noqa: E501
+    build_commit_reprobe_context,
+)
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.rim_anchor_scan import (  # noqa: E501
     scan_rim_anchors,
 )
@@ -55,7 +60,7 @@ def run_layer_03_rim_greedy_placement(
     resource_kind: ResourceKind | None = None,
     transport_kind: TransportKind | None = None,
     policy: RimGreedyPolicy | None = None,
-    gene_catalog: GeneCatalogSnapshot | None = None,
+    genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
 ) -> IntegratedRimGreedyResult:
     _ = (budget_ctx, seed_catalog, resource_kind, transport_kind, policy)
     if exterior_plan is None:
@@ -63,9 +68,9 @@ def run_layer_03_rim_greedy_placement(
             layer_skip_reason=Layer03SkipReason.MISSING_EXTERIOR_CONNECTION_PLAN.value,
             rim_anchor_count=0,
         )
-    if gene_catalog is None or not gene_catalog.entries:
+    if genetic_sample_seeds is None or not genetic_sample_seeds.entries:
         return build_empty_integrated_rim_greedy_result(
-            layer_skip_reason=Layer03SkipReason.MISSING_GENE_CATALOG.value,
+            layer_skip_reason=Layer03SkipReason.MISSING_GENETIC_SAMPLE_SEEDS.value,
             rim_anchor_count=0,
         )
 
@@ -73,10 +78,17 @@ def run_layer_03_rim_greedy_placement(
     candidate_set = generate_candidates(
         complete_map=complete_map,
         exterior_plan=exterior_plan,
-        gene_catalog=gene_catalog,
+        genetic_sample_seeds=genetic_sample_seeds,
         anchors=anchors,
     )
-    selection = select_bundles(candidate_set.normal_candidates)
+    commit_ctx = build_commit_reprobe_context(
+        complete_map=complete_map,
+        exterior_plan=exterior_plan,
+    )
+    selection = select_bundles(
+        candidate_set.normal_candidates,
+        commit_ctx=commit_ctx,
+    )
     finalize = finalize_selection(
         selected=selection.selected,
         complete_map=complete_map,

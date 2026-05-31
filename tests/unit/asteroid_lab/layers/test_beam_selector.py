@@ -1,4 +1,4 @@
-"""Layer 03 Phase C1 — deterministic beam selector over the route-feasible normal pool.
+"""Layer 03 Phase C1 ??deterministic beam selector over the route-feasible normal pool.
 
 Covers spec Phase C1 (v2 MVP): a deterministic beam/greedy selector that maximizes
 routed throughput minus route-cost and shared-corridor-pressure penalties, with equipment

@@ -1,4 +1,4 @@
-"""Placement commit lifecycle states (L4–L6)."""
+"""Placement commit lifecycle states (L4-L6)."""
 
 from __future__ import annotations
 

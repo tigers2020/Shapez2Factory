@@ -14,6 +14,7 @@ from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import (
     GeneCatalogSnapshot,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
+    BundleCellRole,
     CandidateRejectReason,
     RouteProbeStatus,
 )
@@ -160,6 +161,38 @@ def test_rotation_transforms_coordinates_not_r_only_t2() -> None:
     assert rotate_offset_east_to((-3, 0), "south") == (0, -3)
     assert rotate_offset_east_to((-3, 0), "west") == (3, 0)
     assert rotate_offset_east_to((-3, 0), "north") == (0, 3)
+
+
+def test_d4_enumeration_wires_full_footprint_and_per_placement_r() -> None:
+    # B2.1c-1: candidate gen now enumerates full-footprint D4 variants (output TIED to
+    # orientation) instead of iterating only the anchor's ``void_dirs``. Anchor (6, 5)
+    # has external void only to the East, yet the South-oriented m3e variant is now
+    # emitted: its equipment {(6,5),(6,4),(6,3),(6,2)} stays on field (R2 ok), but its
+    # output stub lands on field cell (6, 6) so R3 rejects it. The miner R and EVERY
+    # extension R equal the transformed building R for South (edge_rotation_k=1), proving
+    # per-placement R flows from the variant cells, not the NESW ordering rank.
+    complete_map = golden_5x5_complete_map()
+    result = generate_candidates(
+        complete_map=complete_map,
+        exterior_plan=minimal_l2_plan_for_golden(),
+        gene_catalog=_catalog(),
+    )
+    south_m3e = next(
+        probed
+        for probed in result.diagnostic_rejected_candidates
+        if probed.candidate.anchor_coord == (6, 5)
+        and probed.candidate.gene_key == "m3e"
+        and probed.candidate.output_dir == Direction.S
+    )
+    cand = south_m3e.candidate
+    assert south_m3e.reject_reason == CandidateRejectReason.TRANSPORT_STUB_NOT_IN_VOID
+    assert cand.rotation == 1
+    assert cand.mining_occupied_cells == frozenset({(6, 5), (6, 4), (6, 3), (6, 2)})
+    miner = next(pl for pl in cand.placements if pl.cell_role == BundleCellRole.MINER)
+    assert miner.rotation == 1
+    extensions = [pl for pl in cand.placements if pl.cell_role == BundleCellRole.EXTENSION]
+    assert len(extensions) == 3
+    assert all(pl.rotation == 1 for pl in extensions)
 
 
 # ---------------------------------------------------------------------------

@@ -56,6 +56,11 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind im
 from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transport_route_domain import (  # noqa: E501
     WeightedTransportRouteDomain,
 )
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.footprint_transform import (  # noqa: E501
+    enumerate_d4,
+    mirror_xy,
+    rotate_xy,
+)
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.rim_anchor_scan import (  # noqa: E501
     RimAnchor,
     scan_rim_anchors,
@@ -165,6 +170,26 @@ def rotate_offset_east_to(offset: Coord, edge: str) -> Coord:
     raise ValueError(msg)
 
 
+def _transform_offset(dx: int, dy: int, *, mirrored: bool, k: int) -> Coord:
+    """Transform a canonical ``(dx, dy)`` offset like a footprint cell (§T): mirror across
+    the vertical axis (``"x"``) when ``mirrored`` is set, then rotate ``k`` clockwise
+    quarter-turns. Mirrors :func:`footprint_transform._transform_cell` without the ``R``.
+    """
+
+    if mirrored:
+        dx, dy = mirror_xy(dx, dy, "x")
+    return rotate_xy(dx, dy, k)
+
+
+def _cardinal_from_unit_vector(vec: Coord) -> str:
+    """Map an axis-aligned output vector to its cardinal edge name (y-down frame)."""
+
+    dx, dy = vec
+    if abs(dx) >= abs(dy):
+        return "east" if dx > 0 else "west"
+    return "south" if dy > 0 else "north"
+
+
 def _resource_eligible(entry_resource_kind: str, field_kind: str) -> bool:
     if entry_resource_kind == "both":
         return field_kind in _FIELD_KIND_TO_RESOURCE
@@ -200,23 +225,27 @@ def _build_candidate(
     *,
     anchor: RimAnchor,
     entry: GeneCatalogEntry,
-    edge: str,
+    out_edge: str,
+    orientation_k: int,
+    mirrored: bool,
+    miner_r: int,
+    stub_r: int,
     resource_kind: ResourceKind,
     equipment_cells: frozenset[Coord],
     extractor_cell: Coord,
-    extension_cells: frozenset[Coord],
+    extension_placements: tuple[tuple[Coord, int], ...],
     stub_cell: Coord,
     route_probe_start: Coord,
 ) -> BundleCandidate:
-    direction = _CARDINAL_TO_DIRECTION[edge]
-    # §T/T4: building R is the geometric full-footprint transform (canonical-East base
-    # R=0), not the NESW D1 ordering rank.
-    rotation = edge_rotation_k(edge)
+    direction = _CARDINAL_TO_DIRECTION[out_edge]
     transport_kind = map_resource_kind_to_transport_kind(resource_kind)
     ax, ay = anchor.coord
+    # candidate_id carries the variant identity (orientation_k + mirror) so distinct D4
+    # variants at one anchor never collide; equivalence_key dedups true duplicates.
     candidate_id = (
         f"layer_03:{entry.gene_id}:{ax}:{ay}:"
-        f"{direction.value}:{rotation}:{transport_kind.value}"
+        f"{direction.value}:{miner_r}:{transport_kind.value}:"
+        f"k{orientation_k}:m{int(mirrored)}"
     )
     equivalence_key = (
         f"{transport_kind.value}|{tuple(sorted(equipment_cells))}|{stub_cell}|{route_probe_start}"
@@ -227,20 +256,24 @@ def _build_candidate(
     stub_layout = (
         "SpaceBelt_Forward" if transport_kind is TransportKind.SHAPE_BELT else "SpacePipe_Forward"
     )
+    # §T/T4: each placement stores the transformed building R (canonical-East base R=0),
+    # NOT the NESW D1 ordering rank. The miner R follows the output edge; each extension R
+    # follows its own transformed footprint cell (output tied to orientation here, so they
+    # coincide for line layouts but are carried independently for mirror/corner variants).
     placements: list[BundlePlacement] = [
         BundlePlacement(
             coord=extractor_cell,
             layout_t=miner_layout,
-            rotation=rotation,
+            rotation=miner_r,
             cell_role=BundleCellRole.MINER,
         )
     ]
-    for cell in sorted(extension_cells):
+    for cell, cell_r in sorted(extension_placements):
         placements.append(
             BundlePlacement(
                 coord=cell,
                 layout_t="Layout_MinerExtension",
-                rotation=rotation,
+                rotation=cell_r,
                 cell_role=BundleCellRole.EXTENSION,
             )
         )
@@ -248,7 +281,7 @@ def _build_candidate(
         BundlePlacement(
             coord=stub_cell,
             layout_t=stub_layout,
-            rotation=rotation,
+            rotation=stub_r,
             cell_role=BundleCellRole.TRANSPORT_STUB,
         )
     )
@@ -260,7 +293,7 @@ def _build_candidate(
         intrinsic_priority_rank=_THROUGHPUT_PRIORITY_RANK.get(entry.throughput_factor, 9),
         anchor_coord=anchor.coord,
         output_dir=direction,
-        rotation=rotation,
+        rotation=miner_r,
         resource_kind=resource_kind,
         transport_kind=transport_kind,
         equivalence_key=equivalence_key,
@@ -337,46 +370,58 @@ def generate_candidates(
     route_probe_attempts = 0
 
     for anchor in anchors:
-        for edge in anchor.void_dirs:
-            for entry in gene_catalog.entries:
-                if not _resource_eligible(entry.resource_kind, anchor.field_kind):
-                    continue
+        ax, ay = anchor.coord
+        for entry in gene_catalog.entries:
+            if not _resource_eligible(entry.resource_kind, anchor.field_kind):
+                continue
+            resource_kind = _FIELD_KIND_TO_RESOURCE[anchor.field_kind]
+            # §T/Amendment 6: enumerate the full-footprint D4 variants (coords + R move
+            # together) instead of orienting the whole footprint toward a void edge. Output
+            # stays TIED to the variant orientation (B2.1c-1): the canonical-East output
+            # offset is transformed by the same (mirror, rotation), so each variant emits a
+            # distinct output edge.
+            for variant in enumerate_d4(
+                extractor_offset=entry.extractor_offset,
+                extension_offsets=entry.extension_offsets,
+            ):
                 seed_projection_attempts += 1
 
-                resource_kind = _FIELD_KIND_TO_RESOURCE[anchor.field_kind]
-                extractor_cell = (
-                    anchor.coord[0] + rotate_offset_east_to(entry.extractor_offset, edge)[0],
-                    anchor.coord[1] + rotate_offset_east_to(entry.extractor_offset, edge)[1],
+                extractor_cell = (ax, ay)
+                extension_placements = tuple(
+                    ((ax + dx, ay + dy), cell_r) for (dx, dy, cell_r) in variant.extension_cells
                 )
-                equipment_offsets = (
-                    {entry.extractor_offset}
-                    | set(entry.extension_offsets)
-                    | set(entry.occupied_offsets)
+                extension_cells = frozenset(cell for cell, _r in extension_placements)
+                equipment_cells = frozenset({extractor_cell}) | extension_cells
+
+                out_vec = _transform_offset(
+                    entry.output_stub_offset[0],
+                    entry.output_stub_offset[1],
+                    mirrored=variant.mirrored,
+                    k=variant.orientation_k,
                 )
-                equipment_cells = frozenset(
-                    (
-                        anchor.coord[0] + rotate_offset_east_to(off, edge)[0],
-                        anchor.coord[1] + rotate_offset_east_to(off, edge)[1],
-                    )
-                    for off in equipment_offsets
+                out_edge = _cardinal_from_unit_vector(out_vec)
+                miner_r = edge_rotation_k(out_edge)
+                stub_cell = (ax + out_vec[0], ay + out_vec[1])
+                start_vec = _transform_offset(
+                    entry.route_probe_start_offset[0],
+                    entry.route_probe_start_offset[1],
+                    mirrored=variant.mirrored,
+                    k=variant.orientation_k,
                 )
-                extension_cells = equipment_cells - {extractor_cell}
-                stub_delta = rotate_offset_east_to(entry.output_stub_offset, edge)
-                stub_cell = (anchor.coord[0] + stub_delta[0], anchor.coord[1] + stub_delta[1])
-                start_delta = rotate_offset_east_to(entry.route_probe_start_offset, edge)
-                route_probe_start = (
-                    anchor.coord[0] + start_delta[0],
-                    anchor.coord[1] + start_delta[1],
-                )
+                route_probe_start = (ax + start_vec[0], ay + start_vec[1])
 
                 candidate = _build_candidate(
                     anchor=anchor,
                     entry=entry,
-                    edge=edge,
+                    out_edge=out_edge,
+                    orientation_k=variant.orientation_k,
+                    mirrored=variant.mirrored,
+                    miner_r=miner_r,
+                    stub_r=miner_r,
                     resource_kind=resource_kind,
                     equipment_cells=equipment_cells,
                     extractor_cell=extractor_cell,
-                    extension_cells=extension_cells,
+                    extension_placements=extension_placements,
                     stub_cell=stub_cell,
                     route_probe_start=route_probe_start,
                 )

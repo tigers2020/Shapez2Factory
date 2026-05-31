@@ -30,6 +30,8 @@
     data-lab-reset-map-url="{% url 'web:asteroid-miner-layout-project-reset-map' slug=lab_project_slug %}"
     {% endif %}
     data-lab-sprite-base="{% static 'web/assets/sprites/' %}"
+    data-lab-renderer="canvas"
+    data-lab-terrain-canvas="1"
   >
     <div class="border-b border-slate-800 bg-slate-950/90 px-6 py-4">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -380,10 +382,25 @@
                 </div>
               </div>
 
-              <div id="lab-replay-grid-stage" class="min-w-0">
+              <div id="lab-replay-grid-stage" class="relative min-w-0">
+                <canvas
+                  id="lab-replay-terrain-canvas"
+                  class="pointer-events-none absolute left-0 top-0 z-0"
+                  aria-hidden="true"
+                ></canvas>
+                <canvas
+                  id="lab-replay-overlay-canvas"
+                  class="pointer-events-none absolute left-0 top-0 z-[1]"
+                  aria-hidden="true"
+                ></canvas>
+                <canvas
+                  id="lab-replay-sprite-canvas"
+                  class="pointer-events-none absolute left-0 top-0 z-[2]"
+                  aria-hidden="true"
+                ></canvas>
                 <div
                   id="lab-replay-grid"
-                  class="grid h-max w-max opacity-100 transition-opacity duration-200"
+                  class="lab-replay-grid--canvas-target relative z-[3] grid h-max w-max opacity-100 transition-opacity duration-200"
                   {% if not has_replay_frames %}style="grid-template-columns: repeat(23, minmax(0, 1.75rem));"{% endif %}
                   data-overlay=""
                 >
@@ -485,5 +502,7 @@
     </main>
   </div>
 
+  <script src="{% static 'web/js/lab_replay_canvas_terrain.js' %}" defer></script>
+  <script src="{% static 'web/js/lab_replay_canvas_renderer.js' %}" defer></script>
   <script src="{% static 'web/js/asteroid_miner_layout_lab.js' %}" defer></script>
 {% endblock %}

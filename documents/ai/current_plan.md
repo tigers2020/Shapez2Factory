@@ -44,13 +44,12 @@ directory (`var/runs/<run_key>/`); DB demotes to run registry / artifact index o
 
 ## Active Work — Layer 03 algorithm reset (CLI-first stub)
 
-**ACTIVE (spec APPROVED 2026-05-31).** Remove PR-B greedy/pass/append implementation; keep L3 stack
-slot, DTO compatibility, and minimal replay stub (`reset_stub_v1` / `Layer03SkipReason.ALGORITHM_RESET`).
-Replacement algorithm is a **separate** future spec. Implementation plan not started.
+**DONE (PR #137; merged to branch 2026-05-31).** PR-B greedy/pass/append removed; L3 stack slot and
+`reset_stub_v1` / `Layer03SkipReason.ALGORITHM_RESET` in place. Replacement algorithm is a **separate**
+future spec.
 
 - Design (SoT): [`docs/superpowers/specs/2026-05-31-layer-03-algorithm-reset-design.md`](../../docs/superpowers/specs/2026-05-31-layer-03-algorithm-reset-design.md)
-- Supersedes: PR-B boundary-m-repack greedy, directional segment-packing (never landed)
-- Plan: [`docs/superpowers/plans/2026-05-31-layer-03-algorithm-reset/README.md`](../../docs/superpowers/plans/2026-05-31-layer-03-algorithm-reset/README.md) — checklist **NOT STARTED**
+- Plan: [`docs/superpowers/plans/2026-05-31-layer-03-algorithm-reset/`](../../docs/superpowers/plans/2026-05-31-layer-03-algorithm-reset/README.md) — checklist **DONE**
 
 ## Superseded — Layer 03 boundary-m-repack (PR-B)
 

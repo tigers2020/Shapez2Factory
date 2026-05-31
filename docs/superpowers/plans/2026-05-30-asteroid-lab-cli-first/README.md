@@ -10,6 +10,8 @@ goal, scope, non-goals, file map, step-by-step tasks, tests, verification comman
 
 **Execution tracker:** [`checklist.md`](checklist.md) — cross-PR master checklist (frozen decisions, blocking
 amendments, guards, per-PR steps, done criteria). Use it to track progress; PR files remain the detailed contract.
+**Current Django residue audit:** [`django-residue-audit.md`](django-residue-audit.md) - evidence note for what
+can be removed now vs what must wait for PR-CLI-2e/3b/4/5/6.
 
 ## Frozen decisions (every PR must preserve)
 

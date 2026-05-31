@@ -15,6 +15,7 @@ from django_apps.game_data.models.exterior_transport_capacity import (
     ExteriorFluidTransportCapacity,
     ExteriorShapeTransportCapacity,
 )
+from django_apps.game_data.models.mining import MiningExtractionRule
 from django_apps.game_data.services.exterior_transport_capacity import (
     space_belt_connector_capacity_per_min_from_row,
     space_pipe_max_per_min_from_row,
@@ -50,8 +51,30 @@ def _exterior_transport_capacity_rows() -> list[dict[str, Any]]:
     return rows
 
 
-def _dump_hash(rows: list[dict[str, Any]]) -> str:
-    blob = json.dumps(rows, sort_keys=True, separators=(",", ":"))
+def _mining_extraction_rule_rows() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for rule in MiningExtractionRule.objects.filter(is_active=True).order_by("resource_kind"):
+        rows.append(
+            {
+                "resource_kind": str(rule.resource_kind),
+                "mini_unit_output_per_min": str(rule.mini_unit_output_per_min),
+                "output_unit": str(rule.output_unit),
+                "max_extension_count": int(rule.max_extension_count),
+                "source_kind": str(rule.source_kind),
+            }
+        )
+    return rows
+
+
+def _dump_hash(*, exterior_rows: list[dict[str, Any]], mining_rows: list[dict[str, Any]]) -> str:
+    blob = json.dumps(
+        {
+            "exterior_transport_capacity": exterior_rows,
+            "mining_extraction_rules": mining_rows,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     digest = hashlib.sha256(blob.encode("utf-8")).hexdigest()
     return f"sha256:{digest}"
 
@@ -59,11 +82,16 @@ def _dump_hash(rows: list[dict[str, Any]]) -> str:
 def build_game_data_snapshot_payload() -> dict[str, Any]:
     """ORM → snapshot payload (resolver output only; capacity formula stays in game_data)."""
 
-    rows = _exterior_transport_capacity_rows()
+    exterior_rows = _exterior_transport_capacity_rows()
+    mining_rows = _mining_extraction_rule_rows()
     return {
         "schema_version": SNAPSHOT_SCHEMA_VERSION,
-        "game_data_dump_hash": _dump_hash(rows),
-        "exterior_transport_capacity": rows,
+        "game_data_dump_hash": _dump_hash(
+            exterior_rows=exterior_rows,
+            mining_rows=mining_rows,
+        ),
+        "exterior_transport_capacity": exterior_rows,
+        "mining_extraction_rules": mining_rows,
     }
 
 

@@ -23,16 +23,15 @@ If the gate cannot be met but the initiative must proceed, the **only** alternat
 
 - **PR-B merged:** boundary-m-repack greedy (m3e_01) landed as **PR #133**
   ("feat(asteroid-lab): Layer 03 boundary-m-repack greedy (m3e_01)"), merge SHA
-  `895a5ecba7f2022adfa97fd584bc84eedaf9b8f6`, merged `2026-05-30T22:21:45Z`. `origin/master` HEAD =
-  `895a5ecb …(#133)`.
+  `895a5ecba7f2022adfa97fd584bc84eedaf9b8f6`, merged `2026-05-30T22:21:45Z`.
 - **PR-C:** no separate PR-C exists — the full m3e_01 enhancement shipped in PR #133. PR-C is therefore
   **out of scope (absorbed into PR-B/#133)**.
-- **Lab gate green on master with new L3** (verified on `feat/asteroid-cli-first-l3-stack-move` @ `895a5ecb`):
+- **Lab gate green on master with new L3:**
   - `pytest tests/unit/asteroid_lab/layers/ tests/unit/asteroid_lab/replay/` — **173 passed**, 2 warnings.
   - `pytest tests/unit/shapez2_factory/ tests/unit/architecture/test_shapez2_factory_core_purity.py` — **85 passed**.
-  - `pytest .../test_contract_shim_identity.py` (worktree baseline) — combined **100 passed**.
-- **No open PR editing layer_03:** `gh pr list --state open` → `[]` (#132 fast-cache + #133 m3e_01 both MERGED).
-- **GATE = OPEN.** Step 0 SHA to record in PR description: `895a5ecba7f2022adfa97fd584bc84eedaf9b8f6` (#133).
+- **No open PR editing layer_03:** `gh pr list --state open` → `[]`.
+- **GATE = OPEN.** Step 0 SHA: `895a5ecba7f2022adfa97fd584bc84eedaf9b8f6` (#133). PR-CLI-2e landed #134;
+  pipeline move #135 (`b566d4f8`).
 
 ## Goal
 

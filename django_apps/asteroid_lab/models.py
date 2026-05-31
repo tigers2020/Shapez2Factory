@@ -162,6 +162,18 @@ class SolverRun(models.Model):
         default=RunStatus.PENDING,
     )
     config_json = models.JSONField(default=dict, blank=True)
+    artifact_root = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Artifact directory pointer; cache/index only, not solver input.",
+    )
+    lifecycle_status = models.CharField(
+        max_length=40,
+        blank=True,
+        help_text=(
+            "DB lifecycle mirror for artifact/index state; " "manifest remains artifact authority."
+        ),
+    )
     lab_replay_manifest_summary_json = models.JSONField(
         default=dict,
         help_text="UI cache mirror of lab replay manifest summary (not solver input).",

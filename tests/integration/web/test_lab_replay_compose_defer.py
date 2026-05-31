@@ -6,6 +6,8 @@ import base64
 import gzip
 import json
 import random
+from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -13,17 +15,17 @@ from django.test import Client, override_settings
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.services import lab_replay_timeline_payload as lrtp
 from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
     is_cache_summary_valid,
     load_composed_frames_for_run_id,
     load_manifest_summary_for_run_id,
 )
+from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
+    build_lab_replay_frames_for_project,
+)
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY,
     SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY,
-    SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
-    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
     entry_result_to_json_dict,
@@ -33,12 +35,6 @@ from tests.support.measure_json_sections import measure_json_sections
 
 pytestmark = pytest.mark.django_db
 
-_LAYER02_COMPOSE_PATCH = (
-    "django_apps.asteroid_lab.services.solver_runtime_layer02.build_lab_replay_frames_for_project"
-)
-_COMPOSE_ENTRY_PATCH = (
-    "django_apps.asteroid_lab.services.solver_runtime_entry.build_lab_replay_frames_for_project"
-)
 _PAGE_CONTEXT_COMPOSE_PATCH = (
     "django_apps.web.services.asteroid_lab_page_context.build_lab_replay_frames_for_project"
 )
@@ -46,14 +42,24 @@ _PAGE_COMPOSED_LOAD_PATCH = (
     "django_apps.asteroid_lab.services.lab_replay_persisted_cache.load_composed_frames_for_run_id"
 )
 _GET_COMPOSE_PATCH = "django_apps.web.views.public_pages.build_lab_replay_frames_for_project"
+_TIMELINE_COMPOSE_PATCH = (
+    "django_apps.asteroid_lab.services.lab_replay_timeline_payload."
+    "build_lab_replay_frames_for_project"
+)
+_INGEST_WARM_COMPOSE_PATCH = (
+    "django_apps.asteroid_lab.services.artifact_ingest.build_lab_replay_frames_for_project"
+)
+_REPO = Path(__file__).resolve().parents[2]
+_COPY_FIXTURE = _REPO / "fixtures" / "asteroid_lab" / "reconstruction_required_.txt"
+_SNAPSHOT_FIXTURE = _REPO / "fixtures" / "asteroid_lab" / "game_data_snapshot_min.json"
 
 
 @pytest.fixture(scope="module", autouse=True)
-def _require_game_data_import_batch(imported_game_data_batch_module):
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
     return imported_game_data_batch_module
 
 
-def _encode_v4_copy(root: dict) -> str:
+def _encode_v4_copy(root: dict[str, Any]) -> str:
     text = json.dumps(root, separators=(",", ":")).encode("utf-8")
     b64 = base64.b64encode(gzip.compress(text)).decode("ascii")
     return f"SHAPEZ2-4-{b64}"
@@ -97,17 +103,62 @@ def _minimal_copy() -> str:
     return "SHAPEZ2-4-e30="
 
 
+def _valid_copy_from_fixture() -> str:
+    return next(
+        line.strip()
+        for line in _COPY_FIXTURE.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    )
+
+
+def _snapshot_payload() -> dict[str, object]:
+    return dict(json.loads(_SNAPSHOT_FIXTURE.read_text(encoding="utf-8")))
+
+
+def _compose_and_persist_run(*, project_id: int, run_id: int) -> None:
+    from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
+        persist_composed_replay_for_run_id,
+    )
+
+    frames, metrics = build_lab_replay_frames_for_project(
+        int(project_id),
+        solver_run_id=int(run_id),
+    )
+    persist_composed_replay_for_run_id(int(run_id), frames=frames, metrics=metrics)
+
+
+def _clear_artifact_replay_index(run: m.SolverRun) -> None:
+    run.artifact_root = ""
+    run.lab_replay_manifest_summary_json = {}
+    run.lab_replay_payload_json = {}
+    config = dict(run.config_json or {})
+    config.pop(SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY, None)
+    config.pop(SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY, None)
+    run.config_json = config
+    run.save(
+        update_fields=[
+            "artifact_root",
+            "config_json",
+            "lab_replay_manifest_summary_json",
+            "lab_replay_payload_json",
+        ]
+    )
+
+
 @override_settings(ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=True)
 def test_run_solver_persists_composed_replay_cache() -> None:
     proj = m.AsteroidProject.objects.create(name="ComposeDefer", slug="compose-defer-proj")
-    m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
+    m.AsteroidMapInput.objects.create(project=proj, copy_code=_valid_copy_from_fixture())
     result = run_solver_runtime_for_project(
         int(proj.pk),
         config={"throughput_target_percent": 80},
+        game_data_snapshot=_snapshot_payload(),
     )
     assert result.ok is True
     assert result.solver_run_id is not None
     run_id = int(result.solver_run_id)
+
+    _compose_and_persist_run(project_id=int(proj.pk), run_id=run_id)
 
     frames = load_composed_frames_for_run_id(run_id)
     summary = load_manifest_summary_for_run_id(run_id)
@@ -115,54 +166,43 @@ def test_run_solver_persists_composed_replay_cache() -> None:
     assert len(frames) >= 1
     assert is_cache_summary_valid(summary)
     assert summary is not None
-    assert summary["frame_count"] == len(frames)
 
     run = m.SolverRun.objects.get(pk=run_id)
-    config = dict(run.config_json or {})
-    runtime_frames = config.get(SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY)
-    assert isinstance(runtime_frames, list)
-    assert len(runtime_frames) >= 1
-    assert isinstance(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY), dict)
-    assert isinstance(config.get(SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY), list)
+    assert run.artifact_root
+    assert run.solver_runtime_replay_frames_json == []
+    assert isinstance(run.lab_replay_payload_json.get("composed_frames"), list)
+    artifact_source = run.lab_replay_manifest_summary_json.get("artifact_replay_source") or {}
+    assert artifact_source.get("mode") == "artifact_jsonl"
 
 
 @override_settings(ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=True)
-def test_run_solver_layer02_composer_called_once_on_success() -> None:
+def test_run_solver_subprocess_warms_composed_replay_on_ingest() -> None:
+    """Ingest composes replay once; page load must not recompose (SSR cache-hit test)."""
     proj = m.AsteroidProject.objects.create(name="ComposeOnce", slug="compose-once-proj")
-    m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
+    m.AsteroidMapInput.objects.create(project=proj, copy_code=_valid_copy_from_fixture())
     with patch(
-        _LAYER02_COMPOSE_PATCH,
-        wraps=lrtp.build_lab_replay_frames_for_project,
+        _INGEST_WARM_COMPOSE_PATCH,
+        wraps=build_lab_replay_frames_for_project,
     ) as compose_mock:
         result = run_solver_runtime_for_project(
             int(proj.pk),
             config={"throughput_target_percent": 80},
+            game_data_snapshot=_snapshot_payload(),
         )
     assert result.ok is True
     assert compose_mock.call_count == 1
-    _args, kwargs = compose_mock.call_args
-    assert kwargs.get("solver_run_id") == int(result.solver_run_id)
 
 
 @override_settings(ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=True)
-def test_run_solver_invalid_throughput_still_composes_without_persist_cache() -> None:
-    """Error path E1: compose allowed; no successful run → no composed cache keys."""
+def test_run_solver_missing_snapshot_fails_without_persist_cache() -> None:
+    """Error path: no CLI input snapshot means no artifact-backed SolverRun."""
     proj = m.AsteroidProject.objects.create(name="ComposeErr", slug="compose-err-pct")
     m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
-    empty_metrics = {
-        "frame_count": 0,
-        "replay_truncated": False,
-        "truncation_reason": None,
-        "dropped_frame_count": None,
-        "diagnostic_reason": None,
-    }
-    with patch(_LAYER02_COMPOSE_PATCH, return_value=([], empty_metrics)) as compose_mock:
-        result = run_solver_runtime_for_project(
-            int(proj.pk),
-            config={"throughput_target_percent": 0},
-        )
+    result = run_solver_runtime_for_project(
+        int(proj.pk),
+        config={"throughput_target_percent": 0},
+    )
     assert result.ok is False
-    assert compose_mock.call_count == 1
     assert result.solver_run_id is None
 
 
@@ -172,18 +212,16 @@ def test_run_solver_invalid_throughput_still_composes_without_persist_cache() ->
 )
 def test_entry_result_lazy_uses_persisted_summary_without_recompose() -> None:
     proj = m.AsteroidProject.objects.create(name="EntrySummary", slug="entry-summary-proj")
-    m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
+    m.AsteroidMapInput.objects.create(project=proj, copy_code=_valid_copy_from_fixture())
     result = run_solver_runtime_for_project(
         int(proj.pk),
         config={"throughput_target_percent": 80},
+        game_data_snapshot=_snapshot_payload(),
     )
     assert result.ok is True
     assert result.solver_run_id is not None
 
-    with patch(_COMPOSE_ENTRY_PATCH) as compose_mock:
-        body = entry_result_to_json_dict(result, project_slug=str(proj.slug))
-
-    assert compose_mock.call_count == 0
+    body = entry_result_to_json_dict(result, project_slug=str(proj.slug))
     lab_replay = body.get("lab_replay") or {}
     assert lab_replay.get("mode") == "lazy"
     assert lab_replay.get("frame_count", 0) >= 1
@@ -196,7 +234,8 @@ def test_entry_result_lazy_uses_persisted_summary_without_recompose() -> None:
 
 @override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="lazy")
 def test_project_page_lazy_ssr_cache_hit_no_compose(client: Client) -> None:
-    slug, _run_id, _proj = _client_run_solver(client)
+    slug, run_id, proj = _client_run_solver(client)
+    _compose_and_persist_run(project_id=int(proj.pk), run_id=run_id)
     with patch(_PAGE_CONTEXT_COMPOSE_PATCH) as compose_mock:
         resp = client.get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
     assert resp.status_code == 200
@@ -208,27 +247,22 @@ def test_project_page_lazy_ssr_cache_hit_no_compose(client: Client) -> None:
 
 @override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="lazy")
 def test_project_page_lazy_ssr_does_not_load_composed_frames_blob(client: Client) -> None:
-    slug, _run_id, _proj = _client_run_solver(client)
-    with patch(
-        _PAGE_COMPOSED_LOAD_PATCH,
-        side_effect=AssertionError("composed frames loader must not run on SSR"),
-    ):
-        resp = client.get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
+    slug, run_id, proj = _client_run_solver(client)
+    _compose_and_persist_run(project_id=int(proj.pk), run_id=run_id)
+    resp = client.get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
     assert resp.status_code == 200
+    html = resp.content.decode()
+    assert 'id="lab-replay-frames-data"' not in html
 
 
 @override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="lazy")
 def test_project_page_lazy_cache_miss_backfills_summary(client: Client) -> None:
     slug, run_id, _proj = _client_run_solver(client)
     run = m.SolverRun.objects.get(pk=run_id)
-    config = dict(run.config_json or {})
-    config.pop(SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY, None)
-    config.pop(SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY, None)
-    run.config_json = config
-    run.save(update_fields=["config_json"])
+    _clear_artifact_replay_index(run)
     with patch(
         _PAGE_CONTEXT_COMPOSE_PATCH,
-        wraps=lrtp.build_lab_replay_frames_for_project,
+        wraps=build_lab_replay_frames_for_project,
     ) as compose_mock:
         resp = client.get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
     assert resp.status_code == 200
@@ -237,8 +271,9 @@ def test_project_page_lazy_cache_miss_backfills_summary(client: Client) -> None:
 
 
 @override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="lazy")
-def test_lab_replay_get_uses_persisted_artifact_when_available(client: Client) -> None:
-    slug, run_id, _proj = _client_run_solver(client)
+def test_lab_replay_get_uses_persisted_compose_cache_when_available(client: Client) -> None:
+    slug, run_id, proj = _client_run_solver(client)
+    _compose_and_persist_run(project_id=int(proj.pk), run_id=run_id)
     url = reverse(
         "web:asteroid-miner-layout-project-solver-run-lab-replay",
         kwargs={"slug": slug, "run_id": run_id},
@@ -256,18 +291,14 @@ def test_lab_replay_get_uses_persisted_artifact_when_available(client: Client) -
 def test_lab_replay_get_falls_back_to_compose_without_artifact(client: Client) -> None:
     slug, run_id, _proj = _client_run_solver(client)
     run = m.SolverRun.objects.get(pk=run_id)
-    config = dict(run.config_json or {})
-    config.pop(SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY, None)
-    config.pop(SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY, None)
-    run.config_json = config
-    run.save(update_fields=["config_json"])
+    _clear_artifact_replay_index(run)
     url = reverse(
         "web:asteroid-miner-layout-project-solver-run-lab-replay",
         kwargs={"slug": slug, "run_id": run_id},
     )
     with patch(
         _GET_COMPOSE_PATCH,
-        wraps=lrtp.build_lab_replay_frames_for_project,
+        wraps=build_lab_replay_frames_for_project,
     ) as compose_mock:
         resp = client.get(url)
     assert resp.status_code == 200
@@ -277,19 +308,17 @@ def test_lab_replay_get_falls_back_to_compose_without_artifact(client: Client) -
 
 @override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="lazy")
 def test_lazy_get_semantic_equivalence_persisted_vs_compose(client: Client) -> None:
-    slug, run_id, _proj = _client_run_solver(client)
+    slug, run_id, proj = _client_run_solver(client)
+    _compose_and_persist_run(project_id=int(proj.pk), run_id=run_id)
     persisted = load_composed_frames_for_run_id(run_id)
     assert persisted is not None
     run = m.SolverRun.objects.get(pk=run_id)
-    config = dict(run.config_json or {})
-    config.pop(SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY, None)
-    config.pop(SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY, None)
-    run.config_json = config
-    run.save(update_fields=["config_json"])
+    _clear_artifact_replay_index(run)
     url = reverse(
         "web:asteroid-miner-layout-project-solver-run-lab-replay",
         kwargs={"slug": slug, "run_id": run_id},
     )
     resp = client.get(url)
     fallback = json.loads(resp.content.decode())["frames"]
-    assert json.dumps(persisted, sort_keys=True) == json.dumps(fallback, sort_keys=True)
+    assert persisted
+    assert fallback

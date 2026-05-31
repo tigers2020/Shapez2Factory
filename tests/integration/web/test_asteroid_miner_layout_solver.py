@@ -70,13 +70,21 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert "G-042" not in content
     assert "No runs" in content
     assert 'id="lab-replay-grid-stage"' in content
+    assert 'id="lab-replay-terrain-canvas"' in content
+    assert 'id="lab-replay-overlay-canvas"' in content
+    assert 'id="lab-replay-sprite-canvas"' in content
+    assert 'data-lab-renderer="canvas"' in content
     assert 'id="lab-replay-grid-hud-coord"' in content
     assert 'id="lab-replay-grid-hud-role"' in content
     assert 'id="lab-replay-grid-hud-server-coord"' not in content
     assert 'id="lab-optimization-overlay-layer"' in content
     g_stage = content.index('id="lab-replay-grid-stage"')
+    g_canvas = content.index('id="lab-replay-terrain-canvas"', g_stage)
+    g_overlay_canvas = content.index('id="lab-replay-overlay-canvas"', g_stage)
+    g_sprite_canvas = content.index('id="lab-replay-sprite-canvas"', g_stage)
     g_grid = content.index('id="lab-replay-grid"', g_stage)
     g_overlay = content.index('id="lab-optimization-overlay-layer"', g_stage)
+    assert g_canvas < g_overlay_canvas < g_sprite_canvas < g_grid
     assert g_grid < g_overlay
     map_footer = content.index('id="lab-map-footer"')
     replay_meta = content.index('id="lab-replay-metadata"', map_footer)
@@ -109,8 +117,7 @@ def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     assert f"/asteroid-miner-layout/p/{proj.slug}/" in response.request["PATH_INFO"]
     assert m.ReplayFrame.objects.count() >= 6
     ctx = alc.lab_page_context(project_id=proj.pk)
-    assert ctx["has_replay_frames"] is True
-    assert ctx["total_frames"] >= 6
+    assert ctx["lab_replay_ssr_delivery"] == "lazy"
     content = response.content.decode()
     assert 'id="lab-replay-manifest-data"' in content
     assert 'id="lab-replay-frames-data"' not in content

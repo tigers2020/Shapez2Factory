@@ -17,6 +17,7 @@ class ExteriorConnectionShortfallReason(StrEnum):
     MISSING_EVTC_ROW = "missing_evtc_row"
     TARGET_EXCEEDS_TERRAIN_UPPER_BOUND = "target_exceeds_terrain_upper_bound"
     NO_FEASIBLE_CONNECTOR_SITES = "no_feasible_connector_sites"
+    INSUFFICIENT_CONNECTOR_SITES = "insufficient_connector_sites"
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +43,7 @@ class ExteriorConnectionPlan:
     spare_connector_count: int
     planned_connectors: tuple[ExteriorConnector, ...]
     unmet_reason: ExteriorConnectionShortfallReason | None
+    candidate_slot_count: int = 0
     slot_rule: str = "VOID_DEEP_SLOTS_V1"
     placement_rule: str = "EDGE_WEIGHTED_EVEN_SPACING_V1"
     rotation_rule: str = "FIELDWARD_FACING_V1"

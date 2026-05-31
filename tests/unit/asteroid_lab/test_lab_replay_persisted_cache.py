@@ -1,4 +1,4 @@
-"""Unit tests for composed replay cache on SolverRun.config_json (13C2-lite)."""
+"""Unit tests for artifact-first composed replay cache loading."""
 
 from __future__ import annotations
 
@@ -50,6 +50,15 @@ def test_is_cache_summary_valid_rejects_wrong_schema() -> None:
             {
                 "lab_replay_cache_schema_version": CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION,
                 "frame_count": 1,
+            }
+        )
+        is True
+    )
+    assert (
+        is_cache_summary_valid(
+            {
+                "mode": "artifact_jsonl",
+                "replay_core_path": "F:/tmp/replay_core.jsonl",
             }
         )
         is True

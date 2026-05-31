@@ -12,5 +12,21 @@
       "speed_tier": 1,
       "per_connector_capacity_per_min": "7200"
     }
+  ],
+  "mining_extraction_rules": [
+    {
+      "resource_kind": "shape",
+      "mini_unit_output_per_min": "30.0000",
+      "output_unit": "shapes_per_min",
+      "max_extension_count": 3,
+      "source_kind": "CANON_MANUAL"
+    },
+    {
+      "resource_kind": "fluid",
+      "mini_unit_output_per_min": "300.0000",
+      "output_unit": "liters_per_min",
+      "max_extension_count": 3,
+      "source_kind": "CANON_MANUAL"
+    }
   ]
 }

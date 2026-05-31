@@ -29,6 +29,7 @@ def exterior_connector_plan_to_metrics_dict(plan: ExteriorConnectionPlan) -> dic
         1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.REQUIRED
     )
     spare_planned = sum(1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.SPARE)
+    connector_shortfall = max(0, plan.required_connector_count - required_planned)
 
     return {
         "exterior_connector_plan": {
@@ -43,6 +44,8 @@ def exterior_connector_plan_to_metrics_dict(plan: ExteriorConnectionPlan) -> dic
             "required_planned_count": required_planned,
             "spare_planned_count": spare_planned,
             "planned_connector_count": required_planned + spare_planned,
+            "candidate_slot_count": plan.candidate_slot_count,
+            "connector_shortfall_count": connector_shortfall,
             "counts_by_edge": counts_by_edge,
             "planned_connectors": [
                 {

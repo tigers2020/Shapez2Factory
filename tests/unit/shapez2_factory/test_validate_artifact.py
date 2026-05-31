@@ -22,6 +22,10 @@ from shapez2_factory.adapters.asteroid_lab.artifact_writer import AtomicArtifact
 from shapez2_factory.adapters.asteroid_lab.run_status import RunLifecycleStatus
 from shapez2_factory.interfaces.cli.asteroid_solve import ExitCode, main
 
+_REPO = Path(__file__).resolve().parents[3]
+_COPY_FIXTURE = _REPO / "tests" / "fixtures" / "asteroid_lab" / "reconstruction_required_.txt"
+_SNAPSHOT_FIXTURE = _REPO / "tests" / "fixtures" / "asteroid_lab" / "game_data_snapshot_min.json"
+
 
 def _build_valid_artifact(tmp_path: Path, run_key: str = "run-1") -> Path:
     writer = AtomicArtifactWriter(tmp_path, run_key)
@@ -213,7 +217,7 @@ def test_validate_artifact_ba9_disabled_emits_no_console_line(
     assert "asteroid_cli" not in capsys.readouterr().err
 
 
-def test_run_subcommand_returns_stack_unavailable(tmp_path: Path) -> None:
+def test_run_subcommand_writes_artifact(tmp_path: Path) -> None:
     assert (
         main(
             [
@@ -224,15 +228,35 @@ def test_run_subcommand_returns_stack_unavailable(tmp_path: Path) -> None:
                 str(tmp_path),
                 "--run-key",
                 "run-1",
+                "--copy-file",
+                str(_COPY_FIXTURE),
+                "--snapshot",
+                str(_SNAPSHOT_FIXTURE),
             ]
         )
-        == ExitCode.STACK_UNAVAILABLE
+        == ExitCode.OK
     )
+    final = tmp_path / "run-1"
+    assert (final / "manifest.json").is_file()
+    assert (final / "output" / "replay_core.jsonl").is_file()
+    assert main(["validate-artifact", "--dir", str(final)]) == ExitCode.OK
 
 
 def test_run_subcommand_rejects_unsafe_run_key(tmp_path: Path) -> None:
     assert (
-        main(["run", "--artifact-root", str(tmp_path), "--run-key", "../evil"])
+        main(
+            [
+                "run",
+                "--artifact-root",
+                str(tmp_path),
+                "--run-key",
+                "../evil",
+                "--copy-file",
+                str(_COPY_FIXTURE),
+                "--snapshot",
+                str(_SNAPSHOT_FIXTURE),
+            ]
+        )
         == ExitCode.VALIDATION_FAILED
     )
 
@@ -254,6 +278,10 @@ def test_run_subcommand_rejects_out_of_root_artifact_root(tmp_path: Path) -> Non
                 str(outside),
                 "--run-key",
                 "run-1",
+                "--copy-file",
+                str(_COPY_FIXTURE),
+                "--snapshot",
+                str(_SNAPSHOT_FIXTURE),
             ]
         )
         == ExitCode.VALIDATION_FAILED

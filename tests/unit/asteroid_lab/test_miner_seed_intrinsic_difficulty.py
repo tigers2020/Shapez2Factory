@@ -9,6 +9,7 @@ from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import (
     EXPECTED_DIFFICULTY_RANK_ORDER,
     EXPECTED_INTRINSIC_PRIORITY_RANK_ORDER,
     EXPECTED_PATTERN_IDS,
+    EXPECTED_PATTERN_METRICS,
 )
 from django_apps.asteroid_lab.genetic_sample.miner_seed_equivalence import (
     assert_miner_seed_layout_strict,
@@ -24,24 +25,7 @@ from django_apps.asteroid_lab.genetic_sample.miner_seed_intrinsic_difficulty imp
 _BOOTSTRAP = Path("var/default_miner_pattern.txt")
 
 _GOLDEN_SCORES: dict[str, int] = {
-    "m0e_01": 8,
-    "m1e_01": 105,
-    "m2e_01": 221,
-    "m2e_02": 233,
-    "m2e_04": 261,
-    "m2e_03": 263,
-    "m3e_01": 337,
-    "m3e_02": 354,
-    "m3e_04": 354,
-    "m3e_03": 364,
-    "m3e_07": 377,
-    "m3e_09": 381,
-    "m3e_06": 384,
-    "m3e_13": 384,
-    "m3e_05": 394,
-    "m3e_11": 394,
-    "m3e_12": 394,
-    "m3e_08": 404,
+    pid: metrics["difficulty_score"] for pid, metrics in EXPECTED_PATTERN_METRICS.items()
 }
 
 
@@ -58,6 +42,8 @@ def test_golden_difficulty_rank_order() -> None:
     for pid, result, rank in ranked:
         assert rank == EXPECTED_DIFFICULTY_RANK_ORDER.index(pid) + 1
         assert result.score == _GOLDEN_SCORES[pid]
+        assert result.tier == EXPECTED_PATTERN_METRICS[pid]["difficulty_tier"]
+        assert rank == EXPECTED_PATTERN_METRICS[pid]["difficulty_rank"]
 
 
 def test_difficulty_score_is_int_for_m0e() -> None:
@@ -73,24 +59,7 @@ def test_difficulty_score_is_int_for_m0e() -> None:
 
 
 _GOLDEN_PRIORITY_SCORES: dict[str, int] = {
-    "m3e_01": 211,
-    "m3e_02": 221,
-    "m3e_04": 221,
-    "m2e_01": 224,
-    "m3e_03": 228,
-    "m2e_02": 234,
-    "m3e_07": 236,
-    "m3e_09": 238,
-    "m3e_06": 240,
-    "m3e_13": 240,
-    "m3e_05": 246,
-    "m3e_11": 246,
-    "m3e_12": 246,
-    "m3e_08": 252,
-    "m2e_04": 258,
-    "m2e_03": 259,
-    "m1e_01": 351,
-    "m0e_01": 420,
+    pid: metrics["intrinsic_priority_score"] for pid, metrics in EXPECTED_PATTERN_METRICS.items()
 }
 
 

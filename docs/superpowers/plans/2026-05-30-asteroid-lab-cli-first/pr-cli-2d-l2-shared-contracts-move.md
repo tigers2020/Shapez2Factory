@@ -25,7 +25,7 @@ here would force a `django_apps` bridge and break BA-1.
 ## Behavior contract
 
 - L2 capacity uses injected `GameDataRulesPort` (from 2b).
-- Core `plan.py`/`run.py` make `rules: GameDataRulesPort` **required** (no ORM import). The django `plan.py`/`run.py` shims expose the original public signature with `rules: GameDataRulesPort | None = None` and inject `build_orm_game_data_rules()` when `None`, then delegate to core. This is an **intentional, non-breaking** extension of `execute_`/`run_` (originals had no `rules`); existing callers (`stack_runner`, `solver_runtime_layer02`) call without `rules` and keep working. The django `run.py` shim preserves the original stub-hold early-return (None when inputs missing) **before** building ORM rules.
+- Core `plan.py`/`run.py` make `rules: GameDataRulesPort` **required** (no ORM import). The django `plan.py`/`run.py` shims expose the original public signature with `rules: GameDataRulesPort | None = None` and inject `build_orm_game_data_rules()` when `None`, then delegate to core. This is an **intentional, non-breaking** extension of `execute_`/`run_` (originals had no `rules`); existing shim callers can still call without `rules`. The django `run.py` shim preserves the original stub-hold early-return (None when inputs missing) **before** building ORM rules. The former `solver_runtime_layer02` caller was removed by PR-CLI-6.
 - Moved modules are core-pure (no `django`, no `django_apps`).
 - `stack_runner` (still in `django_apps`) imports moved L1/L2 via their core path; L3–L6 from current location — this is allowed because stack_runner is still a `django_apps` module.
 - **Shim identity preserved:** `django_apps` shim re-exports must be the *same object* as the core symbol (no copy/redefine).

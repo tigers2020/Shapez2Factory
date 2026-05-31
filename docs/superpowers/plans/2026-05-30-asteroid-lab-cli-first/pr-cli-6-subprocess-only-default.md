@@ -39,7 +39,7 @@ an artifact viewer; DB is index/cache only.
 |--------|------|-----|
 | Modify | [`config/settings.py`](../../../../config/settings.py) | `ASTEROID_LAB_SOLVER_MODE="subprocess_only"` (only mode in request path) |
 | Modify | [`services/solver_runtime_entry.py`](../../../../django_apps/asteroid_lab/services/solver_runtime_entry.py) | remove in-process core import entirely; subprocess dispatch only |
-| Delete/retire | in-process core call in [`services/solver_runtime_layer02.py`](../../../../django_apps/asteroid_lab/services/solver_runtime_layer02.py) | request path no longer imports core; keep only ORM/ingest helpers or retire file |
+| Delete/retire | `django_apps/asteroid_lab/services/solver_runtime_layer02.py` | completed: deleted; request path no longer imports core |
 | Create | `tests/unit/architecture/test_asteroid_lab_viewer_no_core_import.py` | viewer must not import core |
 | Modify | [`documents/Algorithm/asteroid_lab_12_runtime_replay_wiring.md`](../../../../documents/Algorithm/asteroid_lab_12_runtime_replay_wiring.md) | final CLI-first wiring |
 | Modify | [`documents/ai/current_plan.md`](../../../../documents/ai/current_plan.md) | mark initiative reaching target state |
@@ -80,9 +80,9 @@ def test_viewer_does_not_import_solver_core() -> None:
 
 ## Tasks
 
-- [ ] **Step 1:** Set `subprocess_only`; remove `in_process`/`subprocess` branch selection from request path (subprocess is the only path).
-- [ ] **Step 2:** Remove all core imports from `solver_runtime_entry`; ensure subprocess runner references CLI by module string only.
-- [ ] **Step 3 (TDD):** Add viewer import gate; make it green (move/remove any stray core imports).
+- [x] **Step 1:** Set `subprocess_only`; remove `in_process`/`subprocess` branch selection from request path (subprocess is the only path).
+- [x] **Step 2:** Remove all core imports from `solver_runtime_entry`; ensure subprocess runner references CLI by module string only.
+- [x] **Step 3 (TDD):** Add viewer import gate; make it green (move/remove any stray core imports).
 - [ ] **Step 4:** Update docs (`structure.md`, runtime wiring, current_plan).
 - [ ] **Step 5:** Full gate: ruff + black + mypy + pytest.
 

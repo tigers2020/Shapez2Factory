@@ -229,11 +229,12 @@ Observability for developer terminals. **MUST NOT** feed solver, replay, or inge
 
 | Surface | Emits on |
 |---------|----------|
-| Pure CLI (`asteroid_solve`) | child stderr |
-| HTTP `POST …/run-solver/` (`in_process`) | Django process stderr (visible in `runserver`) |
-| `subprocess` solver mode | child stderr (teed to parent per §6) + `logs/subprocess.log` |
+| Pure CLI (`asteroid_solve`) | process stderr |
+| HTTP `POST …/run-solver/` (`subprocess_only`) | parent stderr (start/end) + child stderr teed per §6 |
+| `python manage.py run_solver` | parent stderr (start/end) + child stderr when subprocess runs |
+| Subprocess solver mode | child stderr (teed to parent per §6) + `logs/subprocess.log` |
 
-`python manage.py run_solver` is **not** required to implement BA-9.
+Historical `in_process` HTTP path is **removed** (PR-CLI-6 Option A); BA-9 applies to subprocess-only orchestration.
 
 ### Default: access-log one-liners
 

@@ -37,6 +37,7 @@ def build_layer02_post_summary_metrics(plan: ExteriorConnectionPlan) -> dict[str
         1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.REQUIRED
     )
     spare_planned = len(plan.planned_connectors) - required_planned
+    connector_shortfall = max(0, plan.required_connector_count - required_planned)
     return {
         "transport_kind": plan.transport_kind,
         "terrain_upper_bound_per_min": str(plan.terrain_upper_bound_per_min),
@@ -47,6 +48,8 @@ def build_layer02_post_summary_metrics(plan: ExteriorConnectionPlan) -> dict[str
         "planned_connector_count": len(plan.planned_connectors),
         "required_planned_count": required_planned,
         "spare_planned_count": spare_planned,
+        "candidate_slot_count": plan.candidate_slot_count,
+        "connector_shortfall_count": connector_shortfall,
         "unmet_reason": plan.unmet_reason.value if plan.unmet_reason is not None else None,
     }
 

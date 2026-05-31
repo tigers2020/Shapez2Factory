@@ -5,8 +5,6 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from django.db.models.fields.json import KeyTransform
-
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
@@ -22,6 +20,91 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
 )
 
 _PLACEHOLDER = "—"
+_LAYER_SUMMARY_COMPLETED_OUTCOMES = frozenset({"completed", "superseded"})
+
+
+def _resolved_completed_layer_slugs(solver_summary: dict[str, Any]) -> frozenset[str]:
+    """Merge top-level stack slugs with per-layer CLI outcomes for Lab cards."""
+
+    slugs: set[str] = set()
+    raw = solver_summary.get("completed_layer_slugs")
+    if isinstance(raw, list):
+        slugs.update(str(item) for item in raw if item)
+    for item in solver_summary.get("layer_summaries") or []:
+        if not isinstance(item, dict):
+            continue
+        slug = str(item.get("layer_slug") or "")
+        if not slug:
+            continue
+        if str(item.get("outcome") or "") in _LAYER_SUMMARY_COMPLETED_OUTCOMES:
+            slugs.add(slug)
+    rec = solver_summary.get("reconstruction_observability")
+    if isinstance(rec, dict) and rec.get("field_cell_count") not in (None, 0, ""):
+        slugs.add(LAYER_01_RECONSTRUCTION)
+    capacity = solver_summary.get("reconstruction_capacity")
+    if isinstance(capacity, dict):
+        shape_cells = capacity.get("shape_field_cell_count")
+        fluid_cells = capacity.get("fluid_field_cell_count")
+        if shape_cells not in (None, 0, "") or fluid_cells not in (None, 0, ""):
+            slugs.add(LAYER_01_RECONSTRUCTION)
+    return frozenset(slugs)
+
+
+def validation_passed_from_solver_summary(solver_summary: dict[str, Any]) -> bool:
+    """Resolve UI validation flag; CLI summaries may omit the key when stack succeeded."""
+
+    raw = solver_summary.get("validation_passed")
+    if raw is not None:
+        return bool(raw)
+    return bool(solver_summary.get("run_success"))
+
+
+def _layer_metrics_by_slug(solver_summary: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Index CLI artifact ``layer_summaries`` metrics by ``layer_slug``."""
+
+    indexed: dict[str, dict[str, Any]] = {}
+    raw = solver_summary.get("layer_summaries")
+    if not isinstance(raw, list):
+        return indexed
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        metrics = item.get("metrics")
+        if not isinstance(metrics, dict):
+            continue
+        slug = str(item.get("layer_slug") or "")
+        if slug:
+            indexed[slug] = dict(metrics)
+    return indexed
+
+
+def solver_summary_for_lab_display(solver_summary: dict[str, Any]) -> dict[str, Any]:
+    """Flatten nested CLI layer metrics into top-level keys the Lab cards expect."""
+
+    merged = dict(solver_summary)
+    by_slug = _layer_metrics_by_slug(solver_summary)
+
+    l2 = by_slug.get(LAYER_02_EXTERIOR_TRANSPORT, {})
+    if l2 and not isinstance(merged.get("exterior_connector_plan"), dict):
+        merged["exterior_connector_plan"] = dict(l2)
+        merged.setdefault("planned_connector_count", l2.get("planned_connector_count"))
+
+    l3 = by_slug.get(LAYER_03_RIM_GREEDY_PLACEMENT, {})
+    if l3:
+        merged.setdefault("rim_anchor_count", l3.get("rim_anchor_count"))
+        merged.setdefault(
+            "rim_greedy_committed_count",
+            l3.get("committed_placement_count"),
+        )
+        merged.setdefault(
+            "rim_greedy_rejected_count",
+            l3.get("rejected_attempt_count"),
+        )
+        merged.setdefault("rim_greedy_winning_variant_id", l3.get("winning_variant_id"))
+        merged.setdefault("rim_greedy_pass2_score", l3.get("pass2_score"))
+        merged.setdefault("layer03_skip_reason", l3.get("layer_skip_reason"))
+
+    return merged
 
 
 def _obs_field_count(obs: dict[str, Any], *keys: str) -> Any:
@@ -268,6 +351,16 @@ def _throughput_budget_satisfied_top_level(summary: dict[str, Any]) -> bool | No
     return bool(summary["throughput_budget_satisfied"])
 
 
+def _rttp_validation_passed_tri_state(solver_summary: dict[str, Any]) -> bool | None:
+    """Tri-state validation for L6 highlights (None = unknown, not failed)."""
+
+    if "validation_passed" in solver_summary:
+        return bool(solver_summary.get("validation_passed"))
+    if "run_success" in solver_summary:
+        return bool(solver_summary.get("run_success"))
+    return None
+
+
 def _section_rttp(solver_summary: dict[str, Any]) -> dict[str, Any]:
     order = list(solver_summary.get("commit_order") or [])
     if not order:
@@ -283,7 +376,7 @@ def _section_rttp(solver_summary: dict[str, Any]) -> dict[str, Any]:
         output_status = "pending_pr_2b"
     return {
         "confirmed_count": solver_summary.get("confirmed_count", _PLACEHOLDER),
-        "validation_passed": bool(solver_summary.get("validation_passed")),
+        "validation_passed": _rttp_validation_passed_tri_state(solver_summary),
         "actual_committed_output_per_min": actual,
         "actual_output_status": output_status,
         "candidate_count": solver_summary.get("normal_candidate_count", _PLACEHOLDER),
@@ -346,8 +439,14 @@ def _layer03_skip_reason_label(solver_summary: dict[str, Any]) -> str:
 def _rim_greedy_summary_active(solver_summary: dict[str, Any]) -> bool:
     if "rim_greedy_winning_variant_id" in solver_summary:
         return True
-    completed = solver_summary.get("completed_layer_slugs")
-    return isinstance(completed, list) and LAYER_03_RIM_GREEDY_PLACEMENT in completed
+    if LAYER_03_RIM_GREEDY_PLACEMENT in _resolved_completed_layer_slugs(solver_summary):
+        return True
+    for item in solver_summary.get("layer_summaries") or []:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("layer_slug") or "") == LAYER_03_RIM_GREEDY_PLACEMENT:
+            return True
+    return False
 
 
 def _layer03_greedy_highlights(solver_summary: dict[str, Any]) -> list[dict[str, str]]:
@@ -518,10 +617,7 @@ def _build_layer_summaries(
 ) -> list[dict[str, Any]]:
     stack_run_status_raw = solver_summary.get("stack_run_status")
     stack_run_status = str(stack_run_status_raw) if stack_run_status_raw not in (None, "") else None
-    completed_raw = solver_summary.get("completed_layer_slugs")
-    completed_layer_slugs = frozenset(
-        str(s) for s in (completed_raw if isinstance(completed_raw, list) else ())
-    )
+    completed_layer_slugs = _resolved_completed_layer_slugs(solver_summary)
     failed_raw = solver_summary.get("failed_layer_slug")
     failed_layer_slug = str(failed_raw) if failed_raw not in (None, "") else None
 
@@ -616,6 +712,30 @@ def _build_layer_summaries(
                     "Spare planned",
                     (
                         l2_plan.get("spare_planned_count", _PLACEHOLDER)
+                        if isinstance(l2_plan, dict)
+                        else _PLACEHOLDER
+                    ),
+                ),
+                _highlight(
+                    "Candidate slots",
+                    (
+                        l2_plan.get("candidate_slot_count", _PLACEHOLDER)
+                        if isinstance(l2_plan, dict)
+                        else _PLACEHOLDER
+                    ),
+                ),
+                _highlight(
+                    "Connector shortfall",
+                    (
+                        l2_plan.get("connector_shortfall_count", _PLACEHOLDER)
+                        if isinstance(l2_plan, dict)
+                        else _PLACEHOLDER
+                    ),
+                ),
+                _highlight(
+                    "Unmet reason",
+                    (
+                        l2_plan.get("unmet_reason", _PLACEHOLDER)
                         if isinstance(l2_plan, dict)
                         else _PLACEHOLDER
                     ),
@@ -731,7 +851,7 @@ def _build_layer_summaries(
             6,
             LAYER_06_COMMIT_VALIDATE,
             "Commit & validate",
-            outcome(LAYER_06_COMMIT_VALIDATE, l5_legacy),
+            ("failed" if not validation_passed else outcome(LAYER_06_COMMIT_VALIDATE, l5_legacy)),
             [
                 _highlight("Confirmed placements", rttp.get("confirmed_count")),
                 _highlight(
@@ -787,9 +907,10 @@ def lab_run_summary_from_solver_summary(
 ) -> dict[str, Any]:
     """Build Evolution Runs / Selected Run Detail payload from persisted summary."""
 
+    solver_summary = solver_summary_for_lab_display(dict(solver_summary))
     issue_codes = list(solver_summary.get("issue_codes") or [])
     issue_details = list(solver_summary.get("issue_details") or [])
-    validation_passed = bool(solver_summary.get("validation_passed"))
+    validation_passed = validation_passed_from_solver_summary(solver_summary)
     capacity_satisfied = bool(solver_summary.get("capacity_satisfied"))
     run_success = bool(solver_summary.get("run_success"))
     placement_capacity_satisfied = bool(solver_summary.get("placement_capacity_satisfied"))
@@ -875,11 +996,20 @@ def lab_run_summary_from_solver_summary(
     return row
 
 
+def solver_summary_payload_for_run(run: m.SolverRun) -> dict[str, Any]:
+    """Persisted summary for Lab display (artifact column first, legacy config fallback)."""
+
+    cached = dict(run.solver_summary_json or {})
+    if cached:
+        return cached
+    config = dict(run.config_json or {})
+    return dict(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY) or {})
+
+
 def lab_run_summary_from_orm(run: m.SolverRun) -> dict[str, Any]:
     """Serialize one :class:`SolverRun` for Lab template/JSON."""
 
-    config = dict(run.config_json or {})
-    summary = dict(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY) or {})
+    summary = solver_summary_payload_for_run(run)
     status = run.status
     if status == m.SolverRun.RunStatus.COMPLETED:
         ui_status = "completed"
@@ -922,11 +1052,10 @@ def _lab_run_summary_from_row(
 def solver_runs_for_lab_project(project_id: int, *, limit: int = 10) -> list[dict[str, Any]]:
     """Latest solver runs for one project (newest first)."""
 
-    solver_summary_expr = KeyTransform(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY, "config_json")
     rows = (
         m.SolverRun.objects.filter(project_id=int(project_id))
         .order_by("-created_at", "-id")
-        .values_list("id", "status", solver_summary_expr)[:limit]
+        .values_list("id", "status", "solver_summary_json")[:limit]
     )
     return [
         _lab_run_summary_from_row(
@@ -942,4 +1071,7 @@ __all__ = [
     "lab_run_summary_from_orm",
     "lab_run_summary_from_solver_summary",
     "solver_runs_for_lab_project",
+    "solver_summary_for_lab_display",
+    "solver_summary_payload_for_run",
+    "validation_passed_from_solver_summary",
 ]

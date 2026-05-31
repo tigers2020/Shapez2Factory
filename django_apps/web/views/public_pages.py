@@ -3,7 +3,7 @@ import re
 import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -25,6 +25,7 @@ from django_apps.asteroid_lab.models import (
     ReplayTrack,
     SolverRun,
 )
+from django_apps.asteroid_lab.observability.cli_invoke_trace import cli_invoke_trace
 from django_apps.asteroid_lab.observability.lab_perf_trace import (
     count_full_map_cells,
     lab_perf_trace_request,
@@ -32,6 +33,9 @@ from django_apps.asteroid_lab.observability.lab_perf_trace import (
     record_perf_meta,
     record_perf_ms,
     serialized_json_utf8_bytes,
+)
+from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
+    lab_replay_frames_are_renderable,
 )
 from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
@@ -56,10 +60,18 @@ from django_apps.asteroid_lab.services.project_service import (
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
 )
+from django_apps.asteroid_lab.services.solver_run_reconcile import (
+    SolverRunReconcileResult,
+    reconcile_solver_run,
+)
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
     SolverRuntimeEntryErrorCode,
+    enqueue_solver_run_for_project,
     entry_result_to_json_dict,
     run_solver_runtime_for_project,
+)
+from django_apps.game_data.services.game_data_snapshot_export import (
+    build_game_data_snapshot_payload,
 )
 from django_apps.game_data.snapshots.errors import SnapshotBuildError
 from django_apps.shapez_core.services.lab_sprite_identifier_service import (
@@ -216,7 +228,7 @@ def _asteroid_miner_lab_page_context(
     ctx["lab_ui_initial"] = ui_initial
     ctx["lab_project_slug"] = str(project.slug) if project is not None else ""
     ctx["lab_identifier_sprite_paths"] = build_lab_identifier_sprite_relpath_map()
-    return ctx
+    return cast(dict[str, Any], ctx)
 
 
 def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> dict[str, Any]:
@@ -246,7 +258,7 @@ def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> di
     if track is not None and track.project_id is not None:
         project_id = int(track.project_id)
         frames, track_metrics = build_lab_replay_frames_for_project(project_id)
-        milestone_frames: list[dict[str, Any]] = []
+        milestone_frames = []
         milestone_metrics = {
             "track_key": None,
             "frame_count": 0,
@@ -370,6 +382,30 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
         )
 
 
+def _solver_async_enabled(request: HttpRequest) -> bool:
+    if request.GET.get("wait") == "1":
+        return False
+    return bool(getattr(settings, "ASTEROID_LAB_SOLVER_ASYNC_DEFAULT", True))
+
+
+def _reconcile_result_to_status_body(result: SolverRunReconcileResult) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "ok": result.ok,
+        "solver_run_id": result.solver_run_id,
+        "status": result.status,
+        "lifecycle_status": result.lifecycle_status,
+        "log_tail": result.log_tail,
+        "validation_passed": result.validation_passed,
+    }
+    if result.run_summary is not None:
+        body["run_summary"] = result.run_summary
+    if result.error_code is not None:
+        body["error_code"] = result.error_code
+    if result.message is not None:
+        body["message"] = result.message
+    return body
+
+
 def _run_solver_post_traced(
     request: HttpRequest,
     *,
@@ -377,64 +413,156 @@ def _run_solver_post_traced(
     project: AsteroidProject,
     run_config: dict[str, Any],
 ) -> JsonResponse:
-    try:
-        with perf_span("game_data_snapshot_ms"):
-            game_data_build = build_asteroid_game_data_snapshot_with_provenance()
-    except SnapshotBuildError as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "error_code": exc.code.value,
-                "solver_run_id": None,
-                "lab_replay_frames_json": [],
-                "replay_track_metrics": {
-                    "frame_count": 0,
-                    "replay_truncated": False,
-                    "truncation_reason": None,
-                    "dropped_frame_count": None,
-                    "diagnostic_reason": None,
+    with cli_invoke_trace(
+        surface="http_run_solver",
+        command="run_solver",
+        slug=slug,
+    ) as cli_trace:
+        try:
+            with perf_span("game_data_snapshot_ms"):
+                game_data_build = build_asteroid_game_data_snapshot_with_provenance()
+        except SnapshotBuildError as exc:
+            cli_trace.update(exit=1, error_code=exc.code.value, ok=False)
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "error_code": exc.code.value,
+                    "solver_run_id": None,
+                    "lab_replay_frames_json": [],
+                    "replay_track_metrics": {
+                        "frame_count": 0,
+                        "replay_truncated": False,
+                        "truncation_reason": None,
+                        "dropped_frame_count": None,
+                        "diagnostic_reason": None,
+                    },
+                    "solver_summary": {},
+                    "validation_passed": False,
                 },
-                "solver_summary": {},
-                "validation_passed": False,
-            },
-            status=400,
-        )
+                status=400,
+            )
 
-    with perf_span("solver_runtime_ms"):
-        result = run_solver_runtime_for_project(
-            int(project.pk),
-            config=run_config,
-            game_data_snapshot=game_data_build.snapshot,
-            game_data_provenance=game_data_build.provenance,
-            catalog_slice=game_data_build.catalog_slice,
+        snapshot_payload = build_game_data_snapshot_payload()
+        if _solver_async_enabled(request):
+
+            def _status_url(run_id: int) -> str:
+                return reverse(
+                    "web:asteroid-miner-layout-project-solver-run-status",
+                    kwargs={"slug": slug, "run_id": run_id},
+                )
+
+            enqueue_result = enqueue_solver_run_for_project(
+                int(project.pk),
+                config=run_config,
+                game_data_snapshot=snapshot_payload,
+                status_url_builder=_status_url,
+            )
+            cli_trace["solver_run_id"] = enqueue_result.solver_run_id
+            if enqueue_result.error_code == SolverRuntimeEntryErrorCode.ACTIVE_RUN_EXISTS:
+                cli_trace.update(exit=1, ok=False)
+                return JsonResponse(
+                    {
+                        "ok": False,
+                        "error_code": enqueue_result.error_code.value,
+                        "solver_run_id": enqueue_result.solver_run_id,
+                        "message": enqueue_result.message,
+                    },
+                    status=409,
+                )
+            if enqueue_result.error_code is not None:
+                cli_trace.update(exit=1, ok=False)
+                status = 400
+                if enqueue_result.error_code == SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND:
+                    status = 404
+                return JsonResponse(
+                    {
+                        "ok": False,
+                        "error_code": enqueue_result.error_code.value,
+                        "solver_run_id": enqueue_result.solver_run_id,
+                        "message": enqueue_result.message,
+                    },
+                    status=status,
+                )
+            cli_trace.update(exit=0, ok=True)
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "solver_run_id": enqueue_result.solver_run_id,
+                    "run_key": enqueue_result.run_key,
+                    "status": enqueue_result.status,
+                    "status_url": enqueue_result.status_url,
+                },
+                status=202,
+            )
+
+        with perf_span("solver_runtime_ms"):
+            result = run_solver_runtime_for_project(
+                int(project.pk),
+                config=run_config,
+                game_data_snapshot=snapshot_payload,
+                game_data_provenance=game_data_build.provenance,
+                catalog_slice=game_data_build.catalog_slice,
+            )
+        cli_trace["solver_run_id"] = result.solver_run_id
+        if result.error_code is not None:
+            cli_trace["error_code"] = result.error_code.value
+        with perf_span("response_json_build_ms"):
+            body = entry_result_to_json_dict(result, project_slug=str(project.slug))
+            payload_json = json.dumps(body, separators=(",", ":"), ensure_ascii=False)
+            payload_bytes = len(payload_json.encode("utf-8"))
+        record_perf_meta(
+            payload_bytes=payload_bytes,
+            solver_run_id=result.solver_run_id,
+            lab_replay_frame_count=len(result.lab_replay_frames_json),
         )
-    with perf_span("response_json_build_ms"):
-        body = entry_result_to_json_dict(result, project_slug=str(project.slug))
-        payload_json = json.dumps(body, separators=(",", ":"), ensure_ascii=False)
-        payload_bytes = len(payload_json.encode("utf-8"))
-    record_perf_meta(
-        payload_bytes=payload_bytes,
-        solver_run_id=result.solver_run_id,
-        lab_replay_frame_count=len(result.lab_replay_frames_json),
-    )
-    if result.error_code in (
-        SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
-        SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND,
-    ):
-        status = 404 if result.error_code == SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND else 400
-        return JsonResponse(body, status=status)
-    if result.error_code == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE:
-        body["game_data_snapshot_ready"] = True
-        body["game_data_snapshot_provenance"] = provenance_stub_diagnostic_dict(
-            game_data_build.provenance
-        )
+        if result.error_code in (
+            SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
+            SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND,
+        ):
+            status = (
+                404 if result.error_code == SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND else 400
+            )
+            cli_trace.update(exit=1, ok=False)
+            return JsonResponse(body, status=status)
+        if result.error_code == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE:
+            body["game_data_snapshot_ready"] = True
+            body["game_data_snapshot_provenance"] = provenance_stub_diagnostic_dict(
+                game_data_build.provenance
+            )
+            cli_trace.update(exit=0, ok=False)
+            return JsonResponse(body, status=200)
+        # RTTP may finish with validation failure but still persist a SolverRun (never 500).
+        if result.solver_run_id is not None:
+            cli_trace.update(exit=0, ok=result.ok)
+            return JsonResponse(body, status=200)
+        if not result.ok:
+            cli_trace.update(exit=1, ok=False)
+            return JsonResponse(body, status=400)
+        cli_trace.update(exit=0, ok=True)
         return JsonResponse(body, status=200)
-    # RTTP may finish with validation failure but still persist a SolverRun (never 500).
-    if result.solver_run_id is not None:
-        return JsonResponse(body, status=200)
-    if not result.ok:
-        return JsonResponse(body, status=400)
-    return JsonResponse(body, status=200)
+
+
+@require_GET
+def asteroid_miner_layout_project_solver_run_status(
+    request: HttpRequest,
+    slug: str,
+    run_id: int,
+) -> JsonResponse:
+    """GET: poll async solver run; artifact-first reconcile (PR-CLI-7)."""
+
+    del request
+    project = AsteroidProject.objects.filter(slug=slug).first()
+    if project is None:
+        return JsonResponse({"ok": False, "error": "project_not_found"}, status=404)
+    run = SolverRun.objects.filter(pk=int(run_id), project_id=int(project.pk)).first()
+    if run is None:
+        return JsonResponse({"ok": False, "error": "solver_run_not_found"}, status=404)
+    reconcile_result = reconcile_solver_run(int(run.pk))
+    body = _reconcile_result_to_status_body(reconcile_result)
+    http_status = 200
+    if reconcile_result.status == SolverRun.RunStatus.RUNNING:
+        http_status = 200
+    return JsonResponse(body, status=http_status)
 
 
 @require_GET
@@ -470,14 +598,18 @@ def asteroid_miner_layout_project_solver_run_lab_replay(
             lab_replay_cache_frames_bytes=serialized_json_utf8_bytes(frames),
             lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(summary),
         )
-        if frames is not None and is_cache_summary_valid(summary):
+        if (
+            frames is not None
+            and lab_replay_frames_are_renderable(frames)
+            and is_cache_summary_valid(summary)
+        ):
             assert summary is not None
             metrics = dict(summary.get("replay_track_metrics") or {})
         else:
             with perf_span("replay_cache_miss_compose_ms"):
                 frames, metrics = build_lab_replay_frames_for_project(
                     project_pk,
-                    solver_run_id=run_pk,
+                    solver_run_id=int(run_pk),
                 )
                 persist_composed_replay_for_run_id(run_pk, frames=frames, metrics=metrics)
         payload: dict[str, Any] = {

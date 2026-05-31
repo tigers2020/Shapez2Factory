@@ -79,7 +79,10 @@ def try_commit_reprobe(
     own_equipment = cand.mining_occupied_cells | cand.transport_stub_cells
     if state.occupied & set(own_equipment):
         return False, state, ()
-    blockers = state.occupied | state.corridor | set(own_equipment)
+    # Equipment overlap is the only hard blocker. Corridor cells are accumulated for
+    # overlay / observability and soft fitness pressure, not exclusive void-lane blocking
+    # (CANON: many miners may merge toward one saturated exterior belt connector).
+    blockers = state.occupied | set(own_equipment)
     walkable = ctx.base_walkable - blockers
     field_cost = ctx.field_cells - blockers
     domain = WeightedTransportRouteDomain(

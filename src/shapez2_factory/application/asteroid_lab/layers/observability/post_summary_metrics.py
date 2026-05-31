@@ -18,6 +18,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import
 from shapez2_factory.application.asteroid_lab.layers.layer_01_reconstruction.output import (
     Layer01ReconstructionOutput,
 )
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.rim_throughput import (  # noqa: E501
+    SHAPE_MINI_UNIT_OUTPUT_PER_MIN,
+)
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
     ALGORITHM_STUB_ID,
 )
@@ -63,6 +66,8 @@ def build_layer03_rim_greedy_post_summary_metrics(
 ) -> dict[str, object]:
     metrics = result.metrics
     append = result.append_result
+    pass2_tf = int(metrics.pass2_score or 0)
+    routed_shape_throughput_per_min = pass2_tf * SHAPE_MINI_UNIT_OUTPUT_PER_MIN
     return {
         "rim_anchor_count": metrics.rim_anchor_count,
         "committed_placement_count": metrics.committed_placement_count,
@@ -70,6 +75,7 @@ def build_layer03_rim_greedy_post_summary_metrics(
         "reserved_route_cell_count": metrics.reserved_route_cell_count,
         "winning_variant_id": metrics.winning_variant_id,
         "pass2_score": metrics.pass2_score,
+        "routed_shape_throughput_per_min": routed_shape_throughput_per_min,
         "layer_skip_reason": metrics.layer_skip_reason,
         "canonical_layer_slug": metrics.canonical_layer_slug,
         "append_placement_count": append.placement_count,

@@ -85,9 +85,11 @@ def run_layer_03_rim_greedy_placement(
         complete_map=complete_map,
         exterior_plan=exterior_plan,
     )
+    rim_anchor_coords = frozenset(anchor.coord for anchor in anchors)
     selection = select_bundles(
         candidate_set.normal_candidates,
         commit_ctx=commit_ctx,
+        rim_anchor_coords=rim_anchor_coords,
     )
     finalize = finalize_selection(
         selected=selection.selected,

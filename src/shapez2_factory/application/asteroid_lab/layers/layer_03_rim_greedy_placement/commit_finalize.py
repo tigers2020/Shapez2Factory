@@ -3,8 +3,9 @@
 The beam selector (Phase C1) chooses a non-conflicting subset of the route-feasible normal
 pool, but its per-candidate route probes were run in isolation against the *empty* field.
 Phase D re-probes the chosen bundles **in selection order on the latest route domain**: each
-commit adds its equipment as a hard blocker and its route path as a reserved corridor, so a
-later bundle whose only route would cross an already-committed corridor is dropped (candidate
+commit adds its equipment as a hard blocker; route paths are recorded for overlay but do not
+block later bundles from sharing void belt trunks (CANON: many miners per exterior connector).
+A later bundle is dropped only when equipment overlaps or no route remains (candidate
 reachability is never the final commit proof ??spec D/forbidden shortcuts). Survivors become
 provisional ``committed_placements``; this layer still commits nothing downstream (L5/L6 own
 interior fill and final mutation).

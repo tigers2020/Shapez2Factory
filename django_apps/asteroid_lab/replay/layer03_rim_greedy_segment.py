@@ -4,26 +4,6 @@ from __future__ import annotations
 
 from typing import Literal
 
-from django_apps.asteroid_lab.layers.contracts.layer_slugs import LAYER_03_RIM_GREEDY_PLACEMENT
-from django_apps.asteroid_lab.layers.contracts.rim_greedy import (
-    CommittedRimSeedPlacement,
-    IntegratedRimGreedyResult,
-    RimGreedyObservationEvent,
-    RimGreedyObservationPhase,
-)
-from django_apps.asteroid_lab.layers.contracts.rim_greedy_append import (
-    AppendCellKind,
-    AppendedPlacementCell,
-    Layer03AppendResult,
-)
-from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKind
-from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.cardinal_map import (
-    CARDINAL_DIR_DELTA,
-)
-from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.seed_orient import (
-    placement_extension_rotation,
-    placement_output_rotation,
-)
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_LAYER03_RIM_GREEDY_BEGIN,
     EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE,
@@ -44,7 +24,25 @@ from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, Replay
 from django_apps.asteroid_lab.replay.replay_limits import LAYER03_REPLAY_MAX_POOL_PREVIEW_WINDOWS
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
-from django_apps.asteroid_lab.snapshots.grid_contract import Coord
+from django_apps.asteroid_lab.snapshots.equipment_bundles import ports_compatible
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_03_RIM_GREEDY_PLACEMENT,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
+    CommittedRimSeedPlacement,
+    IntegratedRimGreedyResult,
+    RimGreedyObservationEvent,
+    RimGreedyObservationPhase,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy_append import (
+    AppendCellKind,
+    AppendedPlacementCell,
+    Layer03AppendResult,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import (
+    TransportKind,
+)
+from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 
 LAYER03_GREEDY_PHASE = LAYER_03_RIM_GREEDY_PLACEMENT
 
@@ -59,6 +57,20 @@ _GREEDY_INSPECTOR = {
     "lab_phase": "rim_greedy_placement",
     "lab_phase_step": LAYER03_GREEDY_PHASE,
 }
+
+_CARDINAL_DIR_DELTA: dict[str, tuple[int, int]] = {
+    "N": (0, -1),
+    "E": (1, 0),
+    "S": (0, 1),
+    "W": (-1, 0),
+}
+_MAP_FACING_DIR_TO_PORT: dict[str, str] = {
+    "N": "n",
+    "E": "e",
+    "S": "s",
+    "W": "w",
+}
+_OUTPUT_TO_ROTATION: dict[str, int] = {"E": 0, "S": 1, "W": 2, "N": 3}
 
 
 def _event_type_for_phase(phase: RimGreedyObservationPhase) -> ReplayEventType:
@@ -91,6 +103,44 @@ def _transport_wire() -> str:
     return TransportKind.SHAPE_BELT.value
 
 
+def _placement_output_rotation(output_dir: str) -> int:
+    return _OUTPUT_TO_ROTATION[output_dir]
+
+
+def _direction_child_to_parent(child: Coord, parent: Coord) -> str | None:
+    dx = parent[0] - child[0]
+    dy = parent[1] - child[1]
+    for name, (ddx, ddy) in _CARDINAL_DIR_DELTA.items():
+        if dx == ddx and dy == ddy:
+            return _MAP_FACING_DIR_TO_PORT[name]
+    return None
+
+
+def _placement_extension_rotation(
+    *,
+    miner_coord: Coord,
+    extension_coord: Coord,
+    miner_rotation: int,
+    extension_kind: str = "shape_miner_extension",
+    miner_kind: str = "shape_miner",
+) -> int:
+    dir_child_to_parent = _direction_child_to_parent(extension_coord, miner_coord)
+    if dir_child_to_parent is None:
+        msg = "extension and miner are not 4-neighbors on the map grid"
+        raise ValueError(msg)
+    for rotation in range(4):
+        if ports_compatible(
+            extension_kind,
+            rotation,
+            miner_kind,
+            miner_rotation,
+            dir_child_to_parent,
+        ):
+            return rotation
+    msg = "no extension rotation links extension to miner"
+    raise ValueError(msg)
+
+
 _APPEND_TO_REPLAY_KIND_OBSERVATION: dict[AppendCellKind, str] = {
     AppendCellKind.MINER: OVERLAY_KIND_CANDIDATE_MINER,
     AppendCellKind.EXTENSION: OVERLAY_KIND_CANDIDATE_MINER,
@@ -119,7 +169,7 @@ def _parent_coord_for_extension(
     extension, or the preceding extension for deeper links. This keeps the parent a
     4-neighbor so ``placement_extension_rotation`` resolves for m3e_01 chains.
     """
-    dx, dy = CARDINAL_DIR_DELTA[placement.output_dir]
+    dx, dy = _CARDINAL_DIR_DELTA[placement.output_dir]
     return (extension_coord[0] + dx, extension_coord[1] + dy)
 
 
@@ -129,12 +179,12 @@ def _rotation_for_append_cell(
 ) -> int:
     if placement is None:
         return 0
-    miner_rotation = placement_output_rotation(placement.output_dir)
+    miner_rotation = _placement_output_rotation(placement.output_dir)
     if cell.kind is AppendCellKind.MINER:
         return miner_rotation
     if cell.kind is AppendCellKind.EXTENSION:
         parent_coord = _parent_coord_for_extension(placement, cell.coord)
-        return placement_extension_rotation(
+        return _placement_extension_rotation(
             miner_coord=parent_coord,
             extension_coord=cell.coord,
             miner_rotation=miner_rotation,

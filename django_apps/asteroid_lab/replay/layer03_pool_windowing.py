@@ -5,11 +5,13 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from django_apps.asteroid_lab.layers.contracts.candidates import RouteProbedBundleCandidate
 from django_apps.asteroid_lab.replay.layer03_overlay_cells import overlay_cell_count_for_candidate
 from django_apps.asteroid_lab.replay.replay_limits import (
     LAYER03_REPLAY_MAX_POOL_PREVIEW_WINDOWS,
     MAX_LAB_REPLAY_TIMELINE_CELLS_PER_FRAME,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
+    RouteProbedBundleCandidate,
 )
 
 

@@ -10,9 +10,6 @@ from pathlib import Path
 import pytest
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
-    LAYER_03_RIM_GREEDY_PLACEMENT,
-)
 from django_apps.asteroid_lab.replay.event_types import EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE
 from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
     compose_lab_replay_frames_from_artifact_run,
@@ -23,6 +20,9 @@ from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
     load_composed_frames_for_run_id,
 )
 from shapez2_factory.adapters.asteroid_lab.complete_map_serializer import serialize_complete_map
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_03_RIM_GREEDY_PLACEMENT,
+)
 from tests.support.reconstruction_complete_map_fixtures import minimal_complete_map_from_cells
 from tests.unit.asteroid_lab.layers.helpers.l02_complete_map_fixtures import (
     build_rect_field_with_void_shell,
@@ -143,7 +143,7 @@ def test_compose_lab_replay_frames_from_artifact_run_adds_map_view(tmp_path: Pat
     assert composed[0]["map_view"]["full_cells"]
 
 
-def test_compose_artifact_run_includes_l3_append_overlays_when_snapshot_present(
+def test_compose_artifact_run_does_not_recompute_l3_append_overlays(
     tmp_path: Path,
 ) -> None:
     project = m.AsteroidProject.objects.create(name="L3", slug="artifact-l3-append")
@@ -201,10 +201,8 @@ def test_compose_artifact_run_includes_l3_append_overlays_when_snapshot_present(
     complete = next(
         fr for fr in composed if fr.get("event_type") == EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE
     )
-    overlay = (complete.get("map_view") or {}).get("overlay_cells") or []
-    assert overlay
-    kinds = {row.get("kind") for row in overlay if isinstance(row, dict)}
-    assert "shape_miner" in kinds or "committed_miner" in kinds
+    assert complete["inspector"]["replay_source"] == "artifact_replay_core"
+    assert (complete.get("map_view") or {}).get("overlay_cells") == []
 
 
 def test_load_composed_frames_does_not_return_raw_replay_core(tmp_path: Path) -> None:

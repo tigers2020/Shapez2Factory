@@ -45,11 +45,15 @@ def run_layer_03_rim_greedy_placement(
         resource_kind,
         transport_kind,
         policy,
-        gene_catalog,
     )
     if exterior_plan is None:
         return build_empty_integrated_rim_greedy_result(
             layer_skip_reason=Layer03SkipReason.MISSING_EXTERIOR_CONNECTION_PLAN.value,
+            rim_anchor_count=0,
+        )
+    if gene_catalog is None or not gene_catalog.entries:
+        return build_empty_integrated_rim_greedy_result(
+            layer_skip_reason=Layer03SkipReason.MISSING_GENE_CATALOG.value,
             rim_anchor_count=0,
         )
     return build_empty_integrated_rim_greedy_result(

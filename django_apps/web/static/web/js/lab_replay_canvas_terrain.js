@@ -18,12 +18,11 @@
     default: "rgb(2, 6, 23)",
   });
 
+  /** Island-local replay column; ``X==0`` valid (matches solver / replay ``map_view``). */
   function visualCol(x) {
     const xi = Number(x);
     if (!Number.isFinite(xi)) return null;
-    if (xi < 0) return xi;
-    if (xi > 0) return xi - 1;
-    return 0;
+    return xi;
   }
 
   function overlayCellKind(cell) {

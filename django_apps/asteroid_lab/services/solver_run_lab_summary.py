@@ -23,6 +23,21 @@ _PLACEHOLDER = "—"
 _LAYER_SUMMARY_COMPLETED_OUTCOMES = frozenset({"completed", "superseded"})
 
 
+def _field_cell_counts_from_capacity(capacity: dict[str, Any] | None) -> tuple[Any, Any]:
+    """Read shape/fluid platform counts from CLI ``reconstruction_capacity`` envelope."""
+
+    if not isinstance(capacity, dict):
+        return None, None
+    shape_cells = capacity.get("shape_field_cell_count")
+    fluid_cells = capacity.get("fluid_field_cell_count")
+    if shape_cells is None and fluid_cells is None:
+        by_resource = capacity.get("confirmed_platforms_by_resource")
+        if isinstance(by_resource, dict):
+            shape_cells = by_resource.get("shape")
+            fluid_cells = by_resource.get("fluid")
+    return shape_cells, fluid_cells
+
+
 def _resolved_completed_layer_slugs(solver_summary: dict[str, Any]) -> frozenset[str]:
     """Merge top-level stack slugs with per-layer CLI outcomes for Lab cards."""
 
@@ -41,12 +56,13 @@ def _resolved_completed_layer_slugs(solver_summary: dict[str, Any]) -> frozenset
     rec = solver_summary.get("reconstruction_observability")
     if isinstance(rec, dict) and rec.get("field_cell_count") not in (None, 0, ""):
         slugs.add(LAYER_01_RECONSTRUCTION)
-    capacity = solver_summary.get("reconstruction_capacity")
-    if isinstance(capacity, dict):
-        shape_cells = capacity.get("shape_field_cell_count")
-        fluid_cells = capacity.get("fluid_field_cell_count")
-        if shape_cells not in (None, 0, "") or fluid_cells not in (None, 0, ""):
-            slugs.add(LAYER_01_RECONSTRUCTION)
+    shape_cells, fluid_cells = _field_cell_counts_from_capacity(
+        solver_summary.get("reconstruction_capacity")
+        if isinstance(solver_summary.get("reconstruction_capacity"), dict)
+        else None
+    )
+    if shape_cells not in (None, 0, "") or fluid_cells not in (None, 0, ""):
+        slugs.add(LAYER_01_RECONSTRUCTION)
     return frozenset(slugs)
 
 
@@ -152,7 +168,10 @@ def _external_connector_label(primary: str) -> str:
     return "External space belts"
 
 
-def _section_reconstruction(obs: dict[str, Any] | None) -> dict[str, Any]:
+def _section_reconstruction(
+    obs: dict[str, Any] | None,
+    capacity: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     keys = (
         "cell_count",
         "display_cell_count",
@@ -162,18 +181,33 @@ def _section_reconstruction(obs: dict[str, Any] | None) -> dict[str, Any]:
         "ambiguous_cell_count",
         "external_void_cell_count",
     )
-    if not obs:
-        return dict.fromkeys(keys, _PLACEHOLDER)
-    primary = _primary_resource_kind(obs.get("primary_resource_kind"))
-    return {
-        "cell_count": obs.get("cell_count", _PLACEHOLDER),
-        "display_cell_count": obs.get("display_cell_count", _PLACEHOLDER),
-        "primary_resource_kind": primary,
-        "field_cell_count": _primary_field_cell_count(obs, primary=primary),
-        "rim_cell_count": obs.get("rim_cell_count", _PLACEHOLDER),
-        "ambiguous_cell_count": obs.get("ambiguous_cell_count", _PLACEHOLDER),
-        "external_void_cell_count": obs.get("external_void_cell_count", _PLACEHOLDER),
-    }
+    if obs:
+        primary = _primary_resource_kind(obs.get("primary_resource_kind"))
+        return {
+            "cell_count": obs.get("cell_count", _PLACEHOLDER),
+            "display_cell_count": obs.get("display_cell_count", _PLACEHOLDER),
+            "primary_resource_kind": primary,
+            "field_cell_count": _primary_field_cell_count(obs, primary=primary),
+            "rim_cell_count": obs.get("rim_cell_count", _PLACEHOLDER),
+            "ambiguous_cell_count": obs.get("ambiguous_cell_count", _PLACEHOLDER),
+            "external_void_cell_count": obs.get("external_void_cell_count", _PLACEHOLDER),
+        }
+    shape_cells, fluid_cells = _field_cell_counts_from_capacity(capacity)
+    if shape_cells not in (None, 0, "") or fluid_cells not in (None, 0, ""):
+        primary = _primary_resource_kind(
+            capacity.get("primary_resource_kind") if isinstance(capacity, dict) else None
+        )
+        field_count = fluid_cells if primary == "fluid" else shape_cells
+        return {
+            "cell_count": _PLACEHOLDER,
+            "display_cell_count": _PLACEHOLDER,
+            "primary_resource_kind": primary,
+            "field_cell_count": field_count,
+            "rim_cell_count": _PLACEHOLDER,
+            "ambiguous_cell_count": _PLACEHOLDER,
+            "external_void_cell_count": _PLACEHOLDER,
+        }
+    return dict.fromkeys(keys, _PLACEHOLDER)
 
 
 def _parse_decimal_throughput(value: Any) -> Decimal | None:
@@ -932,7 +966,12 @@ def lab_run_summary_from_solver_summary(
         dict(macro_commit_summary_raw) if isinstance(macro_commit_summary_raw, dict) else None
     )
     optimization_goal = dict(solver_summary.get("optimization_goal") or {})
-    reconstruction = _section_reconstruction(solver_summary.get("reconstruction_observability"))
+    reconstruction = _section_reconstruction(
+        solver_summary.get("reconstruction_observability"),
+        solver_summary.get("reconstruction_capacity")
+        if isinstance(solver_summary.get("reconstruction_capacity"), dict)
+        else None,
+    )
     capacity = _section_capacity(solver_summary.get("reconstruction_capacity"))
     rttp = _section_rttp(solver_summary)
     throughput_target = _section_throughput_target(solver_summary)

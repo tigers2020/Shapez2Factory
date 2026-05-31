@@ -37,12 +37,15 @@ from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placeme
 from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
     expected_golden_rim_anchor_count,
     golden_5x5_complete_map,
+    golden_5x5_fluid_complete_map,
     minimal_l2_plan_for_golden,
+    minimal_l2_plan_for_golden_fluid,
 )
 
 pytestmark = pytest.mark.django_db
 
 _EXPECTED_MINER_COUNT = len(EXPECTED_PATTERN_IDS)
+_EXPECTED_MINER_WITH_FLUID_CLONES = _EXPECTED_MINER_COUNT * 2
 
 
 def _miner_seed_queryset():
@@ -103,12 +106,16 @@ def test_build_genetic_sample_seed_snapshot_from_miner_seed_v2_entries() -> None
 
     payload = build_genetic_sample_seed_snapshot(qs)
     assert payload["source_batch_id"] == MINER_SOURCE_BATCH_ID
-    assert len(payload["entries"]) == _EXPECTED_MINER_COUNT
+    assert len(payload["entries"]) == _EXPECTED_MINER_WITH_FLUID_CLONES
     assert all(e["canonical_output_dir"] == "E" for e in payload["entries"])
-    assert all(e["resource_kind"] == "shape" for e in payload["entries"])
+    shape_entries = [e for e in payload["entries"] if e["resource_kind"] == "shape"]
+    fluid_entries = [e for e in payload["entries"] if e["resource_kind"] == "fluid"]
+    assert len(shape_entries) == _EXPECTED_MINER_COUNT
+    assert len(fluid_entries) == _EXPECTED_MINER_COUNT
+    assert all(e["gene_id"].startswith("fluid_miner_seed_") for e in fluid_entries)
 
     snapshot = GeneticSampleSeedSnapshot.from_payload(payload)
-    assert len(snapshot.entries) == _EXPECTED_MINER_COUNT
+    assert len(snapshot.entries) == _EXPECTED_MINER_WITH_FLUID_CLONES
 
 
 def test_miner_seed_v2_does_not_require_exhaustive_cache() -> None:
@@ -130,7 +137,7 @@ def test_miner_seed_v2_snapshot_ignores_exhaustive_rows_when_miners_present(
 
     payload = build_genetic_sample_seed_snapshot(GeneSeed.objects.all())
     assert payload["source_batch_id"] == MINER_SOURCE_BATCH_ID
-    assert len(payload["entries"]) == _EXPECTED_MINER_COUNT
+    assert len(payload["entries"]) == _EXPECTED_MINER_WITH_FLUID_CLONES
 
 
 def test_miner_seed_v2_invalid_decoded_json_is_skipped() -> None:
@@ -170,6 +177,23 @@ def test_l3_runs_with_miner_seed_v2_snapshot() -> None:
     assert result.metrics.layer_skip_reason is None
     assert result.metrics.rim_anchor_count == expected_golden_rim_anchor_count()
     assert result.metrics.committed_placement_count >= 1
+
+
+def test_l3_fluid_map_uses_fluid_gene_clones_from_shape_pool() -> None:
+    call_command("seed_miner_patterns", verbosity=0)
+    payload = build_genetic_sample_seed_snapshot(_miner_seed_queryset())
+    snapshot = GeneticSampleSeedSnapshot.from_payload(payload)
+
+    result = run_layer_03_rim_greedy_placement(
+        complete_map=golden_5x5_fluid_complete_map(),
+        exterior_plan=minimal_l2_plan_for_golden_fluid(),
+        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
+        genetic_sample_seeds=snapshot,
+    )
+    assert result.metrics.layer_skip_reason is None
+    assert result.metrics.rim_anchor_count == expected_golden_rim_anchor_count()
+    assert result.metrics.committed_placement_count >= 1
+    assert all(p.seed_id.startswith("fluid_miner_seed_") for p in result.committed_placements)
 
 
 def test_build_genetic_sample_seed_snapshot_entries_sorted_by_gene_id(

@@ -12,6 +12,7 @@ from django_apps.asteroid_lab.services.solver_run_lab_summary import (
     validation_passed_from_solver_summary,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_01_RECONSTRUCTION,
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
     LAYER_06_COMMIT_VALIDATE,
@@ -175,3 +176,30 @@ def test_lab_run_summary_from_orm_prefers_solver_summary_json() -> None:
     row = lab_run_summary_from_orm(run)
 
     assert row["validation_passed"] is True
+
+
+def test_layer01_completed_from_cli_reconstruction_capacity_envelope() -> None:
+    """CLI run_stack writes confirmed_platforms_by_resource, not top-level field counts."""
+
+    row = lab_run_summary_from_solver_summary(
+        run_id=424,
+        status="completed",
+        solver_summary={
+            "run_success": True,
+            "stack_run_status": "success",
+            "completed_layer_slugs": [
+                LAYER_02_EXTERIOR_TRANSPORT,
+                LAYER_03_RIM_GREEDY_PLACEMENT,
+            ],
+            "reconstruction_capacity": {
+                "primary_resource_kind": "fluid",
+                "confirmed_platforms_by_resource": {"shape": 0, "fluid": 307},
+            },
+        },
+    )
+    layers = {layer["layer_slug"]: layer for layer in row["layer_summaries"]}
+    l1 = layers[LAYER_01_RECONSTRUCTION]
+    assert l1["outcome"] == "completed"
+    labels = {item["label"]: item["value"] for item in l1["highlights"]}
+    assert labels["Primary resource"] == "fluid"
+    assert labels["Fluid field cells"] == "307"

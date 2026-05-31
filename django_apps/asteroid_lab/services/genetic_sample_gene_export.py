@@ -15,6 +15,9 @@ from django_apps.asteroid_lab.genetic_sample.gene_template import GeneTemplate
 from django_apps.asteroid_lab.genetic_sample.gene_template_loader import (
     gene_template_from_generated_sample,
 )
+from django_apps.asteroid_lab.genetic_sample.shape_fluid_gene_projection import (
+    expand_gene_templates_with_fluid_clones,
+)
 from django_apps.asteroid_lab.models import GeneSeed
 from django_apps.asteroid_lab.services.miner_gene_seed_template import (
     gene_template_from_miner_gene_seed,
@@ -135,12 +138,14 @@ def load_gene_templates_from_gene_seeds(
             queryset, generator_version=generator_version
         )
 
+    expanded = expand_gene_templates_with_fluid_clones(templates)
     logger.info(
-        "load_gene_templates_from_gene_seeds loaded=%d skipped=%d",
+        "load_gene_templates_from_gene_seeds loaded=%d expanded=%d skipped=%d",
         len(templates),
+        len(expanded),
         skipped,
     )
-    return tuple(templates), skipped, error_codes
+    return expanded, skipped, error_codes
 
 
 __all__ = [

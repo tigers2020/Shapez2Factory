@@ -11,8 +11,9 @@ from shapez2_factory.application.asteroid_lab.reconstruction_capacity import (
     output_per_min_from_mini_unit,
 )
 
-# Project-verified shape extractor base (documents/game_rules/...throughput.md).
+# Project-verified bases (documents/game_rules/shapez2_asteroid_space_transport_throughput.md).
 SHAPE_MINI_UNIT_OUTPUT_PER_MIN = 30
+FLUID_MINI_UNIT_OUTPUT_PER_MIN = 300
 
 # L3 golden-map-origin regression floor (rim-only one-bundle-per-anchor packing).
 # Theoretical upper bound: rim_anchor_count × m3e(16) × 30/min (e.g. 81×480 = 38_880).
@@ -35,8 +36,16 @@ def routed_shape_throughput_per_min(
     return total
 
 
+def mini_unit_output_per_min_for_resource(resource_kind: str) -> Decimal:
+    if resource_kind == "fluid":
+        return Decimal(FLUID_MINI_UNIT_OUTPUT_PER_MIN)
+    return Decimal(SHAPE_MINI_UNIT_OUTPUT_PER_MIN)
+
+
 __all__ = [
+    "FLUID_MINI_UNIT_OUTPUT_PER_MIN",
     "GOLDEN_ORIGIN_MIN_ROUTED_SHAPE_THROUGHPUT_PER_MIN",
     "SHAPE_MINI_UNIT_OUTPUT_PER_MIN",
+    "mini_unit_output_per_min_for_resource",
     "routed_shape_throughput_per_min",
 ]

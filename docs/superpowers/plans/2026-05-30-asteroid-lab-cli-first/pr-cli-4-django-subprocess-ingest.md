@@ -9,17 +9,21 @@
 
 ## Goal
 
-Add `ASTEROID_LAB_SOLVER_MODE` to Django. In `subprocess` mode, `run-solver` spawns the CLI (BA-7),
-ingests the resulting artifact directory (BA-5 post-`ARTIFACT_WRITTEN`), and writes ORM index/cache
-fields only. `in_process` remains default fallback.
+Historical PR-CLI-4 scope: add `ASTEROID_LAB_SOLVER_MODE` to Django. In `subprocess` mode,
+`run-solver` spawns the CLI (BA-7), ingests the resulting artifact directory
+(BA-5 post-`ARTIFACT_WRITTEN`), and writes ORM index/cache fields only. In this draft,
+`in_process` remained the temporary default fallback.
+
+> **Superseded by PR-CLI-6:** `in_process` is no longer a request-path fallback. Django `run-solver`
+> is now subprocess-only, and the legacy `solver_runtime_layer02.py` entrypoint has been deleted.
 
 ## Behavior contract
 
-- `in_process` (default): current [`run_layer02_solver_for_project`](../../../../django_apps/asteroid_lab/services/solver_runtime_layer02.py) path unchanged.
+- Historical PR-CLI-4 scope only: `in_process` was the temporary default before PR-CLI-6.
 - `subprocess`: spawn CLI, wait with timeout, validate manifest hashes, ingest → `SolverRun` index fields.
 - DB never indexes partial artifacts; ingest only on `ARTIFACT_WRITTEN`.
 - Manifest parsed by `artifact_manifest_reader.py` (BA-6 Option 1) — no core import in reader.
-- BA-9: HTTP `in_process` path logs start/end on stderr (`cli_invoke_trace`); `subprocess` mode tees child streams to parent TTY + `logs/subprocess.log` ([`obs-console-log.md`](obs-console-log.md), spec §11).
+- BA-9: HTTP request path logs start/end on stderr (`cli_invoke_trace`); subprocess execution tees child streams to parent TTY + `logs/subprocess.log` ([`obs-console-log.md`](obs-console-log.md), spec §11).
 
 ## Non-goals
 
@@ -32,12 +36,12 @@ fields only. `in_process` remains default fallback.
 
 | Action | Path | Why |
 |--------|------|-----|
-| Modify | [`config/settings.py`](../../../../config/settings.py) | `ASTEROID_LAB_SOLVER_MODE` (default `in_process`); BA-9 `ASTEROID_LAB_CLI_*` |
-| Create | `django_apps/asteroid_lab/observability/cli_invoke_trace.py` | BA-9 HTTP in-process start/end |
+| Modify | [`config/settings.py`](../../../../config/settings.py) | `ASTEROID_LAB_SOLVER_MODE` temporary PR-CLI-4 mode flag; BA-9 `ASTEROID_LAB_CLI_*` |
+| Create | `django_apps/asteroid_lab/observability/cli_invoke_trace.py` | BA-9 HTTP request-path start/end |
 | Create | `django_apps/asteroid_lab/services/subprocess_stream_tee.py` | BA-9 tee + artifact log |
 | Create | `django_apps/asteroid_lab/services/solver_subprocess_runner.py` | BA-7 subprocess invocation |
 | Modify | [`django_apps/web/views/public_pages.py`](../../../../django_apps/web/views/public_pages.py) | wrap `_run_solver_post_traced` |
-| Modify | [`solver_runtime_layer02.py`](../../../../django_apps/asteroid_lab/services/solver_runtime_layer02.py) | verbose `layer_done` hooks |
+| Superseded | `django_apps/asteroid_lab/services/solver_runtime_layer02.py` | deleted after PR-CLI-6; verbose `layer_done` now lives in core CLI stack |
 | Create | `django_apps/asteroid_lab/services/artifact_ingest.py` | post-manifest ingest → ORM index fields |
 | Create | `django_apps/asteroid_lab/services/artifact_manifest_reader.py` | BA-6 Option 1 plain-JSON validator |
 | Modify | [`services/solver_runtime_entry.py`](../../../../django_apps/asteroid_lab/services/solver_runtime_entry.py) | dispatch by mode |
@@ -101,7 +105,7 @@ Ingest **must never rewrite `manifest.json`** — the manifest stays `ARTIFACT_W
 - [ ] **Step 3 (TDD):** `solver_subprocess_runner` — mock `subprocess.run`; assert `shell=False`, list args, timeout set, traversal rejected.
 - [ ] **Step 4 (TDD):** `artifact_ingest` — hash mismatch fails closed; partial (not ARTIFACT_WRITTEN) rejected; index-only writes.
 - [ ] **Step 5:** Wire HTTP/management opt-in flags.
-- [ ] **Step 5b (BA-9):** `cli_invoke_trace` + settings; verbose in layer02; `subprocess_stream_tee` in runner; optional POST `cli_verbose`.
+- [x] **Step 5b (BA-9):** `cli_invoke_trace` + settings; core CLI verbose layer lines; `subprocess_stream_tee` in runner; optional POST `cli_verbose`.
 - [ ] **Step 6:** Integration test subprocess mode end-to-end (small fixture).
 - [ ] **Step 7:** ruff + mypy + full gate.
 

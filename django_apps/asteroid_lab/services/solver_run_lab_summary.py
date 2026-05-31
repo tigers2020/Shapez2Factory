@@ -5,8 +5,6 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from django.db.models.fields.json import KeyTransform
-
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
@@ -22,6 +20,15 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
 )
 
 _PLACEHOLDER = "—"
+
+
+def validation_passed_from_solver_summary(solver_summary: dict[str, Any]) -> bool:
+    """Resolve UI validation flag; CLI summaries may omit the key when stack succeeded."""
+
+    raw = solver_summary.get("validation_passed")
+    if raw is not None:
+        return bool(raw)
+    return bool(solver_summary.get("run_success"))
 
 
 def _obs_field_count(obs: dict[str, Any], *keys: str) -> Any:
@@ -789,7 +796,7 @@ def lab_run_summary_from_solver_summary(
 
     issue_codes = list(solver_summary.get("issue_codes") or [])
     issue_details = list(solver_summary.get("issue_details") or [])
-    validation_passed = bool(solver_summary.get("validation_passed"))
+    validation_passed = validation_passed_from_solver_summary(solver_summary)
     capacity_satisfied = bool(solver_summary.get("capacity_satisfied"))
     run_success = bool(solver_summary.get("run_success"))
     placement_capacity_satisfied = bool(solver_summary.get("placement_capacity_satisfied"))
@@ -875,11 +882,20 @@ def lab_run_summary_from_solver_summary(
     return row
 
 
+def solver_summary_payload_for_run(run: m.SolverRun) -> dict[str, Any]:
+    """Persisted summary for Lab display (artifact column first, legacy config fallback)."""
+
+    cached = dict(run.solver_summary_json or {})
+    if cached:
+        return cached
+    config = dict(run.config_json or {})
+    return dict(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY) or {})
+
+
 def lab_run_summary_from_orm(run: m.SolverRun) -> dict[str, Any]:
     """Serialize one :class:`SolverRun` for Lab template/JSON."""
 
-    config = dict(run.config_json or {})
-    summary = dict(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY) or {})
+    summary = solver_summary_payload_for_run(run)
     status = run.status
     if status == m.SolverRun.RunStatus.COMPLETED:
         ui_status = "completed"
@@ -922,11 +938,10 @@ def _lab_run_summary_from_row(
 def solver_runs_for_lab_project(project_id: int, *, limit: int = 10) -> list[dict[str, Any]]:
     """Latest solver runs for one project (newest first)."""
 
-    solver_summary_expr = KeyTransform(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY, "config_json")
     rows = (
         m.SolverRun.objects.filter(project_id=int(project_id))
         .order_by("-created_at", "-id")
-        .values_list("id", "status", solver_summary_expr)[:limit]
+        .values_list("id", "status", "solver_summary_json")[:limit]
     )
     return [
         _lab_run_summary_from_row(
@@ -942,4 +957,6 @@ __all__ = [
     "lab_run_summary_from_orm",
     "lab_run_summary_from_solver_summary",
     "solver_runs_for_lab_project",
+    "solver_summary_payload_for_run",
+    "validation_passed_from_solver_summary",
 ]

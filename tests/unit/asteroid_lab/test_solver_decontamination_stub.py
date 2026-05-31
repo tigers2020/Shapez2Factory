@@ -1,4 +1,4 @@
-﻿"""Decontamination: solver entry fail-closed when Layer 02 is disabled (macro-smoke)."""
+"""Decontamination: solver entry does not fall back to Layer 02 in-process runtime."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
-    SOLVER_NOT_AVAILABLE_MESSAGE,
     SolverRuntimeEntryErrorCode,
     run_solver_runtime_for_project,
 )
@@ -20,10 +19,12 @@ def _minimal_copy() -> str:
 
 
 @override_settings(ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=False)
-def test_run_solver_stub_when_layer02_disabled() -> None:
-    proj = m.AsteroidProject.objects.create(name="StubOff", slug="stub-off")
-    m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
-    result = run_solver_runtime_for_project(int(proj.pk))
+def test_run_solver_ignores_layer02_flag_and_requires_cli_snapshot_payload() -> None:
+    project = m.AsteroidProject.objects.create(name="StubOff", slug="stub-off")
+    m.AsteroidMapInput.objects.create(project=project, copy_code=_minimal_copy())
+
+    result = run_solver_runtime_for_project(int(project.pk))
+
     assert result.ok is False
-    assert result.error_code == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE
-    assert result.message == SOLVER_NOT_AVAILABLE_MESSAGE
+    assert result.error_code == SolverRuntimeEntryErrorCode.SOLVER_SUBPROCESS_FAILED
+    assert result.message == "game_data_snapshot payload is required"

@@ -21,6 +21,7 @@ class SolverRuntimeEntryErrorCode(StrEnum):
     INVALID_THROUGHPUT_TARGET_PERCENT = "invalid_throughput_target_percent"
     INVALID_MAX_PLACEMENT_GOAL_COUNT = "invalid_max_placement_goal_count"
     RTTP_VALIDATION_FAILED = "rttp_validation_failed"
+    SOLVER_SUBPROCESS_FAILED = "solver_subprocess_failed"
 
 
 def empty_milestone_track_metrics() -> dict[str, Any]:

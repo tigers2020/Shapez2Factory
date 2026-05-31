@@ -17,6 +17,7 @@ import sys
 import time
 
 ENV_CONSOLE_LOG = "ASTEROID_LAB_CLI_CONSOLE_LOG"
+ENV_VERBOSE_LOG = "ASTEROID_LAB_CLI_VERBOSE"
 
 # Master-switch values that disable console logging (case-insensitive, stripped).
 # Any other value — including unset, ``1``, ``true`` or empty-but-set — keeps it on.
@@ -34,6 +35,15 @@ def console_logging_enabled() -> bool:
     raw = os.environ.get(ENV_CONSOLE_LOG)
     if raw is None:
         return True
+    return raw.strip().lower() not in _DISABLED_VALUES
+
+
+def verbose_logging_enabled() -> bool:
+    """Return whether optional per-layer CLI lines should be emitted."""
+
+    raw = os.environ.get(ENV_VERBOSE_LOG)
+    if raw is None:
+        return False
     return raw.strip().lower() not in _DISABLED_VALUES
 
 
@@ -73,6 +83,8 @@ def emit_cli_line(event: str, *, now: float | None = None, **fields: object) -> 
 
 __all__ = [
     "ENV_CONSOLE_LOG",
+    "ENV_VERBOSE_LOG",
     "console_logging_enabled",
     "emit_cli_line",
+    "verbose_logging_enabled",
 ]

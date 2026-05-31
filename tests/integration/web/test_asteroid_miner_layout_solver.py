@@ -109,8 +109,7 @@ def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     assert f"/asteroid-miner-layout/p/{proj.slug}/" in response.request["PATH_INFO"]
     assert m.ReplayFrame.objects.count() >= 6
     ctx = alc.lab_page_context(project_id=proj.pk)
-    assert ctx["has_replay_frames"] is True
-    assert ctx["total_frames"] >= 6
+    assert ctx["lab_replay_ssr_delivery"] == "lazy"
     content = response.content.decode()
     assert 'id="lab-replay-manifest-data"' in content
     assert 'id="lab-replay-frames-data"' not in content

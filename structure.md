@@ -24,10 +24,10 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 | `config/` | Django settings, root URLs, WSGI/ASGI, runtime flags |
 | `django_apps/shapez_core/` | Shape parsing, normalization, preview API |
 | `django_apps/shapez_solver/` | Solver projects/runs, recipe graph, macro patterns, planner services |
-| `django_apps/asteroid_lab/` | Asteroid lab ORM, decode, replay (separate from recipe solver) |
+| `django_apps/asteroid_lab/` | Asteroid Lab ORM/index/cache, artifact ingest, replay/viewer adapters, and Django management wrappers; run-solver request path is CLI subprocess-only |
 | `django_apps/game_data/` | Canonical game dump ORM, importers, validators, staff browse |
 | `django_apps/web/` | Page templates, static assets, thin views, staff tooling |
-| `src/shapez2_factory/` | Hexagonal solver-core (Django-free, BA-1); Asteroid Lab CLI entry + pure run stack land here per the CLI-first plan set |
+| `src/shapez2_factory/` | Hexagonal solver-core (Django-free, BA-1); Asteroid Lab CLI entry + pure run stack live here per the CLI-first plan set |
 | `tests/unit/` | Unit tests by app/domain |
 | `tests/integration/` | Django request/response, page/API smoke |
 | `tests/fixtures/` | Shared test inputs |
@@ -65,7 +65,8 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 
 ### `django_apps/asteroid_lab/`
 
-- Asteroid map input, decode snapshots, replay tracks, and lab services.
+- Asteroid map input, artifact-indexed solver runs, replay tracks, and lab viewer services.
+- Run Solver is `subprocess_only`: Django exports game-data snapshot input, invokes `python -m shapez2_factory.interfaces.cli.asteroid_solve`, ingests the finalized artifact, and serves replay from artifact JSONL first with DB cache fallback.
 - Does **not** depend on removed `django_apps.shapez_asteroid` or legacy mining layout solver packages (enforced by boundary tests).
 
 ### `django_apps/game_data/`

@@ -11,41 +11,41 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` skipped (d
 
 ## 0. Frozen decisions (must hold in every PR)
 
-- [ ] FD-1 package root = `src/shapez2_factory/`
-- [ ] FD-2 hybrid now → subprocess/artifact default later (`subprocess_only` = target)
-- [ ] FD-3 DB = run registry / artifact index / option cache only (not solver state SoT)
+- [x] FD-1 package root = `src/shapez2_factory/`
+- [x] FD-2 hybrid now → subprocess/artifact default later (`subprocess_only` = target)
+- [x] FD-3 DB = run registry / artifact index / option cache only (not solver state SoT)
 
 ## 1. Blocking amendments (cross-cutting; verified per touching PR)
 
-- [ ] BA-1 `src/shapez2_factory/**` imports no `django`, `django_apps`, `config`, ORM, settings, web/replay UI (one-direction shims only)
-- [ ] BA-2 no monolithic move PR; 2a–2e split + CLI as own PR
-- [x] BA-3 no active L3 relocation during boundary-m-repack PR-B/C; PR-CLI-2e gated — GATE opened after PR #133 (`895a5ecb`) merged; 2e executed post-merge
-- [ ] BA-4 `output/replay_core.jsonl` is core/deterministic; Django enrichment only; no web-ready core payload
-- [ ] BA-5 atomic write `.tmp/<run_key>` → hash → manifest last → rename; DB ingest after `ARTIFACT_WRITTEN`
-- [ ] BA-6 Phase D manifest parsing via `artifact_manifest_reader.py` (Option 1, no core import)
-- [ ] BA-7 subprocess: `shell=False`, list args, `sys.executable`, fixed cwd, timeout, log capture (+ BA-9 parent tee), traversal guard, typed exit codes
-- [ ] BA-8 `game_data_snapshot.json` fail-closed; ORM → export → JSON adapter single path
-- [ ] BA-9 console observability — stderr start/end one-liners; verbose opt-in; subprocess parent tee + `logs/subprocess.log` ([`obs-console-log.md`](obs-console-log.md))
+- [x] BA-1 `src/shapez2_factory/**` imports no `django`, `django_apps`, `config`, ORM, settings, web/replay UI (one-direction shims only)
+- [x] BA-2 no monolithic move PR; 2a–2e (+2f) split + CLI as own PR
+- [x] BA-3 no active L3 relocation during boundary-m-repack PR-B/C; PR-CLI-2e gated — GATE opened after PR #133 (`895a5ecb`) merged; 2e executed post-merge (#134, #135)
+- [x] BA-4 `output/replay_core.jsonl` is core/deterministic; Django enrichment only; no web-ready core payload
+- [x] BA-5 atomic write `.tmp/<run_key>` → hash → manifest last → rename; DB ingest after `ARTIFACT_WRITTEN`
+- [x] BA-6 Phase D manifest parsing via `artifact_manifest_reader.py` (Option 1, no core import)
+- [x] BA-7 subprocess: `shell=False`, list args, `sys.executable`, fixed cwd, timeout, log capture (+ BA-9 parent tee), traversal guard, typed exit codes
+- [x] BA-8 `game_data_snapshot.json` fail-closed; ORM → export → JSON adapter single path
+- [x] BA-9 console observability — stderr start/end one-liners; verbose opt-in; subprocess parent tee + `logs/subprocess.log` ([`obs-console-log.md`](obs-console-log.md))
 
 ## 2. Structural amendments (2nd review)
 
 - [x] SA-1 PR-CLI-2d drops `stack_runner` move (L2 + shared + contracts only)
 - [x] SA-2 `stack_runner` moves in PR-CLI-2e together with L3–L6 (no bridge ever) — done via Approach A (core returns records; Django wrapper writes); core has zero `django_apps` imports
-- [x] SA-3 PR-CLI-3 split into 3a (artifact shell) + 3b (full run) — 3a landed as standalone PR; 3b remains planned
-- [ ] SA-4 PR-CLI-2c gains blocking `display_map` pure/viewer split
-- [ ] SA-5 PR-CLI-6 uses Option A (in-process removed from request path entirely)
-- [ ] SA-6 PR-CLI-2f inserted before 3b — decode/cleanup/reconstruction pipeline move to core; 3b now depends on 2f (audit: algorithm bodies still in `django_apps`; decision C→A 2026-05-30)
+- [x] SA-3 PR-CLI-3 split into 3a (artifact shell) + 3b (full run) — 3a landed; 3b done on branch
+- [x] SA-4 PR-CLI-2c gains blocking `display_map` pure/viewer split
+- [x] SA-5 PR-CLI-6 uses Option A (in-process removed from request path entirely)
+- [x] SA-6 PR-CLI-2f inserted before 3b — decode/cleanup/reconstruction pipeline move to core (#135); 3b depends on 2f
 
 ## 3. Cross-cutting guards (land in listed PR, stay green after)
 
 - [x] Guard A — schema version reject (`test_manifest_rejects_unknown_schema_version`) — PR-3a (`parse_manifest_checked` fail-closed)
-- [ ] Guard B — replay monotonic (`test_replay_core_rejects_non_monotonic_frame_index`) — PR-3b
+- [x] Guard B — replay monotonic (`test_replay_core_rejects_non_monotonic_frame_index`) — PR-3b
 - [x] Guard C — artifact root + run_key safety (`test_run_key_safety`, sibling-prefix variant) — PR-3a (reused PR-4); `resolve_artifact_dir` via `Path.relative_to`, `fullmatch` anchor
-- [ ] Guard D — JSONL streaming-only (`test_ssr_does_not_inline_full_replay`) — PR-3b policy, enforced PR-5
-- [ ] Guard E — `replay_core` no django replay import (`test_replay_core_does_not_import_django_replay`) — PR-3b
-- [ ] run_key collision writer-level (`test_artifact_writer_rejects_existing_dir`) — PR-1 (+ `--replace-existing` PR-3a)
+- [x] Guard D — JSONL streaming-only (`test_ssr_does_not_inline_full_replay`) — PR-3b policy, enforced PR-5
+- [x] Guard E — `replay_core` no django replay import (`test_replay_core_does_not_import_django_replay`) — PR-3b
+- [x] run_key collision writer-level (`test_artifact_writer_rejects_existing_dir`) — PR-1 (+ `--replace-existing` PR-3a)
 - [x] shim identity (`test_contract_shims_preserve_identity`) — PR-2d
-- [ ] replay loader iterator (`test_artifact_replay_loader_returns_iterator`) — PR-5
+- [x] replay loader iterator (`test_artifact_replay_loader_returns_iterator`) — PR-5
 
 ---
 
@@ -178,55 +178,54 @@ Contract: [`obs-console-log.md`](obs-console-log.md)
 ## PR-CLI-3b — Full pure CLI `run` (decode → stack → artifacts)
 Depends: CLI-2e AND CLI-2f AND CLI-3a · File: [`pr-cli-3b-full-run-stack.md`](pr-cli-3b-full-run-stack.md)
 
-> **Blocked until PR-CLI-2f merges** (SA-6): decode/cleanup/reconstruction must be in core first, else
-> `run_stack.py` would import `django_apps` (BA-1 violation).
-
-- [ ] Step 1 (TDD) — `test_cli_run_artifact.py` (final dir only after success; manifest hashes; outputs present; JSONL parses per line)
-- [ ] Step 2 — implement `run_stack` use case (decode/cleanup/recon/in-core stack_runner + JSON snapshot adapter)
-- [ ] Step 3 — implement `replay_core` emitter (core event construction only; Django enrichment left behind)
-- [ ] Step 4 (TDD) — `test_replay_core_monotonic.py` (B) + `test_cli_exit_codes.py` (BA-7) + `test_replay_core_no_django_replay.py` (E)
-- [ ] Step 5 (BA-9) — `--verbose` on `run`; `layer_done` stderr lines from stack (see [`obs-console-log.md`](obs-console-log.md)); no change to layer-stack JSONL files
-- [ ] Step 6 — ruff + mypy + purity gate
-- [ ] Done: full pure CLI produces valid atomic artifact incl. streaming JSONL; exit codes mapped; no Django reachable; BA-9 verbose path green
+- [x] Step 1 (TDD) — `test_cli_run_artifact.py` (final dir only after success; manifest hashes; outputs present; JSONL parses per line)
+- [x] Step 2 — implement `run_stack` use case (decode/cleanup/recon/in-core stack_runner + JSON snapshot adapter)
+- [x] Step 3 — implement `replay_core` emitter (core event construction only; Django enrichment left behind)
+- [x] Step 4 (TDD) — `test_replay_core_monotonic.py` (B) + `test_cli_exit_codes.py` (BA-7) + `test_replay_core_no_django_replay.py` (E)
+- [x] Step 5 (BA-9) — `--verbose` on `run`; `layer_done` stderr lines from stack (see [`obs-console-log.md`](obs-console-log.md)); no change to layer-stack JSONL files
+- [x] Step 6 — ruff + mypy + purity gate
+- [x] Done: full pure CLI produces valid atomic artifact incl. streaming JSONL; exit codes mapped; no Django reachable; BA-9 verbose path green
 
 ## PR-CLI-4 — Django subprocess mode + artifact ingest
 Depends: CLI-3b · File: [`pr-cli-4-django-subprocess-ingest.md`](pr-cli-4-django-subprocess-ingest.md)
 
-- [ ] Step 1 — add `ASTEROID_LAB_SOLVER_MODE` setting + mode dispatch in `solver_runtime_entry`
-- [ ] Step 2 (TDD) — `artifact_manifest_reader` validation + no-core-import AST test (BA-6)
-- [ ] Step 3 (TDD) — `solver_subprocess_runner` (mock: `shell=False`, list args, timeout, traversal rejected) (BA-7)
-- [ ] Step 4 (TDD) — `artifact_ingest` (hash mismatch fail-closed; partial rejected; index-only writes) (BA-5)
-- [ ] Step 5 — wire HTTP/management opt-in flags
-- [ ] Step 5b (BA-9) — `cli_invoke_trace` + `ASTEROID_LAB_CLI_*` settings; verbose in layer02; `subprocess_stream_tee` in runner; tests ([`obs-console-log.md`](obs-console-log.md))
-- [ ] Step 6 — integration test subprocess mode end-to-end (small fixture)
-- [ ] Step 7 — ruff + mypy + full gate
-- [ ] Done: both modes work; subprocess produces + ingests safely; index-only DB writes; integration green; BA-9 HTTP + subprocess tee green
+- [x] Step 1 — add `ASTEROID_LAB_SOLVER_MODE` setting + mode dispatch in `solver_runtime_entry`
+- [x] Step 2 (TDD) — `artifact_manifest_reader` validation + no-core-import AST test (BA-6)
+- [x] Step 3 (TDD) — `solver_subprocess_runner` (mock: `shell=False`, list args, timeout, traversal rejected) (BA-7)
+- [x] Step 4 (TDD) — `artifact_ingest` (hash mismatch fail-closed; partial rejected; index-only writes) (BA-5)
+- [x] Step 5 — wire HTTP/management opt-in flags (`config.solver_mode=subprocess` for HTTP JSON; `manage.py run_solver --subprocess --artifact-root --cli-verbose`)
+- [x] Step 5b (BA-9) — `cli_invoke_trace` + `ASTEROID_LAB_CLI_*` settings; verbose in layer02; `subprocess_stream_tee` in runner; tests ([`obs-console-log.md`](obs-console-log.md))
+- [x] Step 6 — integration test subprocess mode end-to-end (small fixture)
+- [~] Step 7 — ruff + mypy + full gate (full pytest/ruff/black green; source-focused mypy green; repo-wide mypy remains baseline-red)
+- [~] Done: both modes work; subprocess produces + ingests safely; index-only DB writes; integration green; BA-9 HTTP + subprocess tee green. Repo-wide mypy baseline remains open.
 
 ## PR-CLI-5 — DB demotion + artifact-first replay
 Depends: CLI-4 · File: [`pr-cli-5-db-demotion-replay.md`](pr-cli-5-db-demotion-replay.md)
 
-- [ ] Step 1 — migration for `artifact_root` + `lifecycle_status` (nullable; no backfill)
-- [ ] Step 2 (TDD) — `test_artifact_first_replay.py` (indexed artifact → JSONL wins over DB)
-- [ ] Step 3 — artifact-first resolution in timeline payload + lazy handle; DB fallback
-- [ ] Step 4 — summary service reads manifest mirror
-- [ ] Step 5 (TDD) — `test_artifact_replay_loader_iterator.py` (iterator/generator, not list) + SSR no-inline guard D
-- [ ] Step 6 (TDD) — fields documented as cache; core has no `create_solver_run` import (AST)
-- [ ] Step 7 — ruff + mypy + full gate + recon narrow
-- [ ] Done: artifact-first replay with DB fallback; new columns; fields documented as cache; gates green
+- [x] Step 1 — migration for `artifact_root` + `lifecycle_status` (nullable; no backfill)
+- [x] Step 2 (TDD) — `test_artifact_first_replay.py` (indexed artifact → JSONL wins over DB)
+- [x] Step 3 — artifact-first resolution in timeline payload + lazy handle; DB fallback
+- [x] Step 4 — summary service reads manifest mirror
+- [x] Step 5 (TDD) — `test_artifact_replay_loader_iterator.py` (iterator/generator, not list) + SSR no-inline guard D
+- [x] Step 6 (TDD) — fields documented as cache; core has no `create_solver_run` import (AST)
+- [~] Step 7 — ruff + mypy + full gate + recon narrow (full pytest/ruff/black green; source-focused mypy green; repo-wide mypy remains baseline-red)
+- [~] Done: artifact-first replay with DB fallback; new columns; fields documented as cache; full pytest gate green. Repo-wide mypy baseline remains open.
 
 ## PR-CLI-6 — `subprocess_only` default + viewer import gate (Option A)
 Depends: CLI-5 (ideally CLI-2e) · File: [`pr-cli-6-subprocess-only-default.md`](pr-cli-6-subprocess-only-default.md)
 
-- [ ] Step 1 — set `subprocess_only`; remove in_process/subprocess branch selection from request path
-- [ ] Step 2 — remove all core imports from `solver_runtime_entry`; subprocess runner references CLI by module string only
-- [ ] Step 3 (TDD) — viewer import gate `test_asteroid_lab_viewer_no_core_import.py`, make green
-- [ ] Step 4 — update docs (`structure.md`, runtime wiring, `current_plan.md`)
-- [ ] Step 5 — full gate: ruff + black + mypy + pytest
-- [ ] Done: `subprocess_only` only path; no core import in request flow; viewer gate green; docs updated; full gate green
+- [x] Step 1 — set `subprocess_only`; remove in_process/subprocess branch selection from request path
+- [x] Step 2 — remove all core imports from `solver_runtime_entry`; subprocess runner references CLI by module string only
+- [x] Step 3 (TDD) — viewer import gate `test_asteroid_lab_viewer_no_core_import.py`, make green
+- [x] Step 4 — update docs (`structure.md`, runtime wiring, `current_plan.md`)
+- [~] Step 5 — full gate: ruff + black + mypy + pytest (full pytest/ruff/black green; source-focused mypy green; repo-wide mypy remains baseline-red)
+- [~] Done: `subprocess_only` only path; no core import in request flow; viewer gate green; docs updated; repo-wide mypy baseline remains open
 
 ---
 
 ## Global verification (run as PRs land)
+
+**Last verified:** 2026-05-31 @ `5610d55e` (merge `origin/master` + CLI-first WIP) — CLI separation 28 + layers 128 + BA-9 logs 25 passed; `test_full` 1719 passed, 1 xfailed; ruff + black green.
 
 ```powershell
 python -m pytest tests/unit/architecture/test_shapez2_factory_core_purity.py -v

@@ -23,6 +23,9 @@ from django_apps.asteroid_lab.replay.timeline_serialization import (
     replay_timeline_frame_from_json_dict,
     replay_timeline_frame_to_json_dict,
 )
+from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
+    compose_lab_replay_frames_from_artifact_run,
+)
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO
 from django_apps.asteroid_lab.services.lab_layer02_timeline import resolve_l2_complete_frame_index
 from django_apps.asteroid_lab.services.lab_timeline_exterior_connector_enrichment import (
@@ -37,6 +40,7 @@ from django_apps.asteroid_lab.services.lab_timeline_rim_enrichment import (
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
 )
+from django_apps.asteroid_lab.services.solver_run_lab_summary import solver_summary_payload_for_run
 
 REPLAY_DIAGNOSTIC_REASON_KEY = "replay_diagnostic_reason"
 DIAGNOSTIC_RTTP_TRACK_BLOCKED_LAB_TIMELINE = "rttp_track_blocked_lab_timeline"
@@ -240,11 +244,10 @@ def _exterior_connector_plan_wire_for_run(run: SolverRun | None) -> dict[str, An
     if isinstance(wire, dict):
         return wire
 
-    summary = config.get("solver_summary")
-    if isinstance(summary, dict):
-        nested = summary.get("exterior_connector_plan")
-        if isinstance(nested, dict):
-            return nested
+    summary = solver_summary_payload_for_run(run)
+    nested = summary.get("exterior_connector_plan")
+    if isinstance(nested, dict):
+        return nested
 
     return None
 
@@ -268,7 +271,13 @@ def build_lab_replay_frames_for_project(
 
     lab_frames = _lab_timeline_frames_for_project(pid)
     if run is not None:
-        runtime_frames = _solver_runtime_timeline_frames_for_run(run)
+        artifact_frames = compose_lab_replay_frames_from_artifact_run(run)
+        if artifact_frames is not None:
+            runtime_frames = tuple(
+                replay_timeline_frame_from_json_dict(item) for item in artifact_frames
+            )
+        else:
+            runtime_frames = _solver_runtime_timeline_frames_for_run(run)
     else:
         runtime_frames = _solver_runtime_timeline_frames_for_project(pid)
 

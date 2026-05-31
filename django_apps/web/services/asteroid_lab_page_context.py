@@ -18,14 +18,16 @@ from django_apps.asteroid_lab.observability.lab_perf_trace import (
     record_perf_ms,
     serialized_json_utf8_bytes,
 )
+from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
+    lab_replay_frames_are_renderable,
+)
 from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
     build_lab_replay_lazy_handle,
-    build_lab_replay_lazy_handle_from_summary,
     lab_replay_manifest_json_dict,
     lab_replay_payload_mode,
 )
 from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
-    is_cache_summary_valid,
+    load_composed_frames_for_run_id,
     load_manifest_summary_for_run_id,
     persist_composed_replay_for_run_id,
 )
@@ -255,19 +257,27 @@ def lab_page_context(*, project_id: int | None = None, project_slug: str = "") -
                     lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(manifest_summary),
                 )
 
-        if is_cache_summary_valid(manifest_summary):
-            assert manifest_summary is not None
-            track_metrics = dict(manifest_summary.get("replay_track_metrics") or {})
-            handle = build_lab_replay_lazy_handle_from_summary(
+        cached_frames = (
+            load_composed_frames_for_run_id(int(solver_run_id))
+            if solver_run_id is not None
+            else None
+        )
+        if cached_frames is not None and lab_replay_frames_are_renderable(cached_frames):
+            track_metrics = dict((manifest_summary or {}).get("replay_track_metrics") or {})
+            handle = build_lab_replay_lazy_handle(
+                mode=mode,
+                frames=cached_frames,
                 project_slug=slug_str,
                 solver_run_id=solver_run_id,
-                manifest_summary=manifest_summary,
             )
         else:
             frames_json: list[dict[str, Any]] = []
             with perf_span("replay_cache_miss_compose_ms"):
-                frames_json, track_metrics = build_lab_replay_frames_for_project(pid)
-                if solver_run_id is not None:
+                frames_json, track_metrics = build_lab_replay_frames_for_project(
+                    pid,
+                    solver_run_id=solver_run_id,
+                )
+                if solver_run_id is not None and frames_json:
                     persist_composed_replay_for_run_id(
                         int(solver_run_id),
                         frames=frames_json,
@@ -284,20 +294,12 @@ def lab_page_context(*, project_id: int | None = None, project_slug: str = "") -
                 record_perf_meta(
                     lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(manifest_summary),
                 )
-            if is_cache_summary_valid(manifest_summary):
-                assert manifest_summary is not None
-                handle = build_lab_replay_lazy_handle_from_summary(
-                    project_slug=slug_str,
-                    solver_run_id=solver_run_id,
-                    manifest_summary=manifest_summary,
-                )
-            else:
-                handle = build_lab_replay_lazy_handle(
-                    mode="lazy",
-                    frames=frames_json,
-                    project_slug=slug_str,
-                    solver_run_id=solver_run_id,
-                )
+            handle = build_lab_replay_lazy_handle(
+                mode=mode,
+                frames=frames_json,
+                project_slug=slug_str,
+                solver_run_id=solver_run_id,
+            )
 
         ctx["replay_track_metrics"] = track_metrics
         ctx["lab_replay_manifest_json"] = lab_replay_manifest_json_dict(

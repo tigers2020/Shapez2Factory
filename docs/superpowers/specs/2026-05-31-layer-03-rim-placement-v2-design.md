@@ -1,6 +1,7 @@
 # Layer 03 Rim Placement v2 (DB-gene, two-phase hybrid) — Normative Design
 
-**Status:** APPROVED (2026-05-31; 5 blocking + 2 minor amendments folded in — spec-first, no production code until checklist approval)
+**Status:** APPROVED (2026-05-31; 5 blocking + 2 minor + 1 contract amendment folded in — spec-first, no production code until checklist approval)
+**Amendment 6 (2026-05-31):** Footprint transform contract — rotation/mirror are full-footprint rigid transforms (coords + `R` + ports), not orientation-only mutations. See §T.
 **Date:** 2026-05-31
 **Owner:** `src/shapez2_factory/application/asteroid_lab/layers/layer_03_rim_greedy_placement/`
 **Supersedes (algorithm body only):** [`2026-05-31-layer-03-algorithm-reset-design.md`](2026-05-31-layer-03-algorithm-reset-design.md) (the reset stub it defines is the baseline this design replaces)
@@ -39,6 +40,7 @@ plan/checklist documents).
 | Boundary | DB read **only** at Django adapter; core/CLI L3 never imports ORM. |
 | Phase 2 staging | **C1 deterministic beam first**; C2 local search; C3 GA-lite optional/bounded/seed-stable (Amendment 4). |
 | Benchmark | **L3-rim-only metrics** vs golden; full 1:1 golden match is L4–L6 territory (Amendment 5). |
+| Footprint transform | **D4 over the full local footprint** (Amendment 6): a rotation/mirror variant transforms equipment coordinates + each building `R` + port/route-seed vectors together, then translates onto the world anchor. `R`-only mutation with unchanged coordinates is invalid. |
 
 ---
 
@@ -127,11 +129,56 @@ INVALID_GENE_CATALOG = "invalid_gene_catalog"
 | R1 | Rim anchors = field cells adjacent to external void; each carries `void_dirs`. |
 | R2 | Equipment (extractor + extensions) ⊆ `field_cells` of the **matching resource type** (shape entry on shape field, fluid on fluid field; `both` may anchor on either). |
 | R3 | Output stub ⊆ external void; route may cross field but field is costed higher than void; committed equipment is a hard blocker. |
-| R4 | Gene footprint is oriented from `canonical_output_dir = E` to the anchor's chosen output direction (subset of `void_dirs`). |
+| R4 | Gene footprint is **rigidly transformed** (full-footprint D4) from `canonical_output_dir = E` to the anchor's chosen output direction (subset of `void_dirs`). See **§T**. Orientation-only mutation (changing building `R`/`output_dir` while equipment coordinates stay fixed) is forbidden. |
 | R5 | **Immediate route probe** from `route_probe_start` to nearest matching trunk connector goal (belt=shape, pipe=fluid) decides pool membership. Reuse `shared/route_probe.py`. |
 | R6 | Phase 1 produces candidates only — **no commit** (candidate ≠ commit invariant). |
 | R7 | Commit-time **re-probe** on the latest `route_domain` (`RouteDomainSnapshotBuilder.build_snapshot`, canonical) finalizes survivors; candidate reachable ≠ final proof. |
 | R8 | Provisional survivors populate `IntegratedRimGreedyResult.committed_placements` + overlay + metrics + replay events. Overlap count among survivors MUST be 0. |
+
+### T — Footprint transform contract (Amendment 6)
+
+A direction/mirror variant is a **rigid transform of the entire miner-relative footprint**, not an
+orientation-only change. The earlier "orientation variant" framing (mutate `R` / `output_dir` only) is
+**rejected**. For every equipment item in a variant: `kind`/type is preserved; local coordinate
+`(dx, dy)` relative to the miner anchor is rotated/reflected; building rotation `R` is
+rotated/reflected; output/input port vectors and route-seed directions are rotated/reflected; the
+transformed local coordinates are then translated onto the world anchor.
+
+Transform math (solver frame is **y-down**: +x East, +y South; canonical base orientation East, `R = 0`):
+
+```
+rotate_xy(dx, dy, k):        # k = clockwise quarter-turns
+  k == 0 -> ( dx,  dy)
+  k == 1 -> (-dy,  dx)       # 90°  CW
+  k == 2 -> (-dx, -dy)       # 180°
+  k == 3 -> ( dy, -dx)       # 270° CW
+rotate_r(r, k) = (r + k) % 4
+edge -> k:  east = 0, south = 1, west = 2, north = 3
+```
+
+Mirror is a **separate** transform (not expressible as a rotation):
+
+```
+mirror_x(dx, dy) = (-dx,  dy)   # reflect across vertical axis:   East <-> West, N/S fixed
+mirror_y(dx, dy) = ( dx, -dy)   # reflect across horizontal axis:  North <-> South, E/W fixed
+```
+
+`R` / port directions reflect with the chosen axis.
+
+| ID | Rule |
+|----|------|
+| T1 | Variants are the **D4 group** over the full footprint (4 rotations × optional mirror), applied to coords + `R` + ports together. |
+| T2 | `R`-only / `output_dir`-only mutation with unchanged equipment coordinates is **invalid** and MUST be rejected (sole exception: a genuinely single-cell, coordinate-invariant building). |
+| T3 | Variants are **deduplicated only after full footprint normalization** (post-transform canonicalization). Asymmetric / corner layouts keep mirror and rotation as distinct candidates; `180° rotation ≠ mirror`. |
+| T4 | The `rotation` stored on each placement is the transformed `R = rotate_r(base_R, k)` with canonical `base_R = 0` (East) — **not** the NESW ordering rank used by D1. |
+| T5 | Test-locked vectors (canonical-East extensions left of the miner, `M = (0,0)`): `E→S` maps `(-n, 0) → (0, -n)`; `E→W` maps `(-n, 0) → (n, 0)`; `E→N` maps `(-n, 0) → (0, n)`. |
+| T6 | **Variant enumeration:** core B2 emits the full **D4 set** (4 rotations × {identity, mirror}) of each gene footprint, deduplicated after full normalization (T3). The Django serializer/snapshot keeps the **canonical-East 18 entries** only; expansion happens in core. |
+| T7 | **Independent extractor output:** a candidate is `anchor × gene × bundle_orientation × output_side`. `output_side` is any of the extractor's 4 sides **not occupied by an extension cell** in that orientation **and** whose stub cell lies in external void (R3). The **miner** `R = rotate_r(0, output_side_k)`; **extensions** keep `R = rotate_r(0, orientation_k)` (bundle orientation). Per-placement `R` may therefore differ. |
+
+> `assumption:` `GeneCatalogEntry` currently carries no per-building base `R`; all bundle buildings are
+> taken as canonical-East `base_R = 0`. Extension `R` follows the bundle orientation; the miner `R`
+> follows its independent output side (T7). If a future entry needs heterogeneous base `R`, the schema
+> must add a per-cell `r` and `rotate_r` applies per cell.
 
 ### D — Determinism (Amendment 4 ordering)
 
@@ -190,6 +237,7 @@ non-regression floor (`≥ deterministic beam baseline`).
 | Gene catalog boundary | `GeneCatalogSnapshot.from_payload` round-trip; reject bad schema_version / missing `canonical_output_dir` / bad throughput_factor. |
 | Missing/invalid catalog | empty → `MISSING_GENE_CATALOG`; invalid payload → `INVALID_GENE_CATALOG`; no synthetic genes; no core ORM import. |
 | Candidate (Phase 1) | equipment-in-field, stub-in-void, immediate-route-feasible pool membership, candidate ≠ commit. |
+| Footprint transform (§T) | `E→S`/`E→W`/`E→N` rotate the full footprint (T5 vectors); placement `R == (base_R + k) % 4` (T4); a candidate with mutated `R` but unchanged coordinates is rejected (T2); mirror ≠ rotation for an asymmetric layout (T3). |
 | Determinism | candidate ordering in solver frame (D1), selector consults fitness/conflict state rather than enumeration shortcut (D2), output hash stable (D4). |
 | Finalize (Phase D) | commit-time re-probe drops infeasible, overlap count 0. |
 | Benchmark | L3-rim-only metrics on golden origin within bounds. |
@@ -209,6 +257,7 @@ non-regression floor (`≥ deterministic beam baseline`).
 | A6 | L3-rim-only benchmark metrics computed; `routed_rim_throughput ≤ golden total` and `≥ beam baseline`. |
 | A7 | Core/CLI L3 imports no ORM (architecture gate green). |
 | A8 | `ruff check` on touched paths clean. |
+| A9 | Footprint transform (§T): T5 rotation vectors locked, placement `R = (base+k)%4` (T4), R-only-unchanged-coords rejected (T2), mirror distinct from rotation for asymmetric layout (T3). |
 
 ---
 

@@ -602,6 +602,26 @@ def test_empty_gene_catalog_returns_skip(complete_map, exterior_plan, budget_ctx
 
 ---
 
+### Task B2.1: Footprint transform contract — full-footprint D4 (spec §T / Amendment 6)
+
+The earlier candidate gen oriented the bundle by rotating the footprint to face each `void_dir`
+with a single shared rotation. Amendment 6 mandates a **full-footprint D4** model with **independent
+extractor output**. Implement incrementally; each sub-step is its own red→green→commit.
+
+**Files:**
+- Modify: `.../layer_03_rim_greedy_placement/candidate_gen.py` (transform helpers + enumeration)
+- Maybe create: `.../layer_03_rim_greedy_placement/footprint_transform.py` (`rotate_xy`, `rotate_r`, `mirror_x/y`, `enumerate_d4`, `normalize_footprint`)
+- Test: `tests/unit/asteroid_lab/layers/test_candidate_gen.py`, `test_footprint_transform.py`
+
+- [x] **B2.1a — rotation `R` field fix (T4):** placement `rotation` = `edge_rotation_k(edge)` (East=0, CW+1), NOT `output_dir_rank` (NESW). Lock T5 vectors + R-only-invalid (T2). **DONE** (13 tests green, ruff clean).
+- [ ] **B2.1b — D4 enumeration (T1/T3/T6):** add `rotate_xy(dx,dy,k)`, `rotate_r(r,k)`, `mirror_x/y`, `enumerate_d4(entry)` returning the 4 rotations × {identity, mirror} of the full footprint, **deduplicated after full normalization** (normalized = sorted equipment offsets + output side + per-cell R). Test: asymmetric/corner layout keeps mirror distinct from every rotation (`180° ≠ mirror`); symmetric straight line dedups mirror duplicates.
+- [ ] **B2.1c — independent extractor output (T7):** candidate = `anchor × gene × bundle_orientation × output_side`. `output_side` ∈ extractor's 4 sides **not occupied by an extension** in that orientation **and** whose stub cell is in external void (R3). Miner `R = rotate_r(0, output_side_k)`; extensions `R = rotate_r(0, orientation_k)` — **per-placement R may differ**. Update `_build_candidate` to set per-placement R. Test: a corner bundle yields ≥2 distinct output sides; miner R tracks output side while extension R tracks orientation.
+- [ ] **B2.1d — dedup metric + D1 ordering:** `dedupe_duplicate_count` reflects normalization dedups; D1 ordering still sorts by `(anchor_row, anchor_col, output_dir_rank, -throughput_factor, gene_id)` with `output_dir` = the independent output side. Commit each sub-step: `feat(l3): full-footprint D4 + independent extractor output (§T)`.
+
+> Expansion stays in **core B2** (T6); the Django serializer/snapshot keeps canonical-East 18 entries only.
+
+---
+
 ## Phase C1 — Deterministic beam selector (v2 MVP)
 
 ### Task C1: Fitness + beam selection

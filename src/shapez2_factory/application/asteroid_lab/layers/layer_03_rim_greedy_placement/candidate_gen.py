@@ -97,6 +97,15 @@ _DIRECTION_RANK: dict[Direction, int] = {
     Direction.S: 2,
     Direction.W: 3,
 }
+# Geometric rotation k (clockwise quarter-turns) of the full footprint relative to the
+# canonical-East base orientation (§T / Amendment 6). This is the transformed building
+# R = rotate_r(base_R=0, k); it is NOT the NESW ``_DIRECTION_RANK`` used by D1 ordering.
+_EDGE_ROTATION_K: dict[str, int] = {
+    "east": 0,
+    "south": 1,
+    "west": 2,
+    "north": 3,
+}
 _FIELD_KIND_TO_RESOURCE: dict[str, ResourceKind] = {
     "shape": ResourceKind.SHAPE,
     "fluid": ResourceKind.FLUID,
@@ -112,6 +121,22 @@ def output_dir_rank(direction: Direction) -> int:
     """Fixed NESW rank used by the D1 candidate ordering."""
 
     return _DIRECTION_RANK[direction]
+
+
+def edge_rotation_k(edge: str) -> int:
+    """Geometric rotation k of the full footprint for a target output ``edge`` (§T).
+
+    ``k`` is the number of clockwise quarter-turns from the canonical-East base
+    orientation (east=0, south=1, west=2, north=3). The transformed building rotation
+    is ``rotate_r(base_R=0, k) == k``. This is distinct from :func:`output_dir_rank`,
+    which is the NESW tie-break rank used only by the D1 enumeration order.
+    """
+
+    try:
+        return _EDGE_ROTATION_K[edge]
+    except KeyError as exc:
+        msg = f"unknown cardinal edge: {edge!r}"
+        raise ValueError(msg) from exc
 
 
 def rotate_offset_east_to(offset: Coord, edge: str) -> Coord:
@@ -184,7 +209,9 @@ def _build_candidate(
     route_probe_start: Coord,
 ) -> BundleCandidate:
     direction = _CARDINAL_TO_DIRECTION[edge]
-    rotation = output_dir_rank(direction)
+    # §T/T4: building R is the geometric full-footprint transform (canonical-East base
+    # R=0), not the NESW D1 ordering rank.
+    rotation = edge_rotation_k(edge)
     transport_kind = map_resource_kind_to_transport_kind(resource_kind)
     ax, ay = anchor.coord
     candidate_id = (
@@ -438,6 +465,7 @@ def generate_candidates(
 
 
 __all__ = [
+    "edge_rotation_k",
     "generate_candidates",
     "output_dir_rank",
     "rotate_offset_east_to",

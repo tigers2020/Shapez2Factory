@@ -18,6 +18,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import
     RouteProbeStatus,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.candidate_gen import (  # noqa: E501
+    edge_rotation_k,
     generate_candidates,
     output_dir_rank,
     rotate_offset_east_to,
@@ -112,6 +113,53 @@ def test_output_dir_rank_is_nesw() -> None:
     assert output_dir_rank(Direction.E) == 1
     assert output_dir_rank(Direction.S) == 2
     assert output_dir_rank(Direction.W) == 3
+
+
+# ---------------------------------------------------------------------------
+# §T footprint transform contract (Amendment 6)
+# ---------------------------------------------------------------------------
+
+
+def test_edge_rotation_k_is_east_zero_clockwise() -> None:
+    # Canonical base orientation is East (k=0); each clockwise quarter-turn adds 1.
+    # This is the geometric transform rank, NOT the NESW D1 ordering rank.
+    assert edge_rotation_k("east") == 0
+    assert edge_rotation_k("south") == 1
+    assert edge_rotation_k("west") == 2
+    assert edge_rotation_k("north") == 3
+
+
+def test_placement_rotation_is_transformed_r_not_nesw_rank_t4() -> None:
+    # T4: every placement's stored ``rotation`` is the transformed building R =
+    # rotate_r(base_R=0, k) = edge_rotation_k(edge), NOT output_dir_rank (NESW).
+    # The golden fixture's normal pool is East-facing, so R must be 0 (not 1).
+    complete_map = golden_5x5_complete_map()
+    result = generate_candidates(
+        complete_map=complete_map,
+        exterior_plan=minimal_l2_plan_for_golden(),
+        gene_catalog=_catalog(),
+    )
+    assert result.normal_candidates
+    for probed in result.normal_candidates:
+        cand = probed.candidate
+        assert cand.output_dir == Direction.E
+        assert cand.rotation == 0, "East candidate R must be 0, not output_dir_rank(E)=1"
+        for placement in cand.placements:
+            assert placement.rotation == 0
+
+
+def test_rotation_transforms_coordinates_not_r_only_t2() -> None:
+    # T2: a non-identity rotation MUST move equipment coordinates; it is invalid to
+    # keep coordinates fixed and only mutate R. Proven by the canonical extension at
+    # (-3, 0): for south/west/north its rotated offset differs from the original.
+    canonical = (-3, 0)
+    for edge in ("south", "west", "north"):
+        rotated = rotate_offset_east_to(canonical, edge)
+        assert rotated != canonical, f"{edge}: coordinates must rotate, not stay R-only"
+    # Locked T5 vectors (canonical-East extensions left of the miner).
+    assert rotate_offset_east_to((-3, 0), "south") == (0, -3)
+    assert rotate_offset_east_to((-3, 0), "west") == (3, 0)
+    assert rotate_offset_east_to((-3, 0), "north") == (0, 3)
 
 
 # ---------------------------------------------------------------------------

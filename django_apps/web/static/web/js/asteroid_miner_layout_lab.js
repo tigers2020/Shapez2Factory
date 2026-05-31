@@ -110,6 +110,112 @@
   /** Extra empty cells beyond union bbox on each side (visual col / row), symmetric around (1,0). */
   const REPLAY_GRID_EDGE_PADDING = 5;
 
+  /** Timeline auto-advance interval during replay playback (ms). */
+  const LAB_REPLAY_PLAYBACK_MS = 220;
+
+  /**
+   * Frames with at least this many map_view cells trigger a full grid reset
+   * (incremental paint only helps when each step touches a small cell subset).
+   */
+  const LAB_REPLAY_FULL_RESET_CELL_THRESHOLD = 64;
+
+  /** Per-cell render token cache; skip DOM writes when token unchanged (PR-RENDER-1). */
+  const renderedTokenByKey = new Map();
+
+  /** Incremented per touched cell when ``#lab-root`` has ``data-lab-perf-debug="1"``. */
+  let labPerfTouchedCells = 0;
+
+  function labPerfDebugEnabled() {
+    const root = document.getElementById("lab-root");
+    return Boolean(root && root.dataset && root.dataset.labPerfDebug === "1");
+  }
+
+  function clearRenderedTokenMap() {
+    renderedTokenByKey.clear();
+  }
+
+  const LAB_TERRAIN_CANVAS_HIT_CLASS = "lab-cell-terrain-canvas-target";
+
+  function labTerrainCanvasSupported() {
+    const canvas = document.getElementById("lab-replay-terrain-canvas");
+    if (!canvas) {
+      return false;
+    }
+    try {
+      return !!canvas.getContext("2d");
+    } catch {
+      return false;
+    }
+  }
+
+  function labTerrainCanvasEnabled() {
+    const root = document.getElementById("lab-root");
+    if (root && root.dataset && root.dataset.labTerrainCanvas === "0") {
+      return false;
+    }
+    if (typeof window.LabReplayCanvas === "undefined") {
+      return false;
+    }
+    return labTerrainCanvasSupported();
+  }
+
+  function firstFullMapCellsFromFrames(framesArr) {
+    if (!Array.isArray(framesArr)) {
+      return [];
+    }
+    for (let i = 0; i < framesArr.length; i++) {
+      const fm = fullMapCellsFromFrame(framesArr[i]);
+      if (fm.length) {
+        return fm;
+      }
+    }
+    return [];
+  }
+
+  function syncLabTerrainCanvasLayer(cells, layout, cellPx, gapPx) {
+    if (!labTerrainCanvasEnabled() || !layout) {
+      return;
+    }
+    const canvas = document.getElementById("lab-replay-terrain-canvas");
+    if (!canvas) {
+      return;
+    }
+    const ctx = canvas.getContext("2d");
+    if (!ctx || !window.LabReplayCanvas) {
+      return;
+    }
+    window.LabReplayCanvas.drawTerrainLayer(ctx, cells, layout, cellPx, gapPx);
+    canvas.hidden = false;
+  }
+
+  function applyLabTerrainCanvasHitTarget(el, base) {
+    el.className = base + " " + LAB_TERRAIN_CANVAS_HIT_CLASS + " !bg-transparent ring-0";
+  }
+
+  function isLabStaticTerrainCell(cell, frame) {
+    return (
+      labTerrainCanvasEnabled() &&
+      window.LabReplayCanvas &&
+      window.LabReplayCanvas.isStaticTerrainCell(cell)
+    );
+  }
+
+  const LAB_CANVAS_HIT_CLASS = "lab-replay-canvas-hit-layer";
+
+  function labCanvasRendererEnabled() {
+    const root = document.getElementById("lab-root");
+    if (root && root.dataset && root.dataset.labRenderer !== "canvas") {
+      return false;
+    }
+    if (typeof window.LabReplayCanvas === "undefined") {
+      return false;
+    }
+    if (typeof window.LabReplayCanvas.createLabCanvasRenderer !== "function") {
+      return false;
+    }
+    return labTerrainCanvasSupported();
+  }
+
   const LAB_VIEWPORT_MIN_SCALE = 0.35;
   const LAB_VIEWPORT_MAX_SCALE = 7;
   const LAB_VIEWPORT_DRAG_THRESHOLD_PX = 6;
@@ -410,7 +516,10 @@
     if (!img) return;
     attachLabSpriteImgNoDrag(img);
     const base = String(labSpriteBaseUrl).replace(/\/?$/, "/");
-    img.src = base + rel;
+    const nextSrc = base + rel;
+    if (img.getAttribute("src") !== nextSrc) {
+      img.src = nextSrc;
+    }
     const logicalQ = normalizeQuarterTurns(cell.rotation);
     const deg = rotationToDeg(logicalQ);
     if (deg !== 0) {
@@ -898,6 +1007,69 @@
     return out;
   }
 
+  function collectReplayFrameCellIndices(frame, resolveCellIndex) {
+    const targets = collectFrameSpatialTargets(frame);
+    if (!targets.length) {
+      return [];
+    }
+    if (targets.length > 128) {
+      const seen = new Set();
+      const out = [];
+      for (let i = 0; i < targets.length; i++) {
+        const idx = resolveCellIndex(targets[i].cell);
+        if (idx == null || idx < 0 || seen.has(idx)) {
+          continue;
+        }
+        seen.add(idx);
+        out.push(idx);
+      }
+      return out;
+    }
+    const out = [];
+    for (let i = 0; i < targets.length; i++) {
+      const idx = resolveCellIndex(targets[i].cell);
+      if (idx == null || idx < 0) {
+        continue;
+      }
+      let dup = false;
+      for (let j = 0; j < out.length; j++) {
+        if (out[j] === idx) {
+          dup = true;
+          break;
+        }
+      }
+      if (!dup) {
+        out.push(idx);
+      }
+    }
+    return out;
+  }
+
+  function replayFrameNeedsFullGridReset(frame, domCellCount) {
+    if (!frame || typeof frame !== "object") {
+      return true;
+    }
+    if (frame.is_keyframe) {
+      return true;
+    }
+    const count = Number(domCellCount);
+    const threshold = Math.max(
+      LAB_REPLAY_FULL_RESET_CELL_THRESHOLD,
+      Math.floor((Number.isFinite(count) && count > 0 ? count : 0) * 0.15),
+    );
+    const mapView = frame.map_view;
+    if (mapView && typeof mapView === "object") {
+      const fromMv = labCellsFromMapView(mapView);
+      if (fromMv.length >= threshold) {
+        return true;
+      }
+    }
+    if (Array.isArray(frame.full_map) && frame.full_map.length >= threshold) {
+      return true;
+    }
+    return false;
+  }
+
   /** Collect drawable cells from tolerant overlay shapes (decode / existing_layout). */
   function collectOverlayPaintTargets(overlay) {
     const out = [];
@@ -1221,6 +1393,73 @@
     return "";
   }
 
+  function cellRenderToken(cell, frame, ck, tone, candidateObs) {
+    const rot = cell.rotation != null ? String(cell.rotation) : "";
+    const role = cell.overlay_role != null ? String(cell.overlay_role) : "";
+    const sprite = labSpriteRelpathForCell(cell, frame) || "";
+    const cand = candidateObs ? "1" : "0";
+    return ck + "|" + role + "|" + rot + "|" + sprite + "|" + tone + "|" + cand;
+  }
+
+  function labPaintTokenForCell(cell, frame, domCells, idx) {
+    if (!cell || typeof cell !== "object") {
+      return null;
+    }
+    const ck = overlayCellKind(cell);
+    const el = domCells[idx];
+    const candidateObs = isNonSpriteOverlayCell(cell, frame);
+    if (candidateObs && shouldSkipCandidateObservationOnSpriteCell(frame, ck, el)) {
+      return null;
+    }
+    let tone = toneForFullMapCell(cell, frame);
+    if (candidateObs) {
+      const obsTone = candidateObservationToneClasses(ck, el);
+      if (obsTone) {
+        tone = obsTone;
+      } else if (isL3PoolProbeWindowFrame(frame)) {
+        return null;
+      }
+    }
+    return cellRenderToken(cell, frame, ck, tone, candidateObs);
+  }
+
+  function frameCellIndexMap(frame, resolveCellIndex) {
+    const map = new Map();
+    const targets = collectFrameSpatialTargets(frame);
+    for (let i = 0; i < targets.length; i++) {
+      const cell = targets[i].cell;
+      const idx = resolveCellIndex(cell);
+      if (idx == null || idx < 0) {
+        continue;
+      }
+      map.set(idx, cell);
+    }
+    return map;
+  }
+
+  function resetDomCellsAtIndicesForFrame(domCells, baseClasses, indices, frame, resolveCellIndex) {
+    if (!indices || !indices.length) {
+      return;
+    }
+    const cellByIndex =
+      frame && typeof frame === "object" && resolveCellIndex
+        ? frameCellIndexMap(frame, resolveCellIndex)
+        : null;
+    for (let i = 0; i < indices.length; i++) {
+      const idx = indices[i];
+      if (cellByIndex) {
+        const cell = cellByIndex.get(idx);
+        if (cell) {
+          const token = labPaintTokenForCell(cell, frame, domCells, idx);
+          if (token != null && renderedTokenByKey.get(idx) === token) {
+            continue;
+          }
+        }
+      }
+      resetDomCellAtIndex(domCells, baseClasses, idx);
+    }
+  }
+
   function renderFullMapCells(baseClasses, domCells, cells, resolveCellIndex, frame) {
     if (!Array.isArray(cells)) return;
     for (let i = 0; i < cells.length; i++) {
@@ -1232,17 +1471,20 @@
       const ck = overlayCellKind(cell);
       const el = domCells[idx];
       const candidateObs = isNonSpriteOverlayCell(cell, frame);
-      if (candidateObs && shouldSkipCandidateObservationOnSpriteCell(frame, ck, el)) {
+      const token = labPaintTokenForCell(cell, frame, domCells, idx);
+      if (token == null) {
         continue;
       }
-      let tone = toneForFullMapCell(cell, frame);
-      if (candidateObs) {
-        const obsTone = candidateObservationToneClasses(ck, el);
-        if (obsTone) {
-          tone = obsTone;
-        } else if (isL3PoolProbeWindowFrame(frame)) {
-          continue;
+      if (renderedTokenByKey.get(idx) === token) {
+        continue;
+      }
+      if (isLabStaticTerrainCell(cell, frame)) {
+        applyLabTerrainCanvasHitTarget(el, base);
+        renderedTokenByKey.set(idx, token);
+        if (labPerfDebugEnabled()) {
+          labPerfTouchedCells += 1;
         }
+        continue;
       }
       el.className = tone ? base + " " + tone : base;
       const hudRole =
@@ -1263,6 +1505,10 @@
       }
       if (!candidateObs) {
         applyLabCellSprite(el, cell, frame);
+      }
+      renderedTokenByKey.set(idx, token);
+      if (labPerfDebugEnabled()) {
+        labPerfTouchedCells += 1;
       }
     }
   }
@@ -1328,6 +1574,27 @@
     }
   }
 
+  function hideLabCellBundleBridges(el) {
+    if (!el || !el.querySelectorAll) return;
+    var bridges = el.querySelectorAll("[data-lab-bundle-bridge]");
+    for (var i = 0; i < bridges.length; i++) {
+      bridges[i].style.display = "none";
+    }
+  }
+
+  function ensureBundleBridge(el, suffix) {
+    var key = String(suffix);
+    var br = el.querySelector('[data-lab-bundle-bridge="' + key + '"]');
+    if (!br) {
+      br = document.createElement("div");
+      br.setAttribute("data-lab-bundle-bridge", key);
+      br.setAttribute("aria-hidden", "true");
+      el.appendChild(br);
+    }
+    br.style.display = "";
+    return br;
+  }
+
   function cellOverlayJsonFromFrame(frame) {
     if (!frame || typeof frame !== "object") return null;
     var top = frame.cell_overlay_json;
@@ -1360,7 +1627,7 @@
         var idx = resolveCellIndex(cell);
         if (idx == null || idx < 0 || idx >= domCells.length) continue;
         var el = domCells[idx];
-        clearLabCellBundleBridges(el);
+        hideLabCellBundleBridges(el);
         el.style.boxShadow = "inset 0 0 0 9999px " + fillRgba;
         var edges = cell.bundle_edges != null ? String(cell.bundle_edges) : "";
         var parts = [];
@@ -1379,12 +1646,9 @@
             var dir = LINK_KEY_TO_DIR[d];
             if (dir === undefined) continue;
             var suffix = DIR_TO_BRIDGE_SUFFIX[dir];
-            var br = document.createElement("div");
-            br.setAttribute("data-lab-bundle-bridge", "1");
-            br.setAttribute("aria-hidden", "true");
+            var br = ensureBundleBridge(el, suffix);
             br.className = "lab-bundle-bridge lab-bundle-bridge-" + suffix;
             br.style.backgroundColor = hex;
-            el.appendChild(br);
           }
         }
       }
@@ -1741,19 +2005,37 @@
     maybeApplyEquipmentBundleGroupVisualsFromOverlay(overlay, domCells, resolveCellIndex);
   }
 
+  function resetDomCellAtIndex(domCells, baseClasses, index) {
+    const el = domCells[index];
+    if (!el) {
+      return;
+    }
+    clearLabCellBundleBridges(el);
+    clearPlannedExteriorConnectorHighlight(el);
+    el.className = baseClasses[index] || "";
+    el.style.boxShadow = "";
+    el.style.backgroundColor = "";
+    el.style.border = "";
+    el.style.zIndex = "";
+    el.removeAttribute("data-cell-kind");
+    el.removeAttribute("data-overlay-role");
+    el.removeAttribute("data-tile-type");
+    clearLabCellSprite(el);
+    renderedTokenByKey.delete(index);
+  }
+
+  function resetDomCellsAtIndices(domCells, baseClasses, indices) {
+    if (!indices || !indices.length) {
+      return;
+    }
+    for (let i = 0; i < indices.length; i++) {
+      resetDomCellAtIndex(domCells, baseClasses, indices[i]);
+    }
+  }
+
   function resetGridBase(domCells, baseClasses) {
     for (let i = 0; i < domCells.length; i++) {
-      clearLabCellBundleBridges(domCells[i]);
-      clearPlannedExteriorConnectorHighlight(domCells[i]);
-      domCells[i].className = baseClasses[i] || "";
-      domCells[i].style.boxShadow = "";
-      domCells[i].style.backgroundColor = "";
-      domCells[i].style.border = "";
-      domCells[i].style.zIndex = "";
-      domCells[i].removeAttribute("data-cell-kind");
-      domCells[i].removeAttribute("data-overlay-role");
-      domCells[i].removeAttribute("data-tile-type");
-      clearLabCellSprite(domCells[i]);
+      resetDomCellAtIndex(domCells, baseClasses, i);
     }
   }
 
@@ -1834,14 +2116,39 @@
     allFrames,
     trackMetrics,
     rimDrawCtx,
+    renderOpts,
   ) {
+    const opts = renderOpts || {};
+    const paintedIndices = opts.paintedIndices;
+    const useIncremental =
+      opts.incrementalPaint === true &&
+      Array.isArray(paintedIndices) &&
+      paintedIndices.length > 0;
+
+    function resetForFrame() {
+      if (useIncremental) {
+        resetDomCellsAtIndicesForFrame(
+          domCells,
+          baseClasses,
+          paintedIndices,
+          frame,
+          resolveCellIndex,
+        );
+      } else {
+        resetGridBase(domCells, baseClasses);
+      }
+    }
+
     if (!frame || typeof frame !== "object") {
-      resetGridBase(domCells, baseClasses);
+      resetForFrame();
       return;
     }
     const fm = fullMapCellsFromFrame(frame);
     if (fm.length) {
-      resetGridBase(domCells, baseClasses);
+      resetForFrame();
+      if (labTerrainCanvasEnabled() && !useIncremental && rimDrawCtx) {
+        syncLabTerrainCanvasLayer(fm, rimDrawCtx.layout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+      }
       renderFullMapReplayFrame(
         frame,
         baseClasses,
@@ -1856,12 +2163,12 @@
     clearPatternBundleOutlineSvg();
     const ov = frame.cell_overlay_json;
     if (ov && typeof ov === "object") {
-      resetGridBase(domCells, baseClasses);
+      resetForFrame();
       renderCellOverlay(baseClasses, domCells, ov, resolveCellIndex);
       applyLabOverlayHighlights(frame, trackMetrics, rimDrawCtx);
       return;
     }
-    resetGridBase(domCells, baseClasses);
+    resetForFrame();
     applyLabOverlayHighlights(frame, trackMetrics, rimDrawCtx);
   }
 
@@ -2079,20 +2386,53 @@
     /** Measured cell edge (px) at zoom 1 for demo matrix grid. */
     let demoBaseCellPxAtZoom1 = 20;
 
+    /** Resize/zoom-only layout reads (PR-RENDER-2); frame paint must not read geometry. */
+    let labLayoutCache = {
+      stageW: 0,
+      stageH: 0,
+      viewportLeft: 0,
+      viewportTop: 0,
+      paddingLeft: 0,
+      paddingTop: 0,
+    };
+
     let domCells;
     let baseClasses;
 
-    function labViewportContentOffset(clientX, clientY) {
-      if (!gridViewport) {
-        return { vx: 0, vy: 0 };
+    function refreshLabLayoutCache() {
+      let viewportLeft = 0;
+      let viewportTop = 0;
+      let paddingLeft = 0;
+      let paddingTop = 0;
+      if (gridViewport) {
+        const vr = gridViewport.getBoundingClientRect();
+        const cs = window.getComputedStyle(gridViewport);
+        viewportLeft = vr.left;
+        viewportTop = vr.top;
+        paddingLeft = parseFloat(cs.paddingLeft) || 0;
+        paddingTop = parseFloat(cs.paddingTop) || 0;
       }
-      const vr = gridViewport.getBoundingClientRect();
-      const cs = window.getComputedStyle(gridViewport);
-      const pl = parseFloat(cs.paddingLeft) || 0;
-      const pt = parseFloat(cs.paddingTop) || 0;
+      let stageW = 0;
+      let stageH = 0;
+      if (gridEl) {
+        stageW = gridEl.offsetWidth;
+        stageH = gridEl.offsetHeight;
+      }
+      labLayoutCache = {
+        stageW: stageW,
+        stageH: stageH,
+        viewportLeft: viewportLeft,
+        viewportTop: viewportTop,
+        paddingLeft: paddingLeft,
+        paddingTop: paddingTop,
+      };
+      syncLabReplayStageSizeFromGrid();
+    }
+
+    function labViewportContentOffset(clientX, clientY) {
       return {
-        vx: clientX - vr.left - pl,
-        vy: clientY - vr.top - pt,
+        vx: clientX - labLayoutCache.viewportLeft - labLayoutCache.paddingLeft,
+        vy: clientY - labLayoutCache.viewportTop - labLayoutCache.paddingTop,
       };
     }
 
@@ -2122,11 +2462,11 @@
     }
 
     function syncLabReplayStageSizeFromGrid() {
-      if (!gridStage || !gridEl) {
+      if (!gridStage) {
         return;
       }
-      const w = gridEl.offsetWidth;
-      const h = gridEl.offsetHeight;
+      const w = labLayoutCache.stageW;
+      const h = labLayoutCache.stageH;
       if (w > 0 && h > 0) {
         gridStage.style.width = w + "px";
         gridStage.style.height = h + "px";
@@ -2144,7 +2484,7 @@
       const zoom = Number.isFinite(z) && z > 0 ? z : 1;
       gridStage.style.transformOrigin = "0 0";
       gridStage.style.transform =
-        "translate(" + tx + "px, " + ty + "px) scale(" + zoom + ")";
+        "translate3d(" + tx + "px, " + ty + "px, 0) scale(" + zoom + ")";
     }
 
     function applyLabGridLayoutForZoom() {
@@ -2167,7 +2507,7 @@
         const radiusPx = Math.max(2, Math.min(7, Math.round(cellPx * 0.14)));
         gridEl.style.setProperty("--lab-cell-radius", radiusPx + "px");
       }
-      syncLabReplayStageSizeFromGrid();
+      refreshLabLayoutCache();
       applyLabViewportTransform();
     }
 
@@ -2185,6 +2525,9 @@
     let replayResizeMode = null;
     let replayCleanup = function () {};
 
+    /** PR-RENDER-5 hybrid canvas renderer (must init before surface mount — TDZ). */
+    let labCanvasRenderer = null;
+
     function initializeServerReplaySurface(framesArr) {
       const neutralClass = LAB_CELL_BASE;
       replayLayout = computeReplayGridLayout(framesArr);
@@ -2201,6 +2544,7 @@
       baseClasses = domCells.map(function (el) {
         return String(el.className || "");
       });
+      clearRenderedTokenMap();
 
       resolveCellIndex = function (cell) {
         if (!cell || typeof cell !== "object") return null;
@@ -2237,6 +2581,23 @@
       }
 
       applyReplayGridSizing();
+      const terrainCells = firstFullMapCellsFromFrames(framesArr);
+      if (terrainCells.length && replayLayout) {
+        const terrainSizing = labBaseCellAndGapPx();
+        if (terrainSizing) {
+          syncLabTerrainCanvasLayer(
+            terrainCells,
+            replayLayout,
+            terrainSizing.cellPx,
+            terrainSizing.gapPx,
+          );
+        }
+      } else {
+        const terrainCanvas = document.getElementById("lab-replay-terrain-canvas");
+        if (terrainCanvas) {
+          terrainCanvas.hidden = !labTerrainCanvasEnabled();
+        }
+      }
       resizeObserver = null;
       replayResizeMode = null;
       if (gridViewport && typeof ResizeObserver !== "undefined") {
@@ -2254,6 +2615,10 @@
       }
 
       return function cleanupReplaySurface() {
+        destroyLabCanvasRenderer();
+        if (gridEl) {
+          gridEl.classList.remove("lab-replay-grid--canvas-mode");
+        }
         if (replayResizeMode === "observer" && resizeObserver) {
           try {
             resizeObserver.disconnect();
@@ -2281,6 +2646,9 @@
       domCells = Array.prototype.slice.call(cells);
       baseClasses = domCells.map(function (el) {
         return String(el.className || "");
+      });
+      demoRenderedClass = domCells.map(function () {
+        return "";
       });
       requestAnimationFrame(function () {
         const first = domCells[0];
@@ -2310,6 +2678,9 @@
       rootEl && rootEl.dataset && rootEl.dataset.labSpriteBase != null
         ? String(rootEl.dataset.labSpriteBase)
         : "";
+    if (hasServerReplay && replayLayout) {
+      mountLabCanvasRenderer();
+    }
     const parseFrame = function (v, fallback) {
       const n = parseInt(String(v), 10);
       return Number.isNaN(n) ? fallback : n;
@@ -2357,7 +2728,15 @@
 
     let frame = baselineFrame;
     let isPlaying = false;
-    let timerId = null;
+    let playbackRafHandle = null;
+    let playbackDueAt = 0;
+    let playbackChromeTick = 0;
+    /** Cell indices touched on the previous replay paint (enables incremental reset during playback). */
+    let replayPaintedCellIndices = null;
+    /** Demo matrix: last rendered class per cell index (PR-RENDER-3 diff). */
+    let demoRenderedClass = null;
+    let cachedRimDrawCtx = null;
+    let cachedRimDrawCtxFitPx = NaN;
 
     let replayArrayIndex = replaySlotForServerInitialFrame();
 
@@ -2433,54 +2812,326 @@
       };
     }
 
-    function applyFrame() {
-      const rimDrawCtx = buildRimDrawCtx();
+    function getLabRimDrawCtx() {
+      const fitPx = Math.max(4, Math.round(Number(replayFitBasePx)));
+      if (cachedRimDrawCtx && cachedRimDrawCtxFitPx === fitPx) {
+        return cachedRimDrawCtx;
+      }
+      cachedRimDrawCtx = buildRimDrawCtx();
+      cachedRimDrawCtxFitPx = fitPx;
+      return cachedRimDrawCtx;
+    }
+
+    function destroyLabCanvasRenderer() {
+      if (labCanvasRenderer && labCanvasRenderer.destroy) {
+        labCanvasRenderer.destroy();
+      }
+      labCanvasRenderer = null;
+    }
+
+    function applyLabCanvasHitLayer(indices) {
+      if (!labCanvasRendererEnabled() || !domCells || !baseClasses) {
+        return;
+      }
+      const list =
+        indices != null && Array.isArray(indices)
+          ? indices
+          : (function () {
+              const all = [];
+              for (let i = 0; i < domCells.length; i++) all.push(i);
+              return all;
+            })();
+      for (let i = 0; i < list.length; i++) {
+        const idx = list[i];
+        const el = domCells[idx];
+        if (!el) continue;
+        const base = baseClasses[idx] || "";
+        const nextClass = base + " " + LAB_CANVAS_HIT_CLASS + " !bg-transparent ring-0";
+        if (el.className !== nextClass) {
+          el.className = nextClass;
+          if (labPerfDebugEnabled()) {
+            labPerfTouchedCells += 1;
+          }
+        }
+      }
+    }
+
+    function canvasOverlayFillForCell(cell, frame, role) {
+      if (window.LabReplayCanvas && window.LabReplayCanvas.overlayFillForKind) {
+        const ck = overlayCellKind(cell);
+        if (role === "diff_removed") {
+          return window.LabReplayCanvas.overlayFillForKind("diff_removed");
+        }
+        if (role === "diff_added") {
+          return window.LabReplayCanvas.overlayFillForKind("diff_added");
+        }
+        if (role === "diff_changed") {
+          return window.LabReplayCanvas.overlayFillForKind("diff_changed");
+        }
+        return window.LabReplayCanvas.overlayFillForKind(ck);
+      }
+      return null;
+    }
+
+    function buildCanvasPaintPlan(frame) {
+      const overlays = [];
+      const sprites = [];
+      const seen = new Set();
+      function consider(cell, role) {
+        if (!cell || typeof cell !== "object") return;
+        if (isLabStaticTerrainCell(cell, frame)) return;
+        const idx = resolveCellIndex(cell);
+        if (idx == null || idx < 0 || seen.has(idx)) return;
+        seen.add(idx);
+        const ck = overlayCellKind(cell);
+        const diffRole = role || "";
+        if (
+          diffRole === "diff_removed" ||
+          diffRole === "diff_added" ||
+          diffRole === "diff_changed"
+        ) {
+          overlays.push({
+            idx: idx,
+            kind: diffRole,
+            fill: canvasOverlayFillForCell(cell, frame, diffRole),
+          });
+          return;
+        }
+        if (isRouteOverlayCellKind(ck) || isNonSpriteOverlayCell(cell, frame)) {
+          overlays.push({
+            idx: idx,
+            kind: ck,
+            fill: canvasOverlayFillForCell(cell, frame, ""),
+          });
+          return;
+        }
+        const rel = labSpriteRelpathForCell(cell, frame);
+        if (rel) {
+          sprites.push({ idx: idx, rel: rel, rotation: cell.rotation });
+        } else {
+          overlays.push({
+            idx: idx,
+            kind: ck,
+            fill: canvasOverlayFillForCell(cell, frame, ""),
+          });
+        }
+      }
+      const targets = collectFrameSpatialTargets(frame);
+      for (let i = 0; i < targets.length; i++) {
+        consider(targets[i].cell, targets[i].role);
+      }
+      return { overlays: overlays, sprites: sprites };
+    }
+
+    function mountLabCanvasRenderer() {
+      destroyLabCanvasRenderer();
+      if (!labCanvasRendererEnabled() || !replayLayout) {
+        return;
+      }
+      const overlayCanvas = document.getElementById("lab-replay-overlay-canvas");
+      const spriteCanvas = document.getElementById("lab-replay-sprite-canvas");
+      const terrainCanvas = document.getElementById("lab-replay-terrain-canvas");
+      if (!overlayCanvas || !spriteCanvas || !terrainCanvas) {
+        return;
+      }
+      const sizing = labBaseCellAndGapPx();
+      if (!sizing) {
+        return;
+      }
+      labCanvasRenderer = window.LabReplayCanvas.createLabCanvasRenderer({
+        overlayCanvas: overlayCanvas,
+        spriteCanvas: spriteCanvas,
+        layout: replayLayout,
+        cellPx: sizing.cellPx,
+        gapPx: sizing.gapPx,
+        spriteBaseUrl: labSpriteBaseUrl,
+      });
+      if (gridEl) {
+        gridEl.classList.add("lab-replay-grid--canvas-mode");
+      }
+      applyLabCanvasHitLayer(null);
+    }
+
+    function applyLabCanvasServerReplayFrame(fr, rimDrawCtx, useIncremental, paintedIndices) {
+      if (!labCanvasRenderer || !fr) {
+        return false;
+      }
+      if (!useIncremental) {
+        resetGridBase(domCells, baseClasses);
+        applyLabCanvasHitLayer(null);
+        const fm = fullMapCellsFromFrame(fr);
+        if (fm.length && rimDrawCtx) {
+          syncLabTerrainCanvasLayer(fm, rimDrawCtx.layout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+        }
+      } else if (paintedIndices && paintedIndices.length) {
+        resetDomCellsAtIndicesForFrame(
+          domCells,
+          baseClasses,
+          paintedIndices,
+          fr,
+          resolveCellIndex,
+        );
+        applyLabCanvasHitLayer(paintedIndices);
+      }
+      if (rimDrawCtx) {
+        labCanvasRenderer.syncSize(replayLayout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+      }
+      labCanvasRenderer.drawFrame(buildCanvasPaintPlan(fr));
+      applyLabOverlayHighlights(fr, replayTrackMetrics, rimDrawCtx);
+      if (gridEl && labCanvasRendererEnabled()) {
+        gridEl.classList.add("lab-replay-grid--canvas-mode");
+      }
+      return true;
+    }
+
+    function stopPlaybackScheduler() {
+      if (playbackRafHandle !== null) {
+        window.cancelAnimationFrame(playbackRafHandle);
+        playbackRafHandle = null;
+      }
+      playbackDueAt = 0;
+    }
+
+    function schedulePlaybackLoop() {
+      if (!isPlaying || playbackRafHandle !== null) {
+        return;
+      }
+      playbackRafHandle = window.requestAnimationFrame(tickPlayback);
+    }
+
+    function tickPlayback(now) {
+      playbackRafHandle = null;
+      if (!isPlaying) {
+        return;
+      }
+      const cap = hasServerReplay ? replayFrames.length : TOTAL_FRAMES;
+      if (cap <= 0) {
+        setPlaying(false);
+        return;
+      }
+      if (!playbackDueAt) {
+        playbackDueAt = now;
+      }
+      if (now < playbackDueAt) {
+        schedulePlaybackLoop();
+        return;
+      }
+      if (hasServerReplay) {
+        if (replayArrayIndex >= replayFrames.length - 1) {
+          replayArrayIndex = Math.max(0, replayFrames.length - 1);
+          applyFrame({ playback: true });
+          setPlaying(false);
+          return;
+        }
+        replayArrayIndex += 1;
+      } else {
+        if (frame >= TOTAL_FRAMES) {
+          frame = TOTAL_FRAMES;
+          applyFrame({ playback: true });
+          setPlaying(false);
+          return;
+        }
+        frame += 1;
+      }
+      applyFrame({ playback: true });
+      playbackDueAt = now + LAB_REPLAY_PLAYBACK_MS;
+      if (isPlaying) {
+        schedulePlaybackLoop();
+      }
+    }
+
+    function applyFrame(options) {
+      const opt = options || {};
+      const playback = opt.playback === true;
+      if (labPerfDebugEnabled()) {
+        labPerfTouchedCells = 0;
+        performance.mark("lab-frame-start");
+      }
+      const updateChrome = !playback || playbackChromeTick++ % 2 === 0;
+      const rimDrawCtx = getLabRimDrawCtx();
       if (hasServerReplay) {
         if (replayArrayIndex < 0) replayArrayIndex = 0;
         if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
         const fr = getCurrentReplayFrame();
-        renderReplayFrame(
-          fr,
-          baseClasses,
-          domCells,
-          resolveCellIndex,
-          replayFrames,
-          replayTrackMetrics,
-          rimDrawCtx,
-        );
-        updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl, replayArrayIndex);
-        updateReplayTruncationHud(fr, replayTrackMetrics);
-        const cycle = document.getElementById("lab-computation-cycle");
-        if (cycle) {
-          if (fr && fr.inspector && fr.inspector.source_frame_index != null) {
-            cycle.textContent =
-              "source_frame_index " + String(fr.inspector.source_frame_index);
-          } else if (fr && fr.frame_key != null) {
-            cycle.textContent = "frame_key " + String(fr.frame_key);
-          } else {
-            cycle.textContent = formatLabFrameCounter(replayArrayIndex, replayFrames.length);
-          }
+        const useIncremental =
+          playback &&
+          Array.isArray(replayPaintedCellIndices) &&
+          replayPaintedCellIndices.length > 0 &&
+          !replayFrameNeedsFullGridReset(fr, domCells.length);
+        let painted = false;
+        if (labCanvasRenderer) {
+          painted = applyLabCanvasServerReplayFrame(
+            fr,
+            rimDrawCtx,
+            useIncremental,
+            replayPaintedCellIndices,
+          );
         }
-        const hint = document.getElementById("lab-replay-footer-hint");
-        if (hint) {
-          if (fr && fr.description) {
-            hint.textContent = String(fr.description);
-          } else if (fr && fr.inspector) {
-            const optEv = fr.inspector.optimization_event_type;
-            const labEv = fr.inspector.lab_event_type;
-            hint.textContent = optEv
-              ? "optimization " + String(optEv)
-              : labEv
-                ? "lab " + String(labEv)
-                : "replay frame";
-          } else {
-            hint.textContent =
-              fr && fr.id != null
-                ? "ReplayFrame id " + String(fr.id) + (fr.is_keyframe ? " · keyframe" : "")
-                : "—";
-          }
+        if (!painted) {
+          /* READ: rimDrawCtx from cached cell sizing. WRITE: renderReplayFrame (no layout read). */
+          renderReplayFrame(
+            fr,
+            baseClasses,
+            domCells,
+            resolveCellIndex,
+            replayFrames,
+            replayTrackMetrics,
+            rimDrawCtx,
+            {
+              incrementalPaint: useIncremental,
+              paintedIndices: replayPaintedCellIndices,
+            },
+          );
         }
-        syncLabTimelineScrub();
+        replayPaintedCellIndices = collectReplayFrameCellIndices(fr, resolveCellIndex);
+        if (updateChrome) {
+          updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl, replayArrayIndex);
+          updateReplayTruncationHud(fr, replayTrackMetrics);
+          const cycle = document.getElementById("lab-computation-cycle");
+          if (cycle) {
+            if (fr && fr.inspector && fr.inspector.source_frame_index != null) {
+              cycle.textContent =
+                "source_frame_index " + String(fr.inspector.source_frame_index);
+            } else if (fr && fr.frame_key != null) {
+              cycle.textContent = "frame_key " + String(fr.frame_key);
+            } else {
+              cycle.textContent = formatLabFrameCounter(replayArrayIndex, replayFrames.length);
+            }
+          }
+          const hint = document.getElementById("lab-replay-footer-hint");
+          if (hint) {
+            if (fr && fr.description) {
+              hint.textContent = String(fr.description);
+            } else if (fr && fr.inspector) {
+              const optEv = fr.inspector.optimization_event_type;
+              const labEv = fr.inspector.lab_event_type;
+              hint.textContent = optEv
+                ? "optimization " + String(optEv)
+                : labEv
+                  ? "lab " + String(labEv)
+                  : "replay frame";
+            } else {
+              hint.textContent =
+                fr && fr.id != null
+                  ? "ReplayFrame id " + String(fr.id) + (fr.is_keyframe ? " · keyframe" : "")
+                  : "—";
+            }
+          }
+          syncLabTimelineScrub();
+        } else if (frameEl) {
+          frameEl.textContent = formatLabFrameCounter(replayArrayIndex, replayFrames.length);
+          syncLabTimelineScrub();
+        }
+        if (labPerfDebugEnabled()) {
+          performance.mark("lab-frame-end");
+          performance.measure("lab-frame", "lab-frame-start", "lab-frame-end");
+          console.debug(
+            "[lab-perf] touched_cells",
+            labPerfTouchedCells,
+            "frame",
+            replayArrayIndex,
+          );
+        }
         return;
       }
 
@@ -2488,10 +3139,17 @@
       if (frame > TOTAL_FRAMES) frame = TOTAL_FRAMES;
       const overlay = TOTAL_FRAMES <= 0 ? "candidates" : replayOverlayForFrame(frame);
       const oi = overlayIndex(overlay);
+      if (!demoRenderedClass || demoRenderedClass.length !== domCells.length) {
+        demoRenderedClass = domCells.map(function () {
+          return "";
+        });
+      }
       for (let i = 0; i < domCells.length; i++) {
         const row = matrix[i];
-        if (row && row[oi]) {
-          domCells[i].className = row[oi];
+        const next = row && row[oi] ? row[oi] : "";
+        if (demoRenderedClass[i] !== next) {
+          domCells[i].className = next;
+          demoRenderedClass[i] = next;
         }
       }
       if (phaseEl) {
@@ -2501,7 +3159,13 @@
       if (gridEl) gridEl.dataset.overlay = overlay;
       const cycle = document.getElementById("lab-computation-cycle");
       if (cycle) cycle.textContent = "computation_cycle #" + String(frame);
-      syncLabTimelineScrub();
+      if (!playback || updateChrome) {
+        syncLabTimelineScrub();
+      }
+      if (labPerfDebugEnabled()) {
+        performance.mark("lab-frame-end");
+        performance.measure("lab-frame", "lab-frame-start", "lab-frame-end");
+      }
     }
 
     function setPlaying(next) {
@@ -2512,37 +3176,24 @@
       }
       if (wantPlay) {
         if (hasServerReplay) {
-          replayArrayIndex = 0;
-        } else {
+          if (
+            replayFrames.length > 0 &&
+            replayArrayIndex >= replayFrames.length - 1
+          ) {
+            replayArrayIndex = 0;
+          }
+        } else if (cap > 0 && frame >= cap - 1) {
           frame = 0;
         }
       }
       isPlaying = wantPlay;
-      if (timerId !== null) {
-        window.clearInterval(timerId);
-        timerId = null;
+      stopPlaybackScheduler();
+      if (!isPlaying) {
+        playbackChromeTick = 0;
       }
       if (isPlaying && cap > 0) {
-        timerId = window.setInterval(function () {
-          if (hasServerReplay) {
-            if (replayArrayIndex >= replayFrames.length - 1) {
-              replayArrayIndex = Math.max(0, replayFrames.length - 1);
-              applyFrame();
-              setPlaying(false);
-              return;
-            }
-            replayArrayIndex += 1;
-          } else {
-            if (frame >= TOTAL_FRAMES) {
-              frame = TOTAL_FRAMES;
-              applyFrame();
-              setPlaying(false);
-              return;
-            }
-            frame += 1;
-          }
-          applyFrame();
-        }, 220);
+        playbackDueAt = 0;
+        schedulePlaybackLoop();
       }
       if (playIcon && pauseIcon) {
         playIcon.classList.toggle("hidden", isPlaying);
@@ -3346,37 +3997,42 @@
       if (!dims || !domCells || !domCells.length) {
         return null;
       }
-      const cellPx = dims.cellPx;
-      const gapPx = dims.gapPx;
-      const gw = dims.gw;
-      const gh = dims.gh;
-      const stride = cellPx + gapPx;
-      let x = 0;
-      let col = -1;
-      for (let c = 0; c < gw; c++) {
-        if (w.wx >= x && w.wx < x + cellPx) {
-          col = c;
-          break;
+      let idx = null;
+      if (labCanvasRenderer && labCanvasRenderer.hitTest) {
+        idx = labCanvasRenderer.hitTest(w.wx, w.wy);
+      } else {
+        const cellPx = dims.cellPx;
+        const gapPx = dims.gapPx;
+        const gw = dims.gw;
+        const gh = dims.gh;
+        const stride = cellPx + gapPx;
+        let x = 0;
+        let col = -1;
+        for (let c = 0; c < gw; c++) {
+          if (w.wx >= x && w.wx < x + cellPx) {
+            col = c;
+            break;
+          }
+          x += stride;
         }
-        x += stride;
-      }
-      if (col < 0) {
-        return null;
-      }
-      let y = 0;
-      let row = -1;
-      for (let r = 0; r < gh; r++) {
-        if (w.wy >= y && w.wy < y + cellPx) {
-          row = r;
-          break;
+        if (col < 0) {
+          return null;
         }
-        y += stride;
+        let y = 0;
+        let row = -1;
+        for (let r = 0; r < gh; r++) {
+          if (w.wy >= y && w.wy < y + cellPx) {
+            row = r;
+            break;
+          }
+          y += stride;
+        }
+        if (row < 0) {
+          return null;
+        }
+        idx = row * gw + col;
       }
-      if (row < 0) {
-        return null;
-      }
-      const idx = row * gw + col;
-      if (idx < 0 || idx >= domCells.length) {
+      if (idx == null || idx < 0 || idx >= domCells.length) {
         return null;
       }
       return domCells[idx] || null;
@@ -3504,6 +4160,7 @@
       if (!labPointerShouldStartViewportPan(event)) {
         return;
       }
+      refreshLabLayoutCache();
       labPanState = {
         pointerId: event.pointerId,
         startClientX: event.clientX,
@@ -4305,6 +4962,14 @@
     window.AsteroidLabReplay = {
       getCurrentReplayFrame: getCurrentReplayFrame,
       renderReplayFrame: function (fr) {
+        const rimDrawCtx = getLabRimDrawCtx();
+        if (
+          labCanvasRenderer &&
+          applyLabCanvasServerReplayFrame(fr, rimDrawCtx, false, null)
+        ) {
+          replayPaintedCellIndices = collectReplayFrameCellIndices(fr, resolveCellIndex);
+          return;
+        }
         renderReplayFrame(
           fr,
           baseClasses,
@@ -4312,8 +4977,9 @@
           resolveCellIndex,
           replayFrames,
           replayTrackMetrics,
-          buildRimDrawCtx(),
+          rimDrawCtx,
         );
+        replayPaintedCellIndices = collectReplayFrameCellIndices(fr, resolveCellIndex);
       },
       renderCellOverlay: function (ov) {
         resetGridBase(domCells, baseClasses);

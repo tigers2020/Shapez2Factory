@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -107,3 +108,16 @@ def test_run_solver_subprocess_invokes_tee_with_safe_arguments(
     assert call["args"][0][1:4] == ["-m", runner.CLI_MODULE, "run"]
     assert call["kwargs"]["timeout"] == 3
     assert call["kwargs"]["tee_to_parent_stderr"] is True
+
+
+def test_run_solver_subprocess_timeout_raises_solver_subprocess_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_run_subprocess_with_tee(*_args: Any, **_kwargs: Any) -> SubprocessTeeResult:
+        raise subprocess.TimeoutExpired(cmd=["python"], timeout=3)
+
+    monkeypatch.setattr(runner, "run_subprocess_with_tee", fake_run_subprocess_with_tee)
+
+    with pytest.raises(runner.SolverSubprocessError, match="timed out"):
+        runner.run_solver_subprocess(_request(tmp_path), cwd=tmp_path)

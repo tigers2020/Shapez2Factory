@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -156,13 +157,20 @@ def run_solver_subprocess(
     copy_path, snapshot_path = _write_inputs(request)
     sidecar_log_path = request.artifact_root / ".subprocess_logs" / f"{request.run_key}.log"
     args = build_solver_cli_args(request, copy_path=copy_path, snapshot_path=snapshot_path)
-    completed = run_subprocess_with_tee(
-        args,
-        log_path=sidecar_log_path,
-        cwd=Path(cwd or settings.BASE_DIR),
-        timeout=request.timeout_seconds,
-        tee_to_parent_stderr=tee_to_parent_stderr,
-    )
+    try:
+        completed = run_subprocess_with_tee(
+            args,
+            log_path=sidecar_log_path,
+            cwd=Path(cwd or settings.BASE_DIR),
+            timeout=request.timeout_seconds,
+            tee_to_parent_stderr=tee_to_parent_stderr,
+        )
+    except subprocess.TimeoutExpired as exc:
+        msg = (
+            f"solver subprocess timed out run_key={request.run_key!r} "
+            f"after {request.timeout_seconds}s"
+        )
+        raise SolverSubprocessError(msg) from exc
     final_log_path = artifact_dir / "logs" / "subprocess.log"
     if artifact_dir.exists():
         final_log_path.parent.mkdir(parents=True, exist_ok=True)

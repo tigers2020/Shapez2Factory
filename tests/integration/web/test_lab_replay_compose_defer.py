@@ -23,6 +23,10 @@ from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY,
+    SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY,
+)
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
     entry_result_to_json_dict,
     run_solver_runtime_for_project,
@@ -41,6 +45,9 @@ _GET_COMPOSE_PATCH = "django_apps.web.views.public_pages.build_lab_replay_frames
 _TIMELINE_COMPOSE_PATCH = (
     "django_apps.asteroid_lab.services.lab_replay_timeline_payload."
     "build_lab_replay_frames_for_project"
+)
+_INGEST_WARM_COMPOSE_PATCH = (
+    "django_apps.asteroid_lab.services.artifact_ingest.build_lab_replay_frames_for_project"
 )
 _REPO = Path(__file__).resolve().parents[2]
 _COPY_FIXTURE = _REPO / "fixtures" / "asteroid_lab" / "reconstruction_required_.txt"
@@ -124,9 +131,14 @@ def _clear_artifact_replay_index(run: m.SolverRun) -> None:
     run.artifact_root = ""
     run.lab_replay_manifest_summary_json = {}
     run.lab_replay_payload_json = {}
+    config = dict(run.config_json or {})
+    config.pop(SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY, None)
+    config.pop(SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY, None)
+    run.config_json = config
     run.save(
         update_fields=[
             "artifact_root",
+            "config_json",
             "lab_replay_manifest_summary_json",
             "lab_replay_payload_json",
         ]
@@ -164,17 +176,21 @@ def test_run_solver_persists_composed_replay_cache() -> None:
 
 
 @override_settings(ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=True)
-def test_run_solver_subprocess_success_does_not_call_django_composer() -> None:
+def test_run_solver_subprocess_warms_composed_replay_on_ingest() -> None:
+    """Artifact ingest composes replay once; page load must not recompose (see SSR cache-hit test)."""
     proj = m.AsteroidProject.objects.create(name="ComposeOnce", slug="compose-once-proj")
     m.AsteroidMapInput.objects.create(project=proj, copy_code=_valid_copy_from_fixture())
-    with patch(_TIMELINE_COMPOSE_PATCH) as compose_mock:
+    with patch(
+        _INGEST_WARM_COMPOSE_PATCH,
+        wraps=build_lab_replay_frames_for_project,
+    ) as compose_mock:
         result = run_solver_runtime_for_project(
             int(proj.pk),
             config={"throughput_target_percent": 80},
             game_data_snapshot=_snapshot_payload(),
         )
     assert result.ok is True
-    assert compose_mock.call_count == 0
+    assert compose_mock.call_count == 1
 
 
 @override_settings(ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=True)

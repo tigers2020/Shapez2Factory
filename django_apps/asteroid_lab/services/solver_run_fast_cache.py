@@ -72,7 +72,14 @@ def sync_solver_run_fast_cache_from_config_json(run: SolverRun) -> None:
         "composed_frames": composed,
         "replay_track_metrics": metrics,
     }
-    run.solver_summary_json = _dict_or_empty(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY))
+    summary_from_config = _dict_or_empty(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY))
+    column_summary = _dict_or_empty(run.solver_summary_json)
+    if summary_from_config:
+        run.solver_summary_json = summary_from_config
+    elif column_summary:
+        run.solver_summary_json = column_summary
+    else:
+        run.solver_summary_json = {}
     run.solver_runtime_replay_frames_json = _list_or_empty(
         config.get(SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY)
     )

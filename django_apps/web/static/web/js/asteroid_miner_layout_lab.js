@@ -1967,7 +1967,10 @@
       replayTrackMetrics =
         trackMetricsRaw && typeof trackMetricsRaw === "object" ? trackMetricsRaw : {};
     }
-    let hasServerReplay = replayFrames.length > 0;
+    const lazyReplayAwaitingCompose =
+      labReplayLoadState.mode === "lazy" &&
+      (labReplayLoadState.frameCount > 0 || Boolean(labReplayLoadState.fetchUrl));
+    let hasServerReplay = replayFrames.length > 0 || lazyReplayAwaitingCompose;
 
     function renderLabReplayLoadStatus() {
       const el = document.getElementById("lab-replay-load-status");
@@ -4194,7 +4197,27 @@
     renderEvolutionRunsList(baselineRunId);
     setRunDetail(baselineRun);
     renderLabReplayLoadStatus();
-    applyFrame();
+
+    function needsLazyReplayComposeFetch() {
+      if (labReplayLoadState.mode !== "lazy" || !labReplayLoadState.fetchUrl) {
+        return false;
+      }
+      if (!replayFrames.length) {
+        return true;
+      }
+      for (let i = 0; i < replayFrames.length; i++) {
+        if (frameHasRenderableMap(replayFrames[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    if (needsLazyReplayComposeFetch()) {
+      ensureLabReplayFramesLoaded("init");
+    } else {
+      applyFrame();
+    }
   }
 
   if (document.readyState === "loading") {

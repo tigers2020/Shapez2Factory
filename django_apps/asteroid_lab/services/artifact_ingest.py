@@ -17,9 +17,19 @@ from django_apps.asteroid_lab.services.artifact_manifest_reader import (
     read_verified_artifact_manifest,
 )
 from django_apps.asteroid_lab.services.artifact_replay_loader import iter_replay_core_frames
+from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
+    lab_replay_frames_are_renderable,
+)
 from django_apps.asteroid_lab.services.lab_replay_lazy_handle import LAB_REPLAY_PAYLOAD_VERSION
 from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
     CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION,
+    persist_composed_replay_for_run_id,
+)
+from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
+    build_lab_replay_frames_for_project,
+)
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
 
 
@@ -69,10 +79,8 @@ def _lab_replay_manifest_summary(
     replay_path = _manifest_path(artifact_dir, manifest, "replay_core")
     frame_count = 0
     preview_frame_index = 0
-    preview_frame: dict[str, Any] | None = None
     if replay_path is not None and replay_path.is_file():
-        for frame in iter_replay_core_frames(replay_path):
-            preview_frame = dict(frame)
+        for _frame in iter_replay_core_frames(replay_path):
             frame_count += 1
         if frame_count:
             preview_frame_index = frame_count - 1
@@ -84,9 +92,25 @@ def _lab_replay_manifest_summary(
         "replay_core_path": str(replay_path) if replay_path is not None else "",
         "frame_count": frame_count,
         "preview_frame_index": preview_frame_index,
-        "preview_frame": preview_frame,
+        # Raw replay_core lines lack map_view; viewer compose supplies renderable preview.
+        "preview_frame": None,
         "replay_track_metrics": {},
     }
+
+
+def _warm_lab_replay_cache_after_artifact_ingest(*, project_id: int, run_id: int) -> None:
+    """Compose artifact replay for lazy SSR preview (non-fatal on failure)."""
+
+    try:
+        frames, metrics = build_lab_replay_frames_for_project(
+            int(project_id),
+            solver_run_id=int(run_id),
+        )
+    except Exception:
+        return
+    if not lab_replay_frames_are_renderable(frames):
+        return
+    persist_composed_replay_for_run_id(int(run_id), frames=frames, metrics=metrics)
 
 
 def ingest_artifact_for_project(
@@ -117,6 +141,7 @@ def ingest_artifact_for_project(
             "game_data_provenance": dict(manifest.game_data_provenance),
             "error_code": manifest.error_code,
         },
+        SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY: dict(solver_summary),
     }
     artifact_root = str(Path(artifact_dir).resolve())
     status = (
@@ -147,6 +172,13 @@ def ingest_artifact_for_project(
         run.solver_runtime_replay_frames_json = []
         run.finished_at = timezone.now()
         run.save()
+        run_id = int(run.pk)
+
+    if status == m.SolverRun.RunStatus.COMPLETED:
+        _warm_lab_replay_cache_after_artifact_ingest(
+            project_id=int(project_id),
+            run_id=run_id,
+        )
 
     return ArtifactIngestResult(
         solver_run=run,

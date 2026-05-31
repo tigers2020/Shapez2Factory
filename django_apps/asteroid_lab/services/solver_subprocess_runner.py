@@ -37,6 +37,7 @@ class SolverSubprocessRequest:
     timeout_seconds: float
     replace_existing: bool = False
     verbose: bool = False
+    throughput_target_percent: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,6 +118,13 @@ def build_solver_cli_args(
         args.append("--replace-existing")
     if request.verbose:
         args.append("--verbose")
+    if request.throughput_target_percent is not None:
+        args.extend(
+            [
+                "--throughput-target-percent",
+                str(int(request.throughput_target_percent)),
+            ]
+        )
     return args
 
 

@@ -65,7 +65,16 @@ def test_persist_composed_replay_updates_manifest_summary_column() -> None:
     )
     frames = [{"frame_index": 0, "title": "start"}]
     metrics = {"frame_count": 1, "replay_truncated": False}
+    seed_summary = {
+        "validation_passed": True,
+        "stack_run_status": "success",
+        "completed_layer_slugs": ["layer_02_exterior_transport"],
+    }
+    run.solver_summary_json = dict(seed_summary)
+    run.save(update_fields=["solver_summary_json"])
+
     persist_composed_replay_for_run_id(int(run.pk), frames=frames, metrics=metrics)
     run.refresh_from_db()
     assert run.lab_replay_manifest_summary_json["frame_count"] == 1
     assert run.lab_replay_payload_json["composed_frames"] == frames
+    assert run.solver_summary_json == seed_summary

@@ -78,6 +78,13 @@ def _run_subprocess_runtime_for_project(
     tee_to_parent_stderr = bool(
         getattr(settings, "ASTEROID_LAB_CLI_SUBPROCESS_TEE", True) and sys.stderr.isatty()
     )
+    throughput_target_percent: int | None = None
+    raw_percent = runtime_config.get("throughput_target_percent")
+    if raw_percent is not None:
+        try:
+            throughput_target_percent = int(raw_percent)
+        except (TypeError, ValueError):
+            throughput_target_percent = None
     try:
         if not isinstance(game_data_snapshot, dict):
             raise SolverSubprocessError("game_data_snapshot payload is required")
@@ -93,6 +100,7 @@ def _run_subprocess_runtime_for_project(
                 ),
                 replace_existing=replace_existing_run,
                 verbose=verbose,
+                throughput_target_percent=throughput_target_percent,
             ),
             tee_to_parent_stderr=tee_to_parent_stderr,
         )

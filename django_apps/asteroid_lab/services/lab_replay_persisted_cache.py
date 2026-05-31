@@ -51,6 +51,19 @@ def is_artifact_replay_source_summary(summary: dict[str, Any] | None) -> bool:
     return False
 
 
+def _artifact_replay_source_snapshot(summary: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Return artifact index summary to preserve across composed-cache writes."""
+
+    if not summary or not isinstance(summary, dict):
+        return None
+    if is_artifact_replay_source_summary(summary):
+        return dict(summary)
+    nested = summary.get("artifact_replay_source")
+    if isinstance(nested, dict) and is_artifact_replay_source_summary(nested):
+        return dict(nested)
+    return None
+
+
 def is_cache_summary_valid(summary: dict[str, Any] | None) -> bool:
     if not summary or not isinstance(summary, dict):
         return False
@@ -131,8 +144,10 @@ def persist_composed_replay_for_run_id(
 
     summary = build_manifest_summary_from_compose(frames=frames, metrics=metrics)
     run = SolverRun.objects.select_for_update().get(pk=int(run_id))
-    artifact_source = _dict_or_none(run.lab_replay_manifest_summary_json)
-    if is_artifact_replay_source_summary(artifact_source):
+    artifact_source = _artifact_replay_source_snapshot(
+        _dict_or_none(run.lab_replay_manifest_summary_json),
+    )
+    if artifact_source is not None:
         summary = {**summary, "artifact_replay_source": artifact_source}
     config = copy.deepcopy(dict(run.config_json or {}))
     config[SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY] = frames

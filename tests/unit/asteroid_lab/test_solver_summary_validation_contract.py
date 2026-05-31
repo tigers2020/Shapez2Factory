@@ -5,6 +5,11 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_02_EXTERIOR_TRANSPORT,
+    LAYER_03_RIM_GREEDY_PLACEMENT,
+    LAYER_06_COMMIT_VALIDATE,
+)
 from django_apps.asteroid_lab.services.solver_run_lab_summary import (
     lab_run_summary_from_orm,
     lab_run_summary_from_solver_summary,
@@ -59,6 +64,71 @@ def test_solver_runs_for_lab_project_reads_solver_summary_json_column() -> None:
     assert len(rows) == 1
     assert rows[0]["validation_passed"] is True
     assert rows[0]["run_success"] is True
+
+
+def test_layer_outcomes_derive_completed_slugs_from_layer_summaries() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=389,
+        status="completed",
+        solver_summary={
+            "stack_run_status": "success",
+            "validation_passed": False,
+            "run_success": True,
+            "reconstruction_capacity": {"shape_field_cell_count": 583},
+            "layer_summaries": [
+                {
+                    "layer_slug": LAYER_02_EXTERIOR_TRANSPORT,
+                    "outcome": "completed",
+                    "metrics": {},
+                },
+                {
+                    "layer_slug": LAYER_03_RIM_GREEDY_PLACEMENT,
+                    "outcome": "completed",
+                    "metrics": {},
+                },
+                {
+                    "layer_slug": LAYER_06_COMMIT_VALIDATE,
+                    "outcome": "completed",
+                    "metrics": {},
+                },
+            ],
+        },
+    )
+    layers = {layer["layer_slug"]: layer for layer in row["layer_summaries"]}
+    assert layers[LAYER_02_EXTERIOR_TRANSPORT]["outcome"] == "completed"
+    assert layers[LAYER_03_RIM_GREEDY_PLACEMENT]["outcome"] == "completed"
+    assert layers[LAYER_06_COMMIT_VALIDATE]["outcome"] == "failed"
+
+
+def test_layer03_highlights_read_nested_cli_layer_summaries() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=1,
+        status="completed",
+        solver_summary={
+            "stack_run_status": "success",
+            "completed_layer_slugs": [LAYER_03_RIM_GREEDY_PLACEMENT],
+            "layer_summaries": [
+                {
+                    "layer_slug": LAYER_03_RIM_GREEDY_PLACEMENT,
+                    "outcome": "completed",
+                    "metrics": {
+                        "rim_anchor_count": 81,
+                        "committed_placement_count": 0,
+                        "rejected_attempt_count": 12,
+                        "layer_skip_reason": "no_route_goals",
+                        "winning_variant_id": "",
+                    },
+                }
+            ],
+        },
+    )
+    layers = {layer["layer_slug"]: layer for layer in row["layer_summaries"]}
+    l3 = layers[LAYER_03_RIM_GREEDY_PLACEMENT]
+    labels = {item["label"]: item["value"] for item in l3["highlights"]}
+    assert labels["Rim anchor slots"] == "81"
+    assert labels["Committed placements"] == "0"
+    assert labels["Rejected attempts"] == "12"
+    assert labels["Layer skip reason"] == "no_route_goals"
 
 
 def test_lab_run_summary_from_orm_prefers_solver_summary_json() -> None:

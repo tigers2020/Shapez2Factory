@@ -613,12 +613,41 @@ extractor output**. Implement incrementally; each sub-step is its own red→gree
 - Maybe create: `.../layer_03_rim_greedy_placement/footprint_transform.py` (`rotate_xy`, `rotate_r`, `mirror_x/y`, `enumerate_d4`, `normalize_footprint`)
 - Test: `tests/unit/asteroid_lab/layers/test_candidate_gen.py`, `test_footprint_transform.py`
 
-- [x] **B2.1a — rotation `R` field fix (T4):** placement `rotation` = `edge_rotation_k(edge)` (East=0, CW+1), NOT `output_dir_rank` (NESW). Lock T5 vectors + R-only-invalid (T2). **DONE** (13 tests green, ruff clean).
-- [ ] **B2.1b — D4 enumeration (T1/T3/T6):** add `rotate_xy(dx,dy,k)`, `rotate_r(r,k)`, `mirror_x/y`, `enumerate_d4(entry)` returning the 4 rotations × {identity, mirror} of the full footprint, **deduplicated after full normalization** (normalized = sorted equipment offsets + output side + per-cell R). Test: asymmetric/corner layout keeps mirror distinct from every rotation (`180° ≠ mirror`); symmetric straight line dedups mirror duplicates.
-- [ ] **B2.1c — independent extractor output (T7):** candidate = `anchor × gene × bundle_orientation × output_side`. `output_side` ∈ extractor's 4 sides **not occupied by an extension** in that orientation **and** whose stub cell is in external void (R3). Miner `R = rotate_r(0, output_side_k)`; extensions `R = rotate_r(0, orientation_k)` — **per-placement R may differ**. Update `_build_candidate` to set per-placement R. Test: a corner bundle yields ≥2 distinct output sides; miner R tracks output side while extension R tracks orientation.
-- [ ] **B2.1d — dedup metric + D1 ordering:** `dedupe_duplicate_count` reflects normalization dedups; D1 ordering still sorts by `(anchor_row, anchor_col, output_dir_rank, -throughput_factor, gene_id)` with `output_dir` = the independent output side. Commit each sub-step: `feat(l3): full-footprint D4 + independent extractor output (§T)`.
+- [x] **B2.1a — rotation `R` field fix (T4):** placement `rotation` = `edge_rotation_k(edge)` (East=0, CW+1), NOT `output_dir_rank` (NESW). Lock T5 vectors + R-only-invalid (T2). **DONE** (commit `8338099b`).
+- [x] **B2.1b — D4 enumeration (T1/T3/T6):** `footprint_transform.py` with `rotate_xy`/`rotate_r`/`mirror_xy`/`mirror_r` + `enumerate_d4` (dedup after full normalization). **DONE** (commit `63591ee0`). Straight line → 4, corner → 8.
+- [x] **B2.1c-0 — golden fixture geometry audit (read-only):** stage-count audit before any rewrite. **DONE** (see table below). Only `test_candidate_gen.py` calls `generate_candidates`; replay/assembler tests use the golden map fixture but not the generator.
+- [ ] **B2.1c-1 — wire `enumerate_d4` only** into `generate_candidates` (keep existing single output rule). Acceptance: straight dedup class held, per-placement R applied, no R-only rotation. Failures explained by stage table, not patched by tweaking filters.
+- [ ] **B2.1c-2 — independent extractor output (T7):** enumerate extractor output faces independently; reject extension-blocked + non-void faces; miner `R = output_side_k`, extension `R = orientation_k` (per-placement R differs). **Dedup D4 by extension layout only — extractor `R` is independent** (see audit finding). Keep D4 wiring and output rewrite in **separate commits**.
+- [ ] **B2.1c-3 — golden test reclassification:** replace legacy exact-count assertions with **stage-count breakdown** (canonical → D4 → deduped → boundary → output-face → route → final). No blind `old_count → new_count` swap.
+- [ ] **B2.1d — dedup metric + D1 ordering:** `dedupe_duplicate_count` reflects normalization dedups; D1 ordering sorts by `(anchor_row, anchor_col, output_dir_rank, -throughput_factor, gene_id)` with `output_dir` = independent output side (stable sort preserves orientation tiebreak).
 
 > Expansion stays in **core B2** (T6); the Django serializer/snapshot keeps canonical-East 18 entries only.
+
+#### B2.1c-0 Golden Fixture Audit (catalog = test `m3e`+`m0e`; golden 5×5, goal `(8,4)`)
+
+| stage | m3e | m0e | total | note |
+|-------|----:|----:|------:|------|
+| canonical patterns | 1 | 1 | 2 | DB row count (test catalog = 2; real DB = 18) |
+| D4 expanded (current key, incl. extractor R) | 4 | 4 | 8 | `enumerate_d4` as committed in B2.1b |
+| D4 deduped (extension-only key) | 4 | 1 | 5 | **finding:** single-cell/symmetric genes over-enumerate when extractor R is in the key |
+| boundary survivors (equipment ⊆ field) | 28 | 16 | 44 | ext-only dedup, all 16 rim anchors |
+| output-face survivors (void-facing, unblocked) | 36 | 20 | 56 | independent faces |
+| route survivors (BFS start→`(8,4)`) | 1 | 1 | **2** | only `(6,4)`-East: `route_probe_start = +2` lands in void exclusively at `(8,4)` |
+
+**Findings:**
+- The legacy golden count (`len == 2`, both `(6,4)` East, keys `[m3e, m0e]`) **stays valid as a contract-backed count** — the `route_probe_start = +2` void constraint admits only `(6,4)`-East on a convex 5×5 — **iff** D4 dedup uses the **extension-only key**. With the current B2.1b key (incl. extractor R) the pool is **5** (m0e duplicated ×4 by extractor R). So B2.1c-2 must dedup by extension layout (extractor `R` is independent per T7); `enumerate_d4` needs an extractor-R-independent dedup path.
+
+**Test classification (`test_candidate_gen.py`):**
+
+| test | class | action |
+|------|-------|--------|
+| `test_rotate_*` (3), `test_output_dir_rank_is_nesw`, `test_edge_rotation_k_*`, `test_*_r_not_nesw_rank_t4`, `test_rotation_transforms_coordinates_not_r_only_t2` | contract invariant (transform math, T2/T4/T5) | keep |
+| `test_normal_pool_equipment_in_matching_field_r2` | contract invariant (R2) | keep |
+| `test_normal_pool_output_stub_in_external_void_r3` | contract invariant (R3) | keep |
+| `test_only_route_feasible_candidates_enter_normal_pool_r5` | route-feasibility invariant | keep (diagnostics non-empty should still hold) |
+| `test_candidate_enumeration_order_equals_d1_sort_key` | ordering assertion (D1) | keep (stable sort) |
+| `test_metrics_counts_match_pools` | relational invariant | keep |
+| `test_golden_normal_pool_is_the_single_aligned_anchor` | **legacy exact count** (len==2, keys, dir) | convert to stage-count breakdown (B2.1c-3); value 2 remains but justified by the audit table |
 
 ---
 

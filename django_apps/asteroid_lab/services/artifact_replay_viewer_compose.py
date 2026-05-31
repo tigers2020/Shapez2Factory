@@ -23,6 +23,13 @@ from django_apps.asteroid_lab.services.artifact_replay_loader import (
     ArtifactReplayLoadError,
     iter_replay_core_frames,
 )
+from django_apps.asteroid_lab.services.artifact_runtime_replay_compose import (
+    build_runtime_replay_frames_from_artifact,
+    game_data_snapshot_path_for_manifest,
+)
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
+)
 from shapez2_factory.adapters.asteroid_lab.complete_map_serializer import parse_complete_map
 
 _LAYER_EVENT_TYPE: dict[str, ReplayEventType] = {
@@ -128,6 +135,31 @@ def compose_lab_replay_frames_from_artifact_run(run: SolverRun) -> list[dict[str
         return None
     if not core_records:
         return None
+
+    solver_summary: dict[str, Any] = {}
+    summary_path = _manifest_path(root, manifest, "solver_summary")
+    if summary_path is not None and summary_path.is_file():
+        try:
+            raw_summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            if isinstance(raw_summary, dict):
+                solver_summary = dict(raw_summary)
+        except (OSError, json.JSONDecodeError):
+            solver_summary = {}
+    config_summary = (run.config_json or {}).get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY)
+    if isinstance(config_summary, dict) and config_summary:
+        solver_summary = {**solver_summary, **dict(config_summary)}
+
+    runtime_frames = build_runtime_replay_frames_from_artifact(
+        complete_map=complete_map,
+        solver_summary=solver_summary,
+        game_data_snapshot_path=game_data_snapshot_path_for_manifest(root, manifest),
+    )
+    if runtime_frames:
+        for index, frame in enumerate(runtime_frames):
+            if isinstance(frame, dict):
+                frame["frame_index"] = index
+        return runtime_frames
+
     return [
         replay_timeline_frame_to_json_dict(
             _timeline_frame_from_core_record(record, complete_map=complete_map)

@@ -34,6 +34,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` skipped (d
 - [x] SA-3 PR-CLI-3 split into 3a (artifact shell) + 3b (full run) — 3a landed as standalone PR; 3b remains planned
 - [ ] SA-4 PR-CLI-2c gains blocking `display_map` pure/viewer split
 - [ ] SA-5 PR-CLI-6 uses Option A (in-process removed from request path entirely)
+- [ ] SA-6 PR-CLI-2f inserted before 3b — decode/cleanup/reconstruction pipeline move to core; 3b now depends on 2f (audit: algorithm bodies still in `django_apps`; decision C→A 2026-05-30)
 
 ## 3. Cross-cutting guards (land in listed PR, stay green after)
 
@@ -138,6 +139,22 @@ Tasks (DONE — uncommitted on `feat/asteroid-cli-first-l3-stack-move`):
 - [x] Step 5 — ruff + black + `mypy src` (112) clean; reconstruction narrow 25 passed
 - [x] Done: L3–L6 + stack_runner in core; no bridge; purity clean; behavior identical to master (no commit yet)
 
+## PR-CLI-2f — Decode / Cleanup / Reconstruction pipeline core move
+Depends: CLI-2e · File: [`pr-cli-2f-decode-cleanup-reconstruction-move.md`](pr-cli-2f-decode-cleanup-reconstruction-move.md)
+
+Inserted 2026-05-30 (SA-6) to unblock 3b's "no Django" full run. Audit found decode (`decode_adapter`),
+cleanup (`cleanup/pipeline`), reconstruction (`reconstruction/pipeline`) algorithm bodies still in
+`django_apps`; core had DTO + `complete_map` merge only.
+
+- [x] Step 1 (audit) — DONE 2026-05-30: **15-module** move set confirmed (decode/input 5: `decode_adapter`, `normalization`, `decoded_blueprint_snapshot`, `cell_classifier`, `copy_json_coords`; cleanup 1: `cleanup/pipeline`; reconstruction 9: `pipeline`, `confidence`, `fill`, `flood_fill`, `island`, `perimeter_closing`, `shell`, `trace`, `topology_contract`). Zero direct django/ORM/settings in bodies; boundary side-effect = 3 emit sites; DTOs + `display_map` helpers already core. No stop condition.
+- [ ] Step 2 (TDD, tests-first → red) — **no DTO move** (already core). Add: `test_pipeline_importable_without_django.py`, `test_recon_pipeline_no_boundary_jsonl_import.py` (AST), `test_pipeline_core_parity.py`, shim-identity extension (15 modules), Django-free full decode→cleanup→recon subprocess
+- [ ] Step 3 (BLOCKING) — core `BoundaryTraceSink` Protocol (default no-op); move pure `summarize_cell_kind_transitions` to core; rewire 3 emit sites to injected sink; Django sink forwards to `emit_boundary_jsonl`
+- [ ] Step 4 (move) — copy 15 modules to core; rewrite intra-core imports; repoint `reconstruction/pipeline.py` lazy `display_map`→core `complete_map_merge`; explicit-name shims
+- [ ] Step 5 (TDD, parity) — green `test_pipeline_core_parity.py` (copy→cleanup→recon == Django path) + Django-free subprocess full-pipeline run
+- [ ] Step 6 — full `asteroid_lab` suite green (zero churn); purity + import-matrix + shim-identity gates green
+- [ ] Step 7 — ruff + `mypy src` + black; reconstruction narrow gate
+- [ ] Done: decode+cleanup+reconstruction in pure core; observability via injected sink; shims preserve surface; parity + Django-free subprocess green; purity zero `django_apps` exceptions
+
 ## PR-CLI-3a — CLI artifact shell + `validate-artifact`
 Depends: CLI-1 (+CLI-2a) · File: [`pr-cli-3a-artifact-shell.md`](pr-cli-3a-artifact-shell.md)
 
@@ -158,7 +175,10 @@ Contract: [`obs-console-log.md`](obs-console-log.md)
 - [x] Step A3 — extended `test_validate_artifact.py` (3 `capsys` tests: success start/end `exit=0 ok=true`; failure `exit=10 ok=false`; disabled → no `asteroid_cli` line)
 
 ## PR-CLI-3b — Full pure CLI `run` (decode → stack → artifacts)
-Depends: CLI-2e AND CLI-3a · File: [`pr-cli-3b-full-run-stack.md`](pr-cli-3b-full-run-stack.md)
+Depends: CLI-2e AND CLI-2f AND CLI-3a · File: [`pr-cli-3b-full-run-stack.md`](pr-cli-3b-full-run-stack.md)
+
+> **Blocked until PR-CLI-2f merges** (SA-6): decode/cleanup/reconstruction must be in core first, else
+> `run_stack.py` would import `django_apps` (BA-1 violation).
 
 - [ ] Step 1 (TDD) — `test_cli_run_artifact.py` (final dir only after success; manifest hashes; outputs present; JSONL parses per line)
 - [ ] Step 2 — implement `run_stack` use case (decode/cleanup/recon/in-core stack_runner + JSON snapshot adapter)

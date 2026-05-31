@@ -14,6 +14,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from shapez2_factory.domain.asteroid_lab.observability.boundary_sink import (
+    summarize_cell_kind_transitions as summarize_cell_kind_transitions,
+)
+
 _write_lock = threading.Lock()
 
 
@@ -75,41 +79,30 @@ def emit_boundary_jsonl(
         path.open("a", encoding="utf-8").write(line)
 
 
-def summarize_cell_kind_transitions(
-    before: tuple[Any, ...],
-    after: tuple[Any, ...],
-    *,
-    max_items: int = 8000,
-) -> list[dict[str, Any]]:
-    """Pair cells by ``(x, y, layer)`` and list ``cell_kind`` changes (for JSONL payloads).
+class BoundaryJsonlSink:
+    """Django boundary sink adapter — forwards core payloads to :func:`emit_boundary_jsonl`.
 
-    Each item includes explicit ``raw_x`` / ``raw_y`` names.
+    Implements the pure-core ``BoundaryTraceSink`` Protocol so the relocated pipelines stay
+    Django-free; this adapter (settings + file I/O) is injected by Django call sites.
     """
 
-    before_map: dict[tuple[int, int, int | None], str] = {}
-    for c in before:
-        before_map[(int(c.x), int(c.y), c.layer)] = str(c.cell_kind)
+    def emit(
+        self,
+        *,
+        run_id: str,
+        stage: str,
+        boundary: str,
+        data: dict[str, Any],
+    ) -> None:
+        emit_boundary_jsonl(run_id=run_id, stage=stage, boundary=boundary, data=data)
 
-    out: list[dict[str, Any]] = []
-    for c in after:
-        key = (int(c.x), int(c.y), c.layer)
-        prev = before_map.get(key)
-        cur = str(c.cell_kind)
-        if prev != cur:
-            item: dict[str, Any] = {
-                "raw_x": key[0],
-                "raw_y": key[1],
-                "layer": key[2],
-                "cell_kind_before": prev,
-                "cell_kind_after": cur,
-            }
-            out.append(item)
-        if len(out) >= max_items:
-            break
-    return out
+
+DJANGO_BOUNDARY_SINK = BoundaryJsonlSink()
 
 
 __all__ = [
+    "DJANGO_BOUNDARY_SINK",
+    "BoundaryJsonlSink",
     "boundary_jsonl_dir",
     "boundary_jsonl_enabled",
     "emit_boundary_jsonl",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from io import StringIO
+from pathlib import Path
 
 import pytest
 from django.conf import settings
@@ -132,6 +133,6 @@ def test_run_solver_command_subprocess_flag_keeps_subprocess_only_mode(
     assert calls
     assert calls[0]["project_id"] == int(proj.pk)
     assert calls[0]["solver_mode"] == "subprocess_only"
-    assert calls[0]["artifact_root"] == "F:\\tmp\\asteroid-cli-artifacts"
+    assert Path(calls[0]["artifact_root"]) == Path("F:/tmp/asteroid-cli-artifacts")
     assert calls[0]["config"] == {"cli_verbose": True}
     assert "solver_run_id: 123" in out.getvalue()

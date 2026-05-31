@@ -22,9 +22,7 @@ pytestmark = pytest.mark.django_db
 
 def test_validation_passed_explicit_false() -> None:
     assert (
-        validation_passed_from_solver_summary(
-            {"validation_passed": False, "run_success": True}
-        )
+        validation_passed_from_solver_summary({"validation_passed": False, "run_success": True})
         is False
     )
 

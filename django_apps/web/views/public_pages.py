@@ -444,6 +444,7 @@ def _run_solver_post_traced(
 
         snapshot_payload = build_game_data_snapshot_payload()
         if _solver_async_enabled(request):
+
             def _status_url(run_id: int) -> str:
                 return reverse(
                     "web:asteroid-miner-layout-project-solver-run-status",

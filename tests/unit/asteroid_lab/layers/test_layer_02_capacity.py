@@ -67,9 +67,7 @@ def test_snapshot_payload_carries_mining_extraction_rules() -> None:
     from django_apps.game_data.services.mining_extraction_rules import get_active_rule
 
     payload = build_game_data_snapshot_payload()
-    shape_row = next(
-        r for r in payload["mining_extraction_rules"] if r["resource_kind"] == "shape"
-    )
+    shape_row = next(r for r in payload["mining_extraction_rules"] if r["resource_kind"] == "shape")
     rule = get_active_rule("shape")
 
     assert Decimal(shape_row["mini_unit_output_per_min"]) == rule.mini_unit_output_per_min

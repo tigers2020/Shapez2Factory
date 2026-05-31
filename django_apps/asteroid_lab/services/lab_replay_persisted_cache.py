@@ -130,6 +130,15 @@ def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
     if not isinstance(raw, list) or not raw:
         return None
     frames = [dict(item) for item in raw if isinstance(item, dict)]
+    if not frames:
+        return None
+    summary = _dict_or_none(
+        SolverRun.objects.filter(pk=int(run_id))
+        .values_list("lab_replay_manifest_summary_json", flat=True)
+        .first()
+    )
+    if is_cache_summary_valid(summary):
+        return frames
     return frames if lab_replay_frames_are_renderable(frames) else None
 
 
@@ -148,7 +157,13 @@ def persist_composed_replay_for_run_id(
         _dict_or_none(run.lab_replay_manifest_summary_json),
     )
     if artifact_source is not None:
-        summary = {**summary, "artifact_replay_source": artifact_source}
+        summary = {
+            **summary,
+            "mode": artifact_source.get("mode"),
+            "replay_core_path": artifact_source.get("replay_core_path", ""),
+            "artifact_run_key": artifact_source.get("artifact_run_key"),
+            "artifact_replay_source": artifact_source,
+        }
     config = copy.deepcopy(dict(run.config_json or {}))
     config[SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY] = frames
     config[SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY] = summary

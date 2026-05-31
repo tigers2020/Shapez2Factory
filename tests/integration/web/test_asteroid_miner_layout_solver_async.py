@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -12,8 +11,8 @@ from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.solver_subprocess_runner import SolverSubprocessSpawnResult
-from tests.unit.asteroid_lab.test_artifact_ingest import _write_artifact
 from tests.integration.web.test_asteroid_miner_layout_solver import _unique_valid_copy
+from tests.unit.asteroid_lab.test_artifact_ingest import _write_artifact
 
 pytestmark = [pytest.mark.django_db, pytest.mark.async_solver]
 
@@ -24,11 +23,14 @@ def client() -> Client:
 
 
 @override_settings(ASTEROID_LAB_SOLVER_ASYNC_DEFAULT=True)
-def test_http_run_solver_returns_202_and_status_completes(client: Client, tmp_path, settings) -> None:
+def test_http_run_solver_returns_202_and_status_completes(
+    client: Client, tmp_path, settings
+) -> None:
     settings.ASTEROID_LAB_ARTIFACT_ROOT = tmp_path
     slug = "async-http-run"
     project = m.AsteroidProject.objects.create(name="Async HTTP", slug=slug)
     m.AsteroidMapInput.objects.create(project=project, copy_code=_unique_valid_copy())
+
     def fake_spawn(request, **kwargs):
         del kwargs
         return SolverSubprocessSpawnResult(
@@ -60,7 +62,7 @@ def test_http_run_solver_returns_202_and_status_completes(client: Client, tmp_pa
     body = post.json()
     assert body["ok"] is True
     assert body["status"] == "running"
-    run_id = int(body["solver_run_id"])
+    assert int(body["solver_run_id"]) > 0
     status_url = body["status_url"]
     assert status_url
 
@@ -77,7 +79,9 @@ def test_http_run_solver_returns_409_when_run_already_active(client: Client) -> 
     slug = "async-conflict"
     project = m.AsteroidProject.objects.create(name="Conflict", slug=slug)
     m.AsteroidMapInput.objects.create(project=project, copy_code=_unique_valid_copy())
-    m.SolverRun.objects.create(project=project, run_key="busy", status=m.SolverRun.RunStatus.RUNNING)
+    m.SolverRun.objects.create(
+        project=project, run_key="busy", status=m.SolverRun.RunStatus.RUNNING
+    )
 
     with patch(
         "django_apps.web.views.public_pages.build_asteroid_game_data_snapshot_with_provenance",

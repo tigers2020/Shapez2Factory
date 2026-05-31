@@ -171,7 +171,7 @@ def test_ingest_warm_compose_preserves_solver_summary_json(tmp_path: Path) -> No
     """Regression: replay warm persist must not wipe artifact ``solver_summary_json``."""
 
     project = m.AsteroidProject.objects.create(name="Warm", slug="warm-summary")
-    expected_summary = _write_artifact_with_stack_summary(tmp_path)
+    _write_artifact_with_stack_summary(tmp_path)
     renderable_frame = {
         "frame_index": 0,
         "map_view": {

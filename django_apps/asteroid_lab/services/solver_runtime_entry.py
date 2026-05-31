@@ -155,9 +155,7 @@ def _build_subprocess_request(
         game_data_snapshot=dict(game_data_snapshot),
         artifact_root=artifact_root,
         allowed_root=artifact_root,
-        timeout_seconds=float(
-            getattr(settings, "ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS", 30.0)
-        ),
+        timeout_seconds=float(getattr(settings, "ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS", 30.0)),
         replace_existing=replace_existing_run,
         verbose=verbose,
         throughput_target_percent=throughput_target_percent,

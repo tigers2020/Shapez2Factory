@@ -51,4 +51,6 @@ def test_run_stack_capacity_matches_mining_not_space_belt() -> None:
     )
     plan = l2["metrics"]
     reference = int(plan["reference_connector_count"])
-    assert reference == int((max_tp / Decimal("5760")).to_integral_value(rounding="ROUND_CEILING"))
+    assert reference == int(
+        (max_tp / Decimal("5760")).to_integral_value(rounding=ROUND_CEILING),
+    )

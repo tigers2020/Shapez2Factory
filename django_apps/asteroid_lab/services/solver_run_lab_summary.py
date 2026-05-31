@@ -851,11 +851,7 @@ def _build_layer_summaries(
             6,
             LAYER_06_COMMIT_VALIDATE,
             "Commit & validate",
-            (
-                "failed"
-                if not validation_passed
-                else outcome(LAYER_06_COMMIT_VALIDATE, l5_legacy)
-            ),
+            ("failed" if not validation_passed else outcome(LAYER_06_COMMIT_VALIDATE, l5_legacy)),
             [
                 _highlight("Confirmed placements", rttp.get("confirmed_count")),
                 _highlight(

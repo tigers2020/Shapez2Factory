@@ -177,7 +177,7 @@ def test_run_solver_persists_composed_replay_cache() -> None:
 
 @override_settings(ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=True)
 def test_run_solver_subprocess_warms_composed_replay_on_ingest() -> None:
-    """Artifact ingest composes replay once; page load must not recompose (see SSR cache-hit test)."""
+    """Ingest composes replay once; page load must not recompose (SSR cache-hit test)."""
     proj = m.AsteroidProject.objects.create(name="ComposeOnce", slug="compose-once-proj")
     m.AsteroidMapInput.objects.create(project=proj, copy_code=_valid_copy_from_fixture())
     with patch(

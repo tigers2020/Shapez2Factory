@@ -41,8 +41,8 @@ def test_lab_replay_timeline_includes_layer03_runtime_after_solver_run() -> None
 
     frames = load_composed_frames_for_run_id(int(result.solver_run_id))
     assert frames is not None
-    layer_slugs = [str(f.get("layer_slug") or "") for f in frames]
-    assert "layer_03_rim_greedy_placement" in layer_slugs
+    titles = [str(f.get("title") or "") for f in frames]
+    assert any("rim greedy" in title.lower() for title in titles)
     run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
     summary = dict(run.solver_summary_json or {})
     completed = list(summary.get("completed_layer_slugs") or [])

@@ -76,7 +76,8 @@ def _write_artifact(
     )
     header = {"record_type": "header", "run_key": run_key, "schema_version": 1}
     replay_path.write_text(
-        json.dumps(header, sort_keys=True) + "\n"
+        json.dumps(header, sort_keys=True)
+        + "\n"
         + "".join(json.dumps(line, sort_keys=True) + "\n" for line in core_lines),
         encoding="utf-8",
     )

@@ -71,11 +71,15 @@ def test_empty_gene_catalog_returns_skip() -> None:
     assert result.metrics.layer_skip_reason == Layer03SkipReason.MISSING_GENE_CATALOG.value
 
 
-def test_present_catalog_keeps_reset_for_now() -> None:
+def test_present_catalog_runs_v2_and_commits() -> None:
+    # v2: a present gene catalog runs the real pipeline (no reset skip). On the golden
+    # fixture the single aligned anchor (6,4) commits one route-feasible bundle.
     result = run_layer_03_rim_greedy_placement(
         complete_map=golden_5x5_complete_map(),
         exterior_plan=minimal_l2_plan_for_golden(),
         budget_ctx=_budget_ctx(),
         gene_catalog=_present_catalog(),
     )
-    assert result.metrics.layer_skip_reason == Layer03SkipReason.ALGORITHM_RESET.value
+    assert result.metrics.layer_skip_reason is None
+    assert result.metrics.committed_placement_count == 1
+    assert result.committed_placements[0].anchor == (6, 4)

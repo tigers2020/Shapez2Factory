@@ -1,9 +1,8 @@
-"""Stack continues when L3 returns reset stub."""
+"""Stack continues and reaches L5 when L3 v2 commits a provisional placement."""
 
 from __future__ import annotations
 
 from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import GeneCatalogSnapshot
-from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )
@@ -92,5 +91,6 @@ def test_stack_runner_accepts_empty_l3_and_reaches_l5() -> None:
     l3_summary = next(
         s for s in core.layer_summaries if s.layer_slug == LAYER_03_RIM_GREEDY_PLACEMENT
     )
-    assert l3_summary.metrics.get("layer_skip_reason") == Layer03SkipReason.ALGORITHM_RESET.value
-    assert l3_summary.metrics.get("algorithm_stub") == "reset_stub_v1"
+    assert l3_summary.metrics.get("layer_skip_reason") is None
+    assert l3_summary.metrics.get("committed_placement_count") == 1
+    assert l3_summary.metrics.get("algorithm_stub") is None

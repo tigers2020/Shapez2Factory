@@ -52,6 +52,7 @@ class Layer03SkipReason(StrEnum):
     NO_ROUTE_GOALS = "no_route_goals"
     EMPTY_MINER_SEED_CATALOG = "empty_miner_seed_catalog"
     BUDGET_EXHAUSTED = "budget_exhausted"
+    ALGORITHM_RESET = "algorithm_reset"
 
 
 class BundleCellRole(StrEnum):

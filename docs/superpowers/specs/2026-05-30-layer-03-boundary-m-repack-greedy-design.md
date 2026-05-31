@@ -1,6 +1,6 @@
 # Layer 03 Boundary-M Repack Greedy (m3e_01) — Normative Design
 
-**Status:** ACTIVE (authored in boundary-m-repack PR-B)
+**Status:** SUPERSEDED by [`2026-05-31-layer-03-algorithm-reset-design.md`](2026-05-31-layer-03-algorithm-reset-design.md) (2026-05-31). Historical PR-B reference only.
 **Date:** 2026-05-30
 **Owner:** Layer 03 rim greedy placement (`django_apps/asteroid_lab/layers/layer_03_rim_greedy_placement/`)
 **Plan set:** [`../plans/2026-05-30-layer-03-boundary-m-repack-greedy/README.md`](../plans/2026-05-30-layer-03-boundary-m-repack-greedy/README.md)

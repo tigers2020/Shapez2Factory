@@ -1,6 +1,6 @@
 # boundary-m-repack — Layer 03 outer-rim M extractor greedy redesign (PR-B)
 
-**Status:** ACTIVE — algorithm body green (Gate A); docs + Gate C smoke pending
+**Status:** SUPERSEDED — see [`../2026-05-31-layer-03-algorithm-reset/`](../2026-05-31-layer-03-algorithm-reset/README.md) (2026-05-31). Historical PR-B reference only.
 **Date:** 2026-05-30
 **Type:** algorithm enhancement (`contract change` + `implementation change`)
 **Design (SoT):** [`../../specs/2026-05-30-layer-03-boundary-m-repack-greedy-design.md`](../../specs/2026-05-30-layer-03-boundary-m-repack-greedy-design.md)

@@ -7,11 +7,16 @@ from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_03_RIM_MINING_BUNDLES,
     LAYERS_02_TO_06_ACTIVE,
 )
+from django_apps.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from django_apps.asteroid_lab.layers.contracts.rim_greedy import (
     LAYER_03_GREEDY_SOURCE,
     RimGreedyRejectReason,
     build_empty_integrated_rim_greedy_result,
 )
+
+
+def test_layer03_skip_reason_includes_algorithm_reset() -> None:
+    assert Layer03SkipReason.ALGORITHM_RESET == "algorithm_reset"
 
 
 def test_active_runner_tuple_uses_greedy_slug_only() -> None:

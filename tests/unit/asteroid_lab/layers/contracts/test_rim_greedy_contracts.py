@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_03_RIM_GREEDY_PLACEMENT,
     LAYER_03_RIM_MINING_BUNDLES,
     LAYERS_02_TO_06_ACTIVE,
 )
-from django_apps.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from django_apps.asteroid_lab.layers.contracts.rim_greedy import (
     LAYER_03_GREEDY_SOURCE,
     RimGreedyRejectReason,

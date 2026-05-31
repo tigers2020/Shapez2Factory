@@ -23,7 +23,10 @@ REPLAY_VIEWER_FILES = [
 
 # Viewer/replay may use pure domain helpers; must not pull solver execution stack.
 REPLAY_ALLOWED_CORE_PREFIXES = (
+    "shapez2_factory.application.asteroid_lab.layers.contracts",
     "shapez2_factory.domain.asteroid_lab.reconstruction.complete_map_merge",
+    "shapez2_factory.domain.asteroid_lab.grid_contract",
+    "shapez2_factory.domain.asteroid_lab.reconstruction.complete_map",
 )
 
 FORBIDDEN_REPLAY_CORE_PREFIXES = (

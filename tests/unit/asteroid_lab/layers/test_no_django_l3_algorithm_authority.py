@@ -29,6 +29,18 @@ def test_no_django_l3_algorithm_modules_on_disk() -> None:
     assert not names & _FORBIDDEN
 
 
+def test_django_run_reexports_core_entrypoint() -> None:
+    import django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.run as django_run
+    from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement import (
+        run as core_run,
+    )
+
+    assert (
+        django_run.run_layer_03_rim_greedy_placement is core_run.run_layer_03_rim_greedy_placement
+    )
+    assert django_run.ALGORITHM_STUB_ID is core_run.ALGORITHM_STUB_ID
+
+
 def test_core_l3_run_entrypoint_is_authoritative() -> None:
     from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement import (
         run as core_run,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import GeneCatalogSnapshot
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
@@ -35,6 +36,7 @@ def run_layer_03_rim_greedy_placement(
     resource_kind: ResourceKind | None = None,
     transport_kind: TransportKind | None = None,
     policy: RimGreedyPolicy | None = None,
+    gene_catalog: GeneCatalogSnapshot | None = None,
 ) -> IntegratedRimGreedyResult:
     _ = (
         complete_map,
@@ -43,6 +45,7 @@ def run_layer_03_rim_greedy_placement(
         resource_kind,
         transport_kind,
         policy,
+        gene_catalog,
     )
     if exterior_plan is None:
         return build_empty_integrated_rim_greedy_result(

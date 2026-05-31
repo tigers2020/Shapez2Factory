@@ -8,6 +8,7 @@ from functools import partial
 from typing import Any
 
 from shapez2_factory.adapters.asteroid_lab.complete_map_serializer import serialize_complete_map
+from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import GeneCatalogSnapshot
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
 )
@@ -157,6 +158,7 @@ class RunStackUseCase:
         throughput_target_percent: int = 80,
         budget_ms: int = LAYER_STACK_BUDGET_MS,
         speed_tier: int = 1,
+        gene_catalog: GeneCatalogSnapshot | None = None,
     ) -> StackRunResult:
         snapshot = decode_shapez_copy_string(copy_text)
         cleanup = deconstruct_snapshot(snapshot)
@@ -186,6 +188,7 @@ class RunStackUseCase:
             complete_map=complete_map,
             budget_ctx=LayerBudgetContext.from_budget_ms(budget_ms),
             runners=runners,
+            gene_catalog=gene_catalog,
         )
         stack_result_json = _stack_result_to_json(core_result.stack_result)
         layer_summaries = [_layer_summary_to_json(record) for record in core_result.layer_summaries]

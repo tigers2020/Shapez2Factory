@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import GeneCatalogSnapshot
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.diagnostic import (
     DiagnosticLayerSnapshot,
@@ -98,6 +101,7 @@ def run_layers_02_to_06(
     complete_map: ReconstructionCompleteMap,
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
+    gene_catalog: GeneCatalogSnapshot | None = None,
 ) -> CoreStackRunResult:
     completed: list[str] = []
     last_diagnostic: DiagnosticLayerSnapshot | None = None
@@ -137,6 +141,7 @@ def run_layers_02_to_06(
                 complete_map=complete_map,
                 budget_ctx=budget_ctx,
                 exterior_plan=last_exterior_plan,
+                gene_catalog=gene_catalog,
             )
             if isinstance(last_rim_greedy, IntegratedRimGreedyResult):
                 post_metrics = build_layer03_rim_greedy_post_summary_metrics(last_rim_greedy)
@@ -190,12 +195,14 @@ def run_layers_02_to_05(
     complete_map: ReconstructionCompleteMap,
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
+    gene_catalog: GeneCatalogSnapshot | None = None,
 ) -> CoreStackRunResult:
     """Deprecated alias for ``run_layers_02_to_06`` (PR-3c layer renumber)."""
     return run_layers_02_to_06(
         complete_map=complete_map,
         budget_ctx=budget_ctx,
         runners=runners,
+        gene_catalog=gene_catalog,
     )
 
 

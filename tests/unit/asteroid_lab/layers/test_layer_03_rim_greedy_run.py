@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
-from decimal import Decimal
-
 from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
 from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
 from django_apps.asteroid_lab.layers.layer_02_exterior_transport.plan import (
@@ -18,17 +18,17 @@ from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.greedy_seed i
 from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
     run_layer_03_rim_greedy_placement,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport import (
-    plan as plan_mod,
-)
-from tests.unit.asteroid_lab.layers.helpers.l02_complete_map_fixtures import (
-    build_rect_field_with_void_shell,
-)
 from django_apps.asteroid_lab.reconstruction.complete_map import build_reconstruction_complete_map
 from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
 from django_apps.asteroid_lab.reconstruction.topology_contract import (
     decode_shapez_copy_string,
     load_reconstruction_fixture_line_pairs,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport import (
+    plan as plan_mod,
+)
+from tests.unit.asteroid_lab.layers.helpers.l02_complete_map_fixtures import (
+    build_rect_field_with_void_shell,
 )
 
 

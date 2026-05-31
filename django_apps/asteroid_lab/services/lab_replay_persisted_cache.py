@@ -137,6 +137,8 @@ def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
         .values_list("lab_replay_manifest_summary_json", flat=True)
         .first()
     )
+    if is_artifact_replay_source_summary(summary):
+        return frames if lab_replay_frames_are_renderable(frames) else None
     if is_cache_summary_valid(summary):
         return frames
     return frames if lab_replay_frames_are_renderable(frames) else None

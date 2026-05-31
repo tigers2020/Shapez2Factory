@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from django.utils import timezone
@@ -14,8 +13,8 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.solver_run_reconcile import (
     RECONCILE_FAILURE_TIMEOUT,
     RECONCILE_FAILURE_VALIDATION,
-    reconcile_solver_run,
     reconcile_running_solver_runs,
+    reconcile_solver_run,
 )
 from django_apps.asteroid_lab.services.solver_run_registry import create_running_solver_run
 from tests.unit.asteroid_lab.test_artifact_ingest import _write_artifact

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from shapez2_factory.adapters.asteroid_lab.gene_catalog_snapshot import GeneCatalogSnapshot
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
@@ -39,6 +40,28 @@ def _stub_layer02(**_kwargs: object) -> ExteriorConnectionPlan:
     return minimal_l2_plan_for_golden()
 
 
+def _nonempty_gene_catalog() -> GeneCatalogSnapshot:
+    return GeneCatalogSnapshot.from_payload(
+        {
+            "schema_version": "gene_catalog_v1",
+            "entries": [
+                {
+                    "gene_id": "m3e_01",
+                    "resource_kind": "both",
+                    "canonical_output_dir": "E",
+                    "occupied_offsets": [[0, 0], [-1, 0], [-2, 0], [-3, 0]],
+                    "extractor_offset": [0, 0],
+                    "extension_offsets": [[-1, 0], [-2, 0], [-3, 0]],
+                    "output_stub_offset": [1, 0],
+                    "route_probe_start_offset": [2, 0],
+                    "throughput_factor": 16,
+                    "topology_signature_base": "m3e_01_base",
+                }
+            ],
+        }
+    )
+
+
 def _stub_layer05(
     *,
     complete_map: object,
@@ -58,7 +81,12 @@ def test_stack_runner_accepts_empty_l3_and_reaches_l5() -> None:
         _LayerStackRunner(LAYER_03_RIM_GREEDY_PLACEMENT, run_layer_03_rim_greedy_placement),
         _LayerStackRunner(LAYER_05_INNER_PATTERN_FILL, _stub_layer05),
     )
-    core = run_layers_02_to_06(complete_map=complete_map, budget_ctx=budget_ctx, runners=runners)
+    core = run_layers_02_to_06(
+        complete_map=complete_map,
+        budget_ctx=budget_ctx,
+        runners=runners,
+        gene_catalog=_nonempty_gene_catalog(),
+    )
     assert core.stack_result.status == StackRunStatus.SUCCESS
     assert LAYER_03_RIM_GREEDY_PLACEMENT in core.stack_result.completed_layer_slugs
     l3_summary = next(

@@ -140,20 +140,20 @@ Tasks (DONE — uncommitted on `feat/asteroid-cli-first-l3-stack-move`):
 - [x] Done: L3–L6 + stack_runner in core; no bridge; purity clean; behavior identical to master (no commit yet)
 
 ## PR-CLI-2f — Decode / Cleanup / Reconstruction pipeline core move
-Depends: CLI-2e · File: [`pr-cli-2f-decode-cleanup-reconstruction-move.md`](pr-cli-2f-decode-cleanup-reconstruction-move.md)
+Depends: CLI-2e · File: [`pr-cli-2f-decode-cleanup-reconstruction-move.md`](pr-cli-2f-decode-cleanup-reconstruction-move.md) · PR [#135](https://github.com/tigers2020/Shapez2Factory/pull/135)
 
 Inserted 2026-05-30 (SA-6) to unblock 3b's "no Django" full run. Audit found decode (`decode_adapter`),
 cleanup (`cleanup/pipeline`), reconstruction (`reconstruction/pipeline`) algorithm bodies still in
 `django_apps`; core had DTO + `complete_map` merge only.
 
 - [x] Step 1 (audit) — DONE 2026-05-30: **15-module** move set confirmed (decode/input 5: `decode_adapter`, `normalization`, `decoded_blueprint_snapshot`, `cell_classifier`, `copy_json_coords`; cleanup 1: `cleanup/pipeline`; reconstruction 9: `pipeline`, `confidence`, `fill`, `flood_fill`, `island`, `perimeter_closing`, `shell`, `trace`, `topology_contract`). Zero direct django/ORM/settings in bodies; boundary side-effect = 3 emit sites; DTOs + `display_map` helpers already core. No stop condition.
-- [ ] Step 2 (TDD, tests-first → red) — **no DTO move** (already core). Add: `test_pipeline_importable_without_django.py`, `test_recon_pipeline_no_boundary_jsonl_import.py` (AST), `test_pipeline_core_parity.py`, shim-identity extension (15 modules), Django-free full decode→cleanup→recon subprocess
-- [ ] Step 3 (BLOCKING) — core `BoundaryTraceSink` Protocol (default no-op); move pure `summarize_cell_kind_transitions` to core; rewire 3 emit sites to injected sink; Django sink forwards to `emit_boundary_jsonl`
-- [ ] Step 4 (move) — copy 15 modules to core; rewrite intra-core imports; repoint `reconstruction/pipeline.py` lazy `display_map`→core `complete_map_merge`; explicit-name shims
-- [ ] Step 5 (TDD, parity) — green `test_pipeline_core_parity.py` (copy→cleanup→recon == Django path) + Django-free subprocess full-pipeline run
-- [ ] Step 6 — full `asteroid_lab` suite green (zero churn); purity + import-matrix + shim-identity gates green
-- [ ] Step 7 — ruff + `mypy src` + black; reconstruction narrow gate
-- [ ] Done: decode+cleanup+reconstruction in pure core; observability via injected sink; shims preserve surface; parity + Django-free subprocess green; purity zero `django_apps` exceptions
+- [x] Step 2 (TDD, tests-first → red) — 5 target tests added; RED-for-right-reason confirmed pre-move
+- [x] Step 3 (BLOCKING) — core `BoundaryTraceSink` Protocol (default no-op); `summarize_cell_kind_transitions` in core; 3 emit sites rewired; `DJANGO_BOUNDARY_SINK` adapter
+- [x] Step 4 (move) — 15 modules in core; intra-core imports; lazy `display_map`→`complete_map_merge`; explicit shims
+- [x] Step 5 (TDD, parity) — 19 target tests green; Django-free subprocess full-pipeline green
+- [x] Step 6 — `pytest tests/unit/asteroid_lab tests/unit/architecture`: 791 passed, 1 xfailed; purity + shim-identity gates green
+- [x] Step 7 — ruff + `mypy src` + black clean
+- [x] Done: decode+cleanup+reconstruction in pure core; observability via injected sink; shims preserve surface; parity + Django-free subprocess green; purity zero `django_apps` exceptions
 
 ## PR-CLI-3a — CLI artifact shell + `validate-artifact`
 Depends: CLI-1 (+CLI-2a) · File: [`pr-cli-3a-artifact-shell.md`](pr-cli-3a-artifact-shell.md)

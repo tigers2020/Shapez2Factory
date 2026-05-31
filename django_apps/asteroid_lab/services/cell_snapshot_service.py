@@ -7,6 +7,7 @@ from dataclasses import asdict
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.observability.boundary_jsonl import DJANGO_BOUNDARY_SINK
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_DECODE_NORMALIZED,
     EVENT_TYPE_DECODE_RAW_LOADED,
@@ -49,6 +50,7 @@ def build_decoded_blueprint_snapshot_from_input(
         project_id=int(inp.project_id),
         map_input_id=int(inp.id),
         boundary_run_id=rid,
+        boundary_sink=DJANGO_BOUNDARY_SINK,
     )
 
 

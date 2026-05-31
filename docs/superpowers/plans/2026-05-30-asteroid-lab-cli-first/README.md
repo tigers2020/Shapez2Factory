@@ -42,6 +42,7 @@ amendments, guards, per-PR steps, done criteria). Use it to track progress; PR f
 | SA-3 | PR-CLI-3 **split** into `3a` (artifact shell + `validate-artifact`, depends CLI-1/2a) and `3b` (full pure run-stack, depends CLI-2e). |
 | SA-4 | PR-CLI-2c gains **blocking `display_map` pure/viewer split** (`complete_map` transitively imports `replay/*`). |
 | SA-5 | PR-CLI-6 uses **Option A**: in-process removed from request path entirely (no escape hatch). |
+| SA-6 | **PR-CLI-2f inserted** before 3b: decode/cleanup/reconstruction pipeline move to core (audit found the algorithm bodies still in `django_apps`, so 3b's "no Django" run was not assemblable). 3b now depends on 2f. (Decision C→A, 2026-05-30.) |
 
 ## Guards (cross-cutting)
 
@@ -68,8 +69,9 @@ amendments, guards, per-PR steps, done criteria). Use it to track progress; PR f
 | PR-CLI-2c | [`pr-cli-2c-reconstruction-move.md`](pr-cli-2c-reconstruction-move.md) | CLI-2a | + display_map split (blocking) |
 | PR-CLI-2d | [`pr-cli-2d-l2-shared-contracts-move.md`](pr-cli-2d-l2-shared-contracts-move.md) | CLI-2b, CLI-2c | **L2+shared+contracts only; NO stack_runner** + shim identity test |
 | PR-CLI-2e | [`pr-cli-2e-l3-gated-move.md`](pr-cli-2e-l3-gated-move.md) | CLI-2d + L3 stable | **L3–L6 + stack_runner together; gated** |
+| PR-CLI-2f | [`pr-cli-2f-decode-cleanup-reconstruction-move.md`](pr-cli-2f-decode-cleanup-reconstruction-move.md) | CLI-2e | **decode+cleanup+reconstruction pipeline → core** (unblocks 3b "no Django") |
 | PR-CLI-3a | [`pr-cli-3a-artifact-shell.md`](pr-cli-3a-artifact-shell.md) | CLI-1 (+2a) | artifact shell + validate |
-| PR-CLI-3b | [`pr-cli-3b-full-run-stack.md`](pr-cli-3b-full-run-stack.md) | CLI-2e + CLI-3a | full pure run |
+| PR-CLI-3b | [`pr-cli-3b-full-run-stack.md`](pr-cli-3b-full-run-stack.md) | CLI-2e + CLI-2f + CLI-3a | full pure run |
 | PR-CLI-4 | [`pr-cli-4-django-subprocess-ingest.md`](pr-cli-4-django-subprocess-ingest.md) | CLI-3b | subprocess + ingest |
 | PR-CLI-5 | [`pr-cli-5-db-demotion-replay.md`](pr-cli-5-db-demotion-replay.md) | CLI-4 | DB demotion + JSONL streaming |
 | PR-CLI-6 | [`pr-cli-6-subprocess-only-default.md`](pr-cli-6-subprocess-only-default.md) | CLI-5 | subprocess_only (Option A) |
@@ -88,8 +90,10 @@ flowchart LR
   CLI2c --> CLI2d
   CLI2d --> CLI2e[PR_CLI_2e_L3_stack_gated]
   L3stable[L3_boundary_m_repack_stable] --> CLI2e
+  CLI2e --> CLI2f[PR_CLI_2f_pipeline_move]
   CLI1 --> CLI3a[PR_CLI_3a_artifact_shell]
-  CLI2e --> CLI3b[PR_CLI_3b_full_run]
+  CLI2f --> CLI3b[PR_CLI_3b_full_run]
+  CLI2e --> CLI3b
   CLI3a --> CLI3b
   CLI3b --> CLI4[PR_CLI_4_subprocess]
   CLI4 --> CLI5[PR_CLI_5_db_demotion]

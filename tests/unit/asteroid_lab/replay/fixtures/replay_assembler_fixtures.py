@@ -8,13 +8,9 @@ from django_apps.asteroid_lab.layers.contracts.candidates import (
     RimBundleCandidateSet,
     RouteProbedBundleCandidate,
 )
-from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
 from django_apps.asteroid_lab.layers.contracts.rim_placement import Layer04RimPlacementResult
 from django_apps.asteroid_lab.layers.layer_02_exterior_transport.wire import (
     exterior_connector_plan_to_metrics_dict,
-)
-from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles.run import (
-    run_layer_03_rim_mining_bundles,
 )
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
@@ -152,14 +148,6 @@ def rim_bundle_candidate_set_with_observability_for_golden() -> RimBundleCandida
         normal_candidates=probes,
         diagnostic_rejected_candidates=(),
         metrics=metrics,
-    )
-
-
-def rim_bundle_candidate_set_from_layer03_stub() -> RimBundleCandidateSet:
-    return run_layer_03_rim_mining_bundles(
-        complete_map=golden_5x5_complete_map(),
-        exterior_plan=minimal_l2_plan_for_golden(),
-        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
     )
 
 

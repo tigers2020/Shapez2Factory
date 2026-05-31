@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.layer03_observability import Layer03Observability
-from django_apps.asteroid_lab.layers.contracts.layer_slugs import LAYER_03_RIM_MINING_BUNDLES
 from django_apps.asteroid_lab.replay.event_types import assert_registered_event_type
 from django_apps.asteroid_lab.replay.layer03_overlay_cells import (
     OVERLAY_KIND_CANDIDATE_MINER,
@@ -22,6 +20,12 @@ from django_apps.asteroid_lab.replay.pattern_bundle_highlight import (
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer03_observability import (
+    Layer03Observability,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_03_RIM_MINING_BUNDLES,
+)
 
 LAYER03_PHASE = LAYER_03_RIM_MINING_BUNDLES
 LAYER03_INSPECTOR_STEP = LAYER_03_RIM_MINING_BUNDLES

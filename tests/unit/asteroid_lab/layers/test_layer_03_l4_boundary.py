@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 
-from django_apps.asteroid_lab.layers.layer_03_rim_mining_bundles import run as layer03_run
+from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement import run as layer03_run
 from django_apps.asteroid_lab.layers.layer_04_rim_bundle_placement import run as layer04_run
 
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.candidates import RouteProbedBundleCandidate
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
+    RouteProbedBundleCandidate,
+)
 
 OVERLAY_KIND_CANDIDATE_MINER = "candidate_miner"
 OVERLAY_KIND_CANDIDATE_TRANSPORT_STUB = "candidate_transport_stub"

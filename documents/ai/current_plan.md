@@ -26,7 +26,9 @@ directory (`var/runs/<run_key>/`); DB demotes to run registry / artifact index o
 - Plan set + tracker: [`docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/`](../../docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/README.md)
 - Current status: PR-CLI-0..6 implementation on branch after merge with `origin/master` (#134 L3–L6,
   #135 pipeline). `subprocess_only` request path, artifact ingest, artifact-first replay, BA-9 terminal
-  logs, replay viewer import gate. Remaining optional: shim import-path retirement; repo-wide mypy baseline.
+  logs, replay viewer import gate. Artifact viewer compose reads stored artifact records only; Django no
+  longer reruns L2/L3 to enrich replay. Remaining optional: shim import-path retirement; repo-wide mypy
+  baseline.
 - Done through PR-CLI-6 on branch; merged master through `b566d4f8`. Evidence:
   [`django-residue-audit.md`](../../docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/django-residue-audit.md).
 
@@ -40,25 +42,25 @@ directory (`var/runs/<run_key>/`); DB demotes to run registry / artifact index o
 - Runtime fixes: canvas wiring restored from `bc5071e2`; lazy prefetch/retry; `tone` in `renderFullMapCells`; `mountLabCanvasRenderer` on lazy hydrate
 - Status: Run 9 — run 300 rAF p95 **13.8 ms** (budget met); LOCK-2 canvas hit-layer still partial (~2961 on resets)
 
-## Active Work — Layer 03 boundary-m-repack (PR-B)
+## Active Work — Layer 03 algorithm reset (CLI-first stub)
 
-**ACTIVE.** Algorithm enhancement: place the highest-yield canonical bundle `m3e_01` (miner + 3
-extensions) along the outer rim with in-layout degradation 3→2→1, keeping all M/E equipment on the
-field and using exterior void only for the output stub + transport route. Unblocks (gates) PR-CLI-2e.
+**DONE (PR #137; merged to branch 2026-05-31).** PR-B greedy/pass/append removed; L3 stack slot and
+`reset_stub_v1` / `Layer03SkipReason.ALGORITHM_RESET` in place. Replacement algorithm is a **separate**
+future spec.
 
-- Design (SoT): [`docs/superpowers/specs/2026-05-30-layer-03-boundary-m-repack-greedy-design.md`](../../docs/superpowers/specs/2026-05-30-layer-03-boundary-m-repack-greedy-design.md)
-- Plan + checklist: [`docs/superpowers/plans/2026-05-30-layer-03-boundary-m-repack-greedy/`](../../docs/superpowers/plans/2026-05-30-layer-03-boundary-m-repack-greedy/README.md)
-- Status: algorithm body green (Gate A: `pytest tests/unit/asteroid_lab/layers/ -v` passed; combined layers+replay 173 passed); docs landed; Gate C manual DB smoke recorded not-reproducible (no deterministic project slug), covered by deterministic run-solver L3 runtime tests (7 passed). Not merged; no commit/PR yet.
+- Design (SoT): [`docs/superpowers/specs/2026-05-31-layer-03-algorithm-reset-design.md`](../../docs/superpowers/specs/2026-05-31-layer-03-algorithm-reset-design.md)
+- Plan: [`docs/superpowers/plans/2026-05-31-layer-03-algorithm-reset/`](../../docs/superpowers/plans/2026-05-31-layer-03-algorithm-reset/README.md) — checklist **DONE**
 
-## Active Work — Layer 03 directional rim segment packing
+## Superseded — Layer 03 boundary-m-repack (PR-B)
 
-**NOT STARTED (spec APPROVED 2026-05-31; plan PR-1…5).** Replace contour first-feasible greedy with
-directional segment packing inside L3. Normative L4 = inner fill (not this epic); retired legacy
-`layer_04_rim_bundle_placement` never reactivated; slug renumbering out of scope. Hard gates HG-1…HG-4.
+**SUPERSEDED (2026-05-31).** Greedy algorithm removed per reset spec; historical reference only.
 
-- Design (SoT): [`docs/superpowers/specs/2026-05-31-rim-directional-segment-packing-design.md`](../../docs/superpowers/specs/2026-05-31-rim-directional-segment-packing-design.md)
-- Plan + checklist: [`docs/superpowers/plans/2026-05-31-rim-directional-segment-packing/`](../../docs/superpowers/plans/2026-05-31-rim-directional-segment-packing/README.md)
-- Depends on: PR-B footprint/route contracts (C1–C8)
+- Design: [`docs/superpowers/specs/2026-05-30-layer-03-boundary-m-repack-greedy-design.md`](../../docs/superpowers/specs/2026-05-30-layer-03-boundary-m-repack-greedy-design.md)
+- Plan: [`docs/superpowers/plans/2026-05-30-layer-03-boundary-m-repack-greedy/`](../../docs/superpowers/plans/2026-05-30-layer-03-boundary-m-repack-greedy/README.md)
+
+## Superseded — Layer 03 directional rim segment packing
+
+**SUPERSEDED (2026-05-31, never implemented).** Replaced by L3 reset + future greenfield L3 spec.
 
 ## Authority Precedence
 

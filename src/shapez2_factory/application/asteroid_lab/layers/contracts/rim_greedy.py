@@ -129,6 +129,18 @@ class IntegratedRimGreedyResult:
     observability_events: tuple[RimGreedyObservationEvent, ...]
 
 
+def build_layer03_reset_observability_events() -> tuple[RimGreedyObservationEvent, ...]:
+    """BEGIN/COMPLETE pair for intentional L3 algorithm reset (no placements)."""
+    from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
+        Layer03SkipReason,
+    )
+
+    return _skip_observability_events(
+        layer_skip_reason=Layer03SkipReason.ALGORITHM_RESET.value,
+        rim_anchor_count=0,
+    )
+
+
 def _skip_observability_events(
     *,
     layer_skip_reason: str,
@@ -215,4 +227,5 @@ __all__ = [
     "RimGreedyScoreAtoms",
     "_skip_observability_events",
     "build_empty_integrated_rim_greedy_result",
+    "build_layer03_reset_observability_events",
 ]

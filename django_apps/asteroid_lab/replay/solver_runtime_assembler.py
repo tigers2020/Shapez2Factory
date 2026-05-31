@@ -5,10 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from django_apps.asteroid_lab.layers.contracts.candidates import RimBundleCandidateSet
-from django_apps.asteroid_lab.layers.contracts.rim_greedy import IntegratedRimGreedyResult
-from django_apps.asteroid_lab.layers.contracts.rim_placement import Layer04RimPlacementResult
-from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.replay.layer02_segment import (
     build_layer02_exterior_transport_frame,
     map_view_from_complete_map,
@@ -37,6 +33,18 @@ from django_apps.asteroid_lab.replay.timeline_dtos import (
 )
 from django_apps.asteroid_lab.replay.timeline_serialization import (
     replay_map_view_from_json_dict,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
+    RimBundleCandidateSet,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
+    IntegratedRimGreedyResult,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_placement import (
+    Layer04RimPlacementResult,
+)
+from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
+    ReconstructionCompleteMap,
 )
 
 # Metadata-only solver runtime base when reconstruction has no field cells (e.g. empty copy).

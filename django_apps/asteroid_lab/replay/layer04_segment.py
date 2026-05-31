@@ -4,14 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from django_apps.asteroid_lab.layers.contracts.candidates import BundleCellRole
-from django_apps.asteroid_lab.layers.contracts.placement_state import PlacementCommitState
-from django_apps.asteroid_lab.layers.contracts.rim_placement import (
-    Layer04PackingObservability,
-    RimBundlePlacement,
-    RimPlacementRejection,
-    RimPlacementRejectReason,
-)
 from django_apps.asteroid_lab.replay.event_types import assert_registered_event_type
 from django_apps.asteroid_lab.replay.pattern_bundle_highlight import (
     METRICS_KEY,
@@ -25,6 +17,16 @@ from django_apps.asteroid_lab.replay.replay_limits import (
 )
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import BundleCellRole
+from shapez2_factory.application.asteroid_lab.layers.contracts.placement_state import (
+    PlacementCommitState,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_placement import (
+    Layer04PackingObservability,
+    RimBundlePlacement,
+    RimPlacementRejection,
+    RimPlacementRejectReason,
+)
 
 LAYER04_PHASE = "layer_04_rim_bundle_placement"
 LAYER04_INSPECTOR_STEP = "layer_04_rim_bundle_placement"

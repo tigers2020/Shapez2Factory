@@ -397,6 +397,7 @@ def generate_candidates(
     seed_projection_attempts = 0
     geometry_rejected = 0
     route_probe_attempts = 0
+    dedupe_duplicates = 0
 
     for anchor in anchors:
         ax, ay = anchor.coord
@@ -410,12 +411,12 @@ def generate_candidates(
             # only in the extractor rotation (identical extension cells) are collapsed; the
             # output-side loop below emits one candidate per free void face instead of
             # tying the output to the variant orientation.
-            deduped_variants = _dedup_by_extension_layout(
-                enumerate_d4(
-                    extractor_offset=entry.extractor_offset,
-                    extension_offsets=entry.extension_offsets,
-                )
+            all_variants = enumerate_d4(
+                extractor_offset=entry.extractor_offset,
+                extension_offsets=entry.extension_offsets,
             )
+            deduped_variants = _dedup_by_extension_layout(all_variants)
+            dedupe_duplicates += len(all_variants) - len(deduped_variants)
             for variant in deduped_variants:
                 extractor_cell = (ax, ay)
                 extension_placements = tuple(
@@ -520,7 +521,7 @@ def generate_candidates(
         route_probe_attempt_count=route_probe_attempts,
         route_probe_succeeded_count=len(normal),
         route_probe_failed_count=route_probe_attempts - len(normal),
-        dedupe_duplicate_count=0,
+        dedupe_duplicate_count=dedupe_duplicates,
         normal_candidate_count=len(normal),
         diagnostic_rejected_count=len(diagnostics),
         budget_skipped_count=0,

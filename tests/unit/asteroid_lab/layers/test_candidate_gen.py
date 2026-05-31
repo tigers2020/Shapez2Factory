@@ -290,22 +290,63 @@ def test_candidate_enumeration_order_equals_d1_sort_key() -> None:
     assert actual == sorted(actual, key=d1_key)
 
 
-def test_golden_normal_pool_is_the_single_aligned_anchor() -> None:
-    # The golden fixture's only route goal is the void cell (8, 4); the only anchor whose
-    # canonical-E footprint lands route_probe_start on (8, 4) is field cell (6, 4).
+def test_golden_normal_pool_stage_funnel() -> None:
+    # STAGE-AWARE contract test (B2.1c-3): the final pool of 2 is not a magic number —
+    # it is the tail of the B2.1c-0 audit funnel. Each assertion below pins a stage so a
+    # future regression localizes the broken stage rather than just "count changed":
+    #
+    #   canonical (2 genes)
+    #     -> D4 expanded (8) -> extension-only deduped (5)   [dedupe_duplicate_count > 0]
+    #     -> boundary survivors (equipment in field)
+    #     -> independent output faces (void-facing, unblocked)
+    #     -> route survivors to goal (8,4)                   [route_probe_succeeded == 2]
+    #
+    # The golden fixture's only route goal is the void cell (8, 4); the only extractor
+    # whose +2 output cell lands in void is field cell (6, 4) facing East, so exactly the
+    # m3e East-line and m0e single-cell bundles survive, m3e first by throughput.
     complete_map = golden_5x5_complete_map()
     result = generate_candidates(
         complete_map=complete_map,
         exterior_plan=minimal_l2_plan_for_golden(),
         gene_catalog=_catalog(),
     )
+    metrics = result.metrics
+
+    # final route-survivor pool (contract).
     assert len(result.normal_candidates) == 2
+    assert metrics.normal_candidate_count == 2
+    assert metrics.route_probe_succeeded_count == 2
     for probed in result.normal_candidates:
         assert probed.candidate.anchor_coord == (6, 4)
         assert probed.candidate.output_dir == Direction.E
         assert probed.candidate.route_probe_start_coord == (8, 4)
     # higher throughput gene (m3e) enumerates before m0e at the same anchor/direction.
     assert [p.candidate.gene_key for p in result.normal_candidates] == ["m3e", "m0e"]
+
+    # funnel evidence: D4 collapsed duplicate extension layouts (m0e's empty-extension
+    # variants), and the boundary/route funnel produced diagnostics.
+    assert metrics.dedupe_duplicate_count > 0
+    assert metrics.diagnostic_rejected_count > 0
+    assert metrics.route_probe_attempt_count >= metrics.route_probe_succeeded_count
+
+
+def test_generate_candidates_is_deterministic() -> None:
+    # D1/D4: identical inputs yield an identical normal-pool candidate_id sequence
+    # (stable sort over a deterministic enumeration order; no set/dict-order leakage).
+    complete_map = golden_5x5_complete_map()
+    plan = minimal_l2_plan_for_golden()
+    first = generate_candidates(
+        complete_map=complete_map, exterior_plan=plan, gene_catalog=_catalog()
+    )
+    second = generate_candidates(
+        complete_map=complete_map, exterior_plan=plan, gene_catalog=_catalog()
+    )
+    assert [p.candidate.candidate_id for p in first.normal_candidates] == [
+        p.candidate.candidate_id for p in second.normal_candidates
+    ]
+    assert [p.candidate.candidate_id for p in first.diagnostic_rejected_candidates] == [
+        p.candidate.candidate_id for p in second.diagnostic_rejected_candidates
+    ]
 
 
 def test_metrics_counts_match_pools() -> None:

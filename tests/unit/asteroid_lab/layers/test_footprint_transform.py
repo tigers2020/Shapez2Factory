@@ -77,9 +77,7 @@ def test_enumerate_d4_straight_line_dedups_mirror_to_four_t3() -> None:
 def test_enumerate_d4_corner_keeps_mirror_distinct_eight_t3() -> None:
     # An asymmetric L (corner) layout: 180-rotation != mirror, so all 8 D4 variants
     # are geometrically distinct and none are deduped.
-    variants = enumerate_d4(
-        extractor_offset=(0, 0), extension_offsets=((-1, 0), (-2, 0), (0, -1))
-    )
+    variants = enumerate_d4(extractor_offset=(0, 0), extension_offsets=((-1, 0), (-2, 0), (0, -1)))
     assert len(variants) == 8
     keys = {v.normalized_key for v in variants}
     assert len(keys) == 8

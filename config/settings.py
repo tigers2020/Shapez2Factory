@@ -187,6 +187,18 @@ ASTEROID_LAB_ARTIFACT_ROOT = BASE_DIR / "var" / "runs"
 ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS = float(
     os.environ.get("ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS", "30")
 )
+ASTEROID_LAB_SUBPROCESS_MAX_RUNTIME_SECONDS = float(
+    os.environ.get(
+        "ASTEROID_LAB_SUBPROCESS_MAX_RUNTIME_SECONDS",
+        os.environ.get("ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS", "30"),
+    )
+)
+ASTEROID_LAB_SOLVER_ASYNC_DEFAULT = os.environ.get(
+    "ASTEROID_LAB_SOLVER_ASYNC_DEFAULT", "1"
+).strip().lower() not in ("0", "false", "no")
+ASTEROID_LAB_STATUS_LOG_TAIL_BYTES = int(
+    os.environ.get("ASTEROID_LAB_STATUS_LOG_TAIL_BYTES", "8192")
+)
 ASTEROID_LAB_CLI_CONSOLE_LOG = os.environ.get(
     "ASTEROID_LAB_CLI_CONSOLE_LOG", "1"
 ).strip().lower() not in ("0", "false", "no")

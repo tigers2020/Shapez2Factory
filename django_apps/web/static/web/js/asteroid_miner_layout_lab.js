@@ -2510,6 +2510,13 @@
       if (wantPlay && cap <= 0) {
         wantPlay = false;
       }
+      if (wantPlay) {
+        if (hasServerReplay) {
+          replayArrayIndex = 0;
+        } else {
+          frame = 0;
+        }
+      }
       isPlaying = wantPlay;
       if (timerId !== null) {
         window.clearInterval(timerId);
@@ -2518,11 +2525,21 @@
       if (isPlaying && cap > 0) {
         timerId = window.setInterval(function () {
           if (hasServerReplay) {
+            if (replayArrayIndex >= replayFrames.length - 1) {
+              replayArrayIndex = Math.max(0, replayFrames.length - 1);
+              applyFrame();
+              setPlaying(false);
+              return;
+            }
             replayArrayIndex += 1;
-            if (replayArrayIndex >= replayFrames.length) replayArrayIndex = 0;
           } else {
+            if (frame >= TOTAL_FRAMES) {
+              frame = TOTAL_FRAMES;
+              applyFrame();
+              setPlaying(false);
+              return;
+            }
             frame += 1;
-            if (frame >= TOTAL_FRAMES) frame = 0;
           }
           applyFrame();
         }, 220);
@@ -3564,6 +3581,115 @@
     let replayRunFeedback = null;
     renderReplayRunStatus(replayRunFeedback);
 
+    function labReplayFetchUrlForRun(projectSlug, runId) {
+      if (!projectSlug || runId == null) {
+        return "";
+      }
+      return (
+        "/asteroid-miner-layout/p/" +
+        encodeURIComponent(String(projectSlug)) +
+        "/solver-runs/" +
+        encodeURIComponent(String(runId)) +
+        "/lab-replay/"
+      );
+    }
+
+    function applyCompletedSolverStatus(statusData) {
+      replayRunFeedback = {
+        solver_run_id: statusData.solver_run_id,
+        validation_passed: statusData.validation_passed,
+        run_summary: statusData.run_summary || null,
+      };
+      renderReplayRunStatus(replayRunFeedback);
+      if (statusData.run_summary) {
+        upsertRunSummary(statusData.run_summary);
+      }
+      const slug =
+        rootEl && rootEl.dataset && rootEl.dataset.labProjectSlug
+          ? String(rootEl.dataset.labProjectSlug)
+          : "";
+      const replayUrl = labReplayFetchUrlForRun(slug, statusData.solver_run_id);
+      if (!replayUrl) {
+        return;
+      }
+      fetch(replayUrl, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      })
+        .then(function (res) {
+          return res
+            .json()
+            .catch(function () {
+              return { ok: false };
+            })
+            .then(function (replayPayload) {
+              return { res: res, replayPayload: replayPayload };
+            });
+        })
+        .then(function (bundle) {
+          if (!bundle.res.ok || bundle.replayPayload.ok === false) {
+            replayRunFeedback = { error_code: "replay_fetch_failed" };
+            renderReplayRunStatus(replayRunFeedback);
+            return;
+          }
+          const frames = Array.isArray(bundle.replayPayload.frames)
+            ? bundle.replayPayload.frames
+            : [];
+          replaceLabReplayPayload(
+            {
+              ok: true,
+              solver_run_id: statusData.solver_run_id,
+              validation_passed: statusData.validation_passed,
+              run_summary: statusData.run_summary || null,
+              lab_replay_frames_json: frames,
+              replay_track_metrics: bundle.replayPayload.replay_track_metrics || {},
+            },
+            { seekLastFrame: true }
+          );
+        })
+        .catch(function () {
+          replayRunFeedback = { error_code: "replay_fetch_failed" };
+          renderReplayRunStatus(replayRunFeedback);
+        });
+    }
+
+    function pollSolverRunStatus(statusUrl, onTerminal) {
+      const pollIntervalMs = 1500;
+      function tick() {
+        fetch(statusUrl, {
+          method: "GET",
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        })
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return { ok: false };
+              })
+              .then(function (data) {
+                return { res: res, data: data };
+              });
+          })
+          .then(function (bundle) {
+            const data = bundle.data || {};
+            if (data.status === "running") {
+              replayRunFeedback = { running: true, log_tail: data.log_tail || "" };
+              renderReplayRunStatus(replayRunFeedback);
+              window.setTimeout(tick, pollIntervalMs);
+              return;
+            }
+            onTerminal(data, bundle.res);
+          })
+          .catch(function () {
+            replayRunFeedback = { error_code: "network_error" };
+            renderReplayRunStatus(replayRunFeedback);
+          });
+      }
+      tick();
+    }
+
     const runSolverBtn = document.getElementById("lab-header-run");
     runSolverBtn?.addEventListener("click", function () {
       const runUrl =
@@ -3622,6 +3748,36 @@
         .then(function (bundle) {
           const res = bundle.res;
           const data = bundle.data || {};
+          if (res.status === 202 && typeof data.status_url === "string" && data.status_url) {
+            pollSolverRunStatus(data.status_url, function (statusData, statusRes) {
+              if (!statusRes.ok || statusData.ok === false) {
+                replayRunFeedback = {
+                  error_code:
+                    typeof statusData.error_code === "string"
+                      ? statusData.error_code
+                      : "request_failed",
+                };
+                renderReplayRunStatus(replayRunFeedback);
+                return;
+              }
+              if (statusData.status === "failed") {
+                replayRunFeedback = {
+                  error_code:
+                    typeof statusData.error_code === "string"
+                      ? statusData.error_code
+                      : "solver_failed",
+                  solver_run_id: statusData.solver_run_id,
+                };
+                renderReplayRunStatus(replayRunFeedback);
+                if (statusData.run_summary) {
+                  upsertRunSummary(statusData.run_summary);
+                }
+                return;
+              }
+              applyCompletedSolverStatus(statusData);
+            });
+            return;
+          }
           if (!res.ok || data.ok === false) {
             replayRunFeedback = {
               error_code:

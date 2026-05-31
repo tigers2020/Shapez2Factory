@@ -28,6 +28,11 @@ urlpatterns = [
         name="asteroid-miner-layout-project-run-solver",
     ),
     path(
+        "asteroid-miner-layout/p/<slug:slug>/solver-runs/<int:run_id>/status/",
+        views.asteroid_miner_layout_project_solver_run_status,
+        name="asteroid-miner-layout-project-solver-run-status",
+    ),
+    path(
         "asteroid-miner-layout/p/<slug:slug>/solver-runs/<int:run_id>/lab-replay/",
         views.asteroid_miner_layout_project_solver_run_lab_replay,
         name="asteroid-miner-layout-project-solver-run-lab-replay",

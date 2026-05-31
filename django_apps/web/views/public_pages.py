@@ -34,6 +34,9 @@ from django_apps.asteroid_lab.observability.lab_perf_trace import (
     record_perf_ms,
     serialized_json_utf8_bytes,
 )
+from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
+    lab_replay_frames_are_renderable,
+)
 from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
     upsert_map_input_for_project,
@@ -41,9 +44,6 @@ from django_apps.asteroid_lab.services.input_service import (
 from django_apps.asteroid_lab.services.lab_map_reset_service import (
     LabMapResetErrorCode,
     reset_project_map_to_inspection_clean,
-)
-from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
-    lab_replay_frames_are_renderable,
 )
 from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
     is_cache_summary_valid,
@@ -60,8 +60,13 @@ from django_apps.asteroid_lab.services.project_service import (
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
 )
+from django_apps.asteroid_lab.services.solver_run_reconcile import (
+    SolverRunReconcileResult,
+    reconcile_solver_run,
+)
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
     SolverRuntimeEntryErrorCode,
+    enqueue_solver_run_for_project,
     entry_result_to_json_dict,
     run_solver_runtime_for_project,
 )
@@ -377,6 +382,30 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
         )
 
 
+def _solver_async_enabled(request: HttpRequest) -> bool:
+    if request.GET.get("wait") == "1":
+        return False
+    return bool(getattr(settings, "ASTEROID_LAB_SOLVER_ASYNC_DEFAULT", True))
+
+
+def _reconcile_result_to_status_body(result: SolverRunReconcileResult) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "ok": result.ok,
+        "solver_run_id": result.solver_run_id,
+        "status": result.status,
+        "lifecycle_status": result.lifecycle_status,
+        "log_tail": result.log_tail,
+        "validation_passed": result.validation_passed,
+    }
+    if result.run_summary is not None:
+        body["run_summary"] = result.run_summary
+    if result.error_code is not None:
+        body["error_code"] = result.error_code
+    if result.message is not None:
+        body["message"] = result.message
+    return body
+
+
 def _run_solver_post_traced(
     request: HttpRequest,
     *,
@@ -413,11 +442,63 @@ def _run_solver_post_traced(
                 status=400,
             )
 
+        snapshot_payload = build_game_data_snapshot_payload()
+        if _solver_async_enabled(request):
+            def _status_url(run_id: int) -> str:
+                return reverse(
+                    "web:asteroid-miner-layout-project-solver-run-status",
+                    kwargs={"slug": slug, "run_id": run_id},
+                )
+
+            enqueue_result = enqueue_solver_run_for_project(
+                int(project.pk),
+                config=run_config,
+                game_data_snapshot=snapshot_payload,
+                status_url_builder=_status_url,
+            )
+            cli_trace["solver_run_id"] = enqueue_result.solver_run_id
+            if enqueue_result.error_code == SolverRuntimeEntryErrorCode.ACTIVE_RUN_EXISTS:
+                cli_trace.update(exit=1, ok=False)
+                return JsonResponse(
+                    {
+                        "ok": False,
+                        "error_code": enqueue_result.error_code.value,
+                        "solver_run_id": enqueue_result.solver_run_id,
+                        "message": enqueue_result.message,
+                    },
+                    status=409,
+                )
+            if enqueue_result.error_code is not None:
+                cli_trace.update(exit=1, ok=False)
+                status = 400
+                if enqueue_result.error_code == SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND:
+                    status = 404
+                return JsonResponse(
+                    {
+                        "ok": False,
+                        "error_code": enqueue_result.error_code.value,
+                        "solver_run_id": enqueue_result.solver_run_id,
+                        "message": enqueue_result.message,
+                    },
+                    status=status,
+                )
+            cli_trace.update(exit=0, ok=True)
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "solver_run_id": enqueue_result.solver_run_id,
+                    "run_key": enqueue_result.run_key,
+                    "status": enqueue_result.status,
+                    "status_url": enqueue_result.status_url,
+                },
+                status=202,
+            )
+
         with perf_span("solver_runtime_ms"):
             result = run_solver_runtime_for_project(
                 int(project.pk),
                 config=run_config,
-                game_data_snapshot=build_game_data_snapshot_payload(),
+                game_data_snapshot=snapshot_payload,
                 game_data_provenance=game_data_build.provenance,
                 catalog_slice=game_data_build.catalog_slice,
             )
@@ -458,6 +539,29 @@ def _run_solver_post_traced(
             return JsonResponse(body, status=400)
         cli_trace.update(exit=0, ok=True)
         return JsonResponse(body, status=200)
+
+
+@require_GET
+def asteroid_miner_layout_project_solver_run_status(
+    request: HttpRequest,
+    slug: str,
+    run_id: int,
+) -> JsonResponse:
+    """GET: poll async solver run; artifact-first reconcile (PR-CLI-7)."""
+
+    del request
+    project = AsteroidProject.objects.filter(slug=slug).first()
+    if project is None:
+        return JsonResponse({"ok": False, "error": "project_not_found"}, status=404)
+    run = SolverRun.objects.filter(pk=int(run_id), project_id=int(project.pk)).first()
+    if run is None:
+        return JsonResponse({"ok": False, "error": "solver_run_not_found"}, status=404)
+    reconcile_result = reconcile_solver_run(int(run.pk))
+    body = _reconcile_result_to_status_body(reconcile_result)
+    http_status = 200
+    if reconcile_result.status == SolverRun.RunStatus.RUNNING:
+        http_status = 200
+    return JsonResponse(body, status=http_status)
 
 
 @require_GET

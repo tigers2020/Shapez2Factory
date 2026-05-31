@@ -13,8 +13,10 @@ from typing import Any
 from django.conf import settings
 
 from django_apps.asteroid_lab.services.subprocess_stream_tee import (
+    DetachedSubprocessHandle,
     SubprocessTeeResult,
     run_subprocess_with_tee,
+    spawn_subprocess_with_log_tee,
 )
 
 CLI_MODULE = "shapez2_factory.interfaces.cli.asteroid_solve"
@@ -48,6 +50,16 @@ class SolverSubprocessResult:
     artifact_dir: Path
     subprocess_log_path: Path
     completed: SubprocessTeeResult
+
+
+@dataclass(frozen=True, slots=True)
+class SolverSubprocessSpawnResult:
+    """Detached subprocess handle (caller must not wait on the child)."""
+
+    run_key: str
+    artifact_dir: Path
+    sidecar_log_path: Path
+    handle: DetachedSubprocessHandle
 
 
 def resolve_subprocess_artifact_dir(
@@ -167,6 +179,36 @@ def run_solver_subprocess(
     )
 
 
+def spawn_solver_subprocess_detached(
+    request: SolverSubprocessRequest,
+    *,
+    cwd: Path | None = None,
+    tee_to_parent_stderr: bool = False,
+) -> SolverSubprocessSpawnResult:
+    """Spawn the CLI without blocking; logs go to the sidecar path until finalize."""
+
+    artifact_dir = resolve_subprocess_artifact_dir(
+        allowed_root=request.allowed_root,
+        artifact_root=request.artifact_root,
+        run_key=request.run_key,
+    )
+    copy_path, snapshot_path = _write_inputs(request)
+    sidecar_log_path = request.artifact_root / ".subprocess_logs" / f"{request.run_key}.log"
+    args = build_solver_cli_args(request, copy_path=copy_path, snapshot_path=snapshot_path)
+    handle = spawn_subprocess_with_log_tee(
+        args,
+        log_path=sidecar_log_path,
+        cwd=Path(cwd or settings.BASE_DIR),
+        tee_to_parent_stderr=tee_to_parent_stderr,
+    )
+    return SolverSubprocessSpawnResult(
+        run_key=request.run_key,
+        artifact_dir=artifact_dir,
+        sidecar_log_path=sidecar_log_path,
+        handle=handle,
+    )
+
+
 __all__ = [
     "CLI_MODULE",
     "SolverSubprocessError",
@@ -176,4 +218,6 @@ __all__ = [
     "default_artifact_root",
     "resolve_subprocess_artifact_dir",
     "run_solver_subprocess",
+    "SolverSubprocessSpawnResult",
+    "spawn_solver_subprocess_detached",
 ]

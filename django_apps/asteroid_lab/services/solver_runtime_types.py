@@ -22,6 +22,7 @@ class SolverRuntimeEntryErrorCode(StrEnum):
     INVALID_MAX_PLACEMENT_GOAL_COUNT = "invalid_max_placement_goal_count"
     RTTP_VALIDATION_FAILED = "rttp_validation_failed"
     SOLVER_SUBPROCESS_FAILED = "solver_subprocess_failed"
+    ACTIVE_RUN_EXISTS = "active_run_exists"
 
 
 def empty_milestone_track_metrics() -> dict[str, Any]:
@@ -35,6 +36,19 @@ def empty_milestone_track_metrics() -> dict[str, Any]:
         "diagnostic_reason": None,
         "source_solver_run_id": None,
     }
+
+
+@dataclass(frozen=True, slots=True)
+class SolverEnqueueResult:
+    """Result of enqueueing a detached subprocess run (HTTP 202)."""
+
+    ok: bool
+    solver_run_id: int | None
+    run_key: str | None
+    status: str | None
+    status_url: str | None
+    error_code: SolverRuntimeEntryErrorCode | None = None
+    message: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +69,7 @@ class SolverRuntimeEntryResult:
 
 
 __all__ = [
+    "SolverEnqueueResult",
     "SolverRuntimeEntryErrorCode",
     "SolverRuntimeEntryResult",
     "empty_milestone_track_metrics",

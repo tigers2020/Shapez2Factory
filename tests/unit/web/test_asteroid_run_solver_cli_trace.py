@@ -6,7 +6,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.solver_runtime_types import SolverRuntimeEntryResult
@@ -15,6 +15,7 @@ from django_apps.web.views import public_pages
 pytestmark = pytest.mark.django_db
 
 
+@override_settings(ASTEROID_LAB_SOLVER_ASYNC_DEFAULT=False)
 def test_http_run_solver_emits_cli_trace(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

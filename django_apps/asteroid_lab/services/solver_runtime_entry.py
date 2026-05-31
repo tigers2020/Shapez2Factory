@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import sys
 import uuid
+from pathlib import Path
 from typing import Any, cast
 
 from django.conf import settings
+from django.utils import timezone
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.artifact_ingest import (
@@ -27,7 +29,14 @@ from django_apps.asteroid_lab.services.solver_run_lab_summary import (
     lab_run_summary_from_orm,
     validation_passed_from_solver_summary,
 )
+from django_apps.asteroid_lab.services.solver_run_registry import (
+    ActiveRunExistsError,
+    create_running_solver_run,
+    planned_artifact_dir,
+    subprocess_sidecar_log_path,
+)
 from django_apps.asteroid_lab.services.solver_runtime_types import (
+    SolverEnqueueResult,
     SolverRuntimeEntryErrorCode,
     SolverRuntimeEntryResult,
     empty_milestone_track_metrics,
@@ -37,6 +46,7 @@ from django_apps.asteroid_lab.services.solver_subprocess_runner import (
     SolverSubprocessRequest,
     default_artifact_root,
     run_solver_subprocess,
+    spawn_solver_subprocess_detached,
 )
 
 
@@ -69,38 +79,20 @@ def _run_subprocess_runtime_for_project(
 ) -> SolverRuntimeEntryResult:
     resolved_run_key = (run_key or "").strip() or f"asteroid-{project_id}-{uuid.uuid4().hex}"
     artifact_root = default_artifact_root()
-    runtime_config = config or {}
-    verbose = bool(
-        runtime_config.get("cli_verbose")
-        or getattr(settings, "ASTEROID_LAB_CLI_VERBOSE", False)
-        or getattr(settings, "DEBUG", False)
-    )
     tee_to_parent_stderr = bool(
         getattr(settings, "ASTEROID_LAB_CLI_SUBPROCESS_TEE", True) and sys.stderr.isatty()
     )
-    throughput_target_percent: int | None = None
-    raw_percent = runtime_config.get("throughput_target_percent")
-    if raw_percent is not None:
-        try:
-            throughput_target_percent = int(raw_percent)
-        except (TypeError, ValueError):
-            throughput_target_percent = None
     try:
         if not isinstance(game_data_snapshot, dict):
             raise SolverSubprocessError("game_data_snapshot payload is required")
         run_result = run_solver_subprocess(
-            SolverSubprocessRequest(
-                run_key=resolved_run_key,
-                copy_code=str(inp.copy_code or ""),
-                game_data_snapshot=dict(game_data_snapshot),
+            _build_subprocess_request(
+                resolved_run_key=resolved_run_key,
+                inp=inp,
                 artifact_root=artifact_root,
-                allowed_root=artifact_root,
-                timeout_seconds=float(
-                    getattr(settings, "ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS", 30.0)
-                ),
-                replace_existing=replace_existing_run,
-                verbose=verbose,
-                throughput_target_percent=throughput_target_percent,
+                replace_existing_run=replace_existing_run,
+                config=config,
+                game_data_snapshot=dict(game_data_snapshot),
             ),
             tee_to_parent_stderr=tee_to_parent_stderr,
         )
@@ -132,6 +124,167 @@ def _run_subprocess_runtime_for_project(
         validation_passed=validation_passed_from_solver_summary(solver_summary),
         error_code=None if ok else SolverRuntimeEntryErrorCode.SOLVER_SUBPROCESS_FAILED,
         message=None if ok else "Solver subprocess artifact ingested as failed.",
+    )
+
+
+def _build_subprocess_request(
+    *,
+    resolved_run_key: str,
+    inp: m.AsteroidMapInput,
+    artifact_root: Path,
+    replace_existing_run: bool,
+    config: dict[str, Any] | None,
+    game_data_snapshot: dict[str, Any],
+) -> SolverSubprocessRequest:
+    runtime_config = config or {}
+    verbose = bool(
+        runtime_config.get("cli_verbose")
+        or getattr(settings, "ASTEROID_LAB_CLI_VERBOSE", False)
+        or getattr(settings, "DEBUG", False)
+    )
+    throughput_target_percent: int | None = None
+    raw_percent = runtime_config.get("throughput_target_percent")
+    if raw_percent is not None:
+        try:
+            throughput_target_percent = int(raw_percent)
+        except (TypeError, ValueError):
+            throughput_target_percent = None
+    return SolverSubprocessRequest(
+        run_key=resolved_run_key,
+        copy_code=str(inp.copy_code or ""),
+        game_data_snapshot=dict(game_data_snapshot),
+        artifact_root=artifact_root,
+        allowed_root=artifact_root,
+        timeout_seconds=float(
+            getattr(settings, "ASTEROID_LAB_SUBPROCESS_TIMEOUT_SECONDS", 30.0)
+        ),
+        replace_existing=replace_existing_run,
+        verbose=verbose,
+        throughput_target_percent=throughput_target_percent,
+    )
+
+
+def enqueue_solver_run_for_project(
+    project_id: int,
+    *,
+    run_key: str | None = None,
+    replace_existing_run: bool = False,
+    config: dict[str, Any] | None = None,
+    game_data_snapshot: Any | None = None,
+    status_url_builder: Any | None = None,
+) -> SolverEnqueueResult:
+    """Spawn a detached CLI subprocess and return immediately (HTTP 202 path)."""
+
+    if not m.AsteroidProject.objects.filter(pk=int(project_id)).exists():
+        return SolverEnqueueResult(
+            ok=False,
+            solver_run_id=None,
+            run_key=None,
+            status=None,
+            status_url=None,
+            error_code=SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND,
+        )
+
+    inp = _latest_map_input(int(project_id))
+    if inp is None:
+        return SolverEnqueueResult(
+            ok=False,
+            solver_run_id=None,
+            run_key=None,
+            status=None,
+            status_url=None,
+            error_code=SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
+        )
+
+    if not isinstance(game_data_snapshot, dict):
+        return SolverEnqueueResult(
+            ok=False,
+            solver_run_id=None,
+            run_key=None,
+            status=None,
+            status_url=None,
+            error_code=SolverRuntimeEntryErrorCode.SOLVER_SUBPROCESS_FAILED,
+            message="game_data_snapshot payload is required",
+        )
+
+    resolved_run_key = (run_key or "").strip() or f"asteroid-{project_id}-{uuid.uuid4().hex}"
+    artifact_root = default_artifact_root()
+    artifact_dir = planned_artifact_dir(artifact_root=artifact_root, run_key=resolved_run_key)
+    sidecar_log = subprocess_sidecar_log_path(artifact_root=artifact_root, run_key=resolved_run_key)
+
+    try:
+        spawn_config = {
+            "async_spawn": True,
+            "planned_artifact_dir": str(artifact_dir.resolve()),
+            "sidecar_log_path": str(sidecar_log.resolve()),
+            "spawned_at": timezone.now().isoformat(),
+        }
+        run = create_running_solver_run(
+            project_id=int(project_id),
+            run_key=resolved_run_key,
+            spawn_config=spawn_config,
+        )
+    except ActiveRunExistsError as exc:
+        return SolverEnqueueResult(
+            ok=False,
+            solver_run_id=None,
+            run_key=resolved_run_key,
+            status=None,
+            status_url=None,
+            error_code=SolverRuntimeEntryErrorCode.ACTIVE_RUN_EXISTS,
+            message=str(exc),
+        )
+
+    tee_to_parent_stderr = bool(
+        getattr(settings, "ASTEROID_LAB_CLI_SUBPROCESS_TEE", True) and sys.stderr.isatty()
+    )
+    request = _build_subprocess_request(
+        resolved_run_key=resolved_run_key,
+        inp=inp,
+        artifact_root=artifact_root,
+        replace_existing_run=replace_existing_run,
+        config=config,
+        game_data_snapshot=dict(game_data_snapshot),
+    )
+    try:
+        spawn_result = spawn_solver_subprocess_detached(
+            request,
+            tee_to_parent_stderr=tee_to_parent_stderr,
+        )
+    except SolverSubprocessError as exc:
+        run.status = m.SolverRun.RunStatus.FAILED
+        run.lifecycle_status = "failed"
+        run.finished_at = timezone.now()
+        cfg = dict(run.config_json) if isinstance(run.config_json, dict) else {}
+        cfg["reconcile_error_code"] = SolverRuntimeEntryErrorCode.SOLVER_SUBPROCESS_FAILED.value
+        cfg["reconcile_message"] = str(exc)
+        run.config_json = cfg
+        run.save()
+        return SolverEnqueueResult(
+            ok=False,
+            solver_run_id=int(run.pk),
+            run_key=resolved_run_key,
+            status=m.SolverRun.RunStatus.FAILED,
+            status_url=None,
+            error_code=SolverRuntimeEntryErrorCode.SOLVER_SUBPROCESS_FAILED,
+            message=str(exc),
+        )
+
+    cfg = dict(run.config_json) if isinstance(run.config_json, dict) else {}
+    cfg["subprocess_pid"] = spawn_result.handle.pid
+    run.config_json = cfg
+    run.save(update_fields=["config_json"])
+
+    status_url: str | None = None
+    if status_url_builder is not None:
+        status_url = str(status_url_builder(int(run.pk)))
+
+    return SolverEnqueueResult(
+        ok=True,
+        solver_run_id=int(run.pk),
+        run_key=resolved_run_key,
+        status=m.SolverRun.RunStatus.RUNNING,
+        status_url=status_url,
     )
 
 
@@ -272,8 +425,10 @@ def entry_result_to_json_dict(
 
 
 __all__ = [
+    "SolverEnqueueResult",
     "SolverRuntimeEntryErrorCode",
     "SolverRuntimeEntryResult",
+    "enqueue_solver_run_for_project",
     "entry_result_to_json_dict",
     "run_solver_runtime_for_project",
 ]

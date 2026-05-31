@@ -211,6 +211,16 @@ Depends: CLI-4 · File: [`pr-cli-5-db-demotion-replay.md`](pr-cli-5-db-demotion-
 - [~] Step 7 — ruff + mypy + full gate + recon narrow (full pytest/ruff/black green; source-focused mypy green; repo-wide mypy remains baseline-red)
 - [~] Done: artifact-first replay with DB fallback; new columns; fields documented as cache; full pytest gate green. Repo-wide mypy baseline remains open.
 
+## PR-CLI-7 — Async solver job (detach + polling + reap)
+Depends: CLI-6 · File: [`pr-cli-7-async-solver-job.md`](pr-cli-7-async-solver-job.md)
+
+- [x] P0 invariant — completion = artifact-validation-first (`ARTIFACT_WRITTEN` + hash), not process-exit-first
+- [x] P0 — one-active-run per project (409); `reconcile_solver_run` + `select_for_update`; shared by status GET + `run_solver_reap`
+- [x] P0 — POST 202, GET status, Lab UI poll; no mid-run replay ingest
+- [x] P0 — required tests (202, 409, no `.tmp` ingest, single ingest, race, timeout)
+- [ ] P1 — `.live/progress.jsonl` + events poll (deferred)
+- [ ] P2 — SSE (deferred)
+
 ## PR-CLI-6 — `subprocess_only` default + viewer import gate (Option A)
 Depends: CLI-5 (ideally CLI-2e) · File: [`pr-cli-6-subprocess-only-default.md`](pr-cli-6-subprocess-only-default.md)
 

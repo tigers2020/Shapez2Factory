@@ -40,7 +40,11 @@ _CASES = [
         f"{_DJ}.reconstruction.confidence",
         f"{_CORE}.reconstruction.confidence",
     ),
-    ("external_reachable", f"{_DJ}.reconstruction.flood_fill", f"{_CORE}.reconstruction.flood_fill"),
+    (
+        "external_reachable",
+        f"{_DJ}.reconstruction.flood_fill",
+        f"{_CORE}.reconstruction.flood_fill",
+    ),
     ("stamp_islands_uniform", f"{_DJ}.reconstruction.island", f"{_CORE}.reconstruction.island"),
     (
         "close_diagonal_leaks",

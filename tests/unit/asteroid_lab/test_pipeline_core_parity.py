@@ -1,11 +1,9 @@
-"""PR-CLI-2f Step 2 (tests-first) — core decode/cleanup/reconstruction parity with the Django path.
+"""PR-CLI-2f — core decode/cleanup/reconstruction parity with the Django path.
 
-Oracle: the existing Django pipeline (``decode_shapez_copy_string`` → ``deconstruct_snapshot`` →
+Oracle: Django pipeline (``decode_shapez_copy_string`` → ``deconstruct_snapshot`` →
 ``run_topology_reconstruction``) on a recorded reconstruction fixture line. The relocated **core**
 pipeline must produce value-identical ``DecodedBlueprintSnapshotDTO`` / ``CleanupResult`` /
-``ReconstructionResult`` (these DTOs already live in core, so ``==`` compares by value across paths).
-
-RED until PR-CLI-2f Step 4: the core modules do not exist yet, so the in-test core import raises.
+``ReconstructionResult`` (DTOs live in core; ``==`` compares by value across paths).
 """
 
 from __future__ import annotations
@@ -20,6 +18,8 @@ from django_apps.asteroid_lab.reconstruction.pipeline import (
 )
 from django_apps.asteroid_lab.reconstruction.topology_contract import (
     decode_shapez_copy_string as dj_decode,
+)
+from django_apps.asteroid_lab.reconstruction.topology_contract import (
     load_reconstruction_fixture_line_pairs,
 )
 

@@ -1,10 +1,8 @@
-"""PR-CLI-2f Step 2 (tests-first) — core pipeline must not import the Django boundary sink (BA-1).
+"""PR-CLI-2f — core pipeline must not import the Django boundary sink (BA-1).
 
-The relocated core decode/cleanup/reconstruction modules MUST NOT import ``django``, ``django_apps``,
-``config``, or the settings/file-I/O sink ``observability.boundary_jsonl``. Boundary observability is
-delivered via an injected ``BoundaryTraceSink`` (PR-CLI-2f Step 3); the Django sink stays Django-side.
-
-RED until PR-CLI-2f Step 4: the target core files do not exist yet, so the existence assertion fails.
+The relocated core decode/cleanup/reconstruction modules MUST NOT import ``django``,
+``django_apps``, ``config``, or the settings/file-I/O sink ``observability.boundary_jsonl``.
+Boundary observability uses an injected ``BoundaryTraceSink``; the Django sink stays Django-side.
 """
 
 from __future__ import annotations

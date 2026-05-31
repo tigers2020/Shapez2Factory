@@ -1,8 +1,7 @@
-"""PR-CLI-2f Step 2 (tests-first) — core decode/cleanup/reconstruction import Django-free (BA-1).
+"""PR-CLI-2f — core decode/cleanup/reconstruction import Django-free (BA-1).
 
-These modules do not exist yet (they are relocated from ``django_apps`` in PR-CLI-2f Step 4), so this
-test is RED until the move lands. After the move it proves the relocated pipeline imports with
-``DJANGO_SETTINGS_MODULE`` unset and pulls **no** ``django`` module into ``sys.modules``.
+Proves the relocated pipeline imports with ``DJANGO_SETTINGS_MODULE`` unset and pulls **no**
+``django`` module into ``sys.modules``.
 
 Target core module paths are fixed by the PR-CLI-2f plan
 (``docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/pr-cli-2f-decode-cleanup-reconstruction-move.md``).

@@ -20,6 +20,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.candidate_gen import (  # noqa: E501
     edge_rotation_k,
+    free_void_output_sides,
     generate_candidates,
     output_dir_rank,
     rotate_offset_east_to,
@@ -163,36 +164,54 @@ def test_rotation_transforms_coordinates_not_r_only_t2() -> None:
     assert rotate_offset_east_to((-3, 0), "north") == (0, 3)
 
 
-def test_d4_enumeration_wires_full_footprint_and_per_placement_r() -> None:
-    # B2.1c-1: candidate gen now enumerates full-footprint D4 variants (output TIED to
-    # orientation) instead of iterating only the anchor's ``void_dirs``. Anchor (6, 5)
-    # has external void only to the East, yet the South-oriented m3e variant is now
-    # emitted: its equipment {(6,5),(6,4),(6,3),(6,2)} stays on field (R2 ok), but its
-    # output stub lands on field cell (6, 6) so R3 rejects it. The miner R and EVERY
-    # extension R equal the transformed building R for South (edge_rotation_k=1), proving
-    # per-placement R flows from the variant cells, not the NESW ordering rank.
+def test_free_void_output_sides_excludes_extension_and_non_void() -> None:
+    # B2.1c-2 / T7 helper: the route-eligible output sides of an extractor are the
+    # cardinal sides whose stub cell is (a) not occupied by an extension cell and
+    # (b) in external void. A synthetic extractor at (5, 5) with one extension to its
+    # west blocks the West face; only East and North stubs are placed in void.
+    extractor = (5, 5)
+    equipment = frozenset({(5, 5), (4, 5)})  # extension west of the extractor
+    external_void = frozenset({(6, 5), (5, 4)})  # East stub (6,5) + North stub (5,4)
+    sides = free_void_output_sides(extractor, equipment, external_void)
+    assert set(sides) == {"east", "north"}
+    assert "west" not in sides  # blocked by the extension cell (4, 5)
+    assert "south" not in sides  # stub (5, 6) is not in external void
+
+
+def test_independent_output_face_diverges_miner_and_extension_r_t7() -> None:
+    # B2.1c-2 / T7: the extractor output side is INDEPENDENT of the bundle orientation.
+    # A candidate is anchor × gene × bundle_orientation × output_side. Here the East-line
+    # m3e variant (extensions {(6,5),(5,5),(4,5),(3,5)}, orientation k=0 so extension R=0)
+    # is emitted with a SOUTH output face at anchor (6, 5). The miner R follows the output
+    # side (edge_rotation_k("south")=1) while the extension R keeps the bundle orientation
+    # (R=0): they DIVERGE, which the prior "output tied to orientation" wiring could not
+    # express. The south stub (6, 6) is field, so R3 rejects it as a diagnostic.
     complete_map = golden_5x5_complete_map()
     result = generate_candidates(
         complete_map=complete_map,
         exterior_plan=minimal_l2_plan_for_golden(),
         gene_catalog=_catalog(),
     )
-    south_m3e = next(
+    diverged = next(
         probed
         for probed in result.diagnostic_rejected_candidates
         if probed.candidate.anchor_coord == (6, 5)
         and probed.candidate.gene_key == "m3e"
         and probed.candidate.output_dir == Direction.S
+        and probed.candidate.mining_occupied_cells == frozenset({(6, 5), (5, 5), (4, 5), (3, 5)})
     )
-    cand = south_m3e.candidate
-    assert south_m3e.reject_reason == CandidateRejectReason.TRANSPORT_STUB_NOT_IN_VOID
+    cand = diverged.candidate
+    assert diverged.reject_reason == CandidateRejectReason.TRANSPORT_STUB_NOT_IN_VOID
+    # miner R follows the independent output side (south -> 1)
     assert cand.rotation == 1
-    assert cand.mining_occupied_cells == frozenset({(6, 5), (6, 4), (6, 3), (6, 2)})
     miner = next(pl for pl in cand.placements if pl.cell_role == BundleCellRole.MINER)
     assert miner.rotation == 1
+    # extensions keep the bundle orientation (east line -> R 0)
     extensions = [pl for pl in cand.placements if pl.cell_role == BundleCellRole.EXTENSION]
     assert len(extensions) == 3
-    assert all(pl.rotation == 1 for pl in extensions)
+    assert all(pl.rotation == 0 for pl in extensions)
+    # T7 divergence: per-placement R differs between miner and extensions.
+    assert miner.rotation != extensions[0].rotation
 
 
 # ---------------------------------------------------------------------------

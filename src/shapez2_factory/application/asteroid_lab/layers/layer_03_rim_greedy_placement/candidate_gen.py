@@ -57,9 +57,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transpor
     WeightedTransportRouteDomain,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.footprint_transform import (  # noqa: E501
+    Cell,
+    FootprintVariant,
     enumerate_d4,
-    mirror_xy,
-    rotate_xy,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.rim_anchor_scan import (  # noqa: E501
     RimAnchor,
@@ -170,24 +170,53 @@ def rotate_offset_east_to(offset: Coord, edge: str) -> Coord:
     raise ValueError(msg)
 
 
-def _transform_offset(dx: int, dy: int, *, mirrored: bool, k: int) -> Coord:
-    """Transform a canonical ``(dx, dy)`` offset like a footprint cell (§T): mirror across
-    the vertical axis (``"x"``) when ``mirrored`` is set, then rotate ``k`` clockwise
-    quarter-turns. Mirrors :func:`footprint_transform._transform_cell` without the ``R``.
+def free_void_output_sides(
+    extractor_cell: Coord,
+    equipment_cells: frozenset[Coord],
+    external_void: frozenset[Coord],
+) -> tuple[str, ...]:
+    """Cardinal output sides of ``extractor_cell`` eligible for a transport stub (§T/T7).
+
+    A side is eligible when its stub cell is (a) NOT occupied by an equipment
+    (extractor/extension) cell and (b) lies in ``external_void`` (R3). The extractor
+    output side is independent of the bundle orientation (T7); this helper expresses the
+    free-void predicate for the four cardinal faces. Sides are returned in the canonical
+    ``_CARDINAL_DELTA`` order (north, east, south, west).
     """
 
-    if mirrored:
-        dx, dy = mirror_xy(dx, dy, "x")
-    return rotate_xy(dx, dy, k)
+    ax, ay = extractor_cell
+    sides: list[str] = []
+    for edge, (ddx, ddy) in _CARDINAL_DELTA.items():
+        stub_cell = (ax + ddx, ay + ddy)
+        if stub_cell in equipment_cells:
+            continue
+        if stub_cell not in external_void:
+            continue
+        sides.append(edge)
+    return tuple(sides)
 
 
-def _cardinal_from_unit_vector(vec: Coord) -> str:
-    """Map an axis-aligned output vector to its cardinal edge name (y-down frame)."""
+def _dedup_by_extension_layout(
+    variants: tuple[FootprintVariant, ...],
+) -> tuple[FootprintVariant, ...]:
+    """Keep the first variant per distinct extension-cell layout (§T/T7).
 
-    dx, dy = vec
-    if abs(dx) >= abs(dy):
-        return "east" if dx > 0 else "west"
-    return "south" if dy > 0 else "north"
+    Under T7 the extractor output side is independent of the bundle orientation, so two
+    D4 variants that differ only in the extractor's rotation (identical
+    ``extension_cells``) emit the same extension geometry and would only duplicate output
+    faces. Deduplicating on ``frozenset(variant.extension_cells)`` collapses them to one
+    bundle layout; the independent output-side loop then enumerates the free void faces.
+    """
+
+    seen: set[frozenset[Cell]] = set()
+    deduped: list[FootprintVariant] = []
+    for variant in variants:
+        key = frozenset(variant.extension_cells)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(variant)
+    return tuple(deduped)
 
 
 def _resource_eligible(entry_resource_kind: str, field_kind: str) -> bool:
@@ -375,107 +404,108 @@ def generate_candidates(
             if not _resource_eligible(entry.resource_kind, anchor.field_kind):
                 continue
             resource_kind = _FIELD_KIND_TO_RESOURCE[anchor.field_kind]
-            # §T/Amendment 6: enumerate the full-footprint D4 variants (coords + R move
-            # together) instead of orienting the whole footprint toward a void edge. Output
-            # stays TIED to the variant orientation (B2.1c-1): the canonical-East output
-            # offset is transformed by the same (mirror, rotation), so each variant emits a
-            # distinct output edge.
-            for variant in enumerate_d4(
-                extractor_offset=entry.extractor_offset,
-                extension_offsets=entry.extension_offsets,
-            ):
-                seed_projection_attempts += 1
-
+            # §T/Amendment 6 + T7: enumerate the full-footprint D4 variants (coords + R
+            # move together), then dedup by EXTENSION LAYOUT only. The extractor output
+            # side is independent of the bundle orientation (T7), so variants that differ
+            # only in the extractor rotation (identical extension cells) are collapsed; the
+            # output-side loop below emits one candidate per free void face instead of
+            # tying the output to the variant orientation.
+            deduped_variants = _dedup_by_extension_layout(
+                enumerate_d4(
+                    extractor_offset=entry.extractor_offset,
+                    extension_offsets=entry.extension_offsets,
+                )
+            )
+            for variant in deduped_variants:
                 extractor_cell = (ax, ay)
                 extension_placements = tuple(
                     ((ax + dx, ay + dy), cell_r) for (dx, dy, cell_r) in variant.extension_cells
                 )
                 extension_cells = frozenset(cell for cell, _r in extension_placements)
                 equipment_cells = frozenset({extractor_cell}) | extension_cells
-
-                out_vec = _transform_offset(
-                    entry.output_stub_offset[0],
-                    entry.output_stub_offset[1],
-                    mirrored=variant.mirrored,
-                    k=variant.orientation_k,
-                )
-                out_edge = _cardinal_from_unit_vector(out_vec)
-                miner_r = edge_rotation_k(out_edge)
-                stub_cell = (ax + out_vec[0], ay + out_vec[1])
-                start_vec = _transform_offset(
-                    entry.route_probe_start_offset[0],
-                    entry.route_probe_start_offset[1],
-                    mirrored=variant.mirrored,
-                    k=variant.orientation_k,
-                )
-                route_probe_start = (ax + start_vec[0], ay + start_vec[1])
-
-                candidate = _build_candidate(
-                    anchor=anchor,
-                    entry=entry,
-                    out_edge=out_edge,
-                    orientation_k=variant.orientation_k,
-                    mirrored=variant.mirrored,
-                    miner_r=miner_r,
-                    stub_r=miner_r,
-                    resource_kind=resource_kind,
-                    equipment_cells=equipment_cells,
-                    extractor_cell=extractor_cell,
-                    extension_placements=extension_placements,
-                    stub_cell=stub_cell,
-                    route_probe_start=route_probe_start,
-                )
-
-                # R2: equipment ⊆ matching-resource field.
-                if not _equipment_matches_field(
+                # R2 depends only on the bundle layout, not the output side.
+                equipment_on_field = _equipment_matches_field(
                     equipment_cells,
                     field_cells=field_cells,
                     field_kind=anchor.field_kind,
                     kind_by_coord=kind_by_coord,
-                ):
-                    geometry_rejected += 1
-                    diagnostics.append(
-                        _diagnostic_reject(
-                            candidate,
-                            reason=CandidateRejectReason.MINING_CELL_OFF_FIELD,
-                            status=RouteProbeStatus.SKIPPED_GEOMETRY,
-                        )
-                    )
-                    continue
-
-                # R3: output stub ⊆ external void.
-                if stub_cell not in external_void:
-                    geometry_rejected += 1
-                    diagnostics.append(
-                        _diagnostic_reject(
-                            candidate,
-                            reason=CandidateRejectReason.TRANSPORT_STUB_NOT_IN_VOID,
-                            status=RouteProbeStatus.SKIPPED_GEOMETRY,
-                        )
-                    )
-                    continue
-
-                # R5: immediate weighted route probe (void cheap, field costed, own
-                # equipment is a hard blocker).
-                walkable = base_walkable - equipment_cells
-                field_cost = field_cells - equipment_cells
-                domain = WeightedTransportRouteDomain(
-                    search_bbox=search_bbox,
-                    blocked_cells=equipment_cells,
-                    walkable_cells=walkable,
-                    field_cost_cells=field_cost,
                 )
-                route_probe_attempts += 1
-                probed = weighted_route_probe(
-                    candidate=candidate,
-                    route_goals=route_goals,
-                    domain=domain,
-                    field_cells=field_cells,
+                void_sides = set(
+                    free_void_output_sides(extractor_cell, equipment_cells, external_void)
                 )
-                if probed.route_probe_status == RouteProbeStatus.SUCCEEDED:
-                    normal.append(probed)
-                else:
-                    diagnostics.append(probed)
+
+                # T7: every cardinal side of the extractor not blocked by an extension is an
+                # independent output candidate. The miner/stub R follow the output side
+                # (edge_rotation_k); each extension R keeps the bundle orientation.
+                for out_edge, (ddx, ddy) in _CARDINAL_DELTA.items():
+                    stub_cell = (ax + ddx, ay + ddy)
+                    if stub_cell in equipment_cells:
+                        continue  # output face blocked by an extension cell (T7)
+                    seed_projection_attempts += 1
+                    miner_r = edge_rotation_k(out_edge)
+                    route_probe_start = (ax + 2 * ddx, ay + 2 * ddy)
+
+                    candidate = _build_candidate(
+                        anchor=anchor,
+                        entry=entry,
+                        out_edge=out_edge,
+                        orientation_k=variant.orientation_k,
+                        mirrored=variant.mirrored,
+                        miner_r=miner_r,
+                        stub_r=miner_r,
+                        resource_kind=resource_kind,
+                        equipment_cells=equipment_cells,
+                        extractor_cell=extractor_cell,
+                        extension_placements=extension_placements,
+                        stub_cell=stub_cell,
+                        route_probe_start=route_probe_start,
+                    )
+
+                    # R2: equipment ⊆ matching-resource field.
+                    if not equipment_on_field:
+                        geometry_rejected += 1
+                        diagnostics.append(
+                            _diagnostic_reject(
+                                candidate,
+                                reason=CandidateRejectReason.MINING_CELL_OFF_FIELD,
+                                status=RouteProbeStatus.SKIPPED_GEOMETRY,
+                            )
+                        )
+                        continue
+
+                    # R3: output stub ⊆ external void.
+                    if out_edge not in void_sides:
+                        geometry_rejected += 1
+                        diagnostics.append(
+                            _diagnostic_reject(
+                                candidate,
+                                reason=CandidateRejectReason.TRANSPORT_STUB_NOT_IN_VOID,
+                                status=RouteProbeStatus.SKIPPED_GEOMETRY,
+                            )
+                        )
+                        continue
+
+                    # R5: immediate weighted route probe (void cheap, field costed, own
+                    # equipment is a hard blocker).
+                    walkable = base_walkable - equipment_cells
+                    field_cost = field_cells - equipment_cells
+                    domain = WeightedTransportRouteDomain(
+                        search_bbox=search_bbox,
+                        blocked_cells=equipment_cells,
+                        walkable_cells=walkable,
+                        field_cost_cells=field_cost,
+                    )
+                    route_probe_attempts += 1
+                    probed = weighted_route_probe(
+                        candidate=candidate,
+                        route_goals=route_goals,
+                        domain=domain,
+                        field_cells=field_cells,
+                    )
+                    if probed.route_probe_status == RouteProbeStatus.SUCCEEDED:
+                        normal.append(probed)
+                    else:
+                        diagnostics.append(probed)
 
     normal.sort(key=_d1_key)
     diagnostics.sort(key=_d1_key)
@@ -511,6 +541,7 @@ def generate_candidates(
 
 __all__ = [
     "edge_rotation_k",
+    "free_void_output_sides",
     "generate_candidates",
     "output_dir_rank",
     "rotate_offset_east_to",

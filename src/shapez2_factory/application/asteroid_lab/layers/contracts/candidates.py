@@ -53,6 +53,8 @@ class Layer03SkipReason(StrEnum):
     EMPTY_MINER_SEED_CATALOG = "empty_miner_seed_catalog"
     BUDGET_EXHAUSTED = "budget_exhausted"
     ALGORITHM_RESET = "algorithm_reset"
+    MISSING_GENE_CATALOG = "missing_gene_catalog"
+    INVALID_GENE_CATALOG = "invalid_gene_catalog"
 
 
 class BundleCellRole(StrEnum):

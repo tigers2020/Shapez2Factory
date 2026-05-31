@@ -16,9 +16,11 @@ from enum import StrEnum
 from pathlib import Path
 
 from shapez2_factory.domain.asteroid_lab.exterior_capacity_row import ExteriorCapacityRow
+from shapez2_factory.domain.asteroid_lab.mining_extraction_row import MiningExtractionRow
 
 SUPPORTED_SCHEMA_VERSIONS = frozenset({"game_data_snapshot_v1"})
 CAPACITY_KEY = "exterior_transport_capacity"
+MINING_KEY = "mining_extraction_rules"
 
 
 class GameDataSnapshotIssue(StrEnum):
@@ -35,8 +37,13 @@ class GameDataSnapshotInvalid(Exception):
 
 
 class JsonSnapshotGameDataRulesAdapter:
-    def __init__(self, capacities: dict[tuple[str, int], Decimal]) -> None:
+    def __init__(
+        self,
+        capacities: dict[tuple[str, int], Decimal],
+        mining_rules: dict[str, MiningExtractionRow],
+    ) -> None:
         self._capacities = dict(capacities)
+        self._mining_rules = dict(mining_rules)
 
     @classmethod
     def from_payload(
@@ -62,7 +69,8 @@ class JsonSnapshotGameDataRulesAdapter:
                 f"game_data_dump_hash {payload.get('game_data_dump_hash')!r} != {expected_hash!r}",
             )
         capacities = _parse_capacity_rows(payload.get(CAPACITY_KEY))
-        return cls(capacities)
+        mining_rules = _parse_mining_rows(payload.get(MINING_KEY))
+        return cls(capacities, mining_rules)
 
     @classmethod
     def from_file(
@@ -102,6 +110,13 @@ class JsonSnapshotGameDataRulesAdapter:
             per_connector_capacity_per_min=capacity,
         )
 
+    def mining_extraction_rule(self, *, resource_kind: str) -> MiningExtractionRow:
+        row = self._mining_rules.get(resource_kind)
+        if row is None:
+            msg = f"no mining extraction rule for resource_kind={resource_kind!r}"
+            raise LookupError(msg)
+        return row
+
 
 def _parse_capacity_rows(rows: object) -> dict[tuple[str, int], Decimal]:
     if not isinstance(rows, list):
@@ -129,8 +144,43 @@ def _parse_capacity_rows(rows: object) -> dict[tuple[str, int], Decimal]:
     return capacities
 
 
+def _parse_mining_rows(rows: object) -> dict[str, MiningExtractionRow]:
+    if not isinstance(rows, list):
+        raise GameDataSnapshotInvalid(
+            GameDataSnapshotIssue.MALFORMED,
+            f"{MINING_KEY} must be a list",
+        )
+    rules: dict[str, MiningExtractionRow] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise GameDataSnapshotInvalid(
+                GameDataSnapshotIssue.MALFORMED,
+                f"{MINING_KEY} row must be an object",
+            )
+        try:
+            resource_kind = str(row["resource_kind"])
+            mini_unit_output = Decimal(str(row["mini_unit_output_per_min"]))
+            output_unit = str(row["output_unit"])
+            max_extension_count = int(row["max_extension_count"])
+            source_kind = str(row.get("source_kind", "CANON_MANUAL"))
+        except (KeyError, TypeError, ValueError, InvalidOperation) as exc:
+            raise GameDataSnapshotInvalid(
+                GameDataSnapshotIssue.MALFORMED,
+                f"invalid mining row {row!r}: {exc}",
+            ) from exc
+        rules[resource_kind] = MiningExtractionRow(
+            resource_kind=resource_kind,
+            mini_unit_output_per_min=mini_unit_output,
+            output_unit=output_unit,
+            max_extension_count=max_extension_count,
+            source_kind=source_kind,
+        )
+    return rules
+
+
 __all__ = [
     "CAPACITY_KEY",
+    "MINING_KEY",
     "SUPPORTED_SCHEMA_VERSIONS",
     "GameDataSnapshotInvalid",
     "GameDataSnapshotIssue",

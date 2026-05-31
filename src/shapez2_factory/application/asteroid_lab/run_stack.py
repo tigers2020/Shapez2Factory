@@ -30,6 +30,9 @@ from shapez2_factory.application.asteroid_lab.layers.layer_06_commit_validate.ru
     run_layer_06_commit_validate,
 )
 from shapez2_factory.application.asteroid_lab.ports.game_data_rules import GameDataRulesPort
+from shapez2_factory.application.asteroid_lab.reconstruction_capacity import (
+    build_terrain_capacity_summary_row,
+)
 from shapez2_factory.application.asteroid_lab.stack_runner import (
     LAYER_STACK_BUDGET_MS,
     _LayerStackRunner,
@@ -45,8 +48,6 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.pipeline import (
 from shapez2_factory.domain.asteroid_lab.reconstruction.topology_contract import (
     decode_shapez_copy_string,
 )
-
-_FIELD_CELL_MINI_UNITS = Decimal(4)
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,25 +69,17 @@ def _capacity_summary(
     resource_kind: str,
     platform_count: int,
     rules: GameDataRulesPort,
-    speed_tier: int,
 ) -> dict[str, Any]:
-    row = rules.exterior_connector_capacity(
+    rule = rules.mining_extraction_rule(resource_kind=resource_kind)
+    return build_terrain_capacity_summary_row(
         resource_kind=resource_kind,
-        speed_tier=speed_tier,
+        platform_count=platform_count,
+        mini_unit_output_per_min=rule.mini_unit_output_per_min,
+        output_unit=rule.output_unit,
+        max_extension_count=rule.max_extension_count,
+        source_kind=rule.source_kind,
+        authority="game_data_snapshot",
     )
-    per_connector = Decimal(row.per_connector_capacity_per_min)
-    per_cell = per_connector * _FIELD_CELL_MINI_UNITS
-    total = per_cell * Decimal(platform_count)
-    return {
-        "resource_kind": resource_kind,
-        "capacity_upper_bound_platform_count": platform_count,
-        "mini_units_per_confirmed_cell": int(_FIELD_CELL_MINI_UNITS),
-        "capacity_upper_bound_mini_units": platform_count * int(_FIELD_CELL_MINI_UNITS),
-        "output_per_confirmed_cell": _decimal_str(per_cell),
-        "max_throughput_per_min": _decimal_str(total),
-        "output_unit": "items_per_min",
-        "authority": "game_data_snapshot",
-    }
 
 
 def _capacity_envelope(
@@ -94,7 +87,6 @@ def _capacity_envelope(
     shape_field_cell_count: int,
     fluid_field_cell_count: int,
     rules: GameDataRulesPort,
-    speed_tier: int,
 ) -> dict[str, Any]:
     primary = "shape" if shape_field_cell_count >= fluid_field_cell_count else "fluid"
     return {
@@ -109,13 +101,11 @@ def _capacity_envelope(
                 resource_kind="shape",
                 platform_count=shape_field_cell_count,
                 rules=rules,
-                speed_tier=speed_tier,
             ),
             "fluid": _capacity_summary(
                 resource_kind="fluid",
                 platform_count=fluid_field_cell_count,
                 rules=rules,
-                speed_tier=speed_tier,
             ),
         },
     }
@@ -176,7 +166,6 @@ class RunStackUseCase:
             shape_field_cell_count=complete_map.shape_field_cell_count,
             fluid_field_cell_count=complete_map.fluid_field_cell_count,
             rules=self._game_data_rules,
-            speed_tier=speed_tier,
         )
         runners = (
             _LayerStackRunner(

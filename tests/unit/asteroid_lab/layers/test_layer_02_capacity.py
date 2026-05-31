@@ -63,6 +63,20 @@ def test_snapshot_payload_carries_resolver_output() -> None:
 
 
 @pytest.mark.django_db
+def test_snapshot_payload_carries_mining_extraction_rules() -> None:
+    from django_apps.game_data.services.mining_extraction_rules import get_active_rule
+
+    payload = build_game_data_snapshot_payload()
+    shape_row = next(
+        r for r in payload["mining_extraction_rules"] if r["resource_kind"] == "shape"
+    )
+    rule = get_active_rule("shape")
+
+    assert Decimal(shape_row["mini_unit_output_per_min"]) == rule.mini_unit_output_per_min
+    assert shape_row["output_unit"] == rule.output_unit
+
+
+@pytest.mark.django_db
 def test_shape_capacity_via_injected_orm_rules() -> None:
     rules = build_orm_game_data_rules()
     expected = space_belt_connector_capacity_per_min_from_row(

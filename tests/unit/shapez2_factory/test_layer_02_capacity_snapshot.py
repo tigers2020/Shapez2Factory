@@ -26,6 +26,15 @@ _VALID_PAYLOAD = {
     "exterior_transport_capacity": [
         {"resource_kind": "shape", "speed_tier": 1, "per_connector_capacity_per_min": "5760"},
     ],
+    "mining_extraction_rules": [
+        {
+            "resource_kind": "shape",
+            "mini_unit_output_per_min": "30.0000",
+            "output_unit": "shapes_per_min",
+            "max_extension_count": 3,
+            "source_kind": "CANON_MANUAL",
+        },
+    ],
 }
 
 
@@ -98,6 +107,31 @@ def test_hash_match_accepts_payload() -> None:
 
     row = adapter.exterior_connector_capacity(resource_kind="shape", speed_tier=1)
     assert row.per_connector_capacity_per_min == Decimal("5760")
+
+
+def test_adapter_reads_shape_mining_rule_from_fixture() -> None:
+    adapter = JsonSnapshotGameDataRulesAdapter.from_file(_FIXTURE)
+
+    row = adapter.mining_extraction_rule(resource_kind="shape")
+
+    assert row.mini_unit_output_per_min == Decimal("30")
+    assert row.output_unit == "shapes_per_min"
+    assert row.max_extension_count == 3
+
+
+def test_malformed_mining_row_is_fail_closed() -> None:
+    payload = {
+        "schema_version": "game_data_snapshot_v1",
+        "exterior_transport_capacity": [
+            {"resource_kind": "shape", "speed_tier": 1, "per_connector_capacity_per_min": "5760"},
+        ],
+        "mining_extraction_rules": [{"resource_kind": "shape"}],
+    }
+
+    with pytest.raises(GameDataSnapshotInvalid) as exc:
+        JsonSnapshotGameDataRulesAdapter.from_payload(payload)
+
+    assert exc.value.issue is GameDataSnapshotIssue.MALFORMED
 
 
 def test_malformed_capacity_row_is_fail_closed() -> None:

@@ -15,19 +15,11 @@ from django_apps.asteroid_lab.reconstruction.field_cells import (
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.reconstruction.rim_topology import field_rim_cells
-from django_apps.game_data.services.mining_extraction_rules import (
-    effective_mini_units,
-    get_active_rule,
-    max_output_per_miner,
-    output_per_min,
+from django_apps.game_data.services.mining_extraction_rules import get_active_rule
+from shapez2_factory.application.asteroid_lab.reconstruction_capacity import (
+    build_terrain_capacity_summary_row,
+    decimal_str,
 )
-
-# One asteroid field cell = one installation slot at ×4 mini-units (not ×16 bundle).
-_FIELD_CELL_MINI_UNITS = 4
-
-
-def decimal_str(value: Decimal) -> str:
-    return format(value.quantize(Decimal("0.0001")), "f")
 
 
 def _json_safe_source_kind(rule: object) -> str:
@@ -47,23 +39,15 @@ def build_reconstruction_capacity_summary(
         platform_count = complete_map.shape_field_cell_count
     else:
         platform_count = complete_map.fluid_field_cell_count
-    per_cell = output_per_min(rule, _FIELD_CELL_MINI_UNITS)
-    total = per_cell * Decimal(platform_count)
-    max_mini_bundle = effective_mini_units(int(rule.max_extension_count))
-    return {
-        "resource_kind": resource_kind,
-        "capacity_upper_bound_platform_count": platform_count,
-        "mini_units_per_confirmed_cell": _FIELD_CELL_MINI_UNITS,
-        "capacity_upper_bound_mini_units": platform_count * _FIELD_CELL_MINI_UNITS,
-        "mini_unit_output_per_min": decimal_str(rule.mini_unit_output_per_min),
-        "output_per_confirmed_cell": decimal_str(per_cell),
-        "max_mini_units_per_miner": max_mini_bundle,
-        "max_output_per_miner": decimal_str(max_output_per_miner(rule)),
-        "max_throughput_per_min": decimal_str(total),
-        "output_unit": rule.output_unit,
-        "source_kind": _json_safe_source_kind(rule),
-        "authority": "MiningExtractionRule",
-    }
+    return build_terrain_capacity_summary_row(
+        resource_kind=resource_kind,
+        platform_count=platform_count,
+        mini_unit_output_per_min=rule.mini_unit_output_per_min,
+        output_unit=rule.output_unit,
+        max_extension_count=int(rule.max_extension_count),
+        source_kind=_json_safe_source_kind(rule),
+        authority="MiningExtractionRule",
+    )
 
 
 def build_reconstruction_capacity_envelope(

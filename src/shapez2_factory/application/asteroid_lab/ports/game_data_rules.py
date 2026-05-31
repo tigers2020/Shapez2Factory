@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from shapez2_factory.domain.asteroid_lab.exterior_capacity_row import ExteriorCapacityRow
+from shapez2_factory.domain.asteroid_lab.mining_extraction_row import MiningExtractionRow
 
 
 class GameDataRulesPort(Protocol):
@@ -23,5 +24,9 @@ class GameDataRulesPort(Protocol):
         """Return the per-connector capacity row; raise ``LookupError`` when no row exists."""
         ...
 
+    def mining_extraction_rule(self, *, resource_kind: str) -> MiningExtractionRow:
+        """Return the active mining extraction row; raise ``LookupError`` when no row exists."""
+        ...
 
-__all__ = ["ExteriorCapacityRow", "GameDataRulesPort"]
+
+__all__ = ["ExteriorCapacityRow", "GameDataRulesPort", "MiningExtractionRow"]

@@ -23,6 +23,7 @@ solver frame. This enumeration order is NOT a commit selector (D2 ??a later phas
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
@@ -44,10 +45,6 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer03_observabi
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_03_RIM_MINING_BUNDLES,
 )
-from shapez2_factory.application.asteroid_lab.layers.contracts.route_goal import (
-    RouteGoal,
-    build_layer03_route_goals,
-)
 from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import (
     ResourceKind,
     TransportKind,
@@ -64,6 +61,11 @@ from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placeme
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.rim_anchor_scan import (  # noqa: E501
     RimAnchor,
     scan_rim_anchors,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.transport_profile import (  # noqa: E501
+    ANCHOR_FIELD_KIND_BY_TRANSPORT,
+    Layer03TransportProfile,
+    build_layer03_transport_profiles,
 )
 from shapez2_factory.application.asteroid_lab.layers.shared.route_probe import weighted_route_probe
 from shapez2_factory.domain.asteroid_lab.genetic_sample.enums import Direction
@@ -361,6 +363,136 @@ def _d1_key(probed: RouteProbedBundleCandidate) -> tuple[int, int, int, int, str
     )
 
 
+@dataclass
+class _ProfileExpansionAccum:
+    normal: list[RouteProbedBundleCandidate] = field(default_factory=list)
+    diagnostics: list[RouteProbedBundleCandidate] = field(default_factory=list)
+    seed_projection_attempts: int = 0
+    geometry_rejected: int = 0
+    route_probe_attempts: int = 0
+    dedupe_duplicates: int = 0
+
+
+def generate_candidates_for_profile(
+    *,
+    complete_map: ReconstructionCompleteMap,
+    profile: Layer03TransportProfile,
+    genetic_sample_seeds: GeneticSampleSeedSnapshot,
+    anchors: tuple[RimAnchor, ...],
+    field_cells: frozenset[Coord],
+    external_void: frozenset[Coord],
+    kind_by_coord: dict[Coord, str],
+    base_walkable: frozenset[Coord],
+    search_bbox: tuple[int, int, int, int],
+    restrict_anchors_to_profile: bool = True,
+) -> _ProfileExpansionAccum:
+    """Expand and route-probe one transport profile (matching-resource rim anchors only)."""
+
+    accum = _ProfileExpansionAccum()
+    route_goals = profile.route_goals
+    expected_field_kind = ANCHOR_FIELD_KIND_BY_TRANSPORT[profile.transport_kind]
+
+    for anchor in anchors:
+        if restrict_anchors_to_profile and anchor.field_kind != expected_field_kind:
+            continue
+        ax, ay = anchor.coord
+        for entry in genetic_sample_seeds.entries:
+            if not _resource_eligible(entry.resource_kind, anchor.field_kind):
+                continue
+            resource_kind = _FIELD_KIND_TO_RESOURCE[anchor.field_kind]
+            all_variants = enumerate_d4(
+                extractor_offset=entry.extractor_offset,
+                extension_offsets=entry.extension_offsets,
+            )
+            deduped_variants = _dedup_by_extension_layout(all_variants)
+            accum.dedupe_duplicates += len(all_variants) - len(deduped_variants)
+            for variant in deduped_variants:
+                extractor_cell = (ax, ay)
+                extension_placements = tuple(
+                    ((ax + dx, ay + dy), cell_r) for (dx, dy, cell_r) in variant.extension_cells
+                )
+                extension_cells = frozenset(cell for cell, _r in extension_placements)
+                equipment_cells = frozenset({extractor_cell}) | extension_cells
+                equipment_on_field = _equipment_matches_field(
+                    equipment_cells,
+                    field_cells=field_cells,
+                    field_kind=anchor.field_kind,
+                    kind_by_coord=kind_by_coord,
+                )
+                void_sides = set(
+                    free_void_output_sides(extractor_cell, equipment_cells, external_void)
+                )
+
+                for out_edge, (ddx, ddy) in _CARDINAL_DELTA.items():
+                    stub_cell = (ax + ddx, ay + ddy)
+                    if stub_cell in equipment_cells:
+                        continue
+                    accum.seed_projection_attempts += 1
+                    miner_r = edge_rotation_k(out_edge)
+                    route_probe_start = (ax + 2 * ddx, ay + 2 * ddy)
+
+                    candidate = _build_candidate(
+                        anchor=anchor,
+                        entry=entry,
+                        out_edge=out_edge,
+                        orientation_k=variant.orientation_k,
+                        mirrored=variant.mirrored,
+                        miner_r=miner_r,
+                        stub_r=miner_r,
+                        resource_kind=resource_kind,
+                        equipment_cells=equipment_cells,
+                        extractor_cell=extractor_cell,
+                        extension_placements=extension_placements,
+                        stub_cell=stub_cell,
+                        route_probe_start=route_probe_start,
+                    )
+
+                    if not equipment_on_field:
+                        accum.geometry_rejected += 1
+                        accum.diagnostics.append(
+                            _diagnostic_reject(
+                                candidate,
+                                reason=CandidateRejectReason.MINING_CELL_OFF_FIELD,
+                                status=RouteProbeStatus.SKIPPED_GEOMETRY,
+                            )
+                        )
+                        continue
+
+                    if out_edge not in void_sides:
+                        accum.geometry_rejected += 1
+                        accum.diagnostics.append(
+                            _diagnostic_reject(
+                                candidate,
+                                reason=CandidateRejectReason.TRANSPORT_STUB_NOT_IN_VOID,
+                                status=RouteProbeStatus.SKIPPED_GEOMETRY,
+                            )
+                        )
+                        continue
+
+                    walkable = base_walkable - equipment_cells
+                    field_cost = field_cells - equipment_cells
+                    domain = WeightedTransportRouteDomain(
+                        search_bbox=search_bbox,
+                        blocked_cells=equipment_cells,
+                        walkable_cells=walkable,
+                        field_cost_cells=field_cost,
+                    )
+                    accum.route_probe_attempts += 1
+                    probed = weighted_route_probe(
+                        candidate=candidate,
+                        route_goals=route_goals,
+                        domain=domain,
+                        field_cells=field_cells,
+                        external_void_cells=external_void,
+                    )
+                    if probed.route_probe_status == RouteProbeStatus.SUCCEEDED:
+                        accum.normal.append(probed)
+                    else:
+                        accum.diagnostics.append(probed)
+
+    return accum
+
+
 def generate_candidates(
     *,
     complete_map: ReconstructionCompleteMap,
@@ -381,133 +513,56 @@ def generate_candidates(
     field_cells = complete_map.field_cells
     external_void = complete_map.external_void_cells
     kind_by_coord = mineable_field_kind_by_coord(complete_map)
-
-    route_goals: tuple[RouteGoal, ...] = ()
-    if exterior_plan is not None:
-        route_goals = build_layer03_route_goals(
-            exterior_plan, transport_kind=TransportKind.SHAPE_BELT
-        ) + build_layer03_route_goals(exterior_plan, transport_kind=TransportKind.FLUID_PIPE)
-
     base_walkable = field_cells | external_void
     search_bbox = bbox_from_coords(base_walkable)
 
-    normal: list[RouteProbedBundleCandidate] = []
-    diagnostics: list[RouteProbedBundleCandidate] = []
+    merged = _ProfileExpansionAccum()
+    shared_kw = {
+        "complete_map": complete_map,
+        "genetic_sample_seeds": genetic_sample_seeds,
+        "anchors": anchors,
+        "field_cells": field_cells,
+        "external_void": external_void,
+        "kind_by_coord": kind_by_coord,
+        "base_walkable": base_walkable,
+        "search_bbox": search_bbox,
+    }
+    if exterior_plan is None:
+        part = generate_candidates_for_profile(
+            profile=Layer03TransportProfile(
+                transport_kind=TransportKind.SHAPE_BELT,
+                resource_kind=ResourceKind.SHAPE,
+                route_goals=(),
+            ),
+            restrict_anchors_to_profile=False,
+            **shared_kw,
+        )
+        merged.normal.extend(part.normal)
+        merged.diagnostics.extend(part.diagnostics)
+        merged.seed_projection_attempts += part.seed_projection_attempts
+        merged.geometry_rejected += part.geometry_rejected
+        merged.route_probe_attempts += part.route_probe_attempts
+        merged.dedupe_duplicates += part.dedupe_duplicates
+    else:
+        profiles = build_layer03_transport_profiles(
+            complete_map=complete_map,
+            exterior_plan=exterior_plan,
+        )
+        for profile in profiles:
+            part = generate_candidates_for_profile(profile=profile, **shared_kw)
+            merged.normal.extend(part.normal)
+            merged.diagnostics.extend(part.diagnostics)
+            merged.seed_projection_attempts += part.seed_projection_attempts
+            merged.geometry_rejected += part.geometry_rejected
+            merged.route_probe_attempts += part.route_probe_attempts
+            merged.dedupe_duplicates += part.dedupe_duplicates
 
-    seed_projection_attempts = 0
-    geometry_rejected = 0
-    route_probe_attempts = 0
-    dedupe_duplicates = 0
-
-    for anchor in anchors:
-        ax, ay = anchor.coord
-        for entry in genetic_sample_seeds.entries:
-            if not _resource_eligible(entry.resource_kind, anchor.field_kind):
-                continue
-            resource_kind = _FIELD_KIND_TO_RESOURCE[anchor.field_kind]
-            # §T/Amendment 6 + T7: enumerate the full-footprint D4 variants (coords + R
-            # move together), then dedup by EXTENSION LAYOUT only. The extractor output
-            # side is independent of the bundle orientation (T7), so variants that differ
-            # only in the extractor rotation (identical extension cells) are collapsed; the
-            # output-side loop below emits one candidate per free void face instead of
-            # tying the output to the variant orientation.
-            all_variants = enumerate_d4(
-                extractor_offset=entry.extractor_offset,
-                extension_offsets=entry.extension_offsets,
-            )
-            deduped_variants = _dedup_by_extension_layout(all_variants)
-            dedupe_duplicates += len(all_variants) - len(deduped_variants)
-            for variant in deduped_variants:
-                extractor_cell = (ax, ay)
-                extension_placements = tuple(
-                    ((ax + dx, ay + dy), cell_r) for (dx, dy, cell_r) in variant.extension_cells
-                )
-                extension_cells = frozenset(cell for cell, _r in extension_placements)
-                equipment_cells = frozenset({extractor_cell}) | extension_cells
-                # R2 depends only on the bundle layout, not the output side.
-                equipment_on_field = _equipment_matches_field(
-                    equipment_cells,
-                    field_cells=field_cells,
-                    field_kind=anchor.field_kind,
-                    kind_by_coord=kind_by_coord,
-                )
-                void_sides = set(
-                    free_void_output_sides(extractor_cell, equipment_cells, external_void)
-                )
-
-                # T7: every cardinal side of the extractor not blocked by an extension is an
-                # independent output candidate. The miner/stub R follow the output side
-                # (edge_rotation_k); each extension R keeps the bundle orientation.
-                for out_edge, (ddx, ddy) in _CARDINAL_DELTA.items():
-                    stub_cell = (ax + ddx, ay + ddy)
-                    if stub_cell in equipment_cells:
-                        continue  # output face blocked by an extension cell (T7)
-                    seed_projection_attempts += 1
-                    miner_r = edge_rotation_k(out_edge)
-                    route_probe_start = (ax + 2 * ddx, ay + 2 * ddy)
-
-                    candidate = _build_candidate(
-                        anchor=anchor,
-                        entry=entry,
-                        out_edge=out_edge,
-                        orientation_k=variant.orientation_k,
-                        mirrored=variant.mirrored,
-                        miner_r=miner_r,
-                        stub_r=miner_r,
-                        resource_kind=resource_kind,
-                        equipment_cells=equipment_cells,
-                        extractor_cell=extractor_cell,
-                        extension_placements=extension_placements,
-                        stub_cell=stub_cell,
-                        route_probe_start=route_probe_start,
-                    )
-
-                    # R2: equipment ??matching-resource field.
-                    if not equipment_on_field:
-                        geometry_rejected += 1
-                        diagnostics.append(
-                            _diagnostic_reject(
-                                candidate,
-                                reason=CandidateRejectReason.MINING_CELL_OFF_FIELD,
-                                status=RouteProbeStatus.SKIPPED_GEOMETRY,
-                            )
-                        )
-                        continue
-
-                    # R3: output stub ??external void.
-                    if out_edge not in void_sides:
-                        geometry_rejected += 1
-                        diagnostics.append(
-                            _diagnostic_reject(
-                                candidate,
-                                reason=CandidateRejectReason.TRANSPORT_STUB_NOT_IN_VOID,
-                                status=RouteProbeStatus.SKIPPED_GEOMETRY,
-                            )
-                        )
-                        continue
-
-                    # R5: immediate weighted route probe (void cheap, field costed, own
-                    # equipment is a hard blocker).
-                    walkable = base_walkable - equipment_cells
-                    field_cost = field_cells - equipment_cells
-                    domain = WeightedTransportRouteDomain(
-                        search_bbox=search_bbox,
-                        blocked_cells=equipment_cells,
-                        walkable_cells=walkable,
-                        field_cost_cells=field_cost,
-                    )
-                    route_probe_attempts += 1
-                    probed = weighted_route_probe(
-                        candidate=candidate,
-                        route_goals=route_goals,
-                        domain=domain,
-                        field_cells=field_cells,
-                        external_void_cells=external_void,
-                    )
-                    if probed.route_probe_status == RouteProbeStatus.SUCCEEDED:
-                        normal.append(probed)
-                    else:
-                        diagnostics.append(probed)
+    normal = merged.normal
+    diagnostics = merged.diagnostics
+    seed_projection_attempts = merged.seed_projection_attempts
+    geometry_rejected = merged.geometry_rejected
+    route_probe_attempts = merged.route_probe_attempts
+    dedupe_duplicates = merged.dedupe_duplicates
 
     normal.sort(key=_d1_key)
     diagnostics.sort(key=_d1_key)
@@ -545,6 +600,7 @@ __all__ = [
     "edge_rotation_k",
     "free_void_output_sides",
     "generate_candidates",
+    "generate_candidates_for_profile",
     "output_dir_rank",
     "rotate_offset_east_to",
 ]

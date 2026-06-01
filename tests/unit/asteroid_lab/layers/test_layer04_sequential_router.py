@@ -21,7 +21,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import
     RimGreedyMetrics,
     build_empty_integrated_rim_greedy_result,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.sequential_router import (
+from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.sequential_router import (  # noqa: E501
     route_layer04_sequential,
 )
 from tests.unit.asteroid_lab.layers.helpers.l02_complete_map_fixtures import (

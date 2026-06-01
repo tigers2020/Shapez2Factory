@@ -33,6 +33,4 @@ def test_resolve_deprecated_inner_fill_slug() -> None:
 
 
 def test_canonical_slug_is_identity() -> None:
-    assert resolve_canonical_layer_slug(LAYER_05_TRANSPORT_ROUTING) == (
-        LAYER_05_TRANSPORT_ROUTING
-    )
+    assert resolve_canonical_layer_slug(LAYER_05_TRANSPORT_ROUTING) == (LAYER_05_TRANSPORT_ROUTING)

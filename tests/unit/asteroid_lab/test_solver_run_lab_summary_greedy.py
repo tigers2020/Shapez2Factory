@@ -82,7 +82,9 @@ def test_greedy_layer04_transport_completed_highlights() -> None:
             ],
         },
     )
-    l5 = {layer["layer_slug"]: layer for layer in row["layer_summaries"]}[LAYER_05_TRANSPORT_ROUTING]
+    l5 = {layer["layer_slug"]: layer for layer in row["layer_summaries"]}[
+        LAYER_05_TRANSPORT_ROUTING
+    ]
     assert l5["outcome"] == "completed"
     labels = {h["label"]: h["value"] for h in l5["highlights"]}
     assert labels["Transport kind"] == "space_belt"

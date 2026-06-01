@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.replay.layer04_transport_segment import (
+    OVERLAY_KIND_ROUTE_PROBE_PATH,
+    build_layer04_transport_frames,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_route import (
     LAYER04_ROUTE_PLAN_VERSION,
     Layer04Metrics,
     Layer04RoutePlan,
     ProjectedTransportTile,
-)
-from django_apps.asteroid_lab.replay.layer04_transport_segment import (
-    OVERLAY_KIND_ROUTE_PROBE_PATH,
-    build_layer04_transport_frames,
 )
 
 
@@ -42,7 +42,9 @@ def test_replay_uses_transport_tiles_not_probe_path() -> None:
     kinds = {c.kind for spec in frames for c in spec.transient_overlay_cells}
     assert OVERLAY_KIND_ROUTE_PROBE_PATH not in kinds
     assert any(k.startswith("space_") for k in kinds)
-    assert "SpaceBelt_Forward" in {c.tile_type for spec in frames for c in spec.transient_overlay_cells}
+    assert "SpaceBelt_Forward" in {
+        c.tile_type for spec in frames for c in spec.transient_overlay_cells
+    }
 
 
 def test_replay_begin_and_complete_share_overlays() -> None:

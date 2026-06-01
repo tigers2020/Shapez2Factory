@@ -118,9 +118,7 @@ def project_routes_to_tiles(
     for route in routes:
         for coord in route.path_coords:
             input_mask, output_mask = _signature_for_cell(route.path_coords, coord)
-            input_dirs = tuple(
-                slug for slug, on in zip(_DIR_ORDER, input_mask, strict=True) if on
-            )
+            input_dirs = tuple(slug for slug, on in zip(_DIR_ORDER, input_mask, strict=True) if on)
             output_dirs = tuple(
                 slug for slug, on in zip(_DIR_ORDER, output_mask, strict=True) if on
             )

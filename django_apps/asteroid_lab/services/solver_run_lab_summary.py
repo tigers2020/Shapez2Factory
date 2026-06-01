@@ -708,9 +708,7 @@ def _layer_outcome(
     legacy_outcome: str,
 ) -> str:
     canonical = resolve_canonical_layer_slug(layer_slug)
-    completed_canonical = frozenset(
-        resolve_canonical_layer_slug(s) for s in completed_layer_slugs
-    )
+    completed_canonical = frozenset(resolve_canonical_layer_slug(s) for s in completed_layer_slugs)
     failed_canonical = (
         resolve_canonical_layer_slug(failed_layer_slug) if failed_layer_slug is not None else None
     )

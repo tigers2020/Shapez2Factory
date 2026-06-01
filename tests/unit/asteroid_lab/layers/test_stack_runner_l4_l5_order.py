@@ -44,11 +44,11 @@ def test_stack_runs_l4_fill_before_l5_transport() -> None:
         return minimal_l2_plan_for_golden()
 
     def stub_l3(**_kwargs: object) -> object:
-        from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (  # noqa: E501
-            run_layer_03_rim_greedy_placement,
-        )
         from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
             GeneticSampleSeedSnapshot,
+        )
+        from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (  # noqa: E501
+            run_layer_03_rim_greedy_placement,
         )
 
         seeds = GeneticSampleSeedSnapshot.from_payload(
@@ -110,7 +110,5 @@ def test_stack_runs_l4_fill_before_l5_transport() -> None:
     )
     assert core.stack_result.status == StackRunStatus.SUCCESS
     assert order == [LAYER_04_INNER_PATTERN_FILL, LAYER_05_TRANSPORT_ROUTING]
-    l5_summary = next(
-        s for s in core.layer_summaries if s.layer_slug == LAYER_05_TRANSPORT_ROUTING
-    )
+    l5_summary = next(s for s in core.layer_summaries if s.layer_slug == LAYER_05_TRANSPORT_ROUTING)
     assert l5_summary.metrics.get("route_count") is not None

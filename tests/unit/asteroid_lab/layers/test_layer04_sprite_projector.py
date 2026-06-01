@@ -12,7 +12,7 @@ from shapez2_factory.adapters.asteroid_lab.space_transport_catalog_snapshot impo
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_route import (
     CommittedRoute,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.sprite_projector import (
+from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.sprite_projector import (  # noqa: E501
     project_routes_to_tiles,
 )
 

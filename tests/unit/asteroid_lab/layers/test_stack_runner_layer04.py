@@ -5,6 +5,9 @@ from __future__ import annotations
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route import (
+    Layer05RoutePlan,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
 )
@@ -14,9 +17,6 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
     LAYER_04_INNER_PATTERN_FILL,
     LAYER_05_TRANSPORT_ROUTING,
     LAYERS_02_TO_06_ACTIVE,
-)
-from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route import (
-    Layer05RoutePlan,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.stack_status import StackRunStatus
 from shapez2_factory.application.asteroid_lab.stack_runner import (
@@ -42,11 +42,11 @@ def test_stack_runs_layer05_transport_after_l4_fill() -> None:
         return minimal_l2_plan_for_golden()
 
     def stub_l3(**_kwargs: object) -> object:
-        from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (  # noqa: E501
-            run_layer_03_rim_greedy_placement,
-        )
         from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
             GeneticSampleSeedSnapshot,
+        )
+        from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (  # noqa: E501
+            run_layer_03_rim_greedy_placement,
         )
 
         seeds = GeneticSampleSeedSnapshot.from_payload(

@@ -43,15 +43,15 @@ from django_apps.asteroid_lab.layers.observability.layer_post_summary_log import
 )
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
+from django_apps.asteroid_lab.services.space_transport_catalog_loader import (
+    try_load_default_space_transport_catalog,
+)
 from shapez2_factory.application.asteroid_lab.stack_runner import (
     _LAYER_INDEX,
     LAYER_STACK_BUDGET_MS,
     CoreStackRunResult,
     _Layer02To05Runner,
     _LayerStackRunner,
-)
-from django_apps.asteroid_lab.services.space_transport_catalog_loader import (
-    try_load_default_space_transport_catalog,
 )
 from shapez2_factory.application.asteroid_lab.stack_runner import (
     run_layers_02_to_06 as _core_run_layers_02_to_06,

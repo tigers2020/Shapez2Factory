@@ -1,4 +1,4 @@
-"""Django delegate — ``shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing``."""
+"""Django delegate for ``layer_04_transport_routing`` (core package)."""
 
 from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.run import (
     run_layer_04_transport_routing,

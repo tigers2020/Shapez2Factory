@@ -97,7 +97,9 @@ def test_spare_connectors_are_not_adjacent_to_required_on_same_edge() -> None:
     required_by_edge: dict = {}
     spare_by_edge: dict = {}
     for connector in plan.planned_connectors:
-        bucket = required_by_edge if connector.role is ExteriorConnectorRole.REQUIRED else spare_by_edge
+        bucket = (
+            required_by_edge if connector.role is ExteriorConnectorRole.REQUIRED else spare_by_edge
+        )
         bucket.setdefault(connector.edge, []).append(
             edge_slot_indices[connector.edge][connector.void_coord]
         )

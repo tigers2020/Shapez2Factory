@@ -5,7 +5,7 @@ from __future__ import annotations
 from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import (
     TransportKind,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.merge_groups import (
+from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.merge_groups import (  # noqa: E501
     RouteGroupRegistry,
 )
 

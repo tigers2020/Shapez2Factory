@@ -196,9 +196,7 @@ def run_layers_02_to_06(
                 post_metrics = build_layer04_inner_fill_post_summary_metrics(last_inner_fill)
         elif canonical_slug == LAYER_05_TRANSPORT_ROUTING:
             resource_kind = (
-                last_exterior_plan.transport_kind
-                if last_exterior_plan is not None
-                else "shape"
+                last_exterior_plan.transport_kind if last_exterior_plan is not None else "shape"
             )
             interior = (
                 last_inner_fill.interior_occupied_cells

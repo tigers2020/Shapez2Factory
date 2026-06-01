@@ -133,7 +133,7 @@ def build_layer04_inner_fill_post_summary_metrics(
 
 
 def build_layer05_post_summary_metrics() -> dict[str, object]:
-    """Deprecated alias — inner fill metrics moved to ``build_layer04_inner_fill_post_summary_metrics``."""
+    """Deprecated alias for ``build_layer04_inner_fill_post_summary_metrics``."""
     return build_layer04_inner_fill_post_summary_metrics()
 
 

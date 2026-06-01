@@ -125,6 +125,7 @@ def test_envelope_shape_only_fluid_platform_count_zero() -> None:
     env = build_reconstruction_capacity_envelope(complete_map=complete)
     assert env["capacity_basis"] == "terrain_upper_bound"
     assert env["primary_resource_kind"] == "shape"
+    assert env["present_resource_kinds"] == ["shape"]
     assert env["by_resource"]["shape"]["max_throughput_per_min"] == "360.0000"
     assert env["by_resource"]["fluid"]["max_throughput_per_min"] == "0.0000"
     assert env["by_resource"]["fluid"]["capacity_upper_bound_platform_count"] == 0

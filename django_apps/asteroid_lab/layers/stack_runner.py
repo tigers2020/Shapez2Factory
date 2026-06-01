@@ -64,11 +64,15 @@ def run_layers_02_to_06(
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...] = _DEFAULT_RUNNERS,
     post_summary_session: LayerPostSummaryLogSession | None = None,
+    capacity_envelope: dict[str, object] | None = None,
+    throughput_target_percent: int | None = 80,
 ) -> StackRunResult:
     core_result: CoreStackRunResult = _core_run_layers_02_to_06(
         complete_map=complete_map,
         budget_ctx=budget_ctx,
         runners=runners,
+        capacity_envelope=capacity_envelope,
+        throughput_target_percent=throughput_target_percent,
     )
     if post_summary_session is not None:
         for record in core_result.layer_summaries:
@@ -129,6 +133,8 @@ def run_full_from_cleanup_recon(
             budget_ctx=ctx,
             runners=runners,
             post_summary_session=session,
+            capacity_envelope=layer01.capacity_envelope,
+            throughput_target_percent=80,
         )
         return layer01, stack_result
     finally:

@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.snapshots.transport_kind import TransportKind
+from shapez2_factory.domain.asteroid_lab.reconstruction.resource_kinds import (
+    detect_present_resource_kinds,
+    detect_primary_resource_kind as _detect_primary_resource_kind,
+)
 
 
 def asteroid_field_cells_from_complete_map(
@@ -28,9 +32,7 @@ def count_asteroid_field_cells_by_resource(
 def detect_primary_resource_kind(complete_map: ReconstructionCompleteMap) -> str:
     """Dominant asteroid resource from complete map field counts; tie → shape."""
 
-    if complete_map.fluid_field_cell_count > complete_map.shape_field_cell_count:
-        return "fluid"
-    return "shape"
+    return _detect_primary_resource_kind(complete_map)
 
 
 def total_asteroid_field_cell_count(complete_map: ReconstructionCompleteMap) -> int:
@@ -56,6 +58,7 @@ __all__ = [
     "asteroid_field_cell_count_for_placement",
     "asteroid_field_cells_from_complete_map",
     "count_asteroid_field_cells_by_resource",
+    "detect_present_resource_kinds",
     "detect_primary_resource_kind",
     "total_asteroid_field_cell_count",
 ]

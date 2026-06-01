@@ -43,10 +43,15 @@ from shapez2_factory.application.asteroid_lab.stack_runner import (
 )
 from shapez2_factory.domain.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
+    ReconstructionCompleteMap,
     build_reconstruction_complete_map,
 )
 from shapez2_factory.domain.asteroid_lab.reconstruction.pipeline import (
     run_topology_reconstruction,
+)
+from shapez2_factory.domain.asteroid_lab.reconstruction.resource_kinds import (
+    detect_present_resource_kinds,
+    detect_primary_resource_kind,
 )
 from shapez2_factory.domain.asteroid_lab.reconstruction.topology_contract import (
     decode_shapez_copy_string,
@@ -87,14 +92,17 @@ def _capacity_summary(
 
 def _capacity_envelope(
     *,
-    shape_field_cell_count: int,
-    fluid_field_cell_count: int,
+    complete_map: ReconstructionCompleteMap,
     rules: GameDataRulesPort,
 ) -> dict[str, Any]:
-    primary = "shape" if shape_field_cell_count >= fluid_field_cell_count else "fluid"
+    shape_field_cell_count = complete_map.shape_field_cell_count
+    fluid_field_cell_count = complete_map.fluid_field_cell_count
+    primary = detect_primary_resource_kind(complete_map)
+    present = detect_present_resource_kinds(complete_map)
     return {
         "capacity_basis": "terrain_upper_bound",
         "primary_resource_kind": primary,
+        "present_resource_kinds": list(present),
         "confirmed_platforms_by_resource": {
             "shape": shape_field_cell_count,
             "fluid": fluid_field_cell_count,
@@ -167,8 +175,7 @@ class RunStackUseCase:
         recon = run_topology_reconstruction(cleanup)
         complete_map = build_reconstruction_complete_map(cleanup=cleanup, recon=recon)
         capacity_envelope = _capacity_envelope(
-            shape_field_cell_count=complete_map.shape_field_cell_count,
-            fluid_field_cell_count=complete_map.fluid_field_cell_count,
+            complete_map=complete_map,
             rules=self._game_data_rules,
         )
         runners = (

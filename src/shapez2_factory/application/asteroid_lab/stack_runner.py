@@ -104,6 +104,8 @@ def run_layers_02_to_06(
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
     genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
+    capacity_envelope: dict[str, Any] | None = None,
+    throughput_target_percent: int | None = None,
 ) -> CoreStackRunResult:
     completed: list[str] = []
     last_diagnostic: DiagnosticLayerSnapshot | None = None
@@ -135,7 +137,12 @@ def run_layers_02_to_06(
         started = budget_ctx.now_fn()
         post_metrics: dict[str, object] = {"stub": True}
         if entry.slug == LAYER_02_EXTERIOR_TRANSPORT:
-            last_exterior_plan = entry.run(complete_map=complete_map, budget_ctx=budget_ctx)
+            last_exterior_plan = entry.run(
+                complete_map=complete_map,
+                budget_ctx=budget_ctx,
+                capacity_envelope=capacity_envelope,
+                throughput_target_percent=throughput_target_percent,
+            )
             if isinstance(last_exterior_plan, ExteriorConnectionPlan):
                 post_metrics = build_layer02_post_summary_metrics(last_exterior_plan)
         elif entry.slug == LAYER_03_RIM_GREEDY_PLACEMENT:
@@ -198,6 +205,8 @@ def run_layers_02_to_05(
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
     genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
+    capacity_envelope: dict[str, Any] | None = None,
+    throughput_target_percent: int | None = None,
 ) -> CoreStackRunResult:
     """Deprecated alias for ``run_layers_02_to_06`` (PR-3c layer renumber)."""
     return run_layers_02_to_06(
@@ -205,6 +214,8 @@ def run_layers_02_to_05(
         budget_ctx=budget_ctx,
         runners=runners,
         genetic_sample_seeds=genetic_sample_seeds,
+        capacity_envelope=capacity_envelope,
+        throughput_target_percent=throughput_target_percent,
     )
 
 

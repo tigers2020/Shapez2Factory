@@ -65,11 +65,7 @@ def _golden_origin_l3() -> tuple[object, GeneticSampleSeedSnapshot]:
         cleanup=cleanup,
         recon=run_topology_reconstruction(cleanup),
     )
-    capacity = _capacity_envelope(
-        shape_field_cell_count=complete_map.shape_field_cell_count,
-        fluid_field_cell_count=complete_map.fluid_field_cell_count,
-        rules=rules,
-    )
+    capacity = _capacity_envelope(complete_map=complete_map, rules=rules)
     exterior_plan = run_layer_02_exterior_transport(
         complete_map=complete_map,
         capacity_envelope=capacity,

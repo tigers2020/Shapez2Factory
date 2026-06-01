@@ -53,9 +53,15 @@ def _capacity_envelope(
     complete_map: ReconstructionCompleteMap,
     rules: GameDataRulesPort,
 ) -> dict[str, Any]:
+    from shapez2_factory.domain.asteroid_lab.reconstruction.resource_kinds import (
+        detect_present_resource_kinds,
+        detect_primary_resource_kind,
+    )
+
     shape_count = int(complete_map.shape_field_cell_count)
     fluid_count = int(complete_map.fluid_field_cell_count)
-    primary = "shape" if shape_count >= fluid_count else "fluid"
+    primary = detect_primary_resource_kind(complete_map)
+    present = detect_present_resource_kinds(complete_map)
 
     def _row(resource_kind: str, platform_count: int) -> dict[str, Any]:
         rule = rules.mining_extraction_rule(resource_kind=resource_kind)
@@ -72,6 +78,7 @@ def _capacity_envelope(
     return {
         "capacity_basis": "terrain_upper_bound",
         "primary_resource_kind": primary,
+        "present_resource_kinds": list(present),
         "confirmed_platforms_by_resource": {
             "shape": shape_count,
             "fluid": fluid_count,

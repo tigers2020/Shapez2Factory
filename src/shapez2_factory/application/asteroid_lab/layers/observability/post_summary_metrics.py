@@ -30,10 +30,13 @@ def build_layer01_post_summary_metrics(
     layer01: Layer01ReconstructionOutput,
 ) -> dict[str, object]:
     complete = layer01.complete_map
+    envelope = layer01.capacity_envelope
     return {
         "complete_map_cell_count": len(complete.cells),
         "shape_field_cell_count": int(complete.shape_field_cell_count),
         "fluid_field_cell_count": int(complete.fluid_field_cell_count),
+        "primary_resource_kind": str(envelope.get("primary_resource_kind") or "shape"),
+        "present_resource_kinds": list(envelope.get("present_resource_kinds") or ()),
         "external_void_cell_count": len(complete.external_void_cells),
         "coord_frame": str(complete.coord_frame.value),
     }

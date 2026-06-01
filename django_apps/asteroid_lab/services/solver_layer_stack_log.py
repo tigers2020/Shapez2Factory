@@ -4,31 +4,43 @@ from __future__ import annotations
 
 import time
 
-from django_apps.asteroid_lab.layers.contracts.candidates import RimBundleCandidateSet
-from django_apps.asteroid_lab.layers.contracts.exterior_connection import ExteriorConnectionPlan
-from django_apps.asteroid_lab.layers.contracts.layer_post_summary import LayerPostSummaryOutcome
-from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
+from django_apps.asteroid_lab.observability import (
+    build_layer04_post_summary_metrics,
+    create_layer_post_summary_log_session,
+    emit_layer_post_summary,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
+    RimBundleCandidateSet,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
+    ExteriorConnectionPlan,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_post_summary import (
+    LayerPostSummaryOutcome,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
     LAYER_03_RIM_MINING_BUNDLES,
     LAYER_04_RIM_BUNDLE_PLACEMENT,
 )
-from django_apps.asteroid_lab.layers.contracts.rim_greedy import IntegratedRimGreedyResult
-from django_apps.asteroid_lab.layers.contracts.rim_placement import Layer04RimPlacementResult
-from django_apps.asteroid_lab.layers.contracts.stack_result import StackRunResult
-from django_apps.asteroid_lab.layers.contracts.stack_status import StackRunStatus
-from django_apps.asteroid_lab.layers.layer_01_reconstruction.output import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
+    IntegratedRimGreedyResult,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_placement import (
+    Layer04RimPlacementResult,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.stack_result import StackRunResult
+from shapez2_factory.application.asteroid_lab.layers.contracts.stack_status import StackRunStatus
+from shapez2_factory.application.asteroid_lab.layers.layer_01_reconstruction.output import (
     Layer01ReconstructionOutput,
 )
-from django_apps.asteroid_lab.layers.observability.layer_post_summary_log import (
+from shapez2_factory.application.asteroid_lab.layers.observability.post_summary_metrics import (
     build_layer01_post_summary_metrics,
     build_layer02_post_summary_metrics,
     build_layer03_post_summary_metrics,
     build_layer03_rim_greedy_post_summary_metrics,
-    build_layer04_post_summary_metrics,
-    create_layer_post_summary_log_session,
-    emit_layer_post_summary,
 )
 
 _LAYER_INDEX = {

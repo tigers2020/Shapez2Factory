@@ -198,6 +198,8 @@ class RunStackUseCase:
             budget_ctx=LayerBudgetContext.from_budget_ms(budget_ms),
             runners=runners,
             genetic_sample_seeds=genetic_sample_seeds,
+            capacity_envelope=capacity_envelope,
+            throughput_target_percent=throughput_target_percent,
         )
         stack_result_json = _stack_result_to_json(core_result.stack_result)
         layer_summaries = [_layer_summary_to_json(record) for record in core_result.layer_summaries]

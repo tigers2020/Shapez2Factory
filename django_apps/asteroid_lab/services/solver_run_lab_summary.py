@@ -6,7 +6,10 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
@@ -14,9 +17,6 @@ from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_04_RIM_BUNDLE_PLACEMENT,
     LAYER_05_INNER_PATTERN_FILL,
     LAYER_06_COMMIT_VALIDATE,
-)
-from django_apps.asteroid_lab.services.solver_run_config_keys import (
-    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
 
 _PLACEHOLDER = "—"

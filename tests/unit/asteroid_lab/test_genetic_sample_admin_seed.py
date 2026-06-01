@@ -29,7 +29,7 @@ def staff_client(db) -> Client:
 
 @pytest.mark.django_db
 def test_genetic_sample_changelist_shows_seed_form(staff_client: Client) -> None:
-    url = reverse("admin:asteroid_lab_GeneSeed_changelist")
+    url = reverse("admin:asteroid_lab_geneseed_changelist")
     response = staff_client.get(url)
     assert response.status_code == 200
     html = response.content.decode()
@@ -53,7 +53,7 @@ def test_genetic_sample_admin_seed_button_runs_command(staff_client: Client) -> 
         metadata_json={"note": "manual"},
     )
 
-    url = reverse("admin:asteroid_lab_GeneSeed_seed_miner_patterns")
+    url = reverse("admin:asteroid_lab_geneseed_seed_miner_patterns")
     response = staff_client.post(
         url,
         {"purge_non_seed": "on", "replace_stale": "on"},
@@ -75,7 +75,7 @@ def test_genetic_sample_admin_seed_button_runs_command(staff_client: Client) -> 
 @pytest.mark.django_db
 def test_genetic_sample_admin_seed_dry_run_no_write(staff_client: Client) -> None:
     before = GeneSeed.objects.count()
-    url = reverse("admin:asteroid_lab_GeneSeed_seed_miner_patterns")
+    url = reverse("admin:asteroid_lab_geneseed_seed_miner_patterns")
     response = staff_client.post(url, {"dry_run": "on"}, follow=True)
     assert response.status_code == 200
     assert GeneSeed.objects.count() == before
@@ -86,7 +86,7 @@ def test_genetic_sample_admin_seed_dry_run_no_write(staff_client: Client) -> Non
 @pytest.mark.django_db
 def test_genetic_sample_changelist_shows_difficulty_columns(staff_client: Client) -> None:
     call_command("seed_miner_patterns")
-    url = reverse("admin:asteroid_lab_GeneSeed_changelist")
+    url = reverse("admin:asteroid_lab_geneseed_changelist")
     response = staff_client.get(url)
     assert response.status_code == 200
     html = response.content.decode()
@@ -101,6 +101,6 @@ def test_genetic_sample_admin_seed_requires_staff(db) -> None:
     user = User.objects.create_user("plain", password="pass-word-123")
     client = Client()
     client.force_login(user)
-    url = reverse("admin:asteroid_lab_GeneSeed_seed_miner_patterns")
+    url = reverse("admin:asteroid_lab_geneseed_seed_miner_patterns")
     response = client.post(url)
     assert response.status_code in (302, 403)

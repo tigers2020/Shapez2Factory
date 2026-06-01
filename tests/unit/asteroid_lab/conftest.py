@@ -32,6 +32,13 @@ def _ensure_mining_extraction_canon_rules(db: None) -> None:
     ensure_mining_extraction_canon_rules()
 
 
+@pytest.fixture(autouse=True)
+def _lab_replay_compose_cache_enabled_for_unit_tests(settings) -> None:
+    """Keep cache contract tests green when local ``.env`` disables compose cache."""
+
+    settings.ASTEROID_LAB_REPLAY_COMPOSE_CACHE_ENABLED = True
+
+
 @pytest.fixture
 def lab_sprite_identifiers_for_admin() -> ShapezBasedataRelease:
     _ensure_ivvd_lookups()

@@ -11,6 +11,7 @@ Use when managing Cursor-side sessions, prompts, or handoffs.
 
 Session defaults:
 
+- Plan runs: paste `documents/ai/templates/execution-scope-contract.md`; obey `.cursor/rules/agent_scope.mdc`.
 - State position, authority, acceptance, and stop conditions before edits.
 - Use current canon/spec or `documents/ai/templates/contract-brief.md` for behavior changes.
 - Keep one PR purpose; split mixed work.
@@ -19,6 +20,7 @@ Session defaults:
 
 Routing:
 
+- Agent scope: `.cursor/rules/agent_scope.mdc`
 - Workflow: `.cursor/rules/workflow.mdc`
 - Shapez2/Asteroid Lab: `.cursor/rules/shapez2-domain.mdc`
 - UI: `.cursor/rules/web-interface.mdc`

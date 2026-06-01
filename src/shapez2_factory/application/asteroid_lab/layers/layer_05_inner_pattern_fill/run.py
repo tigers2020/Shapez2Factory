@@ -1,9 +1,12 @@
-"""Layer 5 stub ??inner pattern fill (PR-3c signature only)."""
+"""Layer 5 package path; canonical entry is ``run_layer_04_inner_pattern_fill`` (PR-1 renumber)."""
 
 from __future__ import annotations
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    Layer04InnerFillResult,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
@@ -11,29 +14,22 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget impo
 from shapez2_factory.application.asteroid_lab.layers.contracts.provisional_overlay import (
     ProvisionalLayoutOverlay,
 )
-from shapez2_factory.application.asteroid_lab.layers.contracts.rim_placement import (
-    Layer04RimPlacementResult,
-)
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
 )
 
 
-def run_layer_05_inner_pattern_fill(
+def run_layer_04_inner_pattern_fill(
     *,
     complete_map: ReconstructionCompleteMap,
     exterior_plan: ExteriorConnectionPlan | None,
-    rim_placement_result: Layer04RimPlacementResult,
     provisional_overlay: ProvisionalLayoutOverlay,
     budget_ctx: LayerBudgetContext,
-) -> None:
-    _ = (
-        complete_map,
-        exterior_plan,
-        rim_placement_result,
-        provisional_overlay,
-        budget_ctx,
-    )
+) -> Layer04InnerFillResult:
+    _ = (complete_map, exterior_plan, provisional_overlay, budget_ctx)
+    return Layer04InnerFillResult.empty()
 
 
-__all__ = ["run_layer_05_inner_pattern_fill"]
+run_layer_05_inner_pattern_fill = run_layer_04_inner_pattern_fill
+
+__all__ = ["run_layer_04_inner_pattern_fill", "run_layer_05_inner_pattern_fill"]

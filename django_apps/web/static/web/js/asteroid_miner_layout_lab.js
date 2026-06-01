@@ -113,8 +113,8 @@
   /** Extra empty cells beyond union bbox on each side (visual col / row), symmetric around (1,0). */
   const REPLAY_GRID_EDGE_PADDING = 5;
 
-  /** Timeline auto-advance interval during replay playback (ms). */
-  const LAB_REPLAY_PLAYBACK_MS = 220;
+  /** Timeline auto-advance interval during replay playback (ms). ~60fps; rAF still gates paint budget. */
+  const LAB_REPLAY_PLAYBACK_MS = 16;
 
   /**
    * Frames with at least this many map_view cells trigger a full grid reset
@@ -854,6 +854,23 @@
     return out;
   }
 
+  function overlayStackPaintRank(cell) {
+    if (!cell || typeof cell !== "object") return 25;
+    const ck = overlayCellKind(cell);
+    if (ck === "shape_miner_extension" || ck === "fluid_miner_extension") return 30;
+    if (ck === "shape_miner" || ck === "fluid_miner") return 20;
+    if (ck === "space_belt" || ck === "space_pipe") return 40;
+    if (ck === "route_probe_path" || ck === "route_probe") return 10;
+    return 25;
+  }
+
+  function sortOverlayCellsForEquipmentStacking(cells) {
+    if (!Array.isArray(cells) || cells.length < 2) return cells;
+    return cells.slice().sort(function (a, b) {
+      return overlayStackPaintRank(a) - overlayStackPaintRank(b);
+    });
+  }
+
   function sortOverlayCellsForPaint(cells) {
     if (!Array.isArray(cells) || cells.length < 2) return cells;
     const regular = [];
@@ -870,7 +887,7 @@
         regular.push(cell);
       }
     }
-    return regular.concat(planned);
+    return sortOverlayCellsForEquipmentStacking(regular).concat(planned);
   }
 
   function overlayCellsFromMapView(mapView, options) {

@@ -17,7 +17,8 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget impo
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
-    LAYER_05_INNER_PATTERN_FILL,
+    LAYER_04_INNER_PATTERN_FILL,
+    LAYER_05_TRANSPORT_ROUTING,
     LAYER_06_COMMIT_VALIDATE,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.run import (
@@ -26,8 +27,11 @@ from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
     run_layer_03_rim_greedy_placement,
 )
+from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.run import (
+    run_layer_05_transport_routing,
+)
 from shapez2_factory.application.asteroid_lab.layers.layer_05_inner_pattern_fill.run import (
-    run_layer_05_inner_pattern_fill,
+    run_layer_04_inner_pattern_fill,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_06_commit_validate.run import (
     run_layer_06_commit_validate,
@@ -190,7 +194,8 @@ class RunStackUseCase:
                 ),
             ),
             _LayerStackRunner(LAYER_03_RIM_GREEDY_PLACEMENT, run_layer_03_rim_greedy_placement),
-            _LayerStackRunner(LAYER_05_INNER_PATTERN_FILL, run_layer_05_inner_pattern_fill),
+            _LayerStackRunner(LAYER_04_INNER_PATTERN_FILL, run_layer_04_inner_pattern_fill),
+            _LayerStackRunner(LAYER_05_TRANSPORT_ROUTING, run_layer_05_transport_routing),
             _LayerStackRunner(LAYER_06_COMMIT_VALIDATE, run_layer_06_commit_validate),
         )
         core_result = run_layers_02_to_06(

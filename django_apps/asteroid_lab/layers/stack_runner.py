@@ -11,7 +11,8 @@ from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_01_RECONSTRUCTION,
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
-    LAYER_05_INNER_PATTERN_FILL,
+    LAYER_04_INNER_PATTERN_FILL,
+    LAYER_05_TRANSPORT_ROUTING,
     LAYER_06_COMMIT_VALIDATE,
 )
 from django_apps.asteroid_lab.layers.contracts.stack_result import StackRunResult
@@ -25,8 +26,11 @@ from django_apps.asteroid_lab.layers.layer_02_exterior_transport.run import (
 from django_apps.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
     run_layer_03_rim_greedy_placement,
 )
+from django_apps.asteroid_lab.layers.layer_04_transport_routing.run import (
+    run_layer_05_transport_routing,
+)
 from django_apps.asteroid_lab.layers.layer_05_inner_pattern_fill.run import (
-    run_layer_05_inner_pattern_fill,
+    run_layer_04_inner_pattern_fill,
 )
 from django_apps.asteroid_lab.layers.layer_06_commit_validate.run import (
     run_layer_06_commit_validate,
@@ -46,6 +50,9 @@ from shapez2_factory.application.asteroid_lab.stack_runner import (
     _Layer02To05Runner,
     _LayerStackRunner,
 )
+from django_apps.asteroid_lab.services.space_transport_catalog_loader import (
+    try_load_default_space_transport_catalog,
+)
 from shapez2_factory.application.asteroid_lab.stack_runner import (
     run_layers_02_to_06 as _core_run_layers_02_to_06,
 )
@@ -53,7 +60,8 @@ from shapez2_factory.application.asteroid_lab.stack_runner import (
 _DEFAULT_RUNNERS: tuple[_LayerStackRunner, ...] = (
     _LayerStackRunner(LAYER_02_EXTERIOR_TRANSPORT, run_layer_02_exterior_transport),
     _LayerStackRunner(LAYER_03_RIM_GREEDY_PLACEMENT, run_layer_03_rim_greedy_placement),
-    _LayerStackRunner(LAYER_05_INNER_PATTERN_FILL, run_layer_05_inner_pattern_fill),
+    _LayerStackRunner(LAYER_04_INNER_PATTERN_FILL, run_layer_04_inner_pattern_fill),
+    _LayerStackRunner(LAYER_05_TRANSPORT_ROUTING, run_layer_05_transport_routing),
     _LayerStackRunner(LAYER_06_COMMIT_VALIDATE, run_layer_06_commit_validate),
 )
 
@@ -73,6 +81,7 @@ def run_layers_02_to_06(
         runners=runners,
         capacity_envelope=capacity_envelope,
         throughput_target_percent=throughput_target_percent,
+        transport_catalog=try_load_default_space_transport_catalog(),
     )
     if post_summary_session is not None:
         for record in core_result.layer_summaries:

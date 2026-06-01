@@ -21,6 +21,9 @@ from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
     _load_complete_map,
     _manifest_path,
 )
+from django_apps.asteroid_lab.services.space_transport_catalog_loader import (
+    try_load_default_space_transport_catalog,
+)
 from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
     GeneticSampleSeedSnapshot,
 )
@@ -38,6 +41,9 @@ from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
     run_layer_03_rim_greedy_placement,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.run import (
+    run_layer_05_transport_routing,
 )
 from shapez2_factory.application.asteroid_lab.ports.game_data_rules import GameDataRulesPort
 from shapez2_factory.application.asteroid_lab.reconstruction_capacity import (
@@ -164,6 +170,14 @@ def build_solver_runtime_replay_frames_from_artifact_run(
         genetic_sample_seeds=genetic_sample_seeds,
     )
 
+    layer05_route_plan = run_layer_05_transport_routing(
+        complete_map=complete_map,
+        exterior_plan=exterior_plan,
+        rim_result=layer03,
+        resource_kind=exterior_plan.transport_kind,
+        transport_catalog=try_load_default_space_transport_catalog(),
+    )
+
     lab_source = [
         {
             "map_view": replay_map_view_to_json_dict(
@@ -178,6 +192,7 @@ def build_solver_runtime_replay_frames_from_artifact_run(
         exterior_plan_wire=plan_wire,
         layer03=layer03,
         layer04=None,
+        layer05_route_plan=layer05_route_plan,
     )
 
 

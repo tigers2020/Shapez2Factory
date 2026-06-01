@@ -75,6 +75,41 @@ def test_required_and_spare_void_coords_disjoint() -> None:
 
 
 @pytest.mark.django_db
+def test_spare_connectors_are_not_adjacent_to_required_on_same_edge() -> None:
+    cm = build_rect_field_with_void_shell(width=10, height=10, void_pad=12)
+    plan = build_exterior_connection_plan(
+        complete_map=cm,
+        resource_kind="shape",
+        terrain_upper_bound_per_min=Decimal("10000"),
+        throughput_target_percent=50,
+        speed_tier=1,
+        rules=snapshot_rules_for_test(),
+    )
+    from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.slots import (
+        build_candidate_slots_by_edge,
+    )
+
+    edge_slots = build_candidate_slots_by_edge(cm)
+    edge_slot_indices = {
+        edge: {coord: index for index, coord in enumerate(slots)}
+        for edge, slots in edge_slots.items()
+    }
+    required_by_edge: dict = {}
+    spare_by_edge: dict = {}
+    for connector in plan.planned_connectors:
+        bucket = required_by_edge if connector.role is ExteriorConnectorRole.REQUIRED else spare_by_edge
+        bucket.setdefault(connector.edge, []).append(
+            edge_slot_indices[connector.edge][connector.void_coord]
+        )
+    for edge, spare_indices in spare_by_edge.items():
+        required_indices = required_by_edge.get(edge, [])
+        if not required_indices:
+            continue
+        for spare_index in spare_indices:
+            assert all(abs(spare_index - required_index) > 1 for required_index in required_indices)
+
+
+@pytest.mark.django_db
 def test_partial_spare_placement_is_success_when_required_slots_fit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

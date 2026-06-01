@@ -1,4 +1,7 @@
-"""Layer 04 rim provisional placement runtime replay segment (transient overlay specs only)."""
+"""Layer 04 rim provisional placement replay segment (legacy L4 bundle packing observability).
+
+Final committed belt/pipe overlays use ``layer04_transport_segment`` + ``Layer04RoutePlan``.
+"""
 
 from __future__ import annotations
 

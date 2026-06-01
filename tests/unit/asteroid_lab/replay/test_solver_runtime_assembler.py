@@ -380,6 +380,43 @@ def test_assembler_l3_probe_windows_follow_summary() -> None:
     )
 
 
+def test_assembler_prefers_transport_routing_segment_over_rim_placement() -> None:
+    from django_apps.asteroid_lab.replay.event_types import (
+        EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN,
+        EVENT_TYPE_LAYER05_TRANSPORT_ROUTING_BEGIN,
+    )
+    from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
+        build_solver_runtime_replay_frames,
+    )
+    from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import golden_5x5_complete_map
+    from tests.unit.asteroid_lab.replay.fixtures.replay_assembler_fixtures import (
+        exterior_plan_wire_for_golden,
+        layer04_result_with_selection_for_golden,
+        layer04_route_plan_with_transport_tiles_for_golden,
+        reconstruction_complete_lab_frame_dict_for_golden,
+        rim_bundle_candidate_set_with_observability_for_golden,
+    )
+
+    frames = build_solver_runtime_replay_frames(
+        complete_map=golden_5x5_complete_map(),
+        lab_frames_before_append=[reconstruction_complete_lab_frame_dict_for_golden()],
+        exterior_plan_wire=exterior_plan_wire_for_golden(),
+        layer03=rim_bundle_candidate_set_with_observability_for_golden(),
+        layer04=layer04_result_with_selection_for_golden(),
+        layer05_route_plan=layer04_route_plan_with_transport_tiles_for_golden(),
+    )
+    types = [str(f["event_type"]) for f in frames]
+    assert EVENT_TYPE_LAYER05_TRANSPORT_ROUTING_BEGIN in types
+    assert EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN not in types
+    kinds = {
+        row.get("kind")
+        for f in frames
+        for row in (f.get("map_view") or {}).get("overlay_cells") or []
+    }
+    assert "route_probe_path" not in kinds
+    assert any(str(k).startswith("space_") for k in kinds if k)
+
+
 def test_l4_segment_does_not_inherit_l3_candidate_overlay() -> None:
     from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
         build_solver_runtime_replay_frames,

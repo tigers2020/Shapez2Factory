@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from django.db.models.fields.json import KeyTransform
+from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
@@ -15,6 +16,7 @@ from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
     load_composed_frames_for_run_id,
     load_manifest_summary_for_run_id,
     persist_composed_replay_for_run_id,
+    replay_compose_cache_enabled,
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY,
@@ -66,6 +68,7 @@ def test_is_cache_summary_valid_rejects_wrong_schema() -> None:
 
 
 @pytest.mark.django_db
+@override_settings(ASTEROID_LAB_REPLAY_COMPOSE_CACHE_ENABLED=True)
 def test_persist_preserves_unrelated_config_json_keys(cache_project: m.AsteroidProject) -> None:
     run = m.SolverRun.objects.create(
         project=cache_project,
@@ -88,6 +91,7 @@ def test_persist_preserves_unrelated_config_json_keys(cache_project: m.AsteroidP
 
 
 @pytest.mark.django_db
+@override_settings(ASTEROID_LAB_REPLAY_COMPOSE_CACHE_ENABLED=True)
 def test_load_composed_frames_and_manifest_round_trip(cache_project: m.AsteroidProject) -> None:
     run = m.SolverRun.objects.create(project=cache_project, run_key="rk-cache-2", config_json={})
     cell = {"x": 0, "y": 0, "kind": "asteroid_fluid_field", "transport": "none"}
@@ -169,3 +173,19 @@ def test_load_manifest_summary_does_not_call_composed_frames_loader(
         summary = load_manifest_summary_for_run_id(int(run.pk))
     assert summary is not None
     assert summary["frame_count"] == 1
+
+
+@pytest.mark.django_db
+@override_settings(ASTEROID_LAB_REPLAY_COMPOSE_CACHE_ENABLED=False)
+def test_compose_cache_disabled_skips_load_and_persist(cache_project: m.AsteroidProject) -> None:
+    assert replay_compose_cache_enabled() is False
+
+    run = m.SolverRun.objects.create(project=cache_project, run_key="rk-cache-off", config_json={})
+    frames = [{"frame_index": 0, "map_view": {"full_cells": []}}]
+    persist_composed_replay_for_run_id(int(run.pk), frames=frames, metrics={"frame_count": 1})
+    run.refresh_from_db()
+
+    assert load_composed_frames_for_run_id(int(run.pk)) is None
+    assert run.lab_replay_payload_json == {}
+    assert not run.lab_replay_manifest_summary_json
+    assert SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY not in (run.config_json or {})

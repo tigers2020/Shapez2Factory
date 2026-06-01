@@ -66,6 +66,12 @@ class RimGreedyScoreAtoms:
 
 @dataclass(frozen=True, slots=True)
 class CommittedRimSeedPlacement:
+    """L3 committed equipment + stub.
+
+    ``route_probe_path`` is a Layer 3 feasibility witness only — not final transport.
+    Layer 4 transport routing is the sole authority for committed belt/pipe routes.
+    """
+
     placement_id: str
     variant_id: str
     anchor: Coord
@@ -74,6 +80,7 @@ class CommittedRimSeedPlacement:
     miner_cells: frozenset[Coord]
     extension_cells: frozenset[Coord]
     m_output_stub: Coord
+    throughput_factor: int
     route_probe_path: tuple[Coord, ...]
 
 

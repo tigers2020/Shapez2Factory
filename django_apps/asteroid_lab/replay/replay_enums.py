@@ -51,6 +51,14 @@ class ReplayEventType(StrEnum):
     LAYER04_RIM_CANDIDATE_REJECTED_OVERLAP = "layer04_rim_candidate_rejected_overlap"
     LAYER04_RIM_PLACEMENT_COMPLETE = "layer04_rim_placement_complete"
 
+    # Layer 04 transport routing (deprecated wire; read-compat one release)
+    LAYER04_TRANSPORT_ROUTING_BEGIN = "layer04_transport_routing_begin"
+    LAYER04_TRANSPORT_ROUTING_COMPLETE = "layer04_transport_routing_complete"
+
+    # Layer 05 transport routing (canonical committed belt/pipe tiles)
+    LAYER05_TRANSPORT_ROUTING_BEGIN = "layer05_transport_routing_begin"
+    LAYER05_TRANSPORT_ROUTING_COMPLETE = "layer05_transport_routing_complete"
+
     # Optimization (superset: matches OptimizationReplayEventType wire values)
     OPTIMIZATION_INPUT_LOADED = "optimization.input_loaded"
     CAPACITY_PLAN_CREATED = "capacity.plan_created"

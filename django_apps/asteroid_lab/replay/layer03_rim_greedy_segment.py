@@ -178,6 +178,30 @@ _APPEND_TO_REPLAY_KIND_COMMITTED: dict[AppendCellKind, str] = {
 
 GreedyReplayEquipmentWire = Literal["observation", "committed"]
 
+COMMITTED_RIM_EQUIPMENT_OVERLAY_ROLE = "committed_rim_equipment"
+
+
+def build_persistent_committed_equipment_overlay_wire(
+    result: IntegratedRimGreedyResult,
+) -> list[dict[str, object]]:
+    """Miner + extension sprites carried on L4+ runtime frames (stacked with transport overlays)."""
+
+    from django_apps.asteroid_lab.replay.runtime_frame_finalize import (
+        transient_overlay_cells_to_wire,
+    )
+
+    if not result.committed_placements:
+        return []
+    cells = _transient_overlay_for_greedy_result(
+        result,
+        placements=result.committed_placements,
+        equipment_wire="committed",
+    )
+    wire = transient_overlay_cells_to_wire(cells)
+    for row in wire:
+        row["overlay_role"] = COMMITTED_RIM_EQUIPMENT_OVERLAY_ROLE
+    return wire
+
 
 def _parent_coord_for_extension(
     placement: CommittedRimSeedPlacement,
@@ -408,6 +432,7 @@ def build_layer03_rim_greedy_runtime_segment_specs(
                 transient_overlay_cells=_transient_overlay_for_greedy_result(
                     result,
                     placements=chunk,
+                    equipment_wire="committed",
                 ),
             )
         )
@@ -472,6 +497,8 @@ def build_layer03_rim_greedy_segment_specs(
 
 
 __all__ = [
+    "COMMITTED_RIM_EQUIPMENT_OVERLAY_ROLE",
     "build_layer03_rim_greedy_runtime_segment_specs",
     "build_layer03_rim_greedy_segment_specs",
+    "build_persistent_committed_equipment_overlay_wire",
 ]

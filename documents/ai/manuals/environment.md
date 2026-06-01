@@ -41,6 +41,7 @@ Load order: `.env` → `.env.debug` (when present).
 | `ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH` | `tests/fixtures/asteroid_lab/gene_templates` | `config/settings.py` |
 | `ASTEROID_LAB_MINERS_PER_ROUTE_OUT` | `12` | `config/settings.py` (shape belt goals per-route bundle budget) |
 | `ASTEROID_LAB_REPLAY_PAYLOAD_MODE` | `lazy` | `config/settings.py` — `inline` keeps full POST `lab_replay_frames_json`; `lazy` omits inline array (Sequence 13C) |
+| `ASTEROID_LAB_REPLAY_COMPOSE_CACHE_ENABLED` | `1` | `config/settings.py` + `lab_replay_persisted_cache.py` — `0` skips read/write of composed replay on `SolverRun` (always recompose from artifact; debug L3/replay) |
 | `ASTEROID_LAB_BOUNDARY_JSONL` | off | `django_apps/asteroid_lab/observability/boundary_jsonl.py` |
 | `ASTEROID_LAB_PERF_TRACE` | off | `django_apps/asteroid_lab/observability/lab_perf_trace.py` — JSONL under `var/log/asteroid_lab_perf/` |
 | `ASTEROID_LAB_BOUNDARY_JSONL_DIR` | `var/asteroid_boundary_logs` | same |
@@ -54,8 +55,10 @@ Load order: `.env` → `.env.debug` (when present).
 var/log/asteroid_lab_layer_stack/projects/{project_slug}/runs/{run_id}/
   manifest.json
   stack_run.jsonl
-  layer_01_reconstruction.jsonl … layer_04_rim_bundle_placement.jsonl
-  layer_04_selected_placements.jsonl   # L4 selected-placement forensic (one row per placement)
+  layer_01_reconstruction.jsonl … layer_06_commit_validate.jsonl
+  layer_04_inner_pattern_fill.jsonl    # canonical L4 inner fill
+  layer_05_transport_routing.jsonl     # canonical L5 transport (legacy runs may log deprecated slugs)
+  layer_04_selected_placements.jsonl   # rim-bundle forensic (legacy L4 rim placement)
 ```
 
 Separate optional paths (not merged into layer-stack):

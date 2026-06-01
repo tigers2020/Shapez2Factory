@@ -6,6 +6,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge imp
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.placement import (
     InsufficientConnectorSlotsError,
     choose_even_slots,
+    choose_spare_slots,
     distribute_connector_counts,
     even_slot_index,
     nearest_unused_index,
@@ -69,3 +70,30 @@ def test_remaining_slots_excludes_used_coords() -> None:
     assert (1, -5) not in remaining[CardinalEdge.NORTH]
     assert len(remaining[CardinalEdge.NORTH]) == 2
     assert remaining[CardinalEdge.EAST] == [(5, 0)]
+
+
+def test_choose_spare_slots_prefers_distance_from_required() -> None:
+    slots = [(index, 0) for index in range(10)]
+    required = choose_even_slots(slots, 3)
+    required_indices = {slots.index(coord) for coord in required}
+    remaining = [slot for slot in slots if slot not in required]
+    old_style = choose_even_slots(remaining, 3)
+    old_style_indices = {slots.index(coord) for coord in old_style}
+    spare = choose_spare_slots(slots, 3, avoid=set(required))
+    spare_indices = {slots.index(coord) for coord in spare}
+
+    def adjacent_to_required(indices: set[int]) -> int:
+        return sum(
+            1
+            for index in indices
+            if any(abs(index - required_index) == 1 for required_index in required_indices)
+        )
+
+    assert spare_indices != old_style_indices
+    assert adjacent_to_required(spare_indices) < adjacent_to_required(old_style_indices)
+    assert 6 not in spare_indices
+
+
+def test_choose_spare_slots_without_avoid_matches_even_spacing() -> None:
+    slots = [(index, 0) for index in range(10)]
+    assert choose_spare_slots(slots, 3, avoid=set()) == choose_even_slots(slots, 3)

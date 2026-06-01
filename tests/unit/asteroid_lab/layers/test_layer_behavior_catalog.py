@@ -11,6 +11,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_post_summar
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_03_RIM_GREEDY_PLACEMENT,
+    LAYER_04_INNER_PATTERN_FILL,
+    LAYER_04_TRANSPORT_ROUTING,
+    LAYER_05_TRANSPORT_ROUTING,
 )
 
 
@@ -28,3 +31,8 @@ def test_layer03_summary_line_includes_skip_reason() -> None:
     assert "rim_anchors=81" in text
     assert "skip=missing_exterior_connection_plan" in text
     assert layer_behavior_for_slug(LAYER_03_RIM_GREEDY_PLACEMENT)
+    assert "interior" in layer_behavior_for_slug(LAYER_04_INNER_PATTERN_FILL).lower()
+    assert "routes" in layer_behavior_for_slug(LAYER_05_TRANSPORT_ROUTING).lower()
+    assert layer_behavior_for_slug(LAYER_04_TRANSPORT_ROUTING) == layer_behavior_for_slug(
+        LAYER_05_TRANSPORT_ROUTING,
+    )

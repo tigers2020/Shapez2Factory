@@ -11,9 +11,13 @@ from django_apps.asteroid_lab.replay.layer02_segment import (
 )
 from django_apps.asteroid_lab.replay.layer03_rim_greedy_segment import (
     build_layer03_rim_greedy_runtime_segment_specs,
+    build_persistent_committed_equipment_overlay_wire,
 )
 from django_apps.asteroid_lab.replay.layer03_segment import build_layer03_runtime_segment_specs
 from django_apps.asteroid_lab.replay.layer04_segment import build_layer04_runtime_segment_specs
+from django_apps.asteroid_lab.replay.layer05_transport_segment import (
+    build_layer05_transport_frames,
+)
 from django_apps.asteroid_lab.replay.persistent_exterior_overlay import (
     persistent_connector_overlays_from_wire,
 )
@@ -36,6 +40,9 @@ from django_apps.asteroid_lab.replay.timeline_serialization import (
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     RimBundleCandidateSet,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route import (
+    Layer05RoutePlan,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
     IntegratedRimGreedyResult,
@@ -104,6 +111,8 @@ def build_solver_runtime_replay_frames(
     exterior_plan_wire: Mapping[str, Any] | None,
     layer03: RimBundleCandidateSet | IntegratedRimGreedyResult | None,
     layer04: Layer04RimPlacementResult | None,
+    layer05_route_plan: Layer05RoutePlan | None = None,
+    layer04_route_plan: Layer05RoutePlan | None = None,
 ) -> list[dict[str, Any]]:
     """JSON-serializable frames for ``SolverRun.config_json[solver_runtime_replay_frames]``."""
 
@@ -148,6 +157,12 @@ def build_solver_runtime_replay_frames(
         complete_map=complete_map,
     )
 
+    persistent_with_equipment = list(persistent_overlay_wire)
+    if isinstance(layer03, IntegratedRimGreedyResult):
+        persistent_with_equipment.extend(
+            build_persistent_committed_equipment_overlay_wire(layer03),
+        )
+
     if layer03 is not None:
         if isinstance(layer03, IntegratedRimGreedyResult):
             l3_specs = build_layer03_rim_greedy_runtime_segment_specs(layer03)
@@ -165,7 +180,19 @@ def build_solver_runtime_replay_frames(
             )
         )
 
-    if layer04 is not None:
+    route_plan = layer05_route_plan if layer05_route_plan is not None else layer04_route_plan
+    if route_plan is not None and (route_plan.routes or route_plan.transport_tiles):
+        l5_specs = build_layer05_transport_frames(route_plan)
+        out.extend(
+            _finalize_specs(
+                l5_specs,
+                structural_map_view=display_base,
+                structural_overlay_wire=structural_overlay_wire,
+                persistent_overlay_wire=persistent_with_equipment,
+                exterior_plan_wire=plan_dict,
+            )
+        )
+    elif layer04 is not None:
         l4_specs = build_layer04_runtime_segment_specs(
             selected=layer04.selected_placements,
             rejected=layer04.rejected_candidates,

@@ -24,6 +24,7 @@ from django_apps.asteroid_lab.services.lab_replay_lazy_handle import LAB_REPLAY_
 from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
     CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION,
     persist_composed_replay_for_run_id,
+    replay_compose_cache_enabled,
 )
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
@@ -100,6 +101,9 @@ def _lab_replay_manifest_summary(
 
 def _warm_lab_replay_cache_after_artifact_ingest(*, project_id: int, run_id: int) -> None:
     """Compose artifact replay for lazy SSR preview (non-fatal on failure)."""
+
+    if not replay_compose_cache_enabled():
+        return
 
     try:
         frames, metrics = build_lab_replay_frames_for_project(

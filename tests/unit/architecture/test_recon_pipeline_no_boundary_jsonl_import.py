@@ -1,4 +1,4 @@
-"""PR-CLI-2f — core pipeline must not import the Django boundary sink (BA-1).
+"""PR-CLI-2f ??core pipeline must not import the Django boundary sink (BA-1).
 
 The relocated core decode/cleanup/reconstruction modules MUST NOT import ``django``,
 ``django_apps``, ``config``, or the settings/file-I/O sink ``observability.boundary_jsonl``.

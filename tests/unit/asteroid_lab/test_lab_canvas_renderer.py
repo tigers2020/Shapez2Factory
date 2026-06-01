@@ -32,6 +32,7 @@ def test_lab_js_wires_canvas_renderer() -> None:
     assert "function labCanvasRendererEnabled(" in src
     assert "function mountLabCanvasRenderer(" in src
     assert "function buildCanvasPaintPlan(" in src
+    assert "function lastFrameWithSpriteCapableCells(" in src
     assert "function applyLabCanvasServerReplayFrame(" in src
     assert "lab-replay-canvas-hit-layer" in src
     let_pos = src.index("let labCanvasRenderer = null")

@@ -11,9 +11,13 @@ from django.conf import settings
 from django.utils import timezone
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.models import GeneSeed
 from django_apps.asteroid_lab.services.artifact_ingest import (
     ArtifactIngestError,
     ingest_artifact_for_project,
+)
+from django_apps.asteroid_lab.services.genetic_sample_catalog_snapshot import (
+    build_genetic_sample_seed_snapshot,
 )
 from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
     build_lab_replay_lazy_handle,
@@ -149,6 +153,7 @@ def _build_subprocess_request(
             throughput_target_percent = int(raw_percent)
         except (TypeError, ValueError):
             throughput_target_percent = None
+    genetic_sample_seeds = build_genetic_sample_seed_snapshot(GeneSeed.objects.all())
     return SolverSubprocessRequest(
         run_key=resolved_run_key,
         copy_code=str(inp.copy_code or ""),
@@ -159,6 +164,7 @@ def _build_subprocess_request(
         replace_existing=replace_existing_run,
         verbose=verbose,
         throughput_target_percent=throughput_target_percent,
+        genetic_sample_seeds=genetic_sample_seeds,
     )
 
 

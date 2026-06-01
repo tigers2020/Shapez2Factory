@@ -1,4 +1,4 @@
-"""PR-CLI-1 Step 2 — AtomicArtifactWriter BA-5 protocol round-trip."""
+"""PR-CLI-1 Step 2 ??AtomicArtifactWriter BA-5 protocol round-trip."""
 
 from __future__ import annotations
 

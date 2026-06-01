@@ -1,4 +1,4 @@
-"""Reconstruction-complete map factory — merged display SoT."""
+"""Reconstruction-complete map factory ??merged display SoT."""
 
 from __future__ import annotations
 

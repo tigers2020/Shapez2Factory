@@ -15,7 +15,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
 
 LAYER_BEHAVIOR_BY_SLUG: dict[str, str] = {
     LAYER_01_RECONSTRUCTION: (
-        "Deconstruct snapshot → topology reconstruction → ReconstructionCompleteMap "
+        "Deconstruct snapshot ??topology reconstruction ??ReconstructionCompleteMap "
         "(field cells, external void, capacity envelope)."
     ),
     LAYER_02_EXTERIOR_TRANSPORT: (

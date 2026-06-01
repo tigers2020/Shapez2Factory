@@ -2,8 +2,8 @@
 
 import pytest
 
-from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.placement import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.placement import (
     InsufficientConnectorSlotsError,
     choose_even_slots,
     distribute_connector_counts,

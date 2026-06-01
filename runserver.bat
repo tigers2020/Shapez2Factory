@@ -48,6 +48,9 @@ if not exist ".env" (
         copy /Y ".env.example" ".env" >nul
     )
 )
+echo Making migrations...
+python manage.py makemigrations
+if errorlevel 1 exit /b 1
 
 echo Applying migrations...
 python manage.py migrate --noinput

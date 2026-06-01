@@ -1,51 +1,48 @@
-# {{PROJECT_NAME}} Root
+# shapez2 Factory Planner — Root
 
-Standing directive for {{PROJECT_NAME}}. Apply with more specific glob rules when present; on conflict, follow priority order here + [AGENTS.md](mdc:AGENTS.md).
+Standing directive. On conflict: [`AGENTS.md`](mdc:AGENTS.md) + [`.cursor/rules/workflow.mdc`](mdc:.cursor/rules/workflow.mdc) + more specific glob rules.
 
-## Top-level operating rules
+## Operating workflow
 
-1. `[Simon]` summarizes request, divides responsibility subsections.
-2. Responsible persona briefly explains approach in 1–2 sentences.
-3. Only after that, write/edit code.
-4. Meaningful changes leave research docs + plan MD under `documents/` before implementation.
-5. No implementation before human approves plan.
-6. After implementation, finish in order: `[Tess]` tests, then `[Rex]` verification.
-7. Macro 10-stage pipeline (research · planning agreement · director review · approval · implementation · review · QA · harness · final · wiki) follows [protocols/README.md](mdc:protocols/README.md). Stage 3 Persona Dialogue applies **only at stage 6 (implementation)**.
+```text
+Problem → Contract brief → PR plan (one purpose) → Approval → Failing tests → Minimal implementation → Gate → Review
+```
 
-## Self-verification (4 steps)
+- ⬜ Restate or confirm **contract brief** before production edits ([`contract-brief.md`](mdc:documents/ai/templates/contract-brief.md))
+- ⬜ **One PR · one purpose** — split when scope grows ([`pr-plan.md`](mdc:documents/ai/templates/pr-plan.md))
+- ⬜ **Test before production** for contract/regression changes
+- ⬜ Agent scoped by **Position · Authority · Acceptance · Stop conditions** ([`AGENTS.md`](mdc:AGENTS.md))
+- ⬜ No commit / push / PR / merge unless user explicitly asks
+- ⬜ Close with caveman six sections + validation evidence ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc))
 
-1. Scope check: which workflow stage request belongs to.
-2. Boundary check: which layer among domain/application/adapters/interfaces changes.
-3. Impact check: effects on tests, DTO/port, theme, DB migration, doc approval gates.
-4. Verification check: report whether `pytest` → `ruff check .` → `mypy django_apps config src` → `black .` can run.
+## Self-check (4 steps)
 
-## Domain terminology
-
-> Modify items below to fit project.
-
-- {{TERM_1}}: {{TERM_1_DESC}}
-- {{TERM_2}}: {{TERM_2_DESC}}
-- {{TERM_3}}: {{TERM_3_DESC}}
+- ⬜ **Stage:** Which workflow stage? (audit · tests-only · implement · docs)
+- ⬜ **Boundary:** Which layer/path owns this change?
+- ⬜ **Contract:** What invariant must not break? CANON spec linked?
+- ⬜ **Verification:** Which pytest/ruff/mypy/black commands will run?
 
 ## DO
 
-- Assume Python 3.12, src layout, line length 100.
-- Add tests alongside new rules/bug fixes whenever possible.
-- Handle API keys/secrets only via `.env` or config boundaries; never hardcode.
-- When verification not run, report commands not executed, reason, remaining risk.
-- If `black .` modifies files, report formatting changes + verification results.
+- ✅ Python 3.12, src layout, line length 100
+- ✅ Contract-first TDD for behavior changes
+- ✅ Secrets via `.env` / config only
+- ✅ Report commands not run + remaining risk
+- ✅ Separate superseded docs from CANON authority
 
 ## DON'T
 
-- No I/O, UI, DB, external API calls in domain.
-- No application import of concrete adapter implementations.
-- No business policy in adapters.
-- No reporting commands as passed when unverified.
-- No implementation while plan unapproved.
-- No diff inflation via renames differing only by leading underscore, e.g. `func`↔`_func` ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc) Forbidden Shortcuts).
+- ❌ Production edit without contract brief (behavior change)
+- ❌ Multi-purpose PRs
+- ❌ Domain I/O in `domain/`; concrete adapters in `application/`
+- ❌ Business policy in adapters or fat views
+- ❌ Claim pass without running gates
+- ❌ Leading-underscore-only renames ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc) Forbidden Shortcuts)
+- ❌ Revive deleted/superseded specs as authority
 
 ## References
 
 - [AGENTS.md](mdc:AGENTS.md)
-- [Persona index](mdc:persona/README.md)
-- [Cursor memo](mdc:documents/CURSOR_MEMO.md)
+- [workflow.mdc](mdc:.cursor/rules/workflow.mdc)
+- [Position index](mdc:persona/README.md)
+- [Protocols](mdc:protocols/README.md)

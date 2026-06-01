@@ -44,8 +44,9 @@ black --check .
 │   ├── architecture/                # 레이어 구조·의존 방향
 │   ├── runbooks/                    # 반복 개발 절차
 │   └── adr/                         # 아키텍처 결정 기록
-├── persona/                         # 팀 페르소나 카드
-├── protocols/                       # 거시 10단계 파이프라인 정본
+├── persona/                         # Position lenses (domain routing)
+├── protocols/                       # Spec-first workflow stages
+├── documents/ai/templates/          # Contract brief + PR plan templates
 ├── documents/                       # 메모, 플랜, 리서치 문서
 └── .github/workflows/ci.yml         # GitHub Actions CI
 ```
@@ -58,31 +59,39 @@ black --check .
 
 ## Workflow
 
-모든 작업은 **계획 → 구현 → 검증 → 문서** 루프를 따른다.
+**Spec-first · Small PR · Test-gated · Review-driven** ([`AGENTS.md`](AGENTS.md))
 
-1. `AGENTS.md`와 관련 `docs/`를 먼저 읽는다.
-2. 변경 대상·리스크·검증 방법을 계획한다.
-3. 가장 작은 단위로 구현한다.
-4. 렉스 4단계 검증을 실행한다.
-5. 문서를 동기화한다 (`doc-update` 스킬).
+```text
+Problem → Contract brief → PR plan (one purpose) → Failing tests → Minimal implementation → Gate → Review → Merge
+```
 
-## Team Personas
+1. Read [`AGENTS.md`](AGENTS.md) + CANON spec for the task.
+2. Fill [`contract-brief.md`](documents/ai/templates/contract-brief.md) or link spec.
+3. Scope one PR ([`pr-plan.md`](documents/ai/templates/pr-plan.md)).
+4. Failing test before production (contract/regression).
+5. Run dual gate ([`testing.md`](documents/ai/manuals/testing.md)).
+6. Sync docs when public contract changes.
 
-| 이름 | 역할 |
-|---|---|
-| 시몬 | 분배·조율, 구현 게이트 |
-| 도미닉 | `domain/` — 비즈니스 규칙 |
-| 유리 | `application/` — use case, ports |
-| 아다 | `adapters/` — 외부 시스템 |
-| 테스 | `tests/` — QA |
-| 렉스 | CI/검증 체인 |
-| 지나 | `interfaces/` — UI |
+Stages: [`protocols/README.md`](protocols/README.md) · Rule: [`.cursor/rules/workflow.mdc`](.cursor/rules/workflow.mdc)
 
-인덱스: [persona/README.md](persona/README.md)
+## Position lenses
+
+| Lens | Card | Ownership |
+|---|---|---|
+| Coordinator | [simon.md](persona/simon.md) | Scope · PR sequence |
+| Domain | [dominic.md](persona/dominic.md) | `domain/` |
+| Application | [yuri.md](persona/yuri.md) | `application/` |
+| Adapters | [ada.md](persona/ada.md) | `adapters/` |
+| Tests | [tess.md](persona/tess.md) | `tests/` |
+| Harness | [rex.md](persona/rex.md) | pytest · ruff · mypy · black |
+| UI | [gina-gui.md](persona/gina-gui.md) | `interfaces/`, web |
+| Django | [denny.md](persona/denny.md) | `django_apps/`, `config/` |
+
+Index: [persona/README.md](persona/README.md) — routing hints, not roleplay.
 
 ## Pipeline
 
-10단계 파이프라인 정본: [protocols/README.md](protocols/README.md)
+Workflow stages: [protocols/README.md](protocols/README.md)
 
 ## Roadmap
 

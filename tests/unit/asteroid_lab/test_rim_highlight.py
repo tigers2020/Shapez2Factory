@@ -1,4 +1,4 @@
-"""Terrain rim highlight DTO — replay/UI artifact only."""
+"""Terrain rim highlight DTO ??replay/UI artifact only."""
 
 from __future__ import annotations
 

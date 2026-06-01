@@ -8,7 +8,7 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 
 | Tree | Role |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | Agent operating contract (highest priority for workflow); **not** the path map SoT |
+| [`AGENTS.md`](AGENTS.md) | Agent operating contract — Spec-first · Small PR · Test-gated; **not** the path map SoT |
 | [`structure.md`](structure.md) | **Repository map SoT** — paths, apps, URLs, tests, commands |
 | [`docs/`](docs/) | Domain, architecture, runbook, ADR summaries (agent-friendly) |
 | [`documents/`](documents/README.md) | Canonical body text, CANON, plans, research |
@@ -36,7 +36,8 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 | `harness/validators/` | Golden comparators (e.g. `compare_golden.py`) |
 | `documents/` | Current document authority, plans, research, reports — [`documents/README.md`](documents/README.md) |
 | `protocols/` | Multi-step pipeline ([`protocols/README.md`](protocols/README.md)) |
-| `persona/` | Role cards and routing ([`persona/README.md`](persona/README.md)) |
+| `persona/` | Position lenses (domain routing — not roleplay) ([`persona/README.md`](persona/README.md)) |
+| `documents/ai/templates/` | Contract brief + PR plan templates |
 | `.cursor/` | Cursor rules, skills, editor guidance |
 | `assets/css/` | Tailwind input CSS source |
 | `frontend/recipe_graph_editor/` | Vite + React Flow editor source |

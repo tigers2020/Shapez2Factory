@@ -1,4 +1,4 @@
-﻿"""Product replay timeline payload (Lab ORM only)."""
+"""Product replay timeline payload (Lab ORM only)."""
 
 from __future__ import annotations
 

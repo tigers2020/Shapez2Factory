@@ -1,4 +1,4 @@
-"""Layer 6 stub — commit / validate (PR-1 skeleton; renumbered PR-3c)."""
+"""Layer 6 stub ??commit / validate (PR-1 skeleton; renumbered PR-3c)."""
 
 from __future__ import annotations
 

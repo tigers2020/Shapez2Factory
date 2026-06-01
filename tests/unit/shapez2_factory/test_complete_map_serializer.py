@@ -1,4 +1,4 @@
-"""PR-CLI-2c Slice 2 — ``ReconstructionCompleteMap`` JSON serializer round-trip (no Django)."""
+"""PR-CLI-2c Slice 2 ??``ReconstructionCompleteMap`` JSON serializer round-trip (no Django)."""
 
 from __future__ import annotations
 

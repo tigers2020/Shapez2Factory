@@ -1,4 +1,4 @@
-﻿"""G3 proof policy ??island-paste vs world-equivalence tracks."""
+"""G3 proof policy ??island-paste vs world-equivalence tracks."""
 
 from __future__ import annotations
 

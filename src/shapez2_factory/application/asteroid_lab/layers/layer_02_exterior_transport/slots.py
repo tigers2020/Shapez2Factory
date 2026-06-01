@@ -1,4 +1,4 @@
-"""VOID_DEEP_SLOTS_V1 — exterior void slot catalog from reconstruction-complete map."""
+"""VOID_DEEP_SLOTS_V1 ??exterior void slot catalog from reconstruction-complete map."""
 
 from __future__ import annotations
 

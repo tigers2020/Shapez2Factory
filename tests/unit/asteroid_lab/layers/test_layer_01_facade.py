@@ -31,3 +31,4 @@ def test_run_layer_01_returns_layer01_output(
     assert out.complete_map is not None
     assert out.capacity_envelope["capacity_basis"] == "terrain_upper_bound"
     assert "by_resource" in out.capacity_envelope
+    assert "present_resource_kinds" in out.capacity_envelope

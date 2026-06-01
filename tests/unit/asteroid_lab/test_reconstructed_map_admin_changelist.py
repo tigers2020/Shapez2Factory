@@ -1,4 +1,4 @@
-"""ReconstructedAsteroidMap admin changelist — thumbnail img, actions."""
+"""ReconstructedAsteroidMap admin changelist ??thumbnail img, actions."""
 
 from __future__ import annotations
 

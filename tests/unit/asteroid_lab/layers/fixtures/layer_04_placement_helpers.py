@@ -3,26 +3,28 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.genetic_sample.enums import Direction
-from django_apps.asteroid_lab.layers.contracts.candidates import (
+from django_apps.asteroid_lab.snapshots.grid_contract import Coord
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     BundleCellRole,
     RouteProbedBundleCandidate,
     RouteProbeResult,
     RouteProbeStatus,
     make_bundle_candidate_for_test,
 )
-from django_apps.asteroid_lab.layers.contracts.placement_state import PlacementCommitState
-from django_apps.asteroid_lab.layers.contracts.provisional_overlay import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.placement_state import (
+    PlacementCommitState,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.provisional_overlay import (
     LAYER_04_SOURCE,
     ProvisionalLayoutOverlay,
     ProvisionalPlacedCell,
 )
-from django_apps.asteroid_lab.layers.contracts.rim_placement import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_placement import (
     Layer04RimPlacementResult,
     RimBundlePlacement,
     build_layer04_rim_placement_result,
 )
-from django_apps.asteroid_lab.layers.contracts.transport_kind import TransportKind
-from django_apps.asteroid_lab.snapshots.grid_contract import Coord
+from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import TransportKind
 
 
 def succeeded_probe_at(
@@ -80,7 +82,7 @@ def _cells_for_role(
     placements: tuple[object, ...],
     role: BundleCellRole,
 ) -> frozenset[Coord]:
-    from django_apps.asteroid_lab.layers.contracts.candidates import BundlePlacement
+    from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import BundlePlacement
 
     typed = tuple(p for p in placements if isinstance(p, BundlePlacement))
     return frozenset(p.coord for p in typed if p.cell_role is role)

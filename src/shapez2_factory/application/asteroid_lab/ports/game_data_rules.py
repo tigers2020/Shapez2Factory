@@ -1,4 +1,4 @@
-"""``GameDataRulesPort`` — solver-facing game-data rules (L2 decouple, PR-CLI-2b).
+"""``GameDataRulesPort`` ??solver-facing game-data rules (L2 decouple, PR-CLI-2b).
 
 The core satisfies this port via a frozen ``game_data_snapshot.json`` (see
 ``JsonSnapshotGameDataRulesAdapter``); the Django side produces the same snapshot from the ORM via a

@@ -1,4 +1,4 @@
-"""Idempotent DB seed for exhaustive sample-gene layouts (GeneticSample by ``gene_key``)."""
+"""Idempotent DB seed for exhaustive sample-gene layouts (GeneSeed by ``gene_key``)."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     TransportKind,
     generate_exhaustive_sample_genes,
 )
-from django_apps.asteroid_lab.models import GeneticSample
+from django_apps.asteroid_lab.models import GeneSeed
 
 
 class Command(BaseCommand):  # type: ignore[misc]
     help = (
-        "Generate all valid exhaustive sample-gene topologies and upsert GeneticSample rows "
+        "Generate all valid exhaustive sample-gene topologies and upsert GeneSeed rows "
         "by gene_key (metadata_json.generator scoped)."
     )
 
@@ -53,7 +53,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             "--delete-stale-generated",
             action="store_true",
             help=(
-                "Delete GeneticSample rows with matching metadata_json.generator whose "
+                "Delete GeneSeed rows with matching metadata_json.generator whose "
                 "gene_key is not in this run's output. Skipped when --limit is set."
             ),
         )
@@ -100,7 +100,7 @@ class Command(BaseCommand):  # type: ignore[misc]
 
         saved = 0
         for g in genes:
-            obj, created = GeneticSample.objects.update_or_create(
+            obj, created = GeneSeed.objects.update_or_create(
                 gene_key=g.key,
                 defaults={
                     "name": g.name,
@@ -114,7 +114,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             if not created:
                 obj.save()
             saved += 1
-        self.stdout.write(self.style.SUCCESS(f"upserted GeneticSample rows: {saved}"))
+        self.stdout.write(self.style.SUCCESS(f"upserted GeneSeed rows: {saved}"))
 
         if options["delete_stale_generated"]:
             if limit is not None:
@@ -124,7 +124,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             else:
                 keep = {g.key for g in genes}
                 deleted, _ = (
-                    GeneticSample.objects.filter(
+                    GeneSeed.objects.filter(
                         metadata_json__generator=gen_ver,
                     )
                     .exclude(gene_key__in=keep)

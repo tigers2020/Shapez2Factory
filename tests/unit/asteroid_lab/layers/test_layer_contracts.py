@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.layer_budget import LayerBudgetContext
-from django_apps.asteroid_lab.layers.contracts.stack_status import StackRunStatus
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
+    LayerBudgetContext,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.stack_status import StackRunStatus
 
 
 def test_stack_run_status_values() -> None:

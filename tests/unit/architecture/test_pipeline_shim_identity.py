@@ -1,4 +1,4 @@
-"""PR-CLI-2f Step 2 (tests-first) — relocated pipeline shims preserve object identity.
+"""PR-CLI-2f Step 2 (tests-first) ??relocated pipeline shims preserve object identity.
 
 After PR-CLI-2f moves the 15 decode/cleanup/reconstruction modules into core, the original
 ``django_apps`` modules become pure re-export shims. This guard locks in that each key public symbol

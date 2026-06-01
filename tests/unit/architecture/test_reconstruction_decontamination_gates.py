@@ -1,4 +1,4 @@
-﻿"""P0 decontamination — reconstruction slice gates (GATE-R1, GATE-R6, RTTP symbol)."""
+"""P0 decontamination ? reconstruction slice gates (GATE-R1, GATE-R6, RTTP symbol)."""
 
 from __future__ import annotations
 

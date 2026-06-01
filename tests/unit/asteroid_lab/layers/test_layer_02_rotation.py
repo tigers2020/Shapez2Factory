@@ -1,7 +1,7 @@
 """Layer 02 connector sprite rotation constants."""
 
-from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.rotation import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.rotation import (
     FIELDWARD_ROTATION_BY_EDGE,
     ROTATION_R0_E_CW,
 )

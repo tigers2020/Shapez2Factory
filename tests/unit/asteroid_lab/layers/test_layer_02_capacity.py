@@ -8,18 +8,18 @@ from django_apps.asteroid_lab.adapters.orm_game_data_rules import (
     build_game_data_snapshot_payload,
     build_orm_game_data_rules,
 )
-from django_apps.asteroid_lab.layers.contracts.exterior_connection import (
-    ExteriorConnectionShortfallReason,
-)
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.capacity import (
-    resolve_per_connector_capacity,
-)
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.layout_t import (
-    default_exterior_connector_layout_t,
-)
 from django_apps.game_data.services.exterior_transport_capacity import (
     get_active_exterior_shape_transport_capacity,
     space_belt_connector_capacity_per_min_from_row,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
+    ExteriorConnectionShortfallReason,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.capacity import (
+    resolve_per_connector_capacity,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.layout_t import (
+    default_exterior_connector_layout_t,
 )
 from shapez2_factory.domain.asteroid_lab.exterior_capacity_row import ExteriorCapacityRow
 

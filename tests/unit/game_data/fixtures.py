@@ -47,7 +47,7 @@ def _flush_committed_game_data(django_db_blocker: Any) -> None:
     """Delete imported game_data rows (module teardown / pre-loaddata). Never global flush.
 
     CANON tables seeded by migration (MiningExtractionRule, Exterior*TransportCapacity)
-    are preserved — not loaddata.
+    are preserved ??not loaddata.
     """
     from django.apps import apps
     from django.db import connection

@@ -4,18 +4,19 @@ from decimal import Decimal
 
 import pytest
 
-from django_apps.asteroid_lab.layers.contracts.exterior_connector_role import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connector_role import (
     ExteriorConnectorRole,
 )
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.plan import (
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.plan import (
     build_exterior_connection_plan,
 )
-from django_apps.asteroid_lab.layers.layer_02_exterior_transport.wire import (
+from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.wire import (
     exterior_connector_plan_to_metrics_dict,
 )
 from tests.unit.asteroid_lab.layers.helpers.l02_complete_map_fixtures import (
     build_rect_field_with_void_shell,
 )
+from tests.unit.asteroid_lab.layers.helpers.l02_rules import snapshot_rules_for_test
 
 
 @pytest.mark.django_db
@@ -27,6 +28,7 @@ def test_spare_count_zero_when_target_percent_100() -> None:
         terrain_upper_bound_per_min=Decimal("10000"),
         throughput_target_percent=100,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     assert plan.unmet_reason is None
     assert plan.spare_connector_count == 0
@@ -43,6 +45,7 @@ def test_spare_positive_when_target_below_100() -> None:
         terrain_upper_bound_per_min=Decimal("10000"),
         throughput_target_percent=50,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     assert plan.unmet_reason is None
     assert plan.reference_connector_count > plan.required_connector_count
@@ -65,6 +68,7 @@ def test_required_and_spare_void_coords_disjoint() -> None:
         terrain_upper_bound_per_min=Decimal("10000"),
         throughput_target_percent=50,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     coords = [c.void_coord for c in plan.planned_connectors]
     assert len(coords) == len(set(coords))
@@ -74,7 +78,7 @@ def test_required_and_spare_void_coords_disjoint() -> None:
 def test_partial_spare_placement_is_success_when_required_slots_fit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
+    from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
     from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport import (
         plan as plan_mod,
     )
@@ -99,6 +103,7 @@ def test_partial_spare_placement_is_success_when_required_slots_fit(
         terrain_upper_bound_per_min=Decimal("40000"),
         throughput_target_percent=50,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     required_planned = sum(
         1 for c in plan.planned_connectors if c.role is ExteriorConnectorRole.REQUIRED
@@ -122,6 +127,7 @@ def test_zero_target_places_only_spare_reference_markers() -> None:
         terrain_upper_bound_per_min=Decimal("10000"),
         throughput_target_percent=0,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     assert plan.unmet_reason is None
     assert plan.required_connector_count == 0
@@ -139,6 +145,7 @@ def test_wire_v2_includes_role_and_reference_counts() -> None:
         terrain_upper_bound_per_min=Decimal("10000"),
         throughput_target_percent=50,
         speed_tier=1,
+        rules=snapshot_rules_for_test(),
     )
     wire = exterior_connector_plan_to_metrics_dict(plan)["exterior_connector_plan"]
     assert wire["version"] == "exterior_connector_plan.v2"

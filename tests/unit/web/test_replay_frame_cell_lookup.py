@@ -1,4 +1,4 @@
-﻿"""Unit tests for replay frame (x, y) cell lookup (lab POST detail)."""
+"""Unit tests for replay frame (x, y) cell lookup (lab POST detail)."""
 
 from __future__ import annotations
 

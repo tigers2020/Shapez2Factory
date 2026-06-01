@@ -4,18 +4,18 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
-from django_apps.asteroid_lab.layers.contracts.exterior_connection import (
-    ExteriorConnectionPlan,
-    ExteriorConnector,
-)
-from django_apps.asteroid_lab.layers.contracts.exterior_connector_role import (
-    ExteriorConnectorRole,
-)
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.reconstruction.rim_topology import field_rim_cells
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
+from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
+    ExteriorConnectionPlan,
+    ExteriorConnector,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connector_role import (
+    ExteriorConnectorRole,
+)
 
 _FIELD_ORIGIN = 2
 _FIELD_SIZE = 5
@@ -80,8 +80,47 @@ def expected_golden_rim_anchor_count() -> int:
     return len(field_rim_cells(_field_cells()))
 
 
+def golden_5x5_fluid_complete_map() -> ReconstructionCompleteMap:
+    field = _field_cells()
+    return ReconstructionCompleteMap(
+        cells=(),
+        field_cells=field,
+        shape_field_cell_count=0,
+        fluid_field_cell_count=len(field),
+        external_void_cells=_external_void_cells(field),
+        coord_frame=CoordFrame.ISLAND_RAW,
+    )
+
+
+def minimal_l2_plan_for_golden_fluid(*, goal_coord: Coord = (8, 4)) -> ExteriorConnectionPlan:
+    return ExteriorConnectionPlan(
+        transport_kind="fluid",
+        terrain_upper_bound_per_min=Decimal("10000"),
+        planning_target_per_min=Decimal("5000"),
+        per_connector_capacity_per_min=Decimal("345600"),
+        required_connector_count=1,
+        reference_connector_count=1,
+        spare_connector_count=0,
+        planned_connectors=(
+            ExteriorConnector(
+                connector_id="ext_conn_golden_fluid",
+                void_coord=goal_coord,
+                edge=CardinalEdge.EAST,
+                layout_t="SpacePipe_Forward",
+                rotation=0,
+                capacity_per_min=Decimal("345600"),
+                coords=(goal_coord,),
+                role=ExteriorConnectorRole.REQUIRED,
+            ),
+        ),
+        unmet_reason=None,
+    )
+
+
 __all__ = [
     "expected_golden_rim_anchor_count",
     "golden_5x5_complete_map",
+    "golden_5x5_fluid_complete_map",
     "minimal_l2_plan_for_golden",
+    "minimal_l2_plan_for_golden_fluid",
 ]

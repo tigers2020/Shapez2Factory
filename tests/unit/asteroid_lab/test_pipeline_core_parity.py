@@ -1,6 +1,6 @@
-"""PR-CLI-2f — core decode/cleanup/reconstruction parity with the Django path.
+"""PR-CLI-2f ??core decode/cleanup/reconstruction parity with the Django path.
 
-Oracle: Django pipeline (``decode_shapez_copy_string`` → ``deconstruct_snapshot`` →
+Oracle: Django pipeline (``decode_shapez_copy_string`` ??``deconstruct_snapshot`` ??
 ``run_topology_reconstruction``) on a recorded reconstruction fixture line. The relocated **core**
 pipeline must produce value-identical ``DecodedBlueprintSnapshotDTO`` / ``CleanupResult`` /
 ``ReconstructionResult`` (DTOs live in core; ``==`` compares by value across paths).

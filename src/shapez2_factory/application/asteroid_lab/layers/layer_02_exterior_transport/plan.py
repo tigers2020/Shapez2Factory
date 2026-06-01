@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
@@ -198,4 +199,58 @@ def _empty_plan(
     )
 
 
-__all__ = ["build_exterior_connection_plan"]
+def merge_exterior_connection_plans(
+    plans: tuple[ExteriorConnectionPlan, ...],
+    *,
+    primary_resource_kind: str,
+) -> ExteriorConnectionPlan:
+    """Combine per-resource L2 plans so L3 can route belt and pipe goals on mixed maps."""
+
+    if not plans:
+        msg = "merge_exterior_connection_plans requires at least one plan"
+        raise ValueError(msg)
+    if len(plans) == 1:
+        return plans[0]
+
+    primary_plan = next(
+        (plan for plan in plans if plan.transport_kind == primary_resource_kind),
+        plans[0],
+    )
+    merged_connectors: list[ExteriorConnector] = []
+    seq = 0
+    for plan in plans:
+        for connector in plan.planned_connectors:
+            merged_connectors.append(
+                replace(connector, connector_id=f"ext_conn_{seq:02d}"),
+            )
+            seq += 1
+    required = sum(plan.required_connector_count for plan in plans)
+    reference = sum(plan.reference_connector_count for plan in plans)
+    spare = sum(plan.spare_connector_count for plan in plans)
+    candidate_slots = max(plan.candidate_slot_count for plan in plans)
+    terrain_upper = sum(
+        (plan.terrain_upper_bound_per_min for plan in plans),
+        start=Decimal(0),
+    )
+    planning_target = sum(
+        (plan.planning_target_per_min for plan in plans),
+        start=Decimal(0),
+    )
+    per_connector = primary_plan.per_connector_capacity_per_min
+    unmet = next((plan.unmet_reason for plan in plans if plan.unmet_reason is not None), None)
+    return replace(
+        primary_plan,
+        transport_kind=primary_resource_kind,
+        terrain_upper_bound_per_min=terrain_upper,
+        planning_target_per_min=planning_target,
+        per_connector_capacity_per_min=per_connector,
+        required_connector_count=required,
+        reference_connector_count=reference,
+        spare_connector_count=spare,
+        planned_connectors=tuple(merged_connectors),
+        unmet_reason=unmet,
+        candidate_slot_count=candidate_slots,
+    )
+
+
+__all__ = ["build_exterior_connection_plan", "merge_exterior_connection_plans"]

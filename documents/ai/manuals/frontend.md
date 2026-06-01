@@ -1,5 +1,13 @@
 # Manual: Frontend · Templates · Static Assets
 
+## Web Interface Guidelines (MUST reference)
+
+When building or reviewing **any** Django web interface (templates, static JS/CSS, `frontend/**`), **always reference** the Vercel Web Interface Guidelines as the default UI quality bar:
+
+- https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md
+
+Auto-applied via [`.cursor/rules/web-interface.mdc`](../../../.cursor/rules/web-interface.mdc). Repo canonical docs (this manual, [`architecture.mdc`](../../../.cursor/rules/architecture.mdc)) take precedence on conflict.
+
 ## Django side
 
 - Template · page assembly: `django_apps/web/templates/`

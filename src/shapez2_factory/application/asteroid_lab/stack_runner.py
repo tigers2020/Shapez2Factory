@@ -1,4 +1,4 @@
-"""Pure core orchestration for layers 2–6 (Django-free).
+"""Pure core orchestration for layers 2?? (Django-free).
 
 The Django wrapper in ``django_apps.asteroid_lab.layers.stack_runner`` owns logs, settings, and
 files; this core module is ignorant of them. It collects per-layer post-summary records into a
@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+        GeneticSampleSeedSnapshot,
+    )
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.diagnostic import (
     DiagnosticLayerSnapshot,
@@ -98,6 +103,9 @@ def run_layers_02_to_06(
     complete_map: ReconstructionCompleteMap,
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
+    genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
+    capacity_envelope: dict[str, Any] | None = None,
+    throughput_target_percent: int | None = None,
 ) -> CoreStackRunResult:
     completed: list[str] = []
     last_diagnostic: DiagnosticLayerSnapshot | None = None
@@ -129,7 +137,12 @@ def run_layers_02_to_06(
         started = budget_ctx.now_fn()
         post_metrics: dict[str, object] = {"stub": True}
         if entry.slug == LAYER_02_EXTERIOR_TRANSPORT:
-            last_exterior_plan = entry.run(complete_map=complete_map, budget_ctx=budget_ctx)
+            last_exterior_plan = entry.run(
+                complete_map=complete_map,
+                budget_ctx=budget_ctx,
+                capacity_envelope=capacity_envelope,
+                throughput_target_percent=throughput_target_percent,
+            )
             if isinstance(last_exterior_plan, ExteriorConnectionPlan):
                 post_metrics = build_layer02_post_summary_metrics(last_exterior_plan)
         elif entry.slug == LAYER_03_RIM_GREEDY_PLACEMENT:
@@ -137,6 +150,7 @@ def run_layers_02_to_06(
                 complete_map=complete_map,
                 budget_ctx=budget_ctx,
                 exterior_plan=last_exterior_plan,
+                genetic_sample_seeds=genetic_sample_seeds,
             )
             if isinstance(last_rim_greedy, IntegratedRimGreedyResult):
                 post_metrics = build_layer03_rim_greedy_post_summary_metrics(last_rim_greedy)
@@ -190,12 +204,18 @@ def run_layers_02_to_05(
     complete_map: ReconstructionCompleteMap,
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
+    genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
+    capacity_envelope: dict[str, Any] | None = None,
+    throughput_target_percent: int | None = None,
 ) -> CoreStackRunResult:
     """Deprecated alias for ``run_layers_02_to_06`` (PR-3c layer renumber)."""
     return run_layers_02_to_06(
         complete_map=complete_map,
         budget_ctx=budget_ctx,
         runners=runners,
+        genetic_sample_seeds=genetic_sample_seeds,
+        capacity_envelope=capacity_envelope,
+        throughput_target_percent=throughput_target_percent,
     )
 
 

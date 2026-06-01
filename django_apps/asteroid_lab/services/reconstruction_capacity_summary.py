@@ -11,6 +11,7 @@ from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.reconstruction.field_cells import (
     count_asteroid_field_cells_by_resource,
+    detect_present_resource_kinds,
     detect_primary_resource_kind,
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
@@ -55,9 +56,11 @@ def build_reconstruction_capacity_envelope(
     complete_map: ReconstructionCompleteMap,
 ) -> dict[str, Any]:
     by_resource = count_asteroid_field_cells_by_resource(complete_map)
+    present = detect_present_resource_kinds(complete_map)
     return {
         "capacity_basis": "terrain_upper_bound",
         "primary_resource_kind": detect_primary_resource_kind(complete_map),
+        "present_resource_kinds": list(present),
         "confirmed_platforms_by_resource": dict(by_resource),
         "by_resource": {
             "shape": build_reconstruction_capacity_summary(
@@ -111,5 +114,6 @@ __all__ = [
     "count_asteroid_field_cells_by_resource",
     "count_confirmed_platforms_by_resource",
     "decimal_str",
+    "detect_present_resource_kinds",
     "detect_primary_resource_kind",
 ]

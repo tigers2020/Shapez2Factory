@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.layer_post_summary import LayerPostSummaryOutcome
-from django_apps.asteroid_lab.layers.contracts.layer_slugs import LAYER_03_RIM_GREEDY_PLACEMENT
 from django_apps.asteroid_lab.layers.observability.layer_behavior_catalog import (
     format_layer_summary_line,
     layer_behavior_for_slug,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_post_summary import (
+    LayerPostSummaryOutcome,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_03_RIM_GREEDY_PLACEMENT,
 )
 
 

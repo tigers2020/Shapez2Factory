@@ -20,7 +20,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[-]` skipped (d
 - [x] BA-1 `src/shapez2_factory/**` imports no `django`, `django_apps`, `config`, ORM, settings, web/replay UI (one-direction shims only)
 - [x] BA-2 no monolithic move PR; 2a–2e (+2f) split + CLI as own PR
 - [x] BA-3 no active L3 relocation during boundary-m-repack PR-B/C; PR-CLI-2e gated — GATE opened after PR #133 (`895a5ecb`) merged; 2e executed post-merge (#134, #135)
-- [x] BA-4 `output/replay_core.jsonl` is core/deterministic; Django enrichment only; no web-ready core payload
+- [x] BA-4 `output/replay_core.jsonl` is core/deterministic; Django enrichment only; no web-ready core payload; artifact viewer compose no longer reruns L2/L3 algorithms in Django; replay/non-shim layer tests now target core imports directly
 - [x] BA-5 atomic write `.tmp/<run_key>` → hash → manifest last → rename; DB ingest after `ARTIFACT_WRITTEN`
 - [x] BA-6 Phase D manifest parsing via `artifact_manifest_reader.py` (Option 1, no core import)
 - [x] BA-7 subprocess: `shell=False`, list args, `sys.executable`, fixed cwd, timeout, log capture (+ BA-9 parent tee), traversal guard, typed exit codes
@@ -204,7 +204,7 @@ Depends: CLI-4 · File: [`pr-cli-5-db-demotion-replay.md`](pr-cli-5-db-demotion-
 
 - [x] Step 1 — migration for `artifact_root` + `lifecycle_status` (nullable; no backfill)
 - [x] Step 2 (TDD) — `test_artifact_first_replay.py` (indexed artifact → JSONL wins over DB)
-- [x] Step 3 — artifact-first resolution in timeline payload + lazy handle; DB fallback
+- [x] Step 3 — artifact-first resolution in timeline payload + lazy handle; DB fallback; artifact compose maps stored replay records only, with no Django algorithm recomposition
 - [x] Step 4 — summary service reads manifest mirror
 - [x] Step 5 (TDD) — `test_artifact_replay_loader_iterator.py` (iterator/generator, not list) + SSR no-inline guard D
 - [x] Step 6 (TDD) — fields documented as cache; core has no `create_solver_run` import (AST)
@@ -235,7 +235,7 @@ Depends: CLI-5 (ideally CLI-2e) · File: [`pr-cli-6-subprocess-only-default.md`]
 
 ## Global verification (run as PRs land)
 
-**Last verified:** 2026-05-31 @ `5610d55e` (merge `origin/master` + CLI-first WIP) — CLI separation 28 + layers 128 + BA-9 logs 25 passed; `test_full` 1719 passed, 1 xfailed; ruff + black green.
+**Last verified:** 2026-05-31 local WIP — viewer/replay gate 18 passed; CLI logs 27 passed; layers 92 passed; `test_fast` 1556 passed, 1 xfailed; ruff + black + `mypy src` green. Repo-wide mypy remains baseline-red at 1032 errors.
 
 ```powershell
 python -m pytest tests/unit/architecture/test_shapez2_factory_core_purity.py -v

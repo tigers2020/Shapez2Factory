@@ -1,4 +1,4 @@
-﻿"""Decode path uses ``entry_island_raw_coord`` (P1 ??same numeric x/y as before)."""
+"""Decode path uses ``entry_island_raw_coord`` (P1 ??same numeric x/y as before)."""
 
 from __future__ import annotations
 

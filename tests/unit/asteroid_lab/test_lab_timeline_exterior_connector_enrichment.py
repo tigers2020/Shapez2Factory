@@ -40,7 +40,7 @@ def test_l2_frame_attaches_metrics_and_overlay() -> None:
         plan_wire=plan_wire,
         l2_complete_frame_index=0,
     )
-    # index 0 only — append-stack default is not frame 0 when index omitted
+    # index 0 only ??append-stack default is not frame 0 when index omitted
     assert METRICS_KEY in out[0]["metrics"]
     overlay = out[0]["map_view"]["overlay_cells"]
     assert any(c.get("overlay_role") == "planned_exterior_connector" for c in overlay)

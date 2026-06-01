@@ -1,4 +1,4 @@
-﻿"""Island-local bbox helpers (PR-F Wave C)."""
+"""Island-local bbox helpers (PR-F Wave C)."""
 
 from __future__ import annotations
 

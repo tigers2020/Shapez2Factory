@@ -1,4 +1,4 @@
-"""Layer 4 — disabled shim (superseded by layer_03_rim_greedy_placement)."""
+"""Layer 4 ??disabled shim (superseded by layer_03_rim_greedy_placement)."""
 
 from __future__ import annotations
 

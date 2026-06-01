@@ -170,12 +170,12 @@ class IslandExtractorBlueprintAdmin(admin.ModelAdmin):
     @staticmethod
     def inner_fingerprint_short(obj: m.IslandExtractorBlueprint) -> str:
         fp = (obj.inner_fingerprint or "").strip()
-        return fp[:12] + "…" if len(fp) > 12 else fp or "-"
+        return fp[:12] + "?" if len(fp) > 12 else fp or "-"
 
 
-@admin.register(m.GeneticSample)
-class GeneticSampleAdmin(admin.ModelAdmin):
-    change_list_template = "admin/asteroid_lab/geneticsample/change_list.html"
+@admin.register(m.GeneSeed)
+class GeneSeedAdmin(admin.ModelAdmin):
+    change_list_template = "admin/asteroid_lab/geneseed/change_list.html"
     list_display = (
         "id",
         "mini_map_list",
@@ -201,8 +201,8 @@ class GeneticSampleAdmin(admin.ModelAdmin):
     )
     fieldsets = (
         (None, {"fields": ("name", "gene_key", "project", "code")}),
-        ("디코드", {"fields": ("decoded_json_pretty", "mini_map_preview")}),
-        ("메타", {"fields": ("metadata_json_pretty", "created_at", "updated_at")}),
+        ("???", {"fields": ("decoded_json_pretty", "mini_map_preview")}),
+        ("??", {"fields": ("metadata_json_pretty", "created_at", "updated_at")}),
     )
 
     def get_queryset(self, request):
@@ -228,14 +228,14 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         ]
 
     def seed_miner_patterns_view(self, request):
-        changelist_url = reverse("admin:asteroid_lab_geneticsample_changelist")
+        changelist_url = reverse("admin:asteroid_lab_geneseed_changelist")
         if not self.has_change_permission(request):
             raise PermissionDenied
 
         if request.method != "POST":
             self.message_user(
                 request,
-                "목록 상단 버튼으로 miner seed 패턴 시드를 실행하세요.",
+                "?? ?? ???? miner seed ?? ??? ?????.",
                 level=messages.INFO,
             )
             return redirect(changelist_url)
@@ -265,12 +265,11 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         if dry_run:
             self.message_user(
                 request,
-                "dry-run: DB 변경 없음. "
-                + (output.splitlines()[-1] if output else "통계만 출력됨."),
+                "dry-run: DB ?? ??. " + (output.splitlines()[-1] if output else "??? ???."),
                 level=messages.SUCCESS,
             )
         else:
-            tail = output.splitlines()[-1] if output else "시드 완료."
+            tail = output.splitlines()[-1] if output else "?? ??."
             self.message_user(request, tail, level=messages.SUCCESS)
             for line in output.splitlines():
                 if "deleted stale exhaustive" in line or "deleted stale miner_seed" in line:
@@ -278,7 +277,7 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         return redirect(changelist_url)
 
     @admin.display(description="Catalog rank", ordering="metadata_json__seed_rank")
-    def seed_rank_display(self, obj: m.GeneticSample) -> str:
+    def seed_rank_display(self, obj: m.GeneSeed) -> str:
         meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
         rank = meta.get("seed_rank")
         return str(rank) if isinstance(rank, int) else "-"
@@ -287,7 +286,7 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         description="Intrinsic priority",
         ordering="metadata_json__intrinsic_priority_rank",
     )
-    def intrinsic_priority_rank_display(self, obj: m.GeneticSample) -> str:
+    def intrinsic_priority_rank_display(self, obj: m.GeneSeed) -> str:
         meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
         rank = meta.get("intrinsic_priority_rank")
         score = meta.get("intrinsic_priority_score")
@@ -296,7 +295,7 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         return "-"
 
     @admin.display(description="Intrinsic difficulty", ordering="metadata_json__difficulty_rank")
-    def difficulty_rank_display(self, obj: m.GeneticSample) -> str:
+    def difficulty_rank_display(self, obj: m.GeneSeed) -> str:
         meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
         rank = meta.get("difficulty_rank")
         tier = meta.get("difficulty_tier")
@@ -308,27 +307,27 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         description="Difficulty score",
         ordering="metadata_json__difficulty_score",
     )
-    def difficulty_score_display(self, obj: m.GeneticSample) -> str:
+    def difficulty_score_display(self, obj: m.GeneSeed) -> str:
         meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
         score = meta.get("difficulty_score")
         return str(score) if isinstance(score, int) else "-"
 
     @admin.display(description="Ext")
-    def extension_count_display(self, obj: m.GeneticSample) -> str:
+    def extension_count_display(self, obj: m.GeneSeed) -> str:
         meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
         ext = meta.get("extension_count")
         return str(ext) if isinstance(ext, int) else "-"
 
     @admin.display(description="Topology")
-    def topology_signature_short(self, obj: m.GeneticSample) -> str:
+    def topology_signature_short(self, obj: m.GeneSeed) -> str:
         meta = obj.metadata_json if isinstance(obj.metadata_json, dict) else {}
         sig = meta.get("topology_signature")
         if not isinstance(sig, str) or not sig:
             return "-"
-        return sig[:10] + "…" if len(sig) > 10 else sig
+        return sig[:10] + "?" if len(sig) > 10 else sig
 
-    @admin.display(description="디코드 JSON")
-    def decoded_json_pretty(self, obj: m.GeneticSample) -> SafeString | str:
+    @admin.display(description="??? JSON")
+    def decoded_json_pretty(self, obj: m.GeneSeed) -> SafeString | str:
         if not obj.decoded_json:
             return "-"
         text = json.dumps(obj.decoded_json, indent=2, ensure_ascii=False)
@@ -339,18 +338,18 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         )
         return format_html('<pre style="{}">{}</pre>', pre_style, text)
 
-    @admin.display(description="맵")
-    def mini_map_list(self, obj: m.GeneticSample) -> SafeString | str:
+    @admin.display(description="?")
+    def mini_map_list(self, obj: m.GeneSeed) -> SafeString | str:
         return genetic_sample_mini_map_html(obj.decoded_json, for_list=True)
 
-    @admin.display(description="미니맵")
-    def mini_map_preview(self, obj: m.GeneticSample) -> SafeString | str:
+    @admin.display(description="???")
+    def mini_map_preview(self, obj: m.GeneSeed) -> SafeString | str:
         if obj.pk is None:
-            return "저장 후 미니맵이 표시됩니다."
+            return "?? ? ???? ?????."
         return genetic_sample_mini_map_html(obj.decoded_json)
 
     @admin.display(description="metadata_json")
-    def metadata_json_pretty(self, obj: m.GeneticSample) -> SafeString | str:
+    def metadata_json_pretty(self, obj: m.GeneSeed) -> SafeString | str:
         meta = obj.metadata_json
         if not meta:
             return "-"
@@ -405,7 +404,7 @@ class ReconstructedAsteroidMapAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "원본 JSON",
+            "?? JSON",
             {"fields": ("original_decoded_json_pretty",)},
         ),
         (
@@ -448,7 +447,7 @@ class ReconstructedAsteroidMapAdmin(admin.ModelAdmin):
             clear_admin_list_thumbnail(int(pk))
         self.message_user(request, "Cleared admin list thumbnails.")
 
-    @admin.display(description="원본 디코드 JSON")
+    @admin.display(description="?? ??? JSON")
     def original_decoded_json_pretty(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:
         if not obj.original_decoded_json:
             return "-"
@@ -460,7 +459,7 @@ class ReconstructedAsteroidMapAdmin(admin.ModelAdmin):
         )
         return format_html('<pre style="{}">{}</pre>', pre_style, text)
 
-    @admin.display(description="full_map 디코드 JSON")
+    @admin.display(description="full_map ??? JSON")
     def decoded_json_pretty(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:
         if not obj.decoded_json:
             return "-"
@@ -472,12 +471,12 @@ class ReconstructedAsteroidMapAdmin(admin.ModelAdmin):
         )
         return format_html('<pre style="{}">{}</pre>', pre_style, text)
 
-    @admin.display(description="품질")
+    @admin.display(description="??")
     def reconstruction_quality_tier(self, obj: m.ReconstructedAsteroidMap) -> str:
         summary = reconstruction_summary_from_decoded_json(obj.decoded_json or {})
         return str(summary.get("quality_tier") or "-")
 
-    @admin.display(description="수용")
+    @admin.display(description="??")
     def reconstruction_acceptance(self, obj: m.ReconstructedAsteroidMap) -> str:
         summary = reconstruction_summary_from_decoded_json(obj.decoded_json or {})
         if summary.get("reconstruction_acceptance_ok") is True:
@@ -486,10 +485,10 @@ class ReconstructedAsteroidMapAdmin(admin.ModelAdmin):
             return "no"
         return "-"
 
-    @admin.display(description="맵")
+    @admin.display(description="?")
     def mini_map_list(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:
         if obj.admin_list_thumbnail:
-            truncated = " …" if obj.admin_list_thumbnail_truncated else ""
+            truncated = " ?" if obj.admin_list_thumbnail_truncated else ""
             return format_html(
                 '<img src="{}" alt="" width="120" height="120" loading="lazy" '
                 'style="object-fit:contain;background:#020617;border-radius:6px;" />'
@@ -503,8 +502,8 @@ class ReconstructedAsteroidMapAdmin(admin.ModelAdmin):
             "no thumbnail",
         )
 
-    @admin.display(description="미니맵")
+    @admin.display(description="???")
     def mini_map_preview(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:
         if obj.pk is None:
-            return "저장 후 미니맵이 표시됩니다."
+            return "?? ? ???? ?????."
         return genetic_sample_mini_map_html(obj.decoded_json)

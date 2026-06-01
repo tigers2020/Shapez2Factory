@@ -2,9 +2,9 @@
  * Client-side replay controls for the asteroid mining lab page (shell UI).
  *
  * Shapez2 asteroid map invariant (Lab + runtime replay):
- * - There is no x == 0 column. Horizontal order: ..., -2, -1, 1, 2, ...
- * - (-1, y) is horizontally adjacent to (1, y), not (0, y).
- * - World (1, 0) is the UI anchor: visual column index 0, row y = 0 at grid center (symmetric padding).
+ * - Replay/solver frames use **island-local** ``cell.x`` / ``cell.y`` (copy JSON; ``X==0`` valid).
+ * - ``visualCol(x)`` is identity on island raw — do not apply world-map skip-zero (``x-1``).
+ * - World-map evidence (no ``x==0`` column) is a separate frame; see ``asteroid_map_coords.py``.
  *
  * Domain rotation contract (blueprint JSON; never mutate ``cell.rotation`` in JS):
  * - R = 0 means East; R increases by quarter-turns clockwise (0..3).
@@ -788,13 +788,11 @@
     return 0;
   }
 
-  /** World x to dense visual column for replay grid layout (Lab anchor). */
+  /** Island-local replay column (``island_bbox_left_bottom_raw_xy_v1``); ``X==0`` is valid. */
   function visualCol(x) {
     const xi = Number(x);
     if (!Number.isFinite(xi)) return null;
-    if (xi < 0) return xi;
-    if (xi > 0) return xi - 1;
-    return 0;
+    return xi;
   }
 
   function cellIndexDemo(x, y) {
@@ -1117,7 +1115,7 @@
   }
 
   function computeReplayGridLayout(replayFrames) {
-    /* Lab grid uses island-local ``cell.x`` / ``cell.y`` (visualCol); no dense server frame. */
+    /* Lab grid uses island-local ``cell.x`` / ``cell.y`` (identity via ``visualCol``). */
     let minD = Infinity;
     let maxD = -Infinity;
     let minR = Infinity;
@@ -2937,18 +2935,49 @@
       return null;
     }
 
+    function frameHasSpriteCapableCells(fr) {
+      if (!fr || typeof fr !== "object") return false;
+      const targets = collectFrameSpatialTargets(fr);
+      for (let i = 0; i < targets.length; i++) {
+        if (labSpriteRelpathForCell(targets[i].cell, fr)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function lastFrameWithSpriteCapableCells(upToArrayIndex) {
+      const cap = Math.min(upToArrayIndex, replayFrames.length - 1);
+      for (let i = cap; i >= 0; i--) {
+        const fr = replayFrames[i];
+        if (frameHasSpriteCapableCells(fr)) {
+          return fr;
+        }
+      }
+      return null;
+    }
+
     function buildCanvasPaintPlan(frame) {
       const overlays = [];
       const sprites = [];
       const seen = new Set();
-      function consider(cell, role) {
+      function consider(cell, role, sourceFrame) {
         if (!cell || typeof cell !== "object") return;
-        if (isLabStaticTerrainCell(cell, frame)) return;
+        const paintFrame = sourceFrame || frame;
+        if (isLabStaticTerrainCell(cell, paintFrame)) return;
         const idx = resolveCellIndex(cell);
-        if (idx == null || idx < 0 || seen.has(idx)) return;
-        seen.add(idx);
+        if (idx == null || idx < 0) return;
         const ck = overlayCellKind(cell);
         const diffRole = role || "";
+        const rel = labSpriteRelpathForCell(cell, paintFrame);
+        if (rel) {
+          if (seen.has(idx)) return;
+          seen.add(idx);
+          sprites.push({ idx: idx, rel: rel, rotation: cell.rotation });
+          return;
+        }
+        if (seen.has(idx)) return;
+        seen.add(idx);
         if (
           diffRole === "diff_removed" ||
           diffRole === "diff_added" ||
@@ -2969,20 +2998,27 @@
           });
           return;
         }
-        const rel = labSpriteRelpathForCell(cell, frame);
-        if (rel) {
-          sprites.push({ idx: idx, rel: rel, rotation: cell.rotation });
-        } else {
-          overlays.push({
-            idx: idx,
-            kind: ck,
-            fill: canvasOverlayFillForCell(cell, frame, ""),
-          });
+        overlays.push({
+          idx: idx,
+          kind: ck,
+          fill: canvasOverlayFillForCell(cell, frame, ""),
+        });
+      }
+      const layoutFrame =
+        frameHasSpriteCapableCells(frame) || !hasServerReplay
+          ? null
+          : lastFrameWithSpriteCapableCells(replayArrayIndex);
+      if (layoutFrame && layoutFrame !== frame) {
+        const carryTargets = collectFrameSpatialTargets(layoutFrame);
+        for (let c = 0; c < carryTargets.length; c++) {
+          const t = carryTargets[c];
+          if (!labSpriteRelpathForCell(t.cell, layoutFrame)) continue;
+          consider(t.cell, "", layoutFrame);
         }
       }
       const targets = collectFrameSpatialTargets(frame);
       for (let i = 0; i < targets.length; i++) {
-        consider(targets[i].cell, targets[i].role);
+        consider(targets[i].cell, targets[i].role, frame);
       }
       return { overlays: overlays, sprites: sprites };
     }
@@ -3866,6 +3902,22 @@
       syncLabActionButtons();
     }
 
+    let runSolverInFlight = false;
+
+    function holdRunSolverButton() {
+      runSolverInFlight = true;
+      const runBtn = document.getElementById("lab-header-run");
+      if (runBtn) {
+        runBtn.disabled = true;
+        runBtn.classList.add("opacity-50", "cursor-not-allowed");
+      }
+    }
+
+    function releaseRunSolverButton() {
+      runSolverInFlight = false;
+      syncLabActionButtons();
+    }
+
     function syncLabActionButtons() {
       const runUrl =
         rootEl && rootEl.dataset && rootEl.dataset.labRunSolverUrl
@@ -3878,9 +3930,10 @@
       const runBtn = document.getElementById("lab-header-run");
       const resetBtn = document.getElementById("lab-header-reset");
       if (runBtn) {
-        runBtn.disabled = !runUrl;
-        runBtn.classList.toggle("opacity-50", !runUrl);
-        runBtn.classList.toggle("cursor-not-allowed", !runUrl);
+        const runBlocked = !runUrl || runSolverInFlight;
+        runBtn.disabled = runBlocked;
+        runBtn.classList.toggle("opacity-50", runBlocked);
+        runBtn.classList.toggle("cursor-not-allowed", runBlocked);
       }
       if (resetBtn) {
         resetBtn.disabled = !resetUrl;
@@ -4377,8 +4430,13 @@
         });
     }
 
-    function pollSolverRunStatus(statusUrl, onTerminal) {
+    function pollSolverRunStatus(statusUrl, onTerminal, onSettled) {
       const pollIntervalMs = 1500;
+      function settlePoll() {
+        if (typeof onSettled === "function") {
+          onSettled();
+        }
+      }
       function tick() {
         fetch(statusUrl, {
           method: "GET",
@@ -4403,11 +4461,16 @@
               window.setTimeout(tick, pollIntervalMs);
               return;
             }
-            onTerminal(data, bundle.res);
+            try {
+              onTerminal(data, bundle.res);
+            } finally {
+              settlePoll();
+            }
           })
           .catch(function () {
             replayRunFeedback = { error_code: "network_error" };
             renderReplayRunStatus(replayRunFeedback);
+            settlePoll();
           });
       }
       tick();
@@ -4424,10 +4487,10 @@
         renderReplayRunStatus(replayRunFeedback);
         return;
       }
-      if (runSolverBtn.disabled) {
+      if (runSolverInFlight || runSolverBtn.disabled) {
         return;
       }
-      runSolverBtn.disabled = true;
+      holdRunSolverButton();
       replayRunFeedback = { running: true };
       renderReplayRunStatus(replayRunFeedback);
       const macroOnlyEl = document.getElementById("lab-macro-only-mode");
@@ -4457,6 +4520,7 @@
         runSolverHeaders["Content-Type"] = "application/json";
         runSolverInit.body = JSON.stringify(postBody);
       }
+      let runSolverAwaitingPoll = false;
       fetch(runUrl, runSolverInit)
         .then(function (res) {
           return res
@@ -4472,33 +4536,38 @@
           const res = bundle.res;
           const data = bundle.data || {};
           if (res.status === 202 && typeof data.status_url === "string" && data.status_url) {
-            pollSolverRunStatus(data.status_url, function (statusData, statusRes) {
-              if (!statusRes.ok || statusData.ok === false) {
-                replayRunFeedback = {
-                  error_code:
-                    typeof statusData.error_code === "string"
-                      ? statusData.error_code
-                      : "request_failed",
-                };
-                renderReplayRunStatus(replayRunFeedback);
-                return;
-              }
-              if (statusData.status === "failed") {
-                replayRunFeedback = {
-                  error_code:
-                    typeof statusData.error_code === "string"
-                      ? statusData.error_code
-                      : "solver_failed",
-                  solver_run_id: statusData.solver_run_id,
-                };
-                renderReplayRunStatus(replayRunFeedback);
-                if (statusData.run_summary) {
-                  upsertRunSummary(statusData.run_summary);
+            runSolverAwaitingPoll = true;
+            pollSolverRunStatus(
+              data.status_url,
+              function (statusData, statusRes) {
+                if (!statusRes.ok || statusData.ok === false) {
+                  replayRunFeedback = {
+                    error_code:
+                      typeof statusData.error_code === "string"
+                        ? statusData.error_code
+                        : "request_failed",
+                  };
+                  renderReplayRunStatus(replayRunFeedback);
+                  return;
                 }
-                return;
-              }
-              applyCompletedSolverStatus(statusData);
-            });
+                if (statusData.status === "failed") {
+                  replayRunFeedback = {
+                    error_code:
+                      typeof statusData.error_code === "string"
+                        ? statusData.error_code
+                        : "solver_failed",
+                    solver_run_id: statusData.solver_run_id,
+                  };
+                  renderReplayRunStatus(replayRunFeedback);
+                  if (statusData.run_summary) {
+                    upsertRunSummary(statusData.run_summary);
+                  }
+                  return;
+                }
+                applyCompletedSolverStatus(statusData);
+              },
+              releaseRunSolverButton,
+            );
             return;
           }
           if (!res.ok || data.ok === false) {
@@ -4536,7 +4605,9 @@
           renderReplayRunStatus(replayRunFeedback);
         })
         .finally(function () {
-          runSolverBtn.disabled = false;
+          if (!runSolverAwaitingPoll) {
+            releaseRunSolverButton();
+          }
         });
     });
 

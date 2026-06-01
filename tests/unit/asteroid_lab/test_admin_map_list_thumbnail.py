@@ -1,4 +1,4 @@
-"""Admin list thumbnail — hash, bbox cap, raster bytes."""
+"""Admin list thumbnail ??hash, bbox cap, raster bytes."""
 
 from __future__ import annotations
 

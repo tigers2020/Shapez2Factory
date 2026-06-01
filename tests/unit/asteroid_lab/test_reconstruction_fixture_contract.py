@@ -1,4 +1,4 @@
-﻿"""Per-line reconstruction fixture topology + confidence contracts."""
+"""Per-line reconstruction fixture topology + confidence contracts."""
 
 from __future__ import annotations
 

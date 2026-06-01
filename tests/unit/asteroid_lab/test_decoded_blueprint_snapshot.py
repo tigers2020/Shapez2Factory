@@ -1,4 +1,4 @@
-﻿"""Pure decoded blueprint snapshot builder (A5)."""
+"""Pure decoded blueprint snapshot builder (A5)."""
 
 from __future__ import annotations
 

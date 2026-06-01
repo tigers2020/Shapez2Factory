@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.layer_slugs import (
-    LAYER_03_RIM_GREEDY_PLACEMENT,
-    LAYER_04_RIM_BUNDLE_PLACEMENT,
-)
 from django_apps.asteroid_lab.services.solver_run_lab_summary import (
     lab_run_summary_from_solver_summary,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_03_RIM_GREEDY_PLACEMENT,
+    LAYER_04_RIM_BUNDLE_PLACEMENT,
 )
 
 

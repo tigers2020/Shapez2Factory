@@ -2,12 +2,12 @@
 
 from decimal import Decimal
 
-from django_apps.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
-from django_apps.asteroid_lab.layers.contracts.exterior_connection import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
     ExteriorConnector,
 )
-from django_apps.asteroid_lab.layers.contracts.exterior_connector_role import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connector_role import (
     ExteriorConnectorRole,
 )
 

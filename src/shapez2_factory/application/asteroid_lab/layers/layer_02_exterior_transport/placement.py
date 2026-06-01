@@ -1,4 +1,4 @@
-"""EDGE_WEIGHTED_EVEN_SPACING_V1 — connector count and slot selection."""
+"""EDGE_WEIGHTED_EVEN_SPACING_V1 ??connector count and slot selection."""
 
 from __future__ import annotations
 

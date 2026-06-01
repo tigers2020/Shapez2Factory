@@ -43,7 +43,7 @@ _FORBIDDEN_IMPORTS: dict[str, frozenset[str]] = {
     ),
 }
 
-# ADR-004: CLI mirrors HTTP — sole snapshot build via web assembler (Track A).
+# ADR-004: CLI mirrors HTTP ??sole snapshot build via web assembler (Track A).
 _IMPORT_MATRIX_SKIP: dict[str, frozenset[str]] = {
     "asteroid_lab": frozenset(
         {

@@ -1,4 +1,4 @@
-"""Task 3 — runtime entry passes AsteroidProject.slug into solver_summary builder."""
+"""Task 3 ??runtime entry passes AsteroidProject.slug into solver_summary builder."""
 
 from __future__ import annotations
 

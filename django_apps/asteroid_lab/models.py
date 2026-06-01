@@ -469,8 +469,8 @@ class TopologyRuleModalContent(models.Model):
         return f"modal:{self.rule.rule_key}"
 
 
-class GeneticSample(models.Model):
-    """유전자 샘플: 복사 문자열 저장 시 디코드되어 ``decoded_json``에 반영된다."""
+class GeneSeed(models.Model):
+    """Gene seed (canonical DB source for L3 genes): copy code decodes into ``decoded_json``."""
 
     name = models.CharField(max_length=200, blank=True, verbose_name="이름")
     gene_key = models.CharField(
@@ -492,7 +492,7 @@ class GeneticSample(models.Model):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="genetic_samples",
+        related_name="gene_seeds",
         verbose_name="프로젝트",
     )
     code = models.TextField(verbose_name="복사 문자열")
@@ -502,8 +502,8 @@ class GeneticSample(models.Model):
 
     class Meta:
         ordering = ("-updated_at",)
-        verbose_name = "유전자 샘플"
-        verbose_name_plural = "유전자 샘플"
+        verbose_name = "Gene seed"
+        verbose_name_plural = "Gene seeds"
         indexes = [
             models.Index(fields=["-updated_at"]),
             models.Index(fields=["project", "-updated_at"]),
@@ -511,7 +511,7 @@ class GeneticSample(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=("gene_key",),
-                name="uniq_genetic_sample_gene_key_when_set",
+                name="uniq_gene_seed_gene_key_when_set",
                 condition=models.Q(gene_key__isnull=False),
             ),
         ]
@@ -519,7 +519,7 @@ class GeneticSample(models.Model):
     def __str__(self) -> str:
         if self.name:
             return str(self.name)
-        return f"GeneticSample #{self.pk}" if self.pk else "GeneticSample (unsaved)"
+        return f"GeneSeed #{self.pk}" if self.pk else "GeneSeed (unsaved)"
 
     def clean(self) -> None:
         super().clean()

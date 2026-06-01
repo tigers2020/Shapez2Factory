@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.layers.contracts.candidates import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     Layer03ExpansionMetrics,
     RimBundleCandidateSet,
     RouteProbedBundleCandidate,
     build_rim_bundle_candidate_set,
 )
-from django_apps.asteroid_lab.layers.contracts.layer03_observability import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer03_observability import (
     build_layer03_observability,
 )
 

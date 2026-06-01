@@ -1,4 +1,4 @@
-﻿"""Asteroid Lab structured trace logging contracts."""
+"""Asteroid Lab structured trace logging contracts."""
 
 from __future__ import annotations
 

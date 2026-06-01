@@ -1,4 +1,4 @@
-﻿"""Decode-on-create for AsteroidMapInput."""
+"""Decode-on-create for AsteroidMapInput."""
 
 from __future__ import annotations
 

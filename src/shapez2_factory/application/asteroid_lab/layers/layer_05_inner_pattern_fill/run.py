@@ -1,4 +1,4 @@
-"""Layer 5 stub — inner pattern fill (PR-3c signature only)."""
+"""Layer 5 stub ??inner pattern fill (PR-3c signature only)."""
 
 from __future__ import annotations
 

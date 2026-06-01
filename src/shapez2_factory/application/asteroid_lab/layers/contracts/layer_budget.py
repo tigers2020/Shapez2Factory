@@ -1,4 +1,4 @@
-"""Monotonic time budget owned by stack_runner (L2–L5)."""
+"""Monotonic time budget owned by stack_runner (L2-L5)."""
 
 from __future__ import annotations
 

@@ -1,11 +1,11 @@
 ---
-description: "shapez2 Factory Planner standing rules: Caveman 6 sections · gates · validation · Forbidden shortcuts"
+description: "shapez2 Factory Planner standing rules: Caveman chat · Caveman 6 sections · gates · validation · Forbidden shortcuts"
 alwaysApply: true
 ---
 
 # shapez2 Factory Planner — Core Rules
 
-Canonical manuals: [`AGENTS.md`](mdc:AGENTS.md) · [`documents/ai/manuals/cursor_usage.md`](mdc:documents/ai/manuals/cursor_usage.md) · [`documents/ai/manuals/testing.md`](mdc:documents/ai/manuals/testing.md)
+Canonical manuals: [`AGENTS.md`](mdc:AGENTS.md) · [`.cursor/rules/workflow.mdc`](mdc:.cursor/rules/workflow.mdc) · [`documents/ai/manuals/cursor_usage.md`](mdc:documents/ai/manuals/cursor_usage.md) · [`documents/ai/manuals/testing.md`](mdc:documents/ai/manuals/testing.md)
 
 ---
 
@@ -15,9 +15,9 @@ Classify before changes (one or more): **contract change** · **implementation c
 
 | Classification | Test · documentation order |
 |------|-----------------|
-| Contract change | Tests · related docs **first** |
+| Contract change | Spec amendment → tests · related docs **first** → production |
 | Regression fix | Reproduction test **first** |
-| Implementation change | Start with narrowest unit tests |
+| Implementation change | Audit if uncertain → narrowest unit tests → production |
 | Refactoring | Existing tests suffice if behavior unchanged; update tests when contracts change |
 | Documentation change | pytest not required; if code contracts change, plan in Tests section |
 | UI change | DOM · serialization · JS or fixture regression first |
@@ -44,7 +44,17 @@ python -m mypy django_apps config src
 python -m pytest
 ```
 
-PR full gate: `mypy django_apps config src` ([AGENTS.md](mdc:AGENTS.md)).
+PR full gate: `mypy django_apps config src` ([`AGENTS.md`](mdc:AGENTS.md)).
+
+---
+
+## Caveman chat (default)
+
+**Every turn:** terse Korean chat per [`AGENTS.md` Communication](mdc:AGENTS.md) (`/caveman`). No filler/hedging; technical terms exact.
+
+**Off:** user says `stop caveman` or `normal mode`. **Auto-clarity:** security · irreversible ops · ambiguous multi-step — brief full sentences, then resume caveman.
+
+**Not the same as** six-section close below — chat style applies all turns; section headings apply at close only.
 
 ---
 
@@ -63,7 +73,7 @@ PR full gate: `mypy django_apps config src` ([AGENTS.md](mdc:AGENTS.md)).
 
 | Section | Content |
 |----|------|
-| Summary | 1–3 bullets; state work classification |
+| Summary | 1–3 bullets; state work classification + PR purpose |
 | Files | `path — why` |
 | Contracts | Invariants · DTO · schema changes; reason for adding/skipping tests |
 | Tests | `cmd — pass\|fail\|skipped — note` |
@@ -74,18 +84,36 @@ Details: [`cursor_usage.md` §17](mdc:documents/ai/manuals/cursor_usage.md)
 
 ---
 
+## Checkbox format (`.cursor/rules/` only)
+
+In **`.cursor/rules/**`** files, **never** use Markdown `- [ ]` / `- [x]`. Use emoji only:
+
+| State | Emoji | Example |
+|---|---|---|
+| Unchecked · todo gate | ⬜ | `- ⬜ contract brief written` |
+| Done · met · pass | ✅ | `- ✅ gates green` |
+| Forbidden · must not | ❌ | `- ❌ multi-purpose PR` |
+
+Applies when authoring or editing any rule under `.cursor/rules/`.
+
+---
+
 ## Forbidden Shortcuts (absolutely forbidden)
 
-- Making green by deleting/weakening tests only.
-- Using replay · artifact · metrics as solver · algorithm **inputs**.
-- Multiple `route_domain` patches (`RouteDomainSnapshotBuilder` is sole owner).
-- Repair logic in validation (read-only asserts only).
-- Using candidate order as commit order; using candidate reachable as final commit proof.
-- Raw↔server re-conversion inside optimization.
-- **Free-form strings** for `failure_reason` · `event_type` · `issue_code`, etc. (update enum/const + tests together).
-- Proceeding with implementation before plan approval.
-- Declaring completion without validation.
-- Renames changing **only a leading underscore** (`func`↔`_func`, `name`↔`_name`, same import alias) — forbidden for style · lint · “private/public cleanup”. **Exception**: only when user explicitly requests rename, or approved contract · spec requires new name.
+- ❌ Making green by deleting/weakening tests only
+- ❌ Production edits before contract brief / failing test (when behavior changes)
+- ❌ Multi-purpose PRs (redesign + unrelated cleanup + UI in one diff)
+- ❌ Using replay · artifact · metrics as solver · algorithm **inputs**
+- ❌ Multiple `route_domain` patches (`RouteDomainSnapshotBuilder` is sole owner)
+- ❌ Repair logic in validation (read-only asserts only)
+- ❌ Using candidate order as commit order; using candidate reachable as final commit proof
+- ❌ Raw↔server re-conversion inside optimization
+- ❌ **Free-form strings** for `failure_reason` · `event_type` · `issue_code`, etc. (update enum/const + tests together)
+- ❌ Proceeding with implementation before contract/spec exists for contract changes
+- ❌ Declaring completion without validation
+- ❌ Renames changing **only a leading underscore** (`func`↔`_func`, `name`↔`_name`, same import alias) — style · lint · “private/public cleanup”. **Exception**: user explicitly requests rename, or approved contract · spec requires new name
+- ❌ Using superseded or deleted docs as implementation authority
+- ❌ Markdown `- [ ]` / `- [x]` in `.cursor/rules/**` — use ⬜ ✅ ❌ per [Checkbox format](#checkbox-format-cursorrules-only) above
 
 Full list: [`testing.md § Forbidden shortcuts`](mdc:documents/ai/manuals/testing.md)
 
@@ -102,15 +130,32 @@ Details: [architecture.mdc](mdc:.cursor/rules/architecture.mdc)
 
 ---
 
-## Persona policy
+## Position policy
 
-Persona 3-stage ([`persona-dialogue.mdc`](mdc:.cursor/rules/persona-dialogue.mdc)) applies only at [`protocols/README.md`](mdc:protocols/README.md) **stage 5 (implementation)**. Not for Plan · documentation-only · review-only work.
+Tasks use **Position + scope + acceptance**, not abstract persona roleplay.
+
+- Global rules ([`AGENTS.md`](mdc:AGENTS.md), this file, [`workflow.mdc`](mdc:.cursor/rules/workflow.mdc)): minimal default — cautious engineer, minimal diffs, contract-first.
+- Domain lenses: [`persona/README.md`](mdc:persona/README.md) — which manual and paths to open.
+- Task prompt: narrow Position (Contract Auditor, Test Engineer, Implementer, Reviewer) with **Authority · Forbidden · Acceptance · Stop conditions**.
+
+Mandatory dialogue scripts and multi-character roleplay are **retired**.
+
+---
+
+## Uncertainty honesty (required)
+
+When any part of a plan or implementation is genuinely uncertain and cannot be resolved from user goal · specs/plans · code · tests · failure logs · repo conventions:
+
+- Say **"I don't know / I'm not sure"** explicitly, then ask the user. Never guess, fabricate, or silently pick a direction.
+- Applies to: unclear requirements · ambiguous contracts · unknown data/API behavior · uncertain root cause · any assumption that changes the outcome if wrong.
+- Mark residual uncertainty with `uncertain:` · `assumption:` in the Risks section. Never present a guess as fact.
+- A blocking uncertainty escalates to the BLOCKED format below.
 
 ---
 
 ## BLOCKED format
 
-Stop when validation commands missing · domain rules conflict · regression lacks baseline tests · high-risk change:
+Stop when validation commands missing · domain rules conflict · regression lacks baseline tests · high-risk change · **blocking uncertainty unanswered** · **scope exceeds one PR purpose**:
 
 ```
 BLOCKED:

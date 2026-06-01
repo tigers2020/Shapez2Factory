@@ -1,4 +1,4 @@
-"""PR-CLI-3a (BA-9) — ``cli_console`` formatter + env-gate tests (spec §11).
+"""PR-CLI-3a (BA-9) ??``cli_console`` formatter + env-gate tests (spec §11).
 
 The formatter is pure-core (stdlib only); these tests inject a fixed timestamp so
 the bracketed prefix is deterministic regardless of the host timezone.

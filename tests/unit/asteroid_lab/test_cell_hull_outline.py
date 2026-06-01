@@ -1,4 +1,4 @@
-"""Cell hull outline loops — corner lattice geometry (shared by rim + pattern highlight)."""
+"""Cell hull outline loops ??corner lattice geometry (shared by rim + pattern highlight)."""
 
 from __future__ import annotations
 

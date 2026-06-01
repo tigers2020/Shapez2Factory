@@ -18,5 +18,5 @@ Per AGENTS.md, assess whether MCP usable before related work. No MCP available �
 
 ## Schema verification
 
-- Where `call_mcp_tool` / `fetch_mcp_resource` invoked directly, check `mcps/<server>/tools/` schema first.
-- Tool missing or fails → record failure reason, use local alternative.
+- ⬜ Check `mcps/<server>/tools/` schema before `call_mcp_tool` / `fetch_mcp_resource`
+- ⬜ Tool missing or fails → record failure reason, use local alternative

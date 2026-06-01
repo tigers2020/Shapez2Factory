@@ -7,7 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +41,7 @@ class SolverSubprocessRequest:
     replace_existing: bool = False
     verbose: bool = False
     throughput_target_percent: int | None = None
+    genetic_sample_seeds: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,17 +91,22 @@ def default_artifact_root() -> Path:
     return Path(getattr(settings, "ASTEROID_LAB_ARTIFACT_ROOT", settings.BASE_DIR / "var" / "runs"))
 
 
-def _write_inputs(request: SolverSubprocessRequest) -> tuple[Path, Path]:
+def _write_inputs(request: SolverSubprocessRequest) -> tuple[Path, Path, Path]:
     input_dir = request.artifact_root / ".subprocess_inputs" / request.run_key
     input_dir.mkdir(parents=True, exist_ok=True)
     copy_path = input_dir / "copy.txt"
     snapshot_path = input_dir / "game_data_snapshot.json"
+    genetic_sample_seeds_path = input_dir / "genetic_sample_seeds.json"
     copy_path.write_text(request.copy_code.strip() + "\n", encoding="utf-8")
     snapshot_path.write_text(
         json.dumps(request.game_data_snapshot, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    return copy_path, snapshot_path
+    genetic_sample_seeds_path.write_text(
+        json.dumps(request.genetic_sample_seeds, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return copy_path, snapshot_path, genetic_sample_seeds_path
 
 
 def build_solver_cli_args(
@@ -108,6 +114,7 @@ def build_solver_cli_args(
     *,
     copy_path: Path,
     snapshot_path: Path,
+    genetic_sample_seeds_path: Path | None = None,
 ) -> list[str]:
     """Build the exact ``sys.executable -m ...`` invocation."""
 
@@ -127,6 +134,8 @@ def build_solver_cli_args(
         "--snapshot",
         str(snapshot_path),
     ]
+    if genetic_sample_seeds_path is not None:
+        args.extend(["--genetic-sample-seeds", str(genetic_sample_seeds_path)])
     if request.replace_existing:
         args.append("--replace-existing")
     if request.verbose:
@@ -154,9 +163,14 @@ def run_solver_subprocess(
         artifact_root=request.artifact_root,
         run_key=request.run_key,
     )
-    copy_path, snapshot_path = _write_inputs(request)
+    copy_path, snapshot_path, genetic_sample_seeds_path = _write_inputs(request)
     sidecar_log_path = request.artifact_root / ".subprocess_logs" / f"{request.run_key}.log"
-    args = build_solver_cli_args(request, copy_path=copy_path, snapshot_path=snapshot_path)
+    args = build_solver_cli_args(
+        request,
+        copy_path=copy_path,
+        snapshot_path=snapshot_path,
+        genetic_sample_seeds_path=genetic_sample_seeds_path,
+    )
     try:
         completed = run_subprocess_with_tee(
             args,
@@ -200,9 +214,14 @@ def spawn_solver_subprocess_detached(
         artifact_root=request.artifact_root,
         run_key=request.run_key,
     )
-    copy_path, snapshot_path = _write_inputs(request)
+    copy_path, snapshot_path, genetic_sample_seeds_path = _write_inputs(request)
     sidecar_log_path = request.artifact_root / ".subprocess_logs" / f"{request.run_key}.log"
-    args = build_solver_cli_args(request, copy_path=copy_path, snapshot_path=snapshot_path)
+    args = build_solver_cli_args(
+        request,
+        copy_path=copy_path,
+        snapshot_path=snapshot_path,
+        genetic_sample_seeds_path=genetic_sample_seeds_path,
+    )
     handle = spawn_subprocess_with_log_tee(
         args,
         log_path=sidecar_log_path,

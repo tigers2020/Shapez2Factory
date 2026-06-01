@@ -1,4 +1,4 @@
-"""Ingest 18 canonical miner seed patterns from bootstrap copy strings into GeneticSample."""
+"""Ingest 18 canonical miner seed patterns from bootstrap copy strings into GeneSeed."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ from django_apps.asteroid_lab.genetic_sample.miner_seed_topology import (
     throughput_factor_for_extension_count,
     topology_signature_from_decoded_root,
 )
-from django_apps.asteroid_lab.models import GeneticSample
+from django_apps.asteroid_lab.models import GeneSeed
 
 _DEFAULT_BOOTSTRAP_PATH = "var/default_miner_pattern.txt"
 _EXPECTED_LINE_COUNT = len(EXPECTED_PATTERN_IDS)
@@ -60,7 +60,9 @@ class _ParsedSeed:
 class Command(BaseCommand):  # type: ignore[misc]
     help = (
         "Ingest miner seed topologies from var/default_miner_pattern.txt "
-        "into GeneticSample (miner_seed_v2 schema, 18 rows)."
+        "into GeneSeed (miner_seed_v2 schema, 18 rows). "
+        "L3 also needs exhaustive gene_key rows: run seed_exhaustive_sample_genes "
+        "(solver falls back to in-memory exhaustive catalog when only miner_seed_* exist)."
     )
 
     def add_arguments(self, parser: Any) -> None:
@@ -86,7 +88,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             "--replace-stale",
             action="store_true",
             help=(
-                "Delete GeneticSample rows where metadata_json.generator equals "
+                "Delete GeneSeed rows where metadata_json.generator equals "
                 f"{EXHAUSTIVE_GENERATOR_STALE!r}."
             ),
         )
@@ -151,7 +153,7 @@ class Command(BaseCommand):  # type: ignore[misc]
                 intrinsic_priority_rank=intrinsic_priority_rank,
             )
             gkey = gene_key_for_pattern_id(seed.pattern_id)
-            obj, _created = GeneticSample.objects.update_or_create(
+            obj, _created = GeneSeed.objects.update_or_create(
                 gene_key=gkey,
                 defaults={
                     "name": f"Seed {seed.pattern_id} ext={seed.extension_count}",
@@ -163,7 +165,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             obj.save()
 
         if options["replace_stale"]:
-            deleted, _detail = GeneticSample.objects.filter(
+            deleted, _detail = GeneSeed.objects.filter(
                 metadata_json__generator=EXHAUSTIVE_GENERATOR_STALE,
             ).delete()
             self.stdout.write(
@@ -178,12 +180,12 @@ class Command(BaseCommand):  # type: ignore[misc]
                 ),
             )
 
-        seed_count = GeneticSample.objects.filter(
+        seed_count = GeneSeed.objects.filter(
             metadata_json__schema=MINER_SEED_SCHEMA_V2,
             metadata_json__is_seed=True,
         ).count()
         self.stdout.write(
-            self.style.SUCCESS(f"miner_seed_v2 GeneticSample rows: {seed_count}"),
+            self.style.SUCCESS(f"miner_seed_v2 GeneSeed rows: {seed_count}"),
         )
 
     def _parse_bootstrap(self, lines: list[str]) -> list[_ParsedSeed]:
@@ -306,7 +308,7 @@ class Command(BaseCommand):  # type: ignore[misc]
     def _purge_stale_miner_seed_rows(self) -> int:
         expected = set(EXPECTED_MINER_SEED_GENE_KEYS)
         stale_ids: list[int] = []
-        for row in GeneticSample.objects.filter(gene_key__startswith="miner_seed_").only(
+        for row in GeneSeed.objects.filter(gene_key__startswith="miner_seed_").only(
             "pk",
             "gene_key",
             "metadata_json",
@@ -321,5 +323,5 @@ class Command(BaseCommand):  # type: ignore[misc]
             stale_ids.append(int(row.pk))
         if not stale_ids:
             return 0
-        deleted, _detail = GeneticSample.objects.filter(pk__in=stale_ids).delete()
+        deleted, _detail = GeneSeed.objects.filter(pk__in=stale_ids).delete()
         return int(deleted)

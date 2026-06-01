@@ -48,10 +48,11 @@ Putting long workflow · test · layer rules in User Rules double-loads them eve
 
 ## Global Caveman skills
 
-Global caveman skills such as `C:\Users\<user>\.agents\skills\caveman\` should  
-not auto-trigger in this repo.  
-Reason: project canonical source is `shapez2-core.mdc` Caveman 6 sections.  
-Method: set `disable-model-invocation: true` on those skills or limit trigger keywords to project-specific ones.
+**Repo default (always):** caveman chat + Korean per [`AGENTS.md`](../../../AGENTS.md) and [`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) — no extra global User Rule needed for style.
+
+**Optional global skill** (e.g. `C:\Users\<user>\.agents\skills\caveman\`): OK when user attaches `/caveman`; must not override six-section headings or AGENTS language table.
+
+**Archived project hub** [`.cursor/skills/_archive/caveman-mode/`](../../../.cursor/skills/_archive/caveman-mode/) stays `disable-model-invocation: true` — link checklist only, not a second always-on rule stack.
 
 ## Context-saving habits
 

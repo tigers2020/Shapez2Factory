@@ -6,8 +6,10 @@ from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
     LAB_REPLAY_PAYLOAD_VERSION,
     build_lab_replay_lazy_handle,
     build_lab_replay_lazy_handle_from_summary,
+    frame_has_sprite_layout_cells,
     lab_replay_manifest_json_dict,
     lab_replay_payload_mode,
+    preview_frame_index_for_lab_replay,
 )
 from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
     build_manifest_summary_from_compose,
@@ -33,7 +35,7 @@ def test_build_handle_inline_mode() -> None:
 
 
 @override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="lazy")
-def test_build_handle_lazy_preview_is_last_frame() -> None:
+def test_build_handle_lazy_preview_is_last_frame_without_sprite_layout() -> None:
     frames = [
         {"frame_index": 0, "title": "first"},
         {"frame_index": 1, "title": "last"},
@@ -48,6 +50,42 @@ def test_build_handle_lazy_preview_is_last_frame() -> None:
     assert handle.frame_count == 2
     assert handle.preview_frame_index == 1
     assert handle.preview_frame == frames[1]
+
+
+@override_settings(ASTEROID_LAB_REPLAY_PAYLOAD_MODE="lazy")
+def test_preview_frame_index_prefers_last_sprite_layout_frame() -> None:
+    frames = [
+        {
+            "frame_index": 0,
+            "map_view": {
+                "full_cells": [
+                    {
+                        "x": 0,
+                        "y": 0,
+                        "kind": "space_belt",
+                        "tile_type": "SpaceBelt_Forward",
+                    }
+                ]
+            },
+        },
+        {
+            "frame_index": 1,
+            "map_view": {
+                "full_cells": [{"x": 0, "y": 0, "kind": "asteroid_shape_field"}],
+            },
+        },
+    ]
+    assert frame_has_sprite_layout_cells(frames[0]) is True
+    assert frame_has_sprite_layout_cells(frames[1]) is False
+    assert preview_frame_index_for_lab_replay(frames) == 0
+    handle = build_lab_replay_lazy_handle(
+        mode="lazy",
+        frames=frames,
+        project_slug="demo-slug",
+        solver_run_id=99,
+    )
+    assert handle.preview_frame_index == 0
+    assert handle.preview_frame == frames[0]
     assert handle.replay_payload_version == LAB_REPLAY_PAYLOAD_VERSION
     assert handle.fetch_url == "/asteroid-miner-layout/p/demo-slug/solver-runs/99/lab-replay/"
 

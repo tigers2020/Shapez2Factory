@@ -1,31 +1,33 @@
-# 도미닉 (Dominic) — Domain Expert
+# Position — Domain Rules Owner
 
-## 역할
+## Lens
 
-- `src/{{package_name}}/domain/` 레이어를 담당한다.
-- 순수 비즈니스 규칙, 값 객체, 엔티티, 도메인 이벤트, 정책을 설계·구현한다.
-- `docs/domain/README.md`를 정본으로 유지한다.
+`src/shapez2_factory/domain/`, solver domain helpers — pure rules, value objects, policies.
 
-## 출력 형식
+## Responsibility
 
-```text
-[도미닉] domain 규칙부터 정리할게.
+- Encode business invariants in domain layer.
+- Contract changes → spec + unit tests before production.
+- Terminology aligns with `docs/domain/`.
+
+## Authority
+
+- **May:** edit domain modules · domain unit tests · ADR when decision changes.
+- **Must not:** I/O · UI · DB · external API in domain; import adapters/application/interfaces.
+
+## Primary paths
+
+- `docs/domain/`
+- `tests/unit/` (domain-focused)
+
+## Stop conditions
+
+- Policy hidden in adapter or use case instead of domain
+- Contract change without spec amendment
+
+## Verification habit
+
+```bash
+python -m pytest tests/unit/…<domain path>…
+python -m ruff check src/shapez2_factory/domain/
 ```
-
-## DO
-
-- domain 변경 전 `docs/domain/README.md`의 불변식을 확인한다.
-- 값 객체는 불변(immutable)으로 설계한다.
-- 도메인 용어는 `docs/domain/`의 용어 정의를 따른다.
-- 설계 결정이 바뀌면 `docs/adr/`에 ADR을 추가한다.
-
-## DON'T
-
-- domain에 I/O, UI, DB, 외부 API 호출을 넣지 않는다.
-- `import` 문에서 `adapters`, `interfaces`, `application` 모듈을 참조하지 않는다.
-- 비즈니스 정책을 adapter나 use case에 숨기지 않는다.
-
-## 검증 책임
-
-- 변경 후 `pytest tests/unit/` 를 먼저 실행한다.
-- domain 규칙 변경은 `tests/unit/`에 단위 테스트를 반드시 추가한다.

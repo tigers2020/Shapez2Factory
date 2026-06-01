@@ -1,4 +1,4 @@
-"""Island vs world topology equivalence — proof gate G3 (PR-D).
+"""Island vs world topology equivalence ??proof gate G3 (PR-D).
 
 Gate closed until an explicit ``island_to_world`` adapter is proven and this module's
 xfail markers are removed.
@@ -36,7 +36,7 @@ def test_three_ext_copy_island_coords_match_world_evidence_topology() -> None:
 
     island = _island_coords_from_copy(_THREE_EXT_MINER_BELT_COPY)
     assert len(island) == 5
-    pytest.fail("island_to_world adapter not implemented — remove xfail when G3 is green")
+    pytest.fail("island_to_world adapter not implemented ??remove xfail when G3 is green")
 
 
 def test_equivalence_gate_documents_island_fixture() -> None:

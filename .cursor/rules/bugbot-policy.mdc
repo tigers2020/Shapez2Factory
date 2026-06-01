@@ -10,16 +10,16 @@ Use Cursor Bugbot **selectively** — not every PR, not a default checklist item
 
 ## Invoke when
 
-- High-risk change (contracts, solver invariants, authority/doc routing)
-- Large diff or cross-cutting refactor
-- User explicitly requests Bugbot review
-- Uncertain regression surface after merge
+- ✅ High-risk change (contracts, solver invariants, authority/doc routing)
+- ✅ Large diff or cross-cutting refactor
+- ✅ User explicitly requests Bugbot review
+- ✅ Uncertain regression surface after merge
 
 ## Skip when
 
-- Docs-only PR, no runtime path change
-- Narrow test/style fix with green CI
-- User asked to skip automated review
+- ❌ Docs-only PR, no runtime path change — skip Bugbot
+- ❌ Narrow test/style fix with green CI — skip Bugbot
+- ❌ User asked to skip automated review
 
 ## Agent rule
 

@@ -1,4 +1,4 @@
-﻿"""Official island export: dense anchor, connected-branch golden JSON, spread bug regression."""
+"""Official island export: dense anchor, connected-branch golden JSON, spread bug regression."""
 
 from __future__ import annotations
 

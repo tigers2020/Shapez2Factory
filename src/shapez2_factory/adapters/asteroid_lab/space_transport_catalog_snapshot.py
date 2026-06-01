@@ -164,7 +164,8 @@ def _parse_bool_mask(raw: object, *, field: str) -> EswmMask:
             SpaceTransportCatalogIssue.MALFORMED,
             f"{field} must be a list of 4 booleans (E,S,W,N)",
         )
-    return tuple(bool(v) for v in raw)
+    e, s, w, n = (bool(v) for v in raw)
+    return (e, s, w, n)
 
 
 def _parse_entry(raw: object) -> SpaceTransportTileCatalogEntry:

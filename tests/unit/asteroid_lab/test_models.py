@@ -63,7 +63,7 @@ def test_topology_rule_modal_content_loads() -> None:
         rule=rule,
         modal_title="Stub orientation (details)",
         lead_html="<p>Detail body</p>",
-        sections_json=[{"heading": "Example", "body": "??}],
+        sections_json=[{"heading": "Example", "body": "…"}],
     )
     loaded = al.TopologyRuleModalContent.objects.select_related("rule").get(pk=modal.pk)
     assert loaded.rule.rule_key == "stub_must_face_trunk"

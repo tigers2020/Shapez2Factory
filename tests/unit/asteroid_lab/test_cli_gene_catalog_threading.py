@@ -9,7 +9,9 @@ from django_apps.asteroid_lab.services.solver_subprocess_runner import (
     SolverSubprocessRequest,
     build_solver_cli_args,
 )
-from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import GeneticSampleSeedSnapshot
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedSnapshot,
+)
 from shapez2_factory.adapters.asteroid_lab.json_snapshot_rules import (
     JsonSnapshotGameDataRulesAdapter,
 )

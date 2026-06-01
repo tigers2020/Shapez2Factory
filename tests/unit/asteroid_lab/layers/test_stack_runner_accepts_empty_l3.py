@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import GeneticSampleSeedSnapshot
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedSnapshot,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )

@@ -265,8 +265,7 @@ class GeneSeedAdmin(admin.ModelAdmin):
         if dry_run:
             self.message_user(
                 request,
-                "dry-run: DB ?? ??. "
-                + (output.splitlines()[-1] if output else "??? ???."),
+                "dry-run: DB ?? ??. " + (output.splitlines()[-1] if output else "??? ???."),
                 level=messages.SUCCESS,
             )
         else:

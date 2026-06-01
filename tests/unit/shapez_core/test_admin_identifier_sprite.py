@@ -8,8 +8,8 @@ from django_apps.shapez_core.admin_identifier_sprite import identifier_sprite_ad
 
 
 def test_identifier_sprite_admin_preview_empty() -> None:
-    assert identifier_sprite_admin_preview("") == "??
-    assert identifier_sprite_admin_preview("   ") == "??
+    assert identifier_sprite_admin_preview("") == "—"
+    assert identifier_sprite_admin_preview("   ") == "—"
 
 
 def test_identifier_sprite_admin_preview_renders_static_url() -> None:

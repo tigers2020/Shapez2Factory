@@ -6,6 +6,8 @@ from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionC
 from django_apps.asteroid_lab.snapshots.transport_kind import TransportKind
 from shapez2_factory.domain.asteroid_lab.reconstruction.resource_kinds import (
     detect_present_resource_kinds,
+)
+from shapez2_factory.domain.asteroid_lab.reconstruction.resource_kinds import (
     detect_primary_resource_kind as _detect_primary_resource_kind,
 )
 

@@ -968,9 +968,11 @@ def lab_run_summary_from_solver_summary(
     optimization_goal = dict(solver_summary.get("optimization_goal") or {})
     reconstruction = _section_reconstruction(
         solver_summary.get("reconstruction_observability"),
-        solver_summary.get("reconstruction_capacity")
-        if isinstance(solver_summary.get("reconstruction_capacity"), dict)
-        else None,
+        (
+            solver_summary.get("reconstruction_capacity")
+            if isinstance(solver_summary.get("reconstruction_capacity"), dict)
+            else None
+        ),
     )
     capacity = _section_capacity(solver_summary.get("reconstruction_capacity"))
     rttp = _section_rttp(solver_summary)

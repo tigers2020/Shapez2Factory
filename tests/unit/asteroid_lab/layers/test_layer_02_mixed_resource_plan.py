@@ -51,11 +51,7 @@ def _field_cell(x: int, y: int, *, cell_kind: str) -> DecodedCellDTO:
 def test_l2_plan_builds_pipe_connectors_for_fluid() -> None:
     shape_shell = build_rect_field_with_void_shell(width=8, height=8, void_pad=10)
     complete_map = minimal_complete_map_from_cells(
-        *(
-            _field_cell(x, y, cell_kind="asteroid_fluid_field")
-            for x in range(8)
-            for y in range(8)
-        ),
+        *(_field_cell(x, y, cell_kind="asteroid_fluid_field") for x in range(8) for y in range(8)),
     )
     complete_map = type(complete_map)(
         cells=complete_map.cells,
@@ -83,11 +79,7 @@ def test_shape_primary_mixed_map_still_provides_pipe_goals() -> None:
     cells: list[DecodedCellDTO] = []
     fluid_coords = {(0, 0), (1, 0), (2, 0), (3, 0)}
     for x, y in shell.field_cells:
-        kind = (
-            "asteroid_fluid_field"
-            if (x, y) in fluid_coords
-            else "asteroid_shape_field"
-        )
+        kind = "asteroid_fluid_field" if (x, y) in fluid_coords else "asteroid_shape_field"
         cells.append(_field_cell(x, y, cell_kind=kind))
     cleanup, recon = minimal_cleanup_and_recon_from_cells(*cells)
     layer01 = run_layer_01(cleanup=cleanup, recon=recon)

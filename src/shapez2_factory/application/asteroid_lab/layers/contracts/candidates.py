@@ -53,9 +53,7 @@ class CandidateRejectReason(StrEnum):
         "exterior_goal_unreachable_no_same_void_component"
     )
     EXTERIOR_GOAL_UNREACHABLE_PROBE_LIMIT_HIT = "exterior_goal_unreachable_probe_limit_hit"
-    EXTERIOR_GOAL_UNREACHABLE_FRONTIER_EXHAUSTED = (
-        "exterior_goal_unreachable_frontier_exhausted"
-    )
+    EXTERIOR_GOAL_UNREACHABLE_FRONTIER_EXHAUSTED = "exterior_goal_unreachable_frontier_exhausted"
     ROUTE_PROBE_FAILED = "route_probe_failed"
     BUDGET_EXHAUSTED = "budget_exhausted"
 

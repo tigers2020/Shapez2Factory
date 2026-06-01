@@ -93,9 +93,7 @@ class GeneticSampleSeedSnapshot:
 
 def _coord(value: object) -> tuple[int, int]:
     if not isinstance(value, (list, tuple)) or len(value) != 2:
-        raise GeneticSampleSeedInvalid(
-            GeneticSampleSeedIssue.MALFORMED, f"bad offset {value!r}"
-        )
+        raise GeneticSampleSeedInvalid(GeneticSampleSeedIssue.MALFORMED, f"bad offset {value!r}")
     try:
         return (int(value[0]), int(value[1]))
     except (TypeError, ValueError) as exc:
@@ -106,9 +104,7 @@ def _coord(value: object) -> tuple[int, int]:
 
 def _parse_entry(raw: object) -> GeneticSampleSeedEntry:
     if not isinstance(raw, dict):
-        raise GeneticSampleSeedInvalid(
-            GeneticSampleSeedIssue.MALFORMED, "entry must be an object"
-        )
+        raise GeneticSampleSeedInvalid(GeneticSampleSeedIssue.MALFORMED, "entry must be an object")
     if "canonical_output_dir" not in raw:
         raise GeneticSampleSeedInvalid(
             GeneticSampleSeedIssue.MALFORMED, "entry missing canonical_output_dir"

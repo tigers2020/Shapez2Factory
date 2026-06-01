@@ -186,8 +186,5 @@ def test_run_layer_03_v2_MISSING_GENETIC_SAMPLE_SEEDS_skips() -> None:
         budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
         genetic_sample_seeds=None,
     )
-    assert (
-        result.metrics.layer_skip_reason
-        == Layer03SkipReason.MISSING_GENETIC_SAMPLE_SEEDS.value
-    )
+    assert result.metrics.layer_skip_reason == Layer03SkipReason.MISSING_GENETIC_SAMPLE_SEEDS.value
     assert result.committed_placements == ()

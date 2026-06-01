@@ -81,9 +81,7 @@ def _mixed_layer01_and_l2_plan():
             x,
             y,
             cell_kind=(
-                "asteroid_fluid_field"
-                if (x, y) in fluid_coords
-                else "asteroid_shape_field"
+                "asteroid_fluid_field" if (x, y) in fluid_coords else "asteroid_shape_field"
             ),
         )
         for x, y in shell.field_cells

@@ -133,13 +133,7 @@ def classify_exterior_goal_unreachable(
     )
     stub_component_id = void_labels.get(stub_void) if stub_void is not None else None
     goal_component_ids = tuple(
-        sorted(
-            {
-                void_labels[goal.coord]
-                for goal in matching_goals
-                if goal.coord in void_labels
-            }
-        )
+        sorted({void_labels[goal.coord] for goal in matching_goals if goal.coord in void_labels})
     )
     same_component_goals = [
         goal
@@ -191,9 +185,7 @@ def classify_exterior_goal_unreachable(
         frontier_exhausted=frontier_exhausted,
         probe_limit_hit=probe_limit_hit,
         nearest_goal_manhattan=nearest_manhattan,
-        reachable_goal_count=len(
-            [goal for goal in matching_goals if goal.coord in walkable_cells]
-        ),
+        reachable_goal_count=len([goal for goal in matching_goals if goal.coord in walkable_cells]),
         same_void_component_goal_count=len(same_component_goals),
         stub_component_id=stub_component_id,
         goal_component_ids=goal_component_ids,

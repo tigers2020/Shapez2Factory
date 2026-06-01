@@ -80,9 +80,7 @@ def test_unreachable_splits_probe_limit_hit(monkeypatch) -> None:
         external_void_cells=void,
     )
     assert result.route_probe_status is RouteProbeStatus.FAILED
-    assert (
-        result.reject_reason is CandidateRejectReason.EXTERIOR_GOAL_UNREACHABLE_PROBE_LIMIT_HIT
-    )
+    assert result.reject_reason is CandidateRejectReason.EXTERIOR_GOAL_UNREACHABLE_PROBE_LIMIT_HIT
     assert result.route_probe_diagnostic is not None
     assert result.route_probe_diagnostic.probe_limit_hit is True
     assert (

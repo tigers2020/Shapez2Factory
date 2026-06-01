@@ -1,0 +1,33 @@
+{
+  "schema_version": "space_transport_catalog_v1",
+  "game_version": "fixture",
+  "generated_at": "2026-05-31T00:00:00Z",
+  "provenance_hash": "fixture_min",
+  "source_batch_id": "hand_trimmed_v1",
+  "entries": [
+    {
+      "tile_id": "SpaceBelt_Forward",
+      "transport_kind": "space_belt",
+      "group_id": "SpaceBeltsGroup",
+      "input_mask_eswn": [false, false, true, false],
+      "output_mask_eswn": [true, false, false, false],
+      "canonical_rotation": 0,
+      "allowed_rotations": [0, 1, 2, 3],
+      "simulation_system_key": "AtomicStatefulIslandSimulationSystem`2[Game.Content.AtomicIslands.Conveyors.SpaceConveyorSimulation,Game.Content.AtomicIslands.Conveyors.SpaceConveyorSimulationState]",
+      "source_json_path": "tests/fixtures/asteroid_lab/space_transport_catalog_min.json",
+      "routing_allowed": true
+    },
+    {
+      "tile_id": "SpacePipe_Forward",
+      "transport_kind": "space_pipe",
+      "group_id": "SpacePipesGroup",
+      "input_mask_eswn": [false, false, true, false],
+      "output_mask_eswn": [true, false, false, false],
+      "canonical_rotation": 0,
+      "allowed_rotations": [0, 1, 2, 3],
+      "simulation_system_key": "AtomicStatefulIslandSimulationSystem`2[Game.Content.AtomicIslands.Conveyors.SpaceFluidConveyorSimulation,Game.Content.AtomicIslands.Conveyors.SpaceFluidConveyorSimulationState]",
+      "source_json_path": "tests/fixtures/asteroid_lab/space_transport_catalog_min.json",
+      "routing_allowed": true
+    }
+  ]
+}

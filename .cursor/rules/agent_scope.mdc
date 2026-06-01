@@ -1,0 +1,57 @@
+---
+description: "Agent scope guard: closed-world plan execution; no implicit next work"
+alwaysApply: true
+---
+
+# Agent Scope Guard
+
+Canon: `AGENTS.md` § Agent Scope.
+
+## Hard rule: No implicit next work
+
+When executing an approved plan, only perform tasks explicitly listed in that plan or the user's execution prompt.
+
+If the plan lists tasks A, B, C, D — stop after D.
+
+Forbidden without explicit user approval:
+
+- D-1, D-2, or any invented "next" subtask
+- Follow-up phases, future phases, or plan expansion
+- Implementing deferred work from the plan or session
+- Converting recommendations into tasks or edits
+- Cleanup, refactor, optimization, or docs outside the approved task list
+- File changes outside approved scope
+
+Allowed after the final listed task:
+
+1. Run validation commands explicitly listed in the plan or prompt
+2. Produce the final report (format below)
+3. List deferred work as text only
+4. Stop
+
+## Final report (plan execution)
+
+```md
+## Final Report
+
+### Completed
+- …
+
+### Validation
+- command: …
+- result: …
+
+### Deferred Work
+Observations only. Do not implement without explicit user approval.
+
+- …
+
+### Stop Marker
+STOPPED_AT_APPROVED_SCOPE
+```
+
+## Execution prompt
+
+Paste block: `documents/ai/templates/execution-scope-contract.md`
+
+Routers: `.cursor/rules/workflow.mdc`, `.cursor/rules/cursor-usage.mdc`

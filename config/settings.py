@@ -230,6 +230,12 @@ ASTEROID_LAB_REPLAY_PAYLOAD_MODE = (
 if ASTEROID_LAB_REPLAY_PAYLOAD_MODE not in ("inline", "lazy"):
     ASTEROID_LAB_REPLAY_PAYLOAD_MODE = "lazy"
 
+# Composed Lab replay frames in SolverRun (UI/index). 0 = always recompose from artifact.
+ASTEROID_LAB_REPLAY_COMPOSE_CACHE_ENABLED = os.environ.get(
+    "ASTEROID_LAB_REPLAY_COMPOSE_CACHE_ENABLED",
+    "1",
+).strip().lower() not in ("0", "false", "no")
+
 # Lab HTTP latency JSONL under var/log/asteroid_lab_perf/ (observability only; not solver input).
 ASTEROID_LAB_PERF_TRACE = os.environ.get("ASTEROID_LAB_PERF_TRACE", "0").strip().lower() in (
     "1",

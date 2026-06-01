@@ -13,6 +13,14 @@ shapez2 Factory Planner governance: short rules, strict contracts, small safe ch
 5. Prefer one PR-sized purpose. Split mixed contract/refactor/UI/runtime work.
 6. Do not commit, push, open PRs, or mark external work closed unless user asks.
 
+## Agent Scope
+
+Plan execution is closed-world: only tasks explicitly listed in the approved plan or user prompt.
+
+After the final listed task: run plan-listed validation, final report, stop. Final response must include `STOPPED_AT_APPROVED_SCOPE`.
+
+Forbidden without explicit user approval: extra subtasks (D-1…), follow-up phases, deferred implementation, opportunistic cleanup/refactor/docs. Discoveries → **Deferred Work** only; router `.cursor/rules/agent_scope.mdc`, prompt `documents/ai/templates/execution-scope-contract.md`.
+
 ## Shapez2 Routing
 
 Use `/grill-me-shapez2` when the user/task/chat touches Shapez2, Asteroid Lab, solver layers, asteroid mining, placement, routing, replay, UI, reconstruction, transport, belt/pipe, L2/L3/L4, rim greedy placement, or related project code.

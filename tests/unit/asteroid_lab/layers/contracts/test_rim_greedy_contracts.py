@@ -6,6 +6,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_03_RIM_GREEDY_PLACEMENT,
     LAYER_03_RIM_MINING_BUNDLES,
+    LAYER_04_INNER_PATTERN_FILL,
+    LAYER_04_TRANSPORT_ROUTING,
+    LAYER_05_TRANSPORT_ROUTING,
     LAYERS_02_TO_06_ACTIVE,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
@@ -21,6 +24,9 @@ def test_layer03_skip_reason_includes_algorithm_reset() -> None:
 
 def test_active_runner_tuple_uses_greedy_slug_only() -> None:
     assert LAYER_03_RIM_GREEDY_PLACEMENT in LAYERS_02_TO_06_ACTIVE
+    assert LAYER_04_INNER_PATTERN_FILL in LAYERS_02_TO_06_ACTIVE
+    assert LAYER_05_TRANSPORT_ROUTING in LAYERS_02_TO_06_ACTIVE
+    assert LAYER_04_TRANSPORT_ROUTING not in LAYERS_02_TO_06_ACTIVE
     assert LAYER_03_RIM_MINING_BUNDLES not in LAYERS_02_TO_06_ACTIVE
 
 

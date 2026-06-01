@@ -17,6 +17,7 @@ Conflict order:
 
 Always route:
 
+- Plan execution scope: `.cursor/rules/agent_scope.mdc`
 - Base processing: `.cursor/rules/superpowers.mdc`
 - Caveman style: `.cursor/rules/caveman.mdc`
 - Shapez2 domain: `.cursor/rules/shapez2-domain.mdc`

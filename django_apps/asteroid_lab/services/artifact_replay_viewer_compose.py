@@ -28,14 +28,20 @@ from shapez2_factory.adapters.asteroid_lab.complete_map_serializer import parse_
 _LAYER_EVENT_TYPE: dict[str, ReplayEventType] = {
     "layer_02_exterior_transport": ReplayEventType.EXTERIOR_TRANSPORT_COMPLETED,
     "layer_03_rim_greedy_placement": ReplayEventType.LAYER03_RIM_GREEDY_COMPLETE,
+    "layer_04_inner_pattern_fill": ReplayEventType.PATTERN_GENERATED,
     "layer_05_inner_pattern_fill": ReplayEventType.PATTERN_GENERATED,
+    "layer_05_transport_routing": ReplayEventType.LAYER05_TRANSPORT_ROUTING_COMPLETE,
+    "layer_04_transport_routing": ReplayEventType.LAYER04_TRANSPORT_ROUTING_COMPLETE,
     "layer_06_commit_validate": ReplayEventType.VALIDATION_COMPLETED,
 }
 
 _LAYER_PHASE: dict[str, ReplayPhase] = {
     "layer_02_exterior_transport": ReplayPhase.ROUTE_PROBE,
     "layer_03_rim_greedy_placement": ReplayPhase.INCREMENTAL_COMMIT,
+    "layer_04_inner_pattern_fill": ReplayPhase.PATTERN_GENERATION,
     "layer_05_inner_pattern_fill": ReplayPhase.PATTERN_GENERATION,
+    "layer_05_transport_routing": ReplayPhase.ROUTE_PROBE,
+    "layer_04_transport_routing": ReplayPhase.ROUTE_PROBE,
     "layer_06_commit_validate": ReplayPhase.VALIDATION,
 }
 

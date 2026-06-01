@@ -58,6 +58,22 @@ What must change.
 - Existing invariant violation
 - Missing CANON spec for contract change
 
+## Completion boundary
+
+This plan is complete when all listed steps are finished or explicitly `BLOCKED:`.
+
+After the final step:
+
+- run validation
+- write final report (`Completed`, `Validation`, `Deferred Work`, `STOPPED_AT_APPROVED_SCOPE`)
+- stop
+
+No additional task creation is allowed (no D-1, follow-up phase, opportunistic cleanup/refactor, or unapproved deferred implementation).
+
+Deferred work may be listed; must not be implemented without explicit user approval.
+
+Execution prompt header: `documents/ai/templates/execution-scope-contract.md`
+
 ## Verification
 
 ```bash

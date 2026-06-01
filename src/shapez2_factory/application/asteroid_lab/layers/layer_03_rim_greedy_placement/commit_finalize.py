@@ -170,6 +170,7 @@ def _committed_placement(
         miner_cells=miner_cells,
         extension_cells=extension_cells,
         m_output_stub=stub,
+        throughput_factor=cand.throughput_factor,
         route_probe_path=path,
     )
 

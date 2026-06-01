@@ -14,13 +14,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget impo
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
-    LAYER_05_INNER_PATTERN_FILL,
-)
-from shapez2_factory.application.asteroid_lab.layers.contracts.provisional_overlay import (
-    ProvisionalLayoutOverlay,
-)
-from shapez2_factory.application.asteroid_lab.layers.contracts.rim_placement import (
-    Layer04RimPlacementResult,
+    LAYER_04_INNER_PATTERN_FILL,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.stack_status import StackRunStatus
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
@@ -63,15 +57,12 @@ def _nonempty_gene_catalog() -> GeneticSampleSeedSnapshot:
     )
 
 
-def _stub_layer05(
-    *,
-    complete_map: object,
-    exterior_plan: ExteriorConnectionPlan | None,
-    rim_placement_result: Layer04RimPlacementResult,
-    provisional_overlay: ProvisionalLayoutOverlay,
-    budget_ctx: LayerBudgetContext,
-) -> None:
-    _ = (complete_map, exterior_plan, rim_placement_result, provisional_overlay, budget_ctx)
+def _stub_layer04_fill(**_kwargs: object) -> object:
+    from shapez2_factory.application.asteroid_lab.layers.layer_05_inner_pattern_fill.run import (  # noqa: E501
+        run_layer_04_inner_pattern_fill,
+    )
+
+    return run_layer_04_inner_pattern_fill(**_kwargs)
 
 
 def test_stack_runner_accepts_empty_l3_and_reaches_l5() -> None:
@@ -80,7 +71,7 @@ def test_stack_runner_accepts_empty_l3_and_reaches_l5() -> None:
     runners = (
         _LayerStackRunner(LAYER_02_EXTERIOR_TRANSPORT, _stub_layer02),
         _LayerStackRunner(LAYER_03_RIM_GREEDY_PLACEMENT, run_layer_03_rim_greedy_placement),
-        _LayerStackRunner(LAYER_05_INNER_PATTERN_FILL, _stub_layer05),
+        _LayerStackRunner(LAYER_04_INNER_PATTERN_FILL, _stub_layer04_fill),
     )
     core = run_layers_02_to_06(
         complete_map=complete_map,

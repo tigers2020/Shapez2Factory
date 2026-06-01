@@ -21,6 +21,7 @@ Rules:
 - Refactor: preserve behavior; update tests only when contract shifts.
 - Docs-only: no runtime claims.
 - One PR-sized purpose; split mixed work.
+- Plan execution: closed-world scope; see `.cursor/rules/agent_scope.mdc`.
 
 Tests must assert real contracts. Avoid weak generated tests and implementation trivia.
 

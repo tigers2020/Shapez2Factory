@@ -14,9 +14,13 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
     LAYER_03_RIM_MINING_BUNDLES,
+    LAYER_04_INNER_PATTERN_FILL,
     LAYER_04_RIM_BUNDLE_PLACEMENT,
+    LAYER_04_TRANSPORT_ROUTING,
     LAYER_05_INNER_PATTERN_FILL,
+    LAYER_05_TRANSPORT_ROUTING,
     LAYER_06_COMMIT_VALIDATE,
+    resolve_canonical_layer_slug,
 )
 
 _PLACEHOLDER = "—"
@@ -119,6 +123,24 @@ def solver_summary_for_lab_display(solver_summary: dict[str, Any]) -> dict[str, 
         merged.setdefault("rim_greedy_winning_variant_id", l3.get("winning_variant_id"))
         merged.setdefault("rim_greedy_pass2_score", l3.get("pass2_score"))
         merged.setdefault("layer03_skip_reason", l3.get("layer_skip_reason"))
+
+    if LAYER_05_TRANSPORT_ROUTING in by_slug:
+        l5_transport = by_slug[LAYER_05_TRANSPORT_ROUTING]
+    elif LAYER_04_TRANSPORT_ROUTING in by_slug:
+        l5_transport = by_slug[LAYER_04_TRANSPORT_ROUTING]
+    else:
+        l5_transport = {}
+    if l5_transport:
+        merged.setdefault("layer04_source_count", l5_transport.get("source_count"))
+        merged.setdefault("layer04_routed_source_count", l5_transport.get("routed_source_count"))
+        merged.setdefault("layer04_failed_source_count", l5_transport.get("failed_source_count"))
+        merged.setdefault("layer04_route_count", l5_transport.get("route_count"))
+        merged.setdefault("layer04_group_count", l5_transport.get("group_count"))
+        merged.setdefault("layer04_transport_tile_count", l5_transport.get("transport_tile_count"))
+        merged.setdefault("layer04_total_route_cells", l5_transport.get("total_route_cells"))
+        merged.setdefault("layer04_transport_kind", l5_transport.get("transport_kind"))
+        if l5_transport.get("failure_reasons") is not None:
+            merged.setdefault("layer04_failure_reasons", l5_transport.get("failure_reasons"))
 
     return merged
 
@@ -483,6 +505,65 @@ def _rim_greedy_summary_active(solver_summary: dict[str, Any]) -> bool:
     return False
 
 
+def _layer04_failure_reasons_label(solver_summary: dict[str, Any]) -> str:
+    raw = _obs_field_count(solver_summary, "layer04_failure_reasons", "failure_reasons")
+    if isinstance(raw, list):
+        parts = [str(item) for item in raw if item not in (None, "")]
+        return "; ".join(parts) if parts else _PLACEHOLDER
+    return str(raw) if raw not in (None, _PLACEHOLDER) else _PLACEHOLDER
+
+
+def _layer04_transport_highlights(solver_summary: dict[str, Any]) -> list[dict[str, str]]:
+    source_count = _obs_field_count(solver_summary, "layer04_source_count", "source_count")
+    routed = _obs_field_count(
+        solver_summary,
+        "layer04_routed_source_count",
+        "routed_source_count",
+    )
+    return [
+        _highlight(
+            "Transport kind",
+            _obs_field_count(solver_summary, "layer04_transport_kind", "transport_kind"),
+        ),
+        _highlight(
+            "Sources routed",
+            _ratio_display(left=routed, right=source_count),
+        ),
+        _highlight(
+            "Transport tiles",
+            _obs_field_count(
+                solver_summary,
+                "layer04_transport_tile_count",
+                "transport_tile_count",
+            ),
+        ),
+        _highlight(
+            "Routes / groups",
+            _ratio_display(
+                left=_obs_field_count(solver_summary, "layer04_route_count", "route_count"),
+                right=_obs_field_count(solver_summary, "layer04_group_count", "group_count"),
+            ),
+        ),
+        _highlight(
+            "Route cells",
+            _obs_field_count(
+                solver_summary,
+                "layer04_total_route_cells",
+                "total_route_cells",
+            ),
+        ),
+        _highlight(
+            "Failed sources",
+            _obs_field_count(
+                solver_summary,
+                "layer04_failed_source_count",
+                "failed_source_count",
+            ),
+        ),
+        _highlight("Failure reasons", _layer04_failure_reasons_label(solver_summary)),
+    ]
+
+
 def _layer03_greedy_highlights(solver_summary: dict[str, Any]) -> list[dict[str, str]]:
     return [
         _highlight("Rim anchor slots", _obs_field_count(solver_summary, "rim_anchor_count")),
@@ -626,9 +707,14 @@ def _layer_outcome(
     failed_layer_slug: str | None,
     legacy_outcome: str,
 ) -> str:
-    if failed_layer_slug == layer_slug:
+    canonical = resolve_canonical_layer_slug(layer_slug)
+    completed_canonical = frozenset(resolve_canonical_layer_slug(s) for s in completed_layer_slugs)
+    failed_canonical = (
+        resolve_canonical_layer_slug(failed_layer_slug) if failed_layer_slug is not None else None
+    )
+    if failed_canonical == canonical:
         return "failed"
-    if layer_slug in completed_layer_slugs:
+    if layer_slug in completed_layer_slugs or canonical in completed_canonical:
         return "completed"
     if stack_run_status == "timeout_fail_closed":
         return "skipped_budget"
@@ -824,66 +910,94 @@ def _build_layer_summaries(
         ),
         (
             4,
-            LAYER_04_RIM_BUNDLE_PLACEMENT,
-            "Rim bundle placement",
             (
-                "superseded"
+                LAYER_04_INNER_PATTERN_FILL
                 if _rim_greedy_summary_active(solver_summary)
-                and LAYER_03_RIM_GREEDY_PLACEMENT in completed_layer_slugs
+                else LAYER_04_RIM_BUNDLE_PLACEMENT
+            ),
+            (
+                "Inner pattern fill"
+                if _rim_greedy_summary_active(solver_summary)
+                else "Rim bundle placement"
+            ),
+            (
+                outcome(LAYER_04_INNER_PATTERN_FILL, "pending")
+                if _rim_greedy_summary_active(solver_summary)
                 else outcome(LAYER_04_RIM_BUNDLE_PLACEMENT, "pending")
             ),
-            [
-                _highlight(
-                    "Status",
-                    (
-                        "Superseded by L3 rim greedy"
-                        if _rim_greedy_summary_active(solver_summary)
-                        else _PLACEHOLDER
+            (
+                [
+                    _highlight("Macro-only mode", solver_summary.get("macro_only_mode")),
+                    _highlight(
+                        "Interior occupied cells",
+                        _obs_field_count(
+                            solver_summary,
+                            "interior_occupied_cell_count",
+                        ),
                     ),
-                ),
-                _highlight("Provisional placed", provisional_placed),
-                _highlight(
-                    "Placed / Probe succeeded",
-                    _ratio_display(left=provisional_placed, right=route_probe_succeeded),
-                ),
-                _highlight(
-                    "Overlap rejected",
-                    _obs_field_count(
-                        solver_summary,
-                        "layer04_rejected_overlap_count",
-                        "rejected_overlap_count",
+                ]
+                if _rim_greedy_summary_active(solver_summary)
+                else [
+                    _highlight("Provisional placed", provisional_placed),
+                    _highlight(
+                        "Placed / Probe succeeded",
+                        _ratio_display(left=provisional_placed, right=route_probe_succeeded),
                     ),
-                ),
-                _highlight(
-                    "Overlay occupied cells",
-                    _obs_field_count(
-                        solver_summary,
-                        "layer04_overlay_occupied_cell_count",
-                        "overlay_occupied_cell_count",
+                    _highlight(
+                        "Overlap rejected",
+                        _obs_field_count(
+                            solver_summary,
+                            "layer04_rejected_overlap_count",
+                            "rejected_overlap_count",
+                        ),
                     ),
-                ),
-                _highlight(
-                    "Provisional placement complete",
-                    _layer04_placement_complete_label(solver_summary),
-                ),
-            ],
+                    _highlight(
+                        "Overlay occupied cells",
+                        _obs_field_count(
+                            solver_summary,
+                            "layer04_overlay_occupied_cell_count",
+                            "overlay_occupied_cell_count",
+                        ),
+                    ),
+                    _highlight(
+                        "Provisional placement complete",
+                        _layer04_placement_complete_label(solver_summary),
+                    ),
+                ]
+            ),
         ),
         (
             5,
-            LAYER_05_INNER_PATTERN_FILL,
-            "Inner pattern fill",
-            outcome(LAYER_05_INNER_PATTERN_FILL, "pending"),
-            [
-                _highlight("Macro-only mode", solver_summary.get("macro_only_mode")),
-                _highlight(
-                    "Macro commits",
-                    macro.get("committed_macro_count") if macro else _PLACEHOLDER,
-                ),
-                _highlight(
-                    "Macro placements",
-                    macro.get("placement_count") if macro else _PLACEHOLDER,
-                ),
-            ],
+            (
+                LAYER_05_TRANSPORT_ROUTING
+                if _rim_greedy_summary_active(solver_summary)
+                else LAYER_05_INNER_PATTERN_FILL
+            ),
+            (
+                "Transport routing"
+                if _rim_greedy_summary_active(solver_summary)
+                else "Inner pattern fill"
+            ),
+            (
+                outcome(LAYER_05_TRANSPORT_ROUTING, "pending")
+                if _rim_greedy_summary_active(solver_summary)
+                else outcome(LAYER_05_INNER_PATTERN_FILL, "pending")
+            ),
+            (
+                _layer04_transport_highlights(solver_summary)
+                if _rim_greedy_summary_active(solver_summary)
+                else [
+                    _highlight("Macro-only mode", solver_summary.get("macro_only_mode")),
+                    _highlight(
+                        "Macro commits",
+                        macro.get("committed_macro_count") if macro else _PLACEHOLDER,
+                    ),
+                    _highlight(
+                        "Macro placements",
+                        macro.get("placement_count") if macro else _PLACEHOLDER,
+                    ),
+                ]
+            ),
         ),
         (
             6,

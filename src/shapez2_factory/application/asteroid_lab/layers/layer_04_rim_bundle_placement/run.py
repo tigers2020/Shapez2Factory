@@ -1,4 +1,4 @@
-"""Layer 4 ??disabled shim (superseded by layer_03_rim_greedy_placement)."""
+"""Layer 4 deprecated shim — use ``layer_04_transport_routing`` (PR-L4-0+)."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def run_layer_04_rim_bundle_placement(
 ) -> Layer04DisabledResult:
     _ = (complete_map, exterior_plan, candidate_set, budget_ctx)
     warnings.warn(
-        "layer_04_rim_bundle_placement is disabled; use layer_03_rim_greedy_placement",
+        "layer_04_rim_bundle_placement is deprecated; use layer_04_transport_routing",
         DeprecationWarning,
         stacklevel=2,
     )

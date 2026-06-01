@@ -12,6 +12,12 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import
     RimBundleCandidateSet,
     RouteProbedBundleCandidate,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_route import (
+    LAYER04_ROUTE_PLAN_VERSION,
+    Layer04Metrics,
+    Layer04RoutePlan,
+    ProjectedTransportTile,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.rim_placement import (
     Layer04RimPlacementResult,
 )
@@ -157,3 +163,26 @@ def rim_bundle_candidate_set_with_observability_for_golden() -> RimBundleCandida
 
 def layer04_result_with_selection_for_golden() -> Layer04RimPlacementResult:
     return layer04_rim_placement_result_for_probes((succeeded_probe_at((6, 4)),))
+
+
+def layer04_route_plan_with_transport_tiles_for_golden() -> Layer04RoutePlan:
+    tile = ProjectedTransportTile(
+        coord=(6, 4),
+        transport_kind="space_belt",
+        tile_id="SpaceBelt_Forward",
+        rotation=0,
+        input_dirs=("W",),
+        output_dirs=("E",),
+        group_id="conn_ext",
+        source_route_ids=("route_p0",),
+    )
+    return Layer04RoutePlan(
+        version=LAYER04_ROUTE_PLAN_VERSION,
+        resource_kind="shape",
+        transport_kind="space_belt",
+        routes=(),
+        groups=(),
+        transport_tiles=(tile,),
+        failures=(),
+        metrics=Layer04Metrics(source_count=1, routed_source_count=1),
+    )

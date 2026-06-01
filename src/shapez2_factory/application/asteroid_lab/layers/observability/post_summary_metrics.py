@@ -125,8 +125,16 @@ def build_layer03_post_summary_metrics(result: RimBundleCandidateSet) -> dict[st
     }
 
 
+def build_layer04_inner_fill_post_summary_metrics(
+    result: object | None = None,
+) -> dict[str, object]:
+    _ = result
+    return {"stub": True, "interior_occupied_cell_count": 0}
+
+
 def build_layer05_post_summary_metrics() -> dict[str, object]:
-    return {"stub": True}
+    """Deprecated alias for ``build_layer04_inner_fill_post_summary_metrics``."""
+    return build_layer04_inner_fill_post_summary_metrics()
 
 
 def build_layer06_post_summary_metrics() -> dict[str, object]:
@@ -138,6 +146,7 @@ __all__ = [
     "build_layer02_post_summary_metrics",
     "build_layer03_post_summary_metrics",
     "build_layer03_rim_greedy_post_summary_metrics",
+    "build_layer04_inner_fill_post_summary_metrics",
     "build_layer05_post_summary_metrics",
     "build_layer06_post_summary_metrics",
 ]

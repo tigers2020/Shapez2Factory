@@ -22,8 +22,8 @@ from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.placement import (
     choose_even_slots,
+    choose_spare_slots,
     distribute_connector_counts,
-    remaining_slots_after_selection,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.rotation import (
     FIELDWARD_ROTATION_BY_EDGE,
@@ -108,18 +108,17 @@ def build_exterior_connection_plan(
 
     if spare > 0:
         used = {c.void_coord for c in connectors}
-        remaining = remaining_slots_after_selection(edge_slots, used)
-        remaining_total = sum(len(slots) for slots in remaining.values())
-        spare_to_place = min(spare, remaining_total)
+        spare_to_place = min(spare, total_slots - len(used))
         if spare_to_place > 0:
             connectors.extend(
                 _place_connectors_for_role(
                     resource_kind=resource_kind,
-                    edge_slots=remaining,
+                    edge_slots=edge_slots,
                     count=spare_to_place,
                     capacity_per_min=cap_res.capacity_per_min,
                     role=ExteriorConnectorRole.SPARE,
                     seq_start=seq,
+                    avoid_coords=used,
                 )
             )
 
@@ -149,6 +148,7 @@ def _place_connectors_for_role(
     capacity_per_min: Decimal,
     role: ExteriorConnectorRole,
     seq_start: int,
+    avoid_coords: set[Coord] | None = None,
 ) -> list[ExteriorConnector]:
     if count <= 0:
         return []
@@ -157,7 +157,16 @@ def _place_connectors_for_role(
     connectors: list[ExteriorConnector] = []
     seq = seq_start
     for edge in _EDGES_ORDER:
-        chosen = choose_even_slots(edge_slots[edge], counts[edge])
+        edge_slots_list = edge_slots[edge]
+        edge_avoid = {coord for coord in (avoid_coords or set()) if coord in edge_slots_list}
+        if role is ExteriorConnectorRole.SPARE:
+            chosen = choose_spare_slots(
+                edge_slots_list,
+                counts[edge],
+                avoid=edge_avoid,
+            )
+        else:
+            chosen = choose_even_slots(edge_slots_list, counts[edge])
         for void_coord in chosen:
             connectors.append(
                 ExteriorConnector(

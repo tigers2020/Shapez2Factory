@@ -72,6 +72,99 @@ def distribute_connector_counts(
     return counts
 
 
+def _min_index_distance(idx: int, avoid_indices: set[int]) -> int:
+    if not avoid_indices:
+        return 0
+    return min(abs(idx - avoid_index) for avoid_index in avoid_indices)
+
+
+def _is_between_required(index: int, avoid_indices: set[int]) -> bool:
+    return (index - 1) in avoid_indices and (index + 1) in avoid_indices
+
+
+def _spare_candidate_rank(
+    index: int,
+    *,
+    avoid_indices: set[int],
+    picked_indices: set[int],
+) -> tuple[int, int, int, int]:
+    required_distance = _min_index_distance(index, avoid_indices)
+    spare_distance = _min_index_distance(index, picked_indices)
+    return (
+        int(_is_between_required(index, avoid_indices)),
+        -required_distance,
+        -spare_distance,
+        index,
+    )
+
+
+def choose_spare_slots(
+    slots: list[Coord],
+    count: int,
+    *,
+    avoid: set[Coord],
+) -> list[Coord]:
+    """Pick spare connectors as far from required slots as the edge allows."""
+
+    if count <= 0:
+        return []
+
+    avoid_indices = {index for index, coord in enumerate(slots) if coord in avoid}
+    available_count = len(slots) - len(avoid_indices)
+    if count > available_count:
+        msg = f"need {count} spare slots but only {available_count} available"
+        raise InsufficientConnectorSlotsError(msg)
+
+    if not avoid_indices:
+        return choose_even_slots(slots, count)
+
+    candidates: list[tuple[int, int]] = []
+    for index in range(len(slots)):
+        if index in avoid_indices:
+            continue
+        candidates.append((_min_index_distance(index, avoid_indices), index))
+
+    by_distance: dict[int, list[int]] = {}
+    for distance, index in candidates:
+        by_distance.setdefault(distance, []).append(index)
+
+    picked_indices: list[int] = []
+    picked_index_set: set[int] = set()
+    for distance in sorted(by_distance.keys(), reverse=True):
+        need = count - len(picked_indices)
+        if need <= 0:
+            break
+        pool = sorted(by_distance[distance])
+        if len(pool) <= need:
+            picked_indices.extend(pool)
+            picked_index_set.update(pool)
+            continue
+        ranked_pool = sorted(
+            pool,
+            key=lambda index: _spare_candidate_rank(
+                index,
+                avoid_indices=avoid_indices,
+                picked_indices=picked_index_set,
+            ),
+        )
+        if need == 1:
+            picked_indices.append(ranked_pool[0])
+            picked_index_set.add(ranked_pool[0])
+            continue
+        pool_coords = [slots[index] for index in ranked_pool]
+        chosen_coords = choose_even_slots(pool_coords, need)
+        chosen_indices = [slots.index(coord) for coord in chosen_coords]
+        picked_indices.extend(chosen_indices)
+        picked_index_set.update(chosen_indices)
+        break
+
+    if len(picked_indices) < count:
+        msg = f"need {count} spare slots but only {len(picked_indices)} could be placed"
+        raise InsufficientConnectorSlotsError(msg)
+
+    return [slots[index] for index in sorted(picked_indices)]
+
+
 def choose_even_slots(slots: list[Coord], count: int) -> list[Coord]:
     if count <= 0:
         return []
@@ -107,6 +200,7 @@ __all__ = [
     "InsufficientConnectorSlotsError",
     "NoConnectorSlotsError",
     "choose_even_slots",
+    "choose_spare_slots",
     "distribute_connector_counts",
     "even_slot_index",
     "nearest_unused_index",

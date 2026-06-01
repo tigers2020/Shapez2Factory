@@ -6,7 +6,7 @@ and owns only the log-writing side effect; the layer-4 disabled result lives ent
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from django_apps.asteroid_lab.layers.contracts.layer_post_summary import (
     LayerPostSummaryOutcome,
@@ -69,6 +69,7 @@ def test_django_run_full_wrapper_delegates_to_core_runner() -> None:
         runners=sentinel_runners,
         capacity_envelope=None,
         throughput_target_percent=80,
+        transport_catalog=ANY,
     )
     assert result is core_stack
     written = [call.args[0] for call in session.write_layer_post_summary.call_args_list]

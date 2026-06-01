@@ -1,6 +1,6 @@
 # AI Work Hub (`documents/ai`)
 
-Root [`AGENTS.md`](../../AGENTS.md) — **Spec-first · Small PR · Test-gated** operating contract + manual routing.
+Root [`AGENTS.md`](../../AGENTS.md) — **Spec-first SDD · Small PR · Test-gated** operating contract + manual routing.
 
 Detailed procedures live here and in [`manuals/`](manuals/). Full `documents/` map: [`../README.md`](../README.md).
 
@@ -21,7 +21,7 @@ Markdown in this directory: **English**.
 
 | Manual | Purpose |
 |--------|---------|
-| [`manuals/testing.md`](manuals/testing.md) | Contract-first TDD · dual gate · pytest output rules |
+| [`manuals/testing.md`](manuals/testing.md) | Contract-first SDD · dual gate · pytest output rules |
 | [`manuals/cursor_usage.md`](manuals/cursor_usage.md) | Cursor habits · scoped task prompts |
 | [`manuals/django.md`](manuals/django.md) | Django runtime |
 | [`manuals/solver.md`](manuals/solver.md) | Solver / algorithm |

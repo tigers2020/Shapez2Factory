@@ -1,48 +1,26 @@
-# shapez2 Factory Planner — Root
+---
+description: "Root router: AGENTS.md is canon; .mdc files route"
+alwaysApply: true
+---
 
-Standing directive. On conflict: [`AGENTS.md`](mdc:AGENTS.md) + [`.cursor/rules/workflow.mdc`](mdc:.cursor/rules/workflow.mdc) + more specific glob rules.
+# Root Router
 
-## Operating workflow
+Canon: `AGENTS.md`.
 
-```text
-Problem → Contract brief → PR plan (one purpose) → Approval → Failing tests → Minimal implementation → Gate → Review
-```
+Conflict order:
 
-- ⬜ Restate or confirm **contract brief** before production edits ([`contract-brief.md`](mdc:documents/ai/templates/contract-brief.md))
-- ⬜ **One PR · one purpose** — split when scope grows ([`pr-plan.md`](mdc:documents/ai/templates/pr-plan.md))
-- ⬜ **Test before production** for contract/regression changes
-- ⬜ Agent scoped by **Position · Authority · Acceptance · Stop conditions** ([`AGENTS.md`](mdc:AGENTS.md))
-- ⬜ No commit / push / PR / merge unless user explicitly asks
-- ⬜ Close with caveman six sections + validation evidence ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc))
+1. User explicit current instruction
+2. `AGENTS.md`
+3. Matching `.cursor/rules/*.mdc`
+4. Current docs/specs/ADRs
+5. Agent assumptions
 
-## Self-check (4 steps)
+Always route:
 
-- ⬜ **Stage:** Which workflow stage? (audit · tests-only · implement · docs)
-- ⬜ **Boundary:** Which layer/path owns this change?
-- ⬜ **Contract:** What invariant must not break? CANON spec linked?
-- ⬜ **Verification:** Which pytest/ruff/mypy/black commands will run?
+- Base processing: `.cursor/rules/superpowers.mdc`
+- Caveman style: `.cursor/rules/caveman.mdc`
+- Shapez2 domain: `.cursor/rules/shapez2-domain.mdc`
+- SDD/testing: `.cursor/rules/workflow.mdc`
+- Core constraints: `.cursor/rules/shapez2-core.mdc`
 
-## DO
-
-- ✅ Python 3.12, src layout, line length 100
-- ✅ Contract-first TDD for behavior changes
-- ✅ Secrets via `.env` / config only
-- ✅ Report commands not run + remaining risk
-- ✅ Separate superseded docs from CANON authority
-
-## DON'T
-
-- ❌ Production edit without contract brief (behavior change)
-- ❌ Multi-purpose PRs
-- ❌ Domain I/O in `domain/`; concrete adapters in `application/`
-- ❌ Business policy in adapters or fat views
-- ❌ Claim pass without running gates
-- ❌ Leading-underscore-only renames ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc) Forbidden Shortcuts)
-- ❌ Revive deleted/superseded specs as authority
-
-## References
-
-- [AGENTS.md](mdc:AGENTS.md)
-- [workflow.mdc](mdc:.cursor/rules/workflow.mdc)
-- [Position index](mdc:persona/README.md)
-- [Protocols](mdc:protocols/README.md)
+Do not claim done without evidence. Do not commit/push/PR unless user asks.

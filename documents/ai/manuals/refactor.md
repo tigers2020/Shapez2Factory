@@ -20,7 +20,7 @@ Do not delete legacy modules without proof they are unused.
 
 ## Verification
 
-Pass [`testing.md`](testing.md) Contract-first TDD · dual gate, or document why not run. Behavior-preserving refactors do not require new tests.
+Pass [`testing.md`](testing.md) Contract-first SDD · dual gate, or document why not run. Behavior-preserving refactors do not require new tests.
 
 ## Related
 

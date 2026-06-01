@@ -155,6 +155,26 @@ def test_placement_rotation_is_transformed_r_not_nesw_rank_t4() -> None:
             assert placement.rotation == 0
 
 
+def test_m3e_miner_world_coord_equals_rim_anchor_for_all_d4_variants() -> None:
+    """M stays on the rim anchor; only extension offsets rotate (§T / no bbox re-anchor)."""
+
+    result = generate_candidates(
+        complete_map=golden_5x5_complete_map(),
+        exterior_plan=minimal_l2_plan_for_golden(),
+        genetic_sample_seeds=_catalog(),
+    )
+    m3e = [p for p in result.normal_candidates if p.candidate.gene_key == "m3e"]
+    assert m3e
+    for probed in m3e:
+        anchor = probed.candidate.anchor_coord
+        miner_coords = {
+            placement.coord
+            for placement in probed.candidate.placements
+            if placement.cell_role is BundleCellRole.MINER
+        }
+        assert miner_coords == {anchor}
+
+
 def test_rotation_transforms_coordinates_not_r_only_t2() -> None:
     # T2: a non-identity rotation MUST move equipment coordinates; it is invalid to
     # keep coordinates fixed and only mutate R. Proven by the canonical extension at

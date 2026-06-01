@@ -123,9 +123,9 @@ class GameDataRulesPort(Protocol):
 
 ## Tasks
 
-- [ ] **Step 1 (TDD):** `test_manifest_dto.py` — write failing round-trip test; implement `ArtifactManifest`.
-- [ ] **Step 2 (TDD):** `test_artifact_atomic_write.py` — assert no final dir until `finalize`; manifest written last; hashes match; staging removed.
-- [ ] **Step 3 (TDD):** `test_artifact_writer_rejects_existing_dir` — finalize onto existing final dir with `replace_existing=False` raises `ArtifactExistsError`; `True` replaces atomically. Add `test_artifact_writer_rejects_existing_staging` — existing `.tmp/<run_key>` rejected as `STAGING_ALREADY_EXISTS` unless `replace_existing`. Add `test_content_hashes_excludes_manifest`.
+- [ ] **Step 1 (SDD):** `test_manifest_dto.py` — write acceptance round-trip test from spec; implement `ArtifactManifest`.
+- [ ] **Step 2 (SDD):** `test_artifact_atomic_write.py` — assert no final dir until `finalize`; manifest written last; hashes match; staging removed.
+- [ ] **Step 3 (SDD):** `test_artifact_writer_rejects_existing_dir` — finalize onto existing final dir with `replace_existing=False` raises `ArtifactExistsError`; `True` replaces atomically. Add `test_artifact_writer_rejects_existing_staging` — existing `.tmp/<run_key>` rejected as `STAGING_ALREADY_EXISTS` unless `replace_existing`. Add `test_content_hashes_excludes_manifest`.
 - [ ] **Step 4:** Define ports + stub `RunStackUseCase` (returns empty `StackRunResult`-shaped DTO; real impl in 3b).
 - [ ] **Step 5:** Update purity gate to scan populated package; confirm green.
 - [ ] **Step 6:** `ruff` + `mypy src`.

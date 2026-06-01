@@ -105,6 +105,7 @@ Rules:
 | G3 | Entries arrive already sorted by `deterministic_sort_key`; core does not re-sort by nondeterministic keys. |
 | G4 | The snapshot is persisted at `input/gene_catalog.json` in the artifact and recorded in the manifest `paths` for provenance. |
 | G5 | Genes are algorithm **input** (allowed). Replay/metrics/artifacts MUST NOT feed back as input. |
+| G6 | `extractor_offset` MUST be `(0, 0)`. Non-zero values are **invalid** at snapshot parse and L3 expansion (core projects `extractor_cell = rim anchor`). |
 
 ### M — Missing / invalid gene catalog (Amendment 3)
 
@@ -134,6 +135,31 @@ INVALID_GENE_CATALOG = "invalid_gene_catalog"
 | R6 | Phase 1 produces candidates only — **no commit** (candidate ≠ commit invariant). |
 | R7 | Commit-time **re-probe** on the latest `route_domain` (`RouteDomainSnapshotBuilder.build_snapshot`, canonical) finalizes survivors; candidate reachable ≠ final proof. |
 | R8 | Provisional survivors populate `IntegratedRimGreedyResult.committed_placements` + overlay + metrics + replay events. Overlap count among survivors MUST be 0. |
+
+### RC — Route merge / routed throughput (corridor sharing)
+
+Same-kind pipe/belt route overlap is **merge/share-capable** and MUST NOT hard-reject.
+
+Routed throughput is the sum of each committed bundle's `throughput_factor`. When multiple bundles
+share a corridor toward the same exterior trunk, their producer throughputs aggregate on that trunk as
+**merge semantics**. This aggregation is represented by summing committed bundle `throughput_factor`
+values, not by double-counting shared corridor cells.
+
+Shared corridor cells MAY contribute **soft** corridor pressure / congestion penalty (Phase C1 fitness),
+but they do not create additional throughput beyond the contributing producers.
+
+| ID | Rule |
+|----|------|
+| RC1 | **Equipment overlap** (miner, extension, transport stub) and **rim-platform invasion** are hard rejection. **Corridor / void-trunk overlap alone** is NOT hard rejection. |
+| RC2 | `total_throughput` / `pass2_score` / `routed_rim_throughput` = `Σ throughput_factor` over committed (selected) bundles — one term per producer, regardless of shared corridor cells. |
+| RC3 | Shared corridor cells MUST NOT add extra `throughput_factor` per overlapped cell (no cell-level double-count). |
+| RC4 | `SHAPE_BELT` and `FLUID_PIPE` use separate route domains; cross-kind corridor merge is forbidden. |
+| RC5 | L3 routed throughput sums producer `throughput_factor`; L2 exterior connector saturation caps and L5/L6 validation are separate layers (do not conflate pass2 score with EVTC `/min` caps). |
+
+> Korean (reviewer note): 같은 종류 belt/pipe corridor overlap은 hard reject가 아니다. 여러 bundle이 같은
+> exterior trunk로 합류하면 각 producer의 `throughput_factor`가 routed throughput에 한 번씩 누적된다. 겹친
+> corridor 셀 자체를 기준으로 throughput을 추가 가산하지 않는다. shared corridor는 soft
+> pressure/congestion penalty로만 사용한다.
 
 ### T — Footprint transform contract (Amendment 6)
 
@@ -200,7 +226,8 @@ mirror_y(dx, dy) = ( dx, -dy)   # reflect across horizontal axis:  North <-> Sou
 
 Genome (C2/C3): anchor-indexed allele (each rim anchor → chosen gene variant or none).
 Fitness: `Σ throughput_factor(selected) − route_fragility_penalty − shared_corridor_pressure_penalty`;
-overlap infeasible.
+overlap infeasible. See **§RC** for merge/share vs cell double-count: routed throughput sums producer
+`throughput_factor` once each; shared corridor cells affect soft pressure only, not per-cell TF addition.
 
 ### Preserved stack surface
 
@@ -240,6 +267,7 @@ non-regression floor (`≥ deterministic beam baseline`).
 | Footprint transform (§T) | `E→S`/`E→W`/`E→N` rotate the full footprint (T5 vectors); placement `R == (base_R + k) % 4` (T4); a candidate with mutated `R` but unchanged coordinates is rejected (T2); mirror ≠ rotation for an asymmetric layout (T3). |
 | Determinism | candidate ordering in solver frame (D1), selector consults fitness/conflict state rather than enumeration shortcut (D2), output hash stable (D4). |
 | Finalize (Phase D) | commit-time re-probe drops infeasible, overlap count 0. |
+| Route merge (§RC) | `test_shared_corridor_is_a_penalty_not_a_hard_constraint`; `test_finalize_two_corridor_sharing_bundles_both_commit`; `test_shared_corridor_does_not_double_count_throughput_by_cell_overlap`. |
 | Benchmark | L3-rim-only metrics on golden origin within bounds. |
 | Architecture gate | core L3 / CLI import no ORM (extend existing no-core-import gate). |
 

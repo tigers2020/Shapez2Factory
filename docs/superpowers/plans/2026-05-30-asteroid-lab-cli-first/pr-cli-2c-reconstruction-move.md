@@ -98,7 +98,7 @@ would drag viewer/replay imports into core. Each file is classified pure / Djang
 - [ ] **Step 1:** Audit each `reconstruction/*.py` for Django/replay imports; write **explicit move allowlist** in PR description; partition pure vs Django-bound (no wildcard).
 - [ ] **Step 2 (BLOCKING):** Split `display_map.py` → pure `complete_map_merge.py` (core) + viewer `display_map.py` (Django); classify synthetic-field transforms; add merge parity test.
 - [ ] **Step 3:** Move only allowlisted pure reconstruction modules incl. `complete_map`; shim originals.
-- [ ] **Step 4 (TDD):** `test_complete_map_serializer.py` — build a small complete map, serialize, parse, assert equality.
+- [ ] **Step 4 (SDD):** `test_complete_map_serializer.py` — build a small complete map, serialize, parse, assert equality.
 - [ ] **Step 5:** Run reconstruction narrow + decontamination scripts to confirm parity.
 - [ ] **Step 6:** purity gate (complete_map now has zero replay import) + ruff + mypy.
 

@@ -1,5 +1,5 @@
 ---
-description: "Django runtime ownership — Denny persona, thin views, game_data contracts (MUST when editing matched globs)"
+description: "Django router: thin views, services, ORM, app contracts"
 globs:
   - django_apps/**
   - config/**
@@ -7,38 +7,23 @@ globs:
 alwaysApply: false
 ---
 
-# Django apps (MUST)
+# Django Router
 
-Persona: [denny.md](mdc:persona/denny.md). Manual: [django.md](mdc:documents/ai/manuals/django.md). Migrations & models: [database.md](mdc:documents/ai/manuals/database.md).
+Canon: `AGENTS.md`, then `documents/ai/manuals/django.md`.
 
-**External references (repo canonical docs take precedence):** [DEV — Cursor Rules for Django](https://dev.to/olivia_craft/cursor-rules-for-django-the-complete-guide-to-ai-assisted-django-development-3je5) · [django-rules — Using rules with Django](https://github.com/dfunckt/django-rules#using-rules-with-django) — detailed mapping in [django.md § References](mdc:documents/ai/manuals/django.md).
+Use when editing `django_apps/**`, `config/**`, or `manage.py`.
 
-`django_apps/**` + `config/**` owned by **Denny**. Hexagonal `src/shapez2_factory/` = Dominic · Yuri · Ada · Gina.
+Rules:
 
-## MUST before editing
+- Keep views thin; put business logic in services/model methods.
+- Prefer CBV unless FBV is clearly simpler.
+- Use ORM; avoid raw SQL unless justified.
+- Preserve signatures unless user asks.
+- Use `select_related` / `prefetch_related` for N+1 risk.
+- Do not add raw JSON/blob domain storage without current approval and tests.
+- Contract changes need plan, acceptance, and tests.
+- Templates display data; no business policy in templates.
 
-- ⬜ `@persona/denny.md`, `@documents/ai/manuals/django.md`
-- ⬜ Models/migrations: `@documents/ai/manuals/database.md`
-- ⬜ `game_data`: `@django_apps/game_data/services/validators.py`, `tests/unit/game_data/`
+Verify focused app tests plus lint/type gates from `AGENTS.md`.
 
-## Forbidden shortcuts
-
-- ❌ `JSONField`, `raw_json`, `audit_blob`, `payload`, `data`, `source_dump` on domain models — without `ALLOWED_JSON_MODELS` + plan approval ([validators.py](mdc:django_apps/game_data/services/validators.py))
-- ❌ Implementing contract changes without plan + approval
-- ❌ Skipping `test_no_raw_json_domain_storage`, `test_admin_browse` when touching `game_data`, browse, admin, or importer
-- ❌ Cross-app imports violating [django.md](mdc:documents/ai/manuals/django.md) import matrix
-
-## Thin view
-
-- HTTP + URLs belong to app owning behavior (`game_data.browse` → `config/urls.py` include).
-- Views delegate to services/importers/registry; templates display only.
-
-## Verification
-
-```bash
-python -m pytest tests/unit/<app>/   # narrow scope; do not use -q / --quiet / --tb=no
-python -m ruff check <paths>
-python -m mypy django_apps config src
-```
-
-Closing: [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc) Caveman six sections.
+References: `documents/ai/manuals/django.md`, `documents/ai/manuals/database.md`.

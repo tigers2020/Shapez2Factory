@@ -85,7 +85,7 @@ replay schema_version bumped; asteroid_lab_09 doc updated in same PR.
 
 - [ ] **Gate (LOCK-3)** — record post-RENDER-5 measurement in `baseline-notes.md`; confirm at least one of
   the three conditions. If none, close RENDER-6 as skipped (document numbers).
-- [ ] **Step 1 (TDD) — `test_lab_compact_frame_adapter.py`** (source contract: `isDeltaOnlyFrame`,
+- [ ] **Step 1 (SDD) — `test_lab_compact_frame_adapter.py`** (source contract: `isDeltaOnlyFrame`,
   delta-only path does not read `full_map`).
 - [ ] **Step 2 — JS adapter:** delta-only frames render `cell_delta` only.
 - [ ] **Step 3 — Document** compact-frame contract in `asteroid_lab_09_replay_timeline.md`.

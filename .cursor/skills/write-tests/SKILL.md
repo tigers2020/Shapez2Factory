@@ -26,7 +26,7 @@ metadata:
 ## Procedure
 
 1. 기대 입출력 또는 invariant를 명문화한다.
-2. 먼저 failing test를 작성하고 실제로 실패하는지 확인한다.
+2. spec acceptance에 맞는 acceptance test를 먼저 작성하고, 구현 전 기대대로 실패하는지 확인한다.
 3. mock은 꼭 필요한 경계(외부 API, DB, FS)에서만 사용한다.
 4. golden / snapshot / integration 중 가장 유지비가 낮은 방식을 고른다:
    - 단순 함수: `tests/unit/`

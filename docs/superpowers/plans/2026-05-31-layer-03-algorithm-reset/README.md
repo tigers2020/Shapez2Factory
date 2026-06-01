@@ -124,7 +124,7 @@ Expected before deletion: imports only from `greedy_pass1.py` (and django shim).
 - Modify: `src/shapez2_factory/application/asteroid_lab/layers/contracts/candidates.py`
 - Modify: `tests/unit/asteroid_lab/layers/contracts/test_rim_greedy_contracts.py`
 
-- [ ] **Step 1: Write failing test for new enum member**
+- [ ] **Step 1: Write acceptance test from spec for new enum member**
 
 Add to `test_rim_greedy_contracts.py`:
 

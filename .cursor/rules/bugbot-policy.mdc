@@ -1,26 +1,19 @@
 ---
-description: When to invoke Cursor Bugbot on pull requests (selective, not default).
-globs:
+description: "Cursor Bugbot router: selective PR review only"
 alwaysApply: false
 ---
 
-# Bugbot policy
+# Bugbot Router
 
-Use Cursor Bugbot **selectively** — not every PR, not a default checklist item.
+Canon: `AGENTS.md`.
 
-## Invoke when
+Invoke Bugbot only when user asks or PR risk is high:
 
-- ✅ High-risk change (contracts, solver invariants, authority/doc routing)
-- ✅ Large diff or cross-cutting refactor
-- ✅ User explicitly requests Bugbot review
-- ✅ Uncertain regression surface after merge
+- contract/schema/invariant change
+- solver authority or replay routing change
+- large diff or cross-cutting refactor
+- uncertain regression surface
 
-## Skip when
+Skip by default for docs-only, narrow green fixes, and user-declined checks.
 
-- ❌ Docs-only PR, no runtime path change — skip Bugbot
-- ❌ Narrow test/style fix with green CI — skip Bugbot
-- ❌ User asked to skip automated review
-
-## Agent rule
-
-Don't add "run Bugbot" to PR templates or completion checklists by default. Mention Bugbot only when an invoke criterion applies.
+Do not add Bugbot as a default PR-template requirement.

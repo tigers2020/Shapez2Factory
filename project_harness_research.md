@@ -228,7 +228,7 @@ metadata:
 
 ## Inputs
 - issue / prompt
-- failing test or log
+- acceptance test failure or log
 - spec or expected behavior
 - changed files (optional)
 
@@ -330,7 +330,7 @@ paths: ["tests/**", "src/**"]
 
 ## Procedure
 1. 기대 입출력 또는 invariant 를 명문화한다.
-2. 먼저 failing test 를 작성하고 실제로 실패하는지 확인한다.
+2. spec acceptance에 맞는 acceptance test를 먼저 작성하고, 구현 전 기대대로 실패하는지 확인한다.
 3. mock 은 꼭 필요한 경계에서만 사용한다.
 4. golden / snapshot / integration 중 가장 유지비가 낮은 방식을 고른다.
 5. flaky 가능성이 있으면 원인과 완화책을 기록한다.

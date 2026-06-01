@@ -1,6 +1,6 @@
 # Manual: Testing · Verification
 
-**Canonical detail** for TDD, contracts, and gates. Routing and work classification summaries are in [`AGENTS.md`](../../../AGENTS.md) **Development Mode: Contract-first TDD**.
+**Canonical detail** for SDD, contracts, and gates. Routing and work classification summaries are in [`AGENTS.md`](../../../AGENTS.md) · [`.cursor/rules/workflow.mdc`](../../../.cursor/rules/workflow.mdc) (**Contract-first SDD**).
 
 ## pytest (default: changed scope only)
 
@@ -33,11 +33,11 @@ Local scripts (`scripts/test_fast.ps1`, etc.), CI, and agent narrow/full gates a
 
 ---
 
-## Development Mode: Contract-first TDD
+## Development Mode: Contract-first SDD
 
-**Default flow**: Lock **public behavior, domain contracts, invariants, regression, and data-conversion boundaries in tests first** → **minimal implementation** → pass gates. Do not default to “implement first → test later.”
+**Default flow (SDD — not TDD):** Lock **CANON spec / contract + acceptance criteria** first → derive **focused tests** from acceptance → **minimal implementation** → pass gates. Do not default to “implement first → test later” or “test-first without spec.”
 
-**This is not aggressive line-coverage TDD.** Do not add tests for every line or internal helper. Test only **contracts that are expensive to rediscover after they break**.
+**This is not classic test-driven design (TDD).** Tests **verify** spec acceptance; they do not replace spec. **This is not aggressive line-coverage testing.** Test only **contracts that are expensive to rediscover after they break**.
 
 At work start, classify per [`AGENTS.md`](../../../AGENTS.md) (one or more): `contract change` · `implementation change` · `refactoring` · `documentation change` · `regression fix`.
 
@@ -45,7 +45,7 @@ At work start, classify per [`AGENTS.md`](../../../AGENTS.md) (one or more): `co
 
 ## When to write or update tests
 
-When you change any of the following, you usually add **focused tests** or update existing tests **first**.
+When you change any of the following, map **acceptance criteria from spec**, then add or update **focused tests** before production (unless docs-only contract).
 
 1. **Public behavior**: API response shape, function output contracts, CLI, user-visible UI behavior, persisted data shape, serialization/deserialization formats.
 2. **Domain contracts**: DTO fields, **enum / StrEnum / constants**, state transitions, ownership/lifetime rules, validation, allowed/forbidden states.
@@ -76,12 +76,13 @@ If **behavior contracts change**, test updates are mandatory.
 
 ---
 
-## Required red-green-refactor workflow
+## Required SDD workflow
 
-1. After classifying the work, add the **narrowest single contract test** or update an existing test to fail (red).
-2. Make **only that test path** green with `pytest`.
-3. Repeat the same cycle before widening scope.
-4. Do **not** start with one large integration test. Integration/E2E only when the same invariant cannot be proven at unit level.
+1. After classifying the work, confirm **CANON spec / contract brief** and list **acceptance criteria**.
+2. Add the **narrowest acceptance test(s)** that encode those criteria (new behavior may fail until implementation).
+3. Make **only that test path** green with `pytest` via minimal production change.
+4. Repeat before widening scope.
+5. Do **not** start with one large integration test without spec slices. Integration/E2E only when the same invariant cannot be proven at unit level.
 
 ---
 
@@ -149,9 +150,9 @@ Name by **behavior · invariant**.
 
 ## Quality gate sequence
 
-### Iteration (local red-green)
+### Iteration (local spec-gated)
 
-**Default** during agent work and implementation. Narrow `pytest` **first**; after green, narrow lint if needed.
+**Default** during agent work and implementation. Spec/acceptance mapped → narrow `pytest` green → narrow lint if needed.
 
 ```bash
 python -m pytest <narrow path>   # -q / --quiet / --tb=no forbidden
@@ -183,9 +184,9 @@ python -m pytest
 ## Agent behavior rules
 
 - Before starting, classify scope as **contract / implementation / refactor / documentation / regression** ([`AGENTS.md`](../../../AGENTS.md)).
-- **Contract change** → tests and related docs first.
-- **Regression fix** → repro test first.
-- **Implementation change** → narrowest unit test first.
+- **Contract change** → spec amendment → acceptance tests and related docs first.
+- **Regression fix** → spec slice or bug note → repro test first.
+- **Implementation change** → spec-linked acceptance tests first.
 - **UI change** → DOM · serialization · JS behavior or fixture regression first.
 - **Documentation only** → pytest not required; if docs change **code contracts**, note test plan in Caveman **Contracts/Tests**.
 - Close with Caveman 6 sections only ([`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc)); **Contracts** states invariants and why tests were added/skipped; **Tests** lists commands and results.
@@ -206,7 +207,8 @@ python -m pytest
 - **Raw ↔ server coordinate re-conversion** in the algorithm layer after `OptimizationInput`.
 - Adding **free-form strings** for `failure_reason` · `event_type` · `issue_code` — update **enum/const + tests** together.
 - **Implicit sync** between Lab replay frame index and Optimization replay frame index.
-- Starting TDD with “one big test.”
+- Starting SDD with “one big test” and no spec/acceptance mapping.
+- **TDD-only:** test-first design without CANON spec or acceptance criteria.
 - **Output suppression** in pytest (`-q`, `--quiet`, `--tb=no`, `-p no:terminal`) — misses failures/tracebacks.
 - Renames that change **only a leading underscore** (`func`↔`_func`, `name`↔`_name`) — forbidden for style · lint · private/public cleanup unrelated to behavior/contracts. Exception: explicit user rename or approved contract change.
 
@@ -253,7 +255,7 @@ Marker definitions: `pytest.ini`. Path-based auto-markers: `tests/conftest.py`.
 
 | Script | Purpose |
 |----------|------|
-| `powershell -File scripts/test_fast.ps1` | **Daily TDD** — `unit and not slow`, parallel |
+| `powershell -File scripts/test_fast.ps1` | **Daily SDD iteration** — `unit and not slow`, parallel |
 | `powershell -File scripts/test_slow.ps1` | Slow contracts · import · exhaustive |
 | `powershell -File scripts/test_full.ps1` | Before PR — full pytest |
 

@@ -98,7 +98,7 @@ window.AsteroidLabReplay = {
 ## Tasks
 
 - [ ] **Step 1 — Template:** add overlay + sprite canvases.
-- [ ] **Step 2 (TDD) — `test_lab_canvas_renderer.py`.**
+- [ ] **Step 2 (SDD) — `test_lab_canvas_renderer.py`.**
 
 ```python
 from pathlib import Path

@@ -5,7 +5,9 @@ pool, but its per-candidate route probes were run in isolation against the *empt
 Phase D re-probes the chosen bundles **in selection order on the latest route domain**: each
 commit adds its equipment as a hard blocker; route paths are recorded for overlay but do not
 block later bundles from sharing void belt trunks (CANON: many miners per exterior connector).
-A later bundle is dropped only when equipment overlaps or no route remains (candidate
+A later bundle is dropped only when equipment overlaps or commit-time reprobe fails
+(unreachable goal / hard equipment blockers on the path). Corridor-only overlap never
+hard-rejects; shared void trunks may merge toward the same exterior connector (candidate
 reachability is never the final commit proof ??spec D/forbidden shortcuts). Survivors become
 provisional ``committed_placements``; this layer still commits nothing downstream (L5/L6 own
 interior fill and final mutation).
@@ -86,9 +88,10 @@ def finalize_selection(
 ) -> FinalizeResult:
     """Re-probe the selected bundles in order on the cumulatively-blocked route domain.
 
-    Each surviving commit blocks its equipment and reserves its route path for subsequent
-    re-probes, so corridor conflicts that the isolated Phase B probes could not see now drop
-    the later bundle (``ROUTE_CROSSES_HARD_BLOCKER`` / ``DPS_UNREACHABLE``).
+    Each surviving commit blocks its equipment and records its route path for overlay and
+    soft congestion signals. Later bundles fail only when equipment collides or reprobe
+    cannot reach a goal (``ROUTE_CROSSES_HARD_BLOCKER`` / ``DPS_UNREACHABLE``) ??not
+    because an earlier bundle reserved the same corridor cells.
     """
 
     if not selected:

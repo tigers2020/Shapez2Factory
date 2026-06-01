@@ -90,3 +90,22 @@ def test_enumerate_d4_transforms_coordinates_and_r_together_t1() -> None:
     by_kind = {(v.mirrored, v.orientation_k): v for v in variants}
     rot1 = by_kind[(False, 1)]
     assert rot1.extension_cells == ((0, -1, 1),)
+
+
+def test_t2_meee_line_footprint_rotates_extension_coords_not_r_only() -> None:
+    """T2: distinct D4 variants must move extension cells (R-only mutation is invalid)."""
+
+    variants = enumerate_d4(
+        extractor_offset=(0, 0),
+        extension_offsets=((-1, 0), (-2, 0), (-3, 0)),
+    )
+    ext_xy_sets = {
+        frozenset((cell[0], cell[1]) for cell in variant.extension_cells) for variant in variants
+    }
+    assert len(ext_xy_sets) == 4
+    assert frozenset({(-1, 0), (-2, 0), (-3, 0)}) in ext_xy_sets
+    assert frozenset({(0, -1), (0, -2), (0, -3)}) in ext_xy_sets
+    assert frozenset({(1, 0), (2, 0), (3, 0)}) in ext_xy_sets
+    assert frozenset({(0, 1), (0, 2), (0, 3)}) in ext_xy_sets
+    for variant in variants:
+        assert variant.extractor_cell[:2] == (0, 0)

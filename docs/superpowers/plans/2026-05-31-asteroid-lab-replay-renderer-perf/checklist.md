@@ -48,7 +48,7 @@ Depends: — · File: [`pr-render-0-spec-and-baseline.md`](pr-render-0-spec-and-
 ## PR-RENDER-1 — DOM token-diff paint
 Depends: RENDER-0 · File: [`pr-render-1-dom-token-diff.md`](pr-render-1-dom-token-diff.md)
 
-- [x] Step 1 (TDD) — `test_lab_renderer_token_diff.py` source contract (helper present, skip-on-equal)
+- [x] Step 1 (SDD) — `test_lab_renderer_token_diff.py` source contract (helper present, skip-on-equal)
 - [x] Step 2 — `cellRenderToken` + `renderedTokenByKey` skip in `renderFullMapCells`
 - [x] Step 3 — token-map invalidation on reset/remount/keyframe; `resetDomCellAtIndex` deletes token
 - [x] Step 4 — sprite `img.src` write guarded by token change
@@ -60,7 +60,7 @@ Depends: RENDER-0 · File: [`pr-render-1-dom-token-diff.md`](pr-render-1-dom-tok
 ## PR-RENDER-2 — Layout read/write separation
 Depends: RENDER-1 · File: [`pr-render-2-layout-read-write-split.md`](pr-render-2-layout-read-write-split.md)
 
-- [x] Step 1 (TDD) — `test_lab_renderer_layout_cache.py` (no layout read in paint path)
+- [x] Step 1 (SDD) — `test_lab_renderer_layout_cache.py` (no layout read in paint path)
 - [x] Step 2 — `labLayoutCache` + `refreshLabLayoutCache` on resize/zoom/pointer-down
 - [x] Step 3 — `offsetWidth`/`getBoundingClientRect` hoisted to `refreshLabLayoutCache` only
 - [x] Step 4 — server-replay `applyFrame` read/write comment split (no geometry read in paint path)

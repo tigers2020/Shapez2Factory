@@ -101,7 +101,7 @@ if (labPerfDebugEnabled()) {
 
 ## Tasks
 
-- [ ] **Step 1 (TDD) — `test_lab_renderer_raf_budget.py`.**
+- [ ] **Step 1 (SDD) — `test_lab_renderer_raf_budget.py`.**
 
 ```python
 from pathlib import Path

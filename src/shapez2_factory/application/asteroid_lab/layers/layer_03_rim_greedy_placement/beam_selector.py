@@ -15,6 +15,7 @@ D1 enumeration order (spec D2).
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
 
@@ -34,7 +35,17 @@ _THROUGHPUT_WEIGHT = 1000
 _ROUTE_COST_WEIGHT = 1
 _CORRIDOR_PRESSURE_WEIGHT = 10
 _DEFAULT_BEAM_WIDTH = 16
+_DEFAULT_MIN_RIM_ANCHOR_FILL_RATIO = 0.95
 # Per-anchor commit greedy scans the full normal pool (deterministic anchor order).
+
+
+def _min_committed_anchor_count(rim_anchor_count: int, min_fill_ratio: float) -> int:
+    if rim_anchor_count <= 0:
+        return 0
+    if min_fill_ratio <= 0:
+        return 0
+    target = math.ceil(min_fill_ratio * rim_anchor_count)
+    return min(rim_anchor_count, max(1, target))
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +105,16 @@ def _route_cost(probed: RouteProbedBundleCandidate) -> int:
 def _fitness_sort_key(probed: RouteProbedBundleCandidate) -> tuple[int, int, str]:
     # Deterministic seed order: highest throughput first, then cheapest route, then id.
     return (-probed.candidate.throughput_factor, _route_cost(probed), probed.candidate.candidate_id)
+
+
+def _fill_variant_sort_key(probed: RouteProbedBundleCandidate) -> tuple[int, int, int, str]:
+    # Fill pass: smallest equipment footprint first to maximize anchor coverage.
+    return (
+        len(_equipment_cells(probed)),
+        probed.candidate.throughput_factor,
+        _route_cost(probed),
+        probed.candidate.candidate_id,
+    )
 
 
 def _extend(
@@ -184,6 +205,84 @@ def _group_by_anchor(
             (anchor, tuple(by_anchor[anchor])) for anchor in anchor_order if anchor in by_anchor
         )
     return tuple((anchor, tuple(by_anchor[anchor])) for anchor in sorted(by_anchor.keys()))
+
+
+def _committed_anchor_count(result: BeamSelectionResult) -> int:
+    return len({probed.candidate.anchor_coord for probed in result.selected})
+
+
+def _rebuild_beam_state_from_selection(
+    selected: tuple[RouteProbedBundleCandidate, ...],
+    *,
+    commit_ctx: CommitReprobeContext,
+    rim_anchor_coords: frozenset[Coord],
+) -> _BeamState:
+    state = _BeamState(domain=CommitDomainState())
+    for probed in selected:
+        equipment = _equipment_cells(probed)
+        anchor = probed.candidate.anchor_coord
+        if not _respects_rim_platform(equipment, anchor, rim_anchor_coords):
+            continue
+        corridor = _corridor_cells(probed)
+        if state.domain.occupied & equipment:
+            continue
+        ok, next_domain, _path = try_commit_reprobe(
+            ctx=commit_ctx,
+            state=state.domain,
+            probed=probed,
+        )
+        if not ok:
+            continue
+        state = _extend(
+            state,
+            probed,
+            equipment=equipment,
+            corridor=corridor,
+            domain=next_domain,
+        )
+    return state
+
+
+def _apply_fill_pass_to_result(
+    result: BeamSelectionResult,
+    ordered: tuple[RouteProbedBundleCandidate, ...],
+    *,
+    commit_ctx: CommitReprobeContext,
+    rim_anchor_coords: frozenset[Coord],
+    min_fill_ratio: float,
+) -> BeamSelectionResult:
+    state = _rebuild_beam_state_from_selection(
+        result.selected,
+        commit_ctx=commit_ctx,
+        rim_anchor_coords=rim_anchor_coords,
+    )
+    filled = _greedy_fill_remaining_anchors(
+        state,
+        ordered,
+        commit_ctx=commit_ctx,
+        rim_anchor_coords=rim_anchor_coords,
+        min_fill_ratio=min_fill_ratio,
+    )
+    return _finalize_selection_result(state=filled, ordered=ordered)
+
+
+def _pick_best_rim_commit_selection(
+    left: BeamSelectionResult,
+    right: BeamSelectionResult,
+    *,
+    rim_anchor_count: int,
+    min_fill_ratio: float,
+) -> BeamSelectionResult:
+    target = _min_committed_anchor_count(rim_anchor_count, min_fill_ratio)
+    left_fill = _committed_anchor_count(left)
+    right_fill = _committed_anchor_count(right)
+    left_met = left_fill >= target
+    right_met = right_fill >= target
+    if left_met != right_met:
+        return left if left_met else right
+    if left_met and right_met and left_fill != right_fill:
+        return left if left_fill > right_fill else right
+    return _pick_higher_throughput(left, right)
 
 
 def _finalize_selection_result(
@@ -287,11 +386,64 @@ def _select_bundles_per_anchor_commit_greedy(
     return _finalize_selection_result(state=state, ordered=ordered)
 
 
+def _greedy_fill_remaining_anchors(
+    state: _BeamState,
+    ordered: tuple[RouteProbedBundleCandidate, ...],
+    *,
+    commit_ctx: CommitReprobeContext,
+    rim_anchor_coords: frozenset[Coord],
+    min_fill_ratio: float,
+) -> _BeamState:
+    """Second pass: place any feasible bundle on unfilled anchors until fill ratio target."""
+
+    target_count = _min_committed_anchor_count(len(rim_anchor_coords), min_fill_ratio)
+    if target_count <= 0:
+        return state
+
+    def _committed_anchors(current: _BeamState) -> set[Coord]:
+        return {probed.candidate.anchor_coord for probed in current.selected}
+
+    if len(_committed_anchors(state)) >= target_count:
+        return state
+
+    by_anchor = dict(_group_by_anchor(ordered))
+    for anchor in sorted(rim_anchor_coords):
+        if len(_committed_anchors(state)) >= target_count:
+            break
+        if anchor in _committed_anchors(state):
+            continue
+        group = tuple(sorted(by_anchor.get(anchor, ()), key=_fill_variant_sort_key))
+        for probed in group:
+            equipment = _equipment_cells(probed)
+            if not _respects_rim_platform(equipment, anchor, rim_anchor_coords):
+                continue
+            if state.domain.occupied & equipment:
+                continue
+            ok, next_domain, _path = try_commit_reprobe(
+                ctx=commit_ctx,
+                state=state.domain,
+                probed=probed,
+            )
+            if not ok:
+                continue
+            corridor = _corridor_cells(probed)
+            state = _extend(
+                state,
+                probed,
+                equipment=equipment,
+                corridor=corridor,
+                domain=next_domain,
+            )
+            break
+    return state
+
+
 def _select_bundles_rim_platform_commit(
     ordered: tuple[RouteProbedBundleCandidate, ...],
     *,
     commit_ctx: CommitReprobeContext,
     rim_anchor_coords: frozenset[Coord],
+    min_rim_anchor_fill_ratio: float = _DEFAULT_MIN_RIM_ANCHOR_FILL_RATIO,
 ) -> BeamSelectionResult:
     """Rim-platform-aware commit greedy with a second-pass sandwich reorder."""
 
@@ -322,7 +474,26 @@ def _select_bundles_rim_platform_commit(
         rim_anchor_coords=rim_anchor_coords,
         one_per_anchor=True,
     )
-    return _pick_higher_throughput(per_anchor, global_greedy)
+    per_anchor = _apply_fill_pass_to_result(
+        per_anchor,
+        ordered,
+        commit_ctx=commit_ctx,
+        rim_anchor_coords=rim_anchor_coords,
+        min_fill_ratio=min_rim_anchor_fill_ratio,
+    )
+    global_greedy = _apply_fill_pass_to_result(
+        global_greedy,
+        ordered,
+        commit_ctx=commit_ctx,
+        rim_anchor_coords=rim_anchor_coords,
+        min_fill_ratio=min_rim_anchor_fill_ratio,
+    )
+    return _pick_best_rim_commit_selection(
+        per_anchor,
+        global_greedy,
+        rim_anchor_count=len(rim_anchor_coords),
+        min_fill_ratio=min_rim_anchor_fill_ratio,
+    )
 
 
 def _pick_higher_throughput(
@@ -395,6 +566,7 @@ def select_bundles(
     beam_width: int = _DEFAULT_BEAM_WIDTH,
     commit_ctx: CommitReprobeContext | None = None,
     rim_anchor_coords: frozenset[Coord] | None = None,
+    min_rim_anchor_fill_ratio: float = _DEFAULT_MIN_RIM_ANCHOR_FILL_RATIO,
 ) -> BeamSelectionResult:
     """Deterministically select a non-conflicting, throughput-maximizing subset (Phase C1).
 
@@ -413,6 +585,7 @@ def select_bundles(
                 ordered,
                 commit_ctx=commit_ctx,
                 rim_anchor_coords=rim_anchor_coords,
+                min_rim_anchor_fill_ratio=min_rim_anchor_fill_ratio,
             )
         per_anchor = _select_bundles_per_anchor_commit_greedy(ordered, commit_ctx=commit_ctx)
         global_greedy = _select_bundles_commit_greedy(ordered, commit_ctx=commit_ctx)

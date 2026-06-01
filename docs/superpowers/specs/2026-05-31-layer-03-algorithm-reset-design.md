@@ -42,7 +42,7 @@ working with a **deterministic empty** Layer 03 result.
 ## Work classification
 
 `contract change` + `implementation change` (deletion + stub). Tests: delete greedy-assumption
-suites; add reset-contract tests before stub lands (red-green).
+suites; add reset-contract tests before stub lands (spec-gated).
 
 ---
 

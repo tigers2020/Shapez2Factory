@@ -58,6 +58,7 @@ def _write_artifact(
     complete_map=None,
     solver_summary: dict[str, object] | None = None,
     include_game_data_snapshot: bool = False,
+    genetic_sample_seeds: dict[str, object] | None = None,
 ) -> None:
     if complete_map is None:
         complete_map = minimal_complete_map_from_cells(_cell(0, 0), _cell(1, 0))
@@ -98,6 +99,12 @@ def _write_artifact(
     if include_game_data_snapshot and snapshot_path.is_file():
         entries["input/game_data_snapshot.json"] = snapshot_path
         paths["game_data_snapshot"] = "input/game_data_snapshot.json"
+    seeds_path = artifact_dir / "input" / "genetic_sample_seeds.json"
+    if genetic_sample_seeds is not None:
+        seeds_path.parent.mkdir(parents=True, exist_ok=True)
+        seeds_path.write_text(json.dumps(genetic_sample_seeds, sort_keys=True), encoding="utf-8")
+        entries["input/genetic_sample_seeds.json"] = seeds_path
+        paths["genetic_sample_seeds"] = "input/genetic_sample_seeds.json"
     content_hashes = {
         relpath: hashlib.sha256(path.read_bytes()).hexdigest() for relpath, path in entries.items()
     }
@@ -143,7 +150,27 @@ def test_compose_lab_replay_frames_from_artifact_run_adds_map_view(tmp_path: Pat
     assert composed[0]["map_view"]["full_cells"]
 
 
-def test_compose_artifact_run_does_not_recompute_l3_append_overlays(
+_MIN_GENETIC_SAMPLE_SEEDS: dict[str, object] = {
+    "schema_version": "genetic_sample_seed_v1",
+    "deterministic_sort_key": "by_gene_id_then_throughput_desc",
+    "entries": [
+        {
+            "gene_id": "m0e",
+            "resource_kind": "shape",
+            "canonical_output_dir": "E",
+            "occupied_offsets": [[0, 0]],
+            "extractor_offset": [0, 0],
+            "extension_offsets": [],
+            "output_stub_offset": [1, 0],
+            "route_probe_start_offset": [2, 0],
+            "throughput_factor": 4,
+            "topology_signature_base": "m0e_base",
+        }
+    ],
+}
+
+
+def test_compose_artifact_run_runtime_recompose_includes_l3_overlays(
     tmp_path: Path,
 ) -> None:
     project = m.AsteroidProject.objects.create(name="L3", slug="artifact-l3-append")
@@ -173,6 +200,7 @@ def test_compose_artifact_run_does_not_recompute_l3_append_overlays(
         core_lines=core_lines,
         complete_map=complete_map,
         include_game_data_snapshot=True,
+        genetic_sample_seeds=_MIN_GENETIC_SAMPLE_SEEDS,
         solver_summary={
             "throughput_target_percent": 80,
             "completed_layer_slugs": [LAYER_03_RIM_GREEDY_PLACEMENT],
@@ -201,8 +229,9 @@ def test_compose_artifact_run_does_not_recompute_l3_append_overlays(
     complete = next(
         fr for fr in composed if fr.get("event_type") == EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE
     )
-    assert complete["inspector"]["replay_source"] == "artifact_replay_core"
-    assert (complete.get("map_view") or {}).get("overlay_cells") == []
+    assert complete["inspector"]["replay_source"] == "artifact_runtime_recompose"
+    overlay_cells = (complete.get("map_view") or {}).get("overlay_cells") or []
+    assert overlay_cells, "L3 complete frame must carry committed miner overlays"
 
 
 def test_load_composed_frames_does_not_return_raw_replay_core(tmp_path: Path) -> None:

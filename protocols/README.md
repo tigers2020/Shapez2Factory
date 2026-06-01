@@ -7,6 +7,7 @@ Single reference for [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/workflow.md
 | Stage | Name | Owner | Output |
 |---|---|---|---|
 | 1 | Problem | Human | One-line problem + non-goals |
+| 1b | Adversarial review (optional) | Agent (read-only) | [`grill-me-shapez2`](../.cursor/skills/grill-me-shapez2/SKILL.md) — ≤8 Q, decision table, approve/reject/amend before contract when design branches |
 | 2 | Contract | Human (+ agent draft) | [`contract-brief.md`](../documents/ai/templates/contract-brief.md) or spec amendment |
 | 3 | PR plan | Human (+ agent draft) | [`pr-plan.md`](../documents/ai/templates/pr-plan.md) — **one purpose per PR** |
 | 4 | Approval | **Human** | Scope locked — no production edits before this for non-trivial contract changes |

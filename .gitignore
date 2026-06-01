@@ -128,3 +128,6 @@ protocols/
 persona/
 *.zip
 shapez_2_data/
+
+.understand-anything/
+data/

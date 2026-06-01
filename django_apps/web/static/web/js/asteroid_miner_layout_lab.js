@@ -4,6 +4,7 @@
  * Shapez2 asteroid map invariant (Lab + runtime replay):
  * - Replay/solver frames use **island-local** ``cell.x`` / ``cell.y`` (copy JSON; ``X==0`` valid).
  * - ``visualCol(x)`` is identity on island raw — do not apply world-map skip-zero (``x-1``).
+ * - Bump ``LAB_COORD_FRAME_BUILD`` when island-local coord wiring changes (template cache bust).
  * - World-map evidence (no ``x==0`` column) is a separate frame; see ``asteroid_map_coords.py``.
  *
  * Domain rotation contract (blueprint JSON; never mutate ``cell.rotation`` in JS):
@@ -13,6 +14,8 @@
  */
 (function () {
   "use strict";
+
+  const LAB_COORD_FRAME_BUILD = "island_raw_v3";
 
   const GRID_W = 23;
   const GRID_H = 15;
@@ -3702,6 +3705,46 @@
       applyFrame();
     }
 
+    let runSolverInFlight = false;
+
+    function holdRunSolverButton() {
+      runSolverInFlight = true;
+      const runBtn = document.getElementById("lab-header-run");
+      if (runBtn) {
+        runBtn.disabled = true;
+        runBtn.classList.add("opacity-50", "cursor-not-allowed");
+      }
+    }
+
+    function releaseRunSolverButton() {
+      runSolverInFlight = false;
+      syncLabActionButtons();
+    }
+
+    function syncLabActionButtons() {
+      const runUrl =
+        rootEl && rootEl.dataset && rootEl.dataset.labRunSolverUrl
+          ? String(rootEl.dataset.labRunSolverUrl)
+          : "";
+      const resetUrl =
+        rootEl && rootEl.dataset && rootEl.dataset.labResetMapUrl
+          ? String(rootEl.dataset.labResetMapUrl)
+          : "";
+      const runBtn = document.getElementById("lab-header-run");
+      const resetBtn = document.getElementById("lab-header-reset");
+      if (runBtn) {
+        const runBlocked = !runUrl || runSolverInFlight;
+        runBtn.disabled = runBlocked;
+        runBtn.classList.toggle("opacity-50", runBlocked);
+        runBtn.classList.toggle("cursor-not-allowed", runBlocked);
+      }
+      if (resetBtn) {
+        resetBtn.disabled = !resetUrl;
+        resetBtn.classList.toggle("opacity-50", !resetUrl);
+        resetBtn.classList.toggle("cursor-not-allowed", !resetUrl);
+      }
+    }
+
     const resetMapBtn = document.getElementById("lab-header-reset");
     resetMapBtn?.addEventListener("click", function () {
       const resetUrl =
@@ -3902,46 +3945,6 @@
       syncLabActionButtons();
     }
 
-    let runSolverInFlight = false;
-
-    function holdRunSolverButton() {
-      runSolverInFlight = true;
-      const runBtn = document.getElementById("lab-header-run");
-      if (runBtn) {
-        runBtn.disabled = true;
-        runBtn.classList.add("opacity-50", "cursor-not-allowed");
-      }
-    }
-
-    function releaseRunSolverButton() {
-      runSolverInFlight = false;
-      syncLabActionButtons();
-    }
-
-    function syncLabActionButtons() {
-      const runUrl =
-        rootEl && rootEl.dataset && rootEl.dataset.labRunSolverUrl
-          ? String(rootEl.dataset.labRunSolverUrl)
-          : "";
-      const resetUrl =
-        rootEl && rootEl.dataset && rootEl.dataset.labResetMapUrl
-          ? String(rootEl.dataset.labResetMapUrl)
-          : "";
-      const runBtn = document.getElementById("lab-header-run");
-      const resetBtn = document.getElementById("lab-header-reset");
-      if (runBtn) {
-        const runBlocked = !runUrl || runSolverInFlight;
-        runBtn.disabled = runBlocked;
-        runBtn.classList.toggle("opacity-50", runBlocked);
-        runBtn.classList.toggle("cursor-not-allowed", runBlocked);
-      }
-      if (resetBtn) {
-        resetBtn.disabled = !resetUrl;
-        resetBtn.classList.toggle("opacity-50", !resetUrl);
-        resetBtn.classList.toggle("cursor-not-allowed", !resetUrl);
-      }
-    }
-
     function replaceLabReplayPayload(payload, opts) {
       if (!payload || typeof payload !== "object") return;
       syncLabProjectEndpoints(payload);
@@ -4106,7 +4109,8 @@
       const row = Math.floor(i / gw);
       const d = col + replayLayout.minD;
       const y = row + replayLayout.minR;
-      const xWorld = d < 0 ? d : d + 1;
+      /* Inverse of resolveCellIndex: col = visualCol(x) - minD → x = col + minD (island raw). */
+      const xWorld = d;
       return { x: xWorld, y: y };
     }
 
@@ -5146,6 +5150,7 @@
       collectOverlayPaintTargets: collectOverlayPaintTargets,
       visualCol: visualCol,
       rawXToDenseX: rawXToDenseX,
+      labCoordFrameBuild: LAB_COORD_FRAME_BUILD,
       replaceLabReplayPayload: replaceLabReplayPayload,
     };
 
@@ -5157,6 +5162,9 @@
     setRunDetail(baselineRun);
     bindLabReplayLoadStatusRetry();
     renderLabReplayLoadStatus();
+    if (typeof console !== "undefined" && console.debug) {
+      console.debug("[asteroid-lab] coord_frame=" + LAB_COORD_FRAME_BUILD);
+    }
 
     function needsLazyReplayComposeFetch() {
       if (labReplayLoadState.mode !== "lazy" || !labReplayLoadState.fetchUrl) {

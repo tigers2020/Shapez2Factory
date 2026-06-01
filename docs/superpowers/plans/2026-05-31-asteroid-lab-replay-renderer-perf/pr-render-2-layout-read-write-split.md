@@ -97,7 +97,7 @@ function applyServerReplayFrame(fr, playback) {
 
 ## Tasks
 
-- [ ] **Step 1 (TDD) — `test_lab_renderer_layout_cache.py`.**
+- [ ] **Step 1 (SDD) — `test_lab_renderer_layout_cache.py`.**
 
 ```python
 from pathlib import Path

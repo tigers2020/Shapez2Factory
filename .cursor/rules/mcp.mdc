@@ -1,22 +1,23 @@
-# {{PROJECT_NAME}} MCP
+---
+description: "MCP router: schema check before call; local fallback"
+alwaysApply: false
+---
 
-Per AGENTS.md, assess whether MCP usable before related work. No MCP available → fall back to local files + standard verification, record that fact.
+# MCP Router
 
-## context7
+Canon: `AGENTS.md`.
 
-- Prioritize when latest docs needed, e.g. new libraries or framework API usage.
-- Don't copy external API examples verbatim; separate to match project layer boundaries into application ports + adapters.
+Use only configured and available tools. Do not invent MCP servers, commands, schemas, or behavior.
 
-## GitLens
+Before any MCP call:
 
-- Consider when change history, regression root cause, PR review prep, or branch analysis needed.
-- Confirm history-based inference together with current file contents.
+- Confirm the tool/resource exists in the active environment.
+- Read available schema/metadata when needed.
+- If missing or failing, state reason and use local files or standard verification.
 
-## cursor-ide-browser
+Typical routing when configured:
 
-- Use when UI visual verification, web doc validation, or browser interaction checks needed.
-
-## Schema verification
-
-- ⬜ Check `mcps/<server>/tools/` schema before `call_mcp_tool` / `fetch_mcp_resource`
-- ⬜ Tool missing or fails → record failure reason, use local alternative
+- GitHub: PRs, issues, CI.
+- Playwright/browser: UI verification.
+- agent memory: explicit recall/remember workflows.
+- context docs: current external library docs.

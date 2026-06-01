@@ -33,11 +33,11 @@ disable-model-invocation: true
 
 ## 검증 명령 (렉스 · dual gate)
 
-작업 시작 분류: [`AGENTS.md`](../../../AGENTS.md) § Contract-first TDD.
+작업 시작 분류: [`AGENTS.md`](../../../AGENTS.md) § Contract-first SDD.
 
 **반복(구현 중):**
 
-1. narrow **`python -m pytest <path>`** (red-green)
+1. narrow **`python -m pytest <path>`** (spec-gated)
 2. 필요 시 `ruff` / `mypy` / `black .`(로컬 수정)
 
 **PR·병합·CI(full gate):** [`testing.md`](../../../documents/ai/manuals/testing.md#quality-gate-sequence)

@@ -40,7 +40,7 @@ What must change.
 ## Steps
 
 1. Audit current behavior (read-only)
-2. Add failing tests (if behavior change)
+2. Add acceptance tests from spec (if behavior change)
 3. Minimal implementation
 4. Run focused gates
 5. Update docs if public contract changed

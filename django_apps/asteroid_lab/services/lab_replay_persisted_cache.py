@@ -21,7 +21,26 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY,
 )
 
-CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION = 1
+CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION = 2
+
+
+def _is_stale_thin_artifact_l3_cache(frames: list[dict[str, Any]]) -> bool:
+    """True when cached L3 complete used replay_core only (no committed overlays)."""
+
+    for frame in frames:
+        if str(frame.get("event_type") or "") != "layer03_rim_greedy_complete":
+            continue
+        inspector = frame.get("inspector")
+        if not isinstance(inspector, dict):
+            continue
+        if inspector.get("replay_source") != "artifact_replay_core":
+            continue
+        map_view = frame.get("map_view")
+        if not isinstance(map_view, dict):
+            return True
+        overlay = map_view.get("overlay_cells")
+        return not isinstance(overlay, list) or len(overlay) == 0
+    return False
 
 
 def build_manifest_summary_from_compose(
@@ -70,8 +89,6 @@ def _artifact_replay_source_snapshot(summary: dict[str, Any] | None) -> dict[str
 def is_cache_summary_valid(summary: dict[str, Any] | None) -> bool:
     if not summary or not isinstance(summary, dict):
         return False
-    if is_artifact_replay_source_summary(summary):
-        return True
     try:
         version = int(summary.get("lab_replay_cache_schema_version", -1))
     except (TypeError, ValueError):
@@ -121,7 +138,9 @@ def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
             composed = payload.get("composed_frames")
             if isinstance(composed, list) and composed:
                 frames = [dict(item) for item in composed if isinstance(item, dict)]
-                if lab_replay_frames_are_renderable(frames):
+                if lab_replay_frames_are_renderable(frames) and not _is_stale_thin_artifact_l3_cache(
+                    frames
+                ):
                     return frames
 
     key = SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY
@@ -140,11 +159,11 @@ def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
         .values_list("lab_replay_manifest_summary_json", flat=True)
         .first()
     )
-    if is_artifact_replay_source_summary(summary):
-        return frames if lab_replay_frames_are_renderable(frames) else None
+    if not lab_replay_frames_are_renderable(frames) or _is_stale_thin_artifact_l3_cache(frames):
+        return None
     if is_cache_summary_valid(summary):
         return frames
-    return frames if lab_replay_frames_are_renderable(frames) else None
+    return None
 
 
 @transaction.atomic
@@ -191,6 +210,7 @@ def persist_composed_replay_for_run_id(
 
 __all__ = [
     "CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION",
+    "_is_stale_thin_artifact_l3_cache",
     "build_manifest_summary_from_compose",
     "is_artifact_replay_source_summary",
     "is_cache_summary_valid",

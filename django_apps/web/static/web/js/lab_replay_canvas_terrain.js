@@ -19,6 +19,8 @@
   });
 
   /** Island-local replay column; ``X==0`` valid (matches solver / replay ``map_view``). */
+  const LAB_COORD_FRAME_BUILD = "island_raw_v2";
+
   function visualCol(x) {
     const xi = Number(x);
     if (!Number.isFinite(xi)) return null;

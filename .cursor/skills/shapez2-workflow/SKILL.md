@@ -28,13 +28,13 @@ Templates: [`contract-brief.md`](../../../documents/ai/templates/contract-brief.
 
 ## PR scope
 
-- [ ] **One purpose** (audit · contract docs · failing tests · implement · cleanup)
-- [ ] Failing test on HEAD before production (contract/regression)
+- [ ] **One purpose** (audit · contract docs · acceptance tests · implement · cleanup)
+- [ ] Acceptance tests from spec on HEAD before production (contract/regression)
 
 ## Implementation order
 
 ```text
-audit (optional) → failing test → minimal fix → regression/golden → gates → doc sync
+audit (optional) → acceptance tests from spec → minimal fix → regression/golden → gates → doc sync
 ```
 
 ## Verification (dual gate)
@@ -59,6 +59,7 @@ Close: caveman six sections ([`shapez2-core.mdc`](../../rules/shapez2-core.mdc))
 
 | Phase | Skill |
 |-------|--------|
+| Pre-spec · branching design | `grill-me-shapez2` (optional; read-only) |
 | PR-3 tests only | `write-tests` |
 | CLI touch | `cli-boundary` |
 | Pre-merge review | `quality-check` |

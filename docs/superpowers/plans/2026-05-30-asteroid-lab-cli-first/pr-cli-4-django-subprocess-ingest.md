@@ -101,9 +101,9 @@ Ingest **must never rewrite `manifest.json`** — the manifest stays `ARTIFACT_W
 ## Tasks
 
 - [ ] **Step 1:** Add setting + mode dispatch in `solver_runtime_entry`.
-- [ ] **Step 2 (TDD):** `artifact_manifest_reader` validation + no-core-import test (AST assert).
-- [ ] **Step 3 (TDD):** `solver_subprocess_runner` — mock `subprocess.run`; assert `shell=False`, list args, timeout set, traversal rejected.
-- [ ] **Step 4 (TDD):** `artifact_ingest` — hash mismatch fails closed; partial (not ARTIFACT_WRITTEN) rejected; index-only writes.
+- [ ] **Step 2 (SDD):** `artifact_manifest_reader` validation + no-core-import test (AST assert).
+- [ ] **Step 3 (SDD):** `solver_subprocess_runner` — mock `subprocess.run`; assert `shell=False`, list args, timeout set, traversal rejected.
+- [ ] **Step 4 (SDD):** `artifact_ingest` — hash mismatch fails closed; partial (not ARTIFACT_WRITTEN) rejected; index-only writes.
 - [ ] **Step 5:** Wire HTTP/management opt-in flags.
 - [x] **Step 5b (BA-9):** `cli_invoke_trace` + settings; core CLI verbose layer lines; `subprocess_stream_tee` in runner; optional POST `cli_verbose`.
 - [ ] **Step 6:** Integration test subprocess mode end-to-end (small fixture).

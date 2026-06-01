@@ -1,0 +1,24 @@
+---
+description: "Shapez2 router: trigger /grill-me-shapez2; current canon wins"
+alwaysApply: true
+---
+
+# Shapez2 Domain Router
+
+Canon: `AGENTS.md`.
+
+Use `/grill-me-shapez2` when task/chat touches:
+
+Shapez2, Asteroid Lab, solver layers, asteroid mining, placement, routing, replay, UI, reconstruction, transport, belt/pipe, L2/L3/L4, rim greedy placement, DTO/replay contracts, or related project code.
+
+Purpose: clarify contract, authority, risks, and acceptance before implementation.
+
+Current canon/spec/ADR wins over stale docs, archived notes, generated summaries, and assumptions.
+
+Related routers:
+
+- Asteroid Lab invariants: `.cursor/rules/asteroid-lab-invariants.mdc`
+- Django apps: `.cursor/rules/django-apps.mdc`
+- Web UI: `.cursor/rules/web-interface.mdc`
+- Layers: `.cursor/rules/architecture.mdc`
+- SDD/testing: `.cursor/rules/workflow.mdc`

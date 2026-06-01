@@ -79,7 +79,7 @@ export function drawTerrainLayer(ctx, cells, layout, cellPx, gapPx) {
   (keep them as hit targets).
 - [ ] **Step 4 — Feature flag** `data-lab-renderer` (`dom` default until RENDER-5 flips to `canvas`); canvas
   unsupported → DOM path.
-- [ ] **Step 5 (TDD) — `test_lab_canvas_terrain.py`.**
+- [ ] **Step 5 (SDD) — `test_lab_canvas_terrain.py`.**
 
 ```python
 from pathlib import Path

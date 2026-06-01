@@ -178,6 +178,36 @@ def test_shared_corridor_is_a_penalty_not_a_hard_constraint() -> None:
     assert all(isinstance(f, FitnessBreakdown) for f in by_id.values())
 
 
+def test_shared_corridor_does_not_double_count_throughput_by_cell_overlap() -> None:
+    """§RC3: shared corridor cells add soft pressure only — not extra throughput_factor per cell."""
+
+    throughput = 8
+    a = _probed(
+        gene_key="a",
+        anchor=(3, 3),
+        mining=frozenset({(3, 3)}),
+        stub=(4, 3),
+        start=(5, 3),
+        path=((5, 3), (6, 3), (7, 3)),
+        throughput=throughput,
+    )
+    b = _probed(
+        gene_key="b",
+        anchor=(3, 5),
+        mining=frozenset({(3, 5)}),
+        stub=(4, 5),
+        start=(5, 5),
+        path=((5, 5), (6, 3), (7, 3)),
+        throughput=throughput,
+    )
+    result = select_bundles((a, b))
+    assert {p.candidate.gene_key for p in result.selected} == {"a", "b"}
+    shared_cells = max(f.shared_corridor_cells for f in result.fitness)
+    assert shared_cells == 2
+    assert result.total_throughput == 2 * throughput
+    assert result.total_throughput != 2 * throughput + shared_cells
+
+
 def test_selection_is_deterministic() -> None:
     m3e = _probed(
         gene_key="m3e",

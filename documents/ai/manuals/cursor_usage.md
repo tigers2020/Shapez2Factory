@@ -2,7 +2,7 @@
 
 This document is **on-demand reference** placed in `documents/ai/manuals/` **to avoid growing the rules the agent reads every turn**. The canonical always-on rules are [`AGENTS.md`](../../../AGENTS.md) and [`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc).
 
-Root [`AGENTS.md`](../../../AGENTS.md) defines **Spec-first · Small PR · Test-gated · Review-driven** workflow; this manual is on-demand detail.
+Root [`AGENTS.md`](../../../AGENTS.md) defines **Spec-first SDD · Small PR · Test-gated · Review-driven** workflow; this manual is on-demand detail.
 
 ## 1. Why Do Token Limits Deplete Quickly?
 
@@ -18,7 +18,7 @@ The agent operates through prompts, rules, code search, terminal, and model. Har
 ## 3. Intent Precision and Prompts
 
 - **Bad example**: "Fix this" with no spec, scope, or acceptance.
-- **Good example**: Link CANON spec or [`contract-brief.md`](../templates/contract-brief.md); declare **Position · Authority · Acceptance**; list paths/symbols; prohibitions; `pytest` path; PR purpose (e.g. "PR-3: failing tests only — no production edits").
+- **Good example**: Link CANON spec or [`contract-brief.md`](../templates/contract-brief.md); declare **Position · Authority · Acceptance**; list paths/symbols; prohibitions; `pytest` path; PR purpose (e.g. "PR-3: spec + acceptance tests only — no production edits").
 
 Higher intent precision reduces hallucination and unrelated exploration, making architectural consistency easier to maintain.
 
@@ -45,20 +45,21 @@ Run broad exploration and impact analysis in **separate context** (subagents, ba
 
 Agents may duplicate utilities they don't know about, ignore layers/patterns, or cause **architecture drift**.
 
-Solver, replay, CLI, and layer placement are intertwined — confirm call relationships and **CANON spec** before edits. Workflow: **contract brief → failing test → small PR** ([`AGENTS.md`](../../../AGENTS.md), [`workflow.mdc`](../../../.cursor/rules/workflow.mdc)).
+Solver, replay, CLI, and layer placement are intertwined — confirm call relationships and **CANON spec** before edits. Workflow (SDD): **spec/contract brief → acceptance tests from spec → small PR** ([`AGENTS.md`](../../../AGENTS.md), [`workflow.mdc`](../../../.cursor/rules/workflow.mdc)).
 
 ## 8. Feature Development Flow (Canonical)
 
 1. **Problem + contract brief** ([`templates/contract-brief.md`](../templates/contract-brief.md) or CANON spec)
+1b. **Adversarial plan review (optional)** — [`grill-me-shapez2`](../../../.cursor/skills/grill-me-shapez2/SKILL.md) when algorithm/DTO/Layer scope branches; read-only; before contract amendment
 2. **PR plan** — one purpose ([`templates/pr-plan.md`](../templates/pr-plan.md))
 3. Human scope approval (non-trivial contract changes)
 4. Audit (read-only) if behavior uncertain
-5. **Failing tests** when behavior changes
+5. **Acceptance tests from spec** when behavior changes
 6. Minimal implementation for **this PR only**
 7. Verification — narrow `pytest` → `ruff`; PR full gate per [`testing.md`](testing.md). **No `-q` / `--quiet` / `--tb=no`**
 8. Review → merge → doc sync if public contract changed
 
-Split large work into PR-1 audit · PR-2 contract · PR-3 tests · PR-4 implement · PR-5 cleanup.
+Split large work into PR-1 audit · PR-2 contract/spec · PR-3 acceptance tests · PR-4 implement · PR-5 cleanup.
 
 ## 9. Debugging Principles
 
@@ -91,7 +92,7 @@ For regression prevention, leave **tests whenever possible** for each feature/bu
 | Distinction | Role | This repo examples |
 |------|------|------------|
 | **Rules** | Always-on short directives | `shapez2-core.mdc` + `AGENTS.md` (glob rules only on working paths) |
-| **Skills** | Procedure bundles opened only when needed | `/merge-all`, `shapez2-harness`, `cursor-shapez2-harness`, `data-pipeline-harness`, `code-review-harness`, `research-harness` skills, reference this manual via `@` |
+| **Skills** | Procedure bundles opened only when needed | `grill-me-shapez2`, `quality-check`, `write-tests`, `cli-boundary`, `shapez2-workflow`; reference this manual via `@` |
 
 Do not duplicate long bodies in rule files; put them in manuals/plans and link.
 
@@ -114,7 +115,7 @@ Do not duplicate long bodies in rule files; put them in manuals/plans and link.
 |----------|-------------------|
 | Spec-first | CANON spec · [`contract-brief.md`](../templates/contract-brief.md) · [`pr-plan.md`](../templates/pr-plan.md) |
 | Small PR | One contract change or one refactor purpose per PR |
-| Test-gated | Failing test before production (contract/regression) |
+| Test-gated | Acceptance tests from spec before production (contract/regression) |
 | Position not persona | Task prompt: scope · authority · acceptance · stop conditions |
 | Context separation | New thread per PR purpose · subagents for broad audit |
 | Verification gates | [`testing.md`](testing.md) dual gate |

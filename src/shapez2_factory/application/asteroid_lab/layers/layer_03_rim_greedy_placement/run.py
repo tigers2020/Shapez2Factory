@@ -10,6 +10,7 @@ commits nothing downstream; interior fill / final mutation remain L5/L6.
 from __future__ import annotations
 
 from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedInvalid,
     GeneticSampleSeedSnapshot,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
@@ -62,7 +63,8 @@ def run_layer_03_rim_greedy_placement(
     policy: RimGreedyPolicy | None = None,
     genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
 ) -> IntegratedRimGreedyResult:
-    _ = (budget_ctx, seed_catalog, resource_kind, transport_kind, policy)
+    _ = (budget_ctx, seed_catalog, resource_kind, transport_kind)
+    resolved_policy = policy or RimGreedyPolicy.default()
     if exterior_plan is None:
         return build_empty_integrated_rim_greedy_result(
             layer_skip_reason=Layer03SkipReason.MISSING_EXTERIOR_CONNECTION_PLAN.value,
@@ -76,12 +78,18 @@ def run_layer_03_rim_greedy_placement(
 
     anchors = scan_rim_anchors(complete_map)
     # Phase B: per transport profile (shape_belt, fluid_pipe) then merge pools; C1/D shared.
-    candidate_set = generate_candidates(
-        complete_map=complete_map,
-        exterior_plan=exterior_plan,
-        genetic_sample_seeds=genetic_sample_seeds,
-        anchors=anchors,
-    )
+    try:
+        candidate_set = generate_candidates(
+            complete_map=complete_map,
+            exterior_plan=exterior_plan,
+            genetic_sample_seeds=genetic_sample_seeds,
+            anchors=anchors,
+        )
+    except GeneticSampleSeedInvalid:
+        return build_empty_integrated_rim_greedy_result(
+            layer_skip_reason=Layer03SkipReason.INVALID_GENETIC_SAMPLE_SEED_SNAPSHOT.value,
+            rim_anchor_count=len(anchors),
+        )
     commit_ctx = build_commit_reprobe_context(
         complete_map=complete_map,
         exterior_plan=exterior_plan,
@@ -91,6 +99,7 @@ def run_layer_03_rim_greedy_placement(
         candidate_set.normal_candidates,
         commit_ctx=commit_ctx,
         rim_anchor_coords=rim_anchor_coords,
+        min_rim_anchor_fill_ratio=resolved_policy.min_rim_anchor_fill_ratio,
     )
     finalize = finalize_selection(
         selected=selection.selected,

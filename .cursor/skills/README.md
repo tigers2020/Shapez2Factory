@@ -7,13 +7,15 @@ Cursor project skills — open when task matches; not read every turn.
 | Skill | Path | Purpose |
 |---|---|---|
 | bug-fix | `bug-fix/SKILL.md` | Minimal fix from failure log + regression test |
-| write-tests | `write-tests/SKILL.md` | Contract/failing/regression tests (often PR-3 scope) |
+| write-tests | `write-tests/SKILL.md` | Contract/acceptance/regression tests from spec (often PR-3 scope) |
 | doc-update | `doc-update/SKILL.md` | Sync docs/ADR when public contract changes |
 | quality-check | `quality-check/SKILL.md` | REVIEW ONLY — contract/scope audit on diff |
 | cli-boundary | `cli-boundary/SKILL.md` | Thin CLI adapter — import/serialization/exit/determinism |
+| grill-me-shapez2 | `grill-me-shapez2/SKILL.md` | Pre-spec adversarial plan review — invariants, ≤8 Q, decision table |
 
 ## Workflow alignment
 
+- **Pre-spec / ambiguous design:** `grill-me-shapez2` · read-only · before contract brief when scope branches
 - **PR-3 (tests only):** `write-tests` · no production edits unless user expands scope
 - **Pre-merge review:** `quality-check` · `cli-boundary` when CLI touched
 - **Post-contract-change:** `doc-update`

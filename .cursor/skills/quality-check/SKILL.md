@@ -219,7 +219,7 @@ Examples:
 - Wrong source of truth
 - Replay used as algorithm input
 - Broken import boundary
-- Failing tests caused by this change
+- Test failures caused by this change
 - Data corruption risk
 - Silent semantic change to DTOs
 

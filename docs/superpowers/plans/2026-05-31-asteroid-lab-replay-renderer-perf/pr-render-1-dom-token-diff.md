@@ -129,7 +129,7 @@ labPerfTouchedCells = 0; // reset per applyFrame
 
 ## Tasks
 
-- [ ] **Step 1 (TDD) — `test_lab_renderer_token_diff.py`.** Source contract.
+- [ ] **Step 1 (SDD) — `test_lab_renderer_token_diff.py`.** Source contract.
 
 ```python
 from pathlib import Path

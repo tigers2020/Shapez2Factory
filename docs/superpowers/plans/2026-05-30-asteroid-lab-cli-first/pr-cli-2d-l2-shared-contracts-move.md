@@ -112,7 +112,7 @@ def test_contract_shims_preserve_identity(old_path, new_path, name):
 - [x] **Step 1:** Move contracts (+ `genetic_sample.enums` prereq); rewrite intra-core imports; shim originals (explicit `from core import X` re-export, not redefinition). Deferred: `rim_placement`, `layer04_disabled`.
 - [x] **Step 2:** Move L1 `output.py` + L2 + shared (route_probe, ceildiv, equivalence_key); wire L2 `GameDataRulesPort` (`rules`-required core + ORM default in django `plan`/`run` shim); shim originals.
 - [x] **Step 3:** Split observability: 6 pure metric builders + `layer_behavior_catalog` → core; settings emit + `build_layer04` stay Django.
-- [x] **Step 4 (TDD):** Added `tests/unit/architecture/test_contract_shim_identity.py`; 15 parametrized symbols `is`-identical.
+- [x] **Step 4 (SDD):** Added `tests/unit/architecture/test_contract_shim_identity.py`; 15 parametrized symbols `is`-identical.
 - [x] **Step 5:** `stack_runner` (still Django) imports moved L1/L2 via core path (through shims), L3–L6 via current path — runs unchanged (719 passed).
 - [x] **Step 6:** Purity gate green with **zero `django_apps` exceptions** (no bridge). Added `src/shapez2_factory/py.typed` (PEP 561) so django↔core imports are type-checked, not `import-untyped`.
 - [x] **Step 7:** Layer + budget + reconstruction gates green; ruff clean; `mypy src` clean (83 files).

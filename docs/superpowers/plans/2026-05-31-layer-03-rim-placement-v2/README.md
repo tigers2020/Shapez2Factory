@@ -49,7 +49,7 @@ Tests:
 - Modify: `src/shapez2_factory/application/asteroid_lab/layers/contracts/candidates.py:49-55`
 - Test: `tests/unit/asteroid_lab/layers/test_layer03_skip_reason_gene_catalog.py`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write acceptance tests from spec**
 
 ```python
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
@@ -96,7 +96,7 @@ Mirror [`json_snapshot_rules.py`](../../../../src/shapez2_factory/adapters/aster
 - Create: `src/shapez2_factory/adapters/asteroid_lab/gene_catalog_snapshot.py`
 - Test: `tests/unit/asteroid_lab/test_gene_catalog_snapshot.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **Step 1: Write acceptance tests from spec**
 
 ```python
 import pytest
@@ -330,7 +330,7 @@ Reuses [`load_gene_templates_from_genetic_samples`](../../../../django_apps/aste
 - Create: `django_apps/asteroid_lab/services/genetic_sample_catalog_snapshot.py`
 - Test: `tests/unit/asteroid_lab/test_genetic_sample_catalog_snapshot.py` (uses `@pytest.mark.django_db`)
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write acceptance tests from spec**
 
 ```python
 import pytest
@@ -452,7 +452,7 @@ __all__ = ["SCHEMA_VERSION", "SORT_KEY", "build_gene_catalog_snapshot"]
 - Modify: `src/shapez2_factory/application/asteroid_lab/stack_runner.py` (thread to L3 runner)
 - Test: `tests/unit/asteroid_lab/test_cli_gene_catalog_threading.py`, `tests/unit/asteroid_lab/test_solver_subprocess_gene_catalog_args.py`
 
-- [ ] **Step 1: Write failing tests** (CLI arg presence + use-case threading)
+- [ ] **Step 1: Write acceptance tests from spec** (CLI arg presence + use-case threading)
 
 ```python
 from pathlib import Path
@@ -503,7 +503,7 @@ In `stack_runner.py`: bind L3 runner to `partial(run_layer_03_rim_greedy_placeme
 - Modify: `django_apps/asteroid_lab/services/solver_runtime_entry.py`
 - Test: `tests/unit/asteroid_lab/test_solver_runtime_entry_gene_catalog.py`
 
-- [ ] **Step 1: Write failing test** — assert `run_solver_runtime_for_project` builds a `SolverSubprocessRequest` whose `gene_catalog["schema_version"] == "gene_catalog_v1"` (patch the subprocess runner to capture the request).
+- [ ] **Step 1: Write acceptance test from spec** — assert `run_solver_runtime_for_project` builds a `SolverSubprocessRequest` whose `gene_catalog["schema_version"] == "gene_catalog_v1"` (patch the subprocess runner to capture the request).
 
 - [ ] **Step 2: Run → FAIL.**
 
@@ -521,7 +521,7 @@ In `stack_runner.py`: bind L3 runner to `partial(run_layer_03_rim_greedy_placeme
 - Modify: `src/shapez2_factory/application/asteroid_lab/layers/layer_03_rim_greedy_placement/run.py`
 - Test: `tests/unit/asteroid_lab/layers/test_layer_03_gene_catalog_gate.py`
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **Step 1: Write acceptance tests from spec**
 
 ```python
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
@@ -570,7 +570,7 @@ def test_empty_gene_catalog_returns_skip(complete_map, exterior_plan, budget_ctx
 - Create: `src/shapez2_factory/application/asteroid_lab/layers/layer_03_rim_greedy_placement/rim_anchor_scan.py`
 - Test: `tests/unit/asteroid_lab/layers/test_rim_anchor_scan.py`
 
-- [ ] **Step 1: Write failing test** — given a small `ReconstructionCompleteMap` fixture, assert `scan_rim_anchors(complete_map)` returns field cells adjacent to external void, each with non-empty `void_dirs`, ordered by `(row, col)` in the canonical solver frame (spec D1).
+- [ ] **Step 1: Write acceptance test from spec** — given a small `ReconstructionCompleteMap` fixture, assert `scan_rim_anchors(complete_map)` returns field cells adjacent to external void, each with non-empty `void_dirs`, ordered by `(row, col)` in the canonical solver frame (spec D1).
 
 - [ ] **Step 2: Run → FAIL.**
 
@@ -586,7 +586,7 @@ def test_empty_gene_catalog_returns_skip(complete_map, exterior_plan, budget_ctx
 - Create: `src/shapez2_factory/application/asteroid_lab/layers/layer_03_rim_greedy_placement/candidate_gen.py`
 - Test: `tests/unit/asteroid_lab/layers/test_candidate_gen.py`
 
-- [ ] **Step 1: Write failing tests** covering spec R2/R3/R4/R5/D1:
+- [ ] **Step 1: Write acceptance tests from spec** covering spec R2/R3/R4/R5/D1:
   - equipment cells ⊆ matching-resource field;
   - output stub ⊆ external void;
   - only route-feasible candidates (immediate probe success) enter the normal pool;
@@ -659,7 +659,7 @@ extractor output**. Implement incrementally; each sub-step is its own red→gree
 - Create: `src/shapez2_factory/application/asteroid_lab/layers/layer_03_rim_greedy_placement/beam_selector.py`
 - Test: `tests/unit/asteroid_lab/layers/test_beam_selector.py`
 
-- [ ] **Step 1: Write failing tests**:
+- [ ] **Step 1: Write acceptance tests from spec**:
   - fitness = `Σ throughput_factor − route_fragility_penalty − shared_corridor_pressure_penalty`;
   - selected subset has **zero** equipment-cell overlaps (hard constraint);
   - **selector consults fitness/conflict state** — given two candidates at conflicting cells, the higher-fitness one is committed regardless of enumeration order (spec D2: prove score-driven choice, not literal order inequality);
@@ -697,7 +697,7 @@ def test_selected_placements_have_no_overlap(dense_pool):
 - Modify: `.../layer_03_rim_greedy_placement/run.py` (orchestrate B → C1 → D)
 - Test: `tests/unit/asteroid_lab/layers/test_layer_03_finalize.py`, `tests/unit/asteroid_lab/layers/test_layer_03_run_v2.py`
 
-- [ ] **Step 1: Write failing tests**:
+- [ ] **Step 1: Write acceptance tests from spec**:
   - re-probe on the latest `route_domain` (`RouteDomainSnapshotBuilder.build_snapshot`) drops a placement whose route is blocked by an earlier committed placement;
   - survivors populate `IntegratedRimGreedyResult.committed_placements` + overlay + metrics;
   - end-to-end `run_layer_03_rim_greedy_placement` with a valid `gene_catalog` returns non-empty `committed_placements` and `invalid_overlap_count == 0`.

@@ -62,13 +62,13 @@ black --check .
 **Spec-first · Small PR · Test-gated · Review-driven** ([`AGENTS.md`](AGENTS.md))
 
 ```text
-Problem → Contract brief → PR plan (one purpose) → Failing tests → Minimal implementation → Gate → Review → Merge
+Problem → Spec/contract (CANON) → Contract brief → PR plan (one purpose) → Acceptance tests from spec → Minimal implementation → Gate → Review → Merge
 ```
 
 1. Read [`AGENTS.md`](AGENTS.md) + CANON spec for the task.
 2. Fill [`contract-brief.md`](documents/ai/templates/contract-brief.md) or link spec.
 3. Scope one PR ([`pr-plan.md`](documents/ai/templates/pr-plan.md)).
-4. Failing test before production (contract/regression).
+4. Acceptance tests from spec before production (contract/regression).
 5. Run dual gate ([`testing.md`](documents/ai/manuals/testing.md)).
 6. Sync docs when public contract changes.
 

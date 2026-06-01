@@ -82,7 +82,7 @@ def test_viewer_does_not_import_solver_core() -> None:
 
 - [x] **Step 1:** Set `subprocess_only`; remove `in_process`/`subprocess` branch selection from request path (subprocess is the only path).
 - [x] **Step 2:** Remove all core imports from `solver_runtime_entry`; ensure subprocess runner references CLI by module string only.
-- [x] **Step 3 (TDD):** Add viewer import gate; make it green (move/remove any stray core imports).
+- [x] **Step 3 (SDD):** Add viewer import gate; make it green (move/remove any stray core imports).
 - [ ] **Step 4:** Update docs (`structure.md`, runtime wiring, current_plan).
 - [ ] **Step 5:** Full gate: ruff + black + mypy + pytest.
 

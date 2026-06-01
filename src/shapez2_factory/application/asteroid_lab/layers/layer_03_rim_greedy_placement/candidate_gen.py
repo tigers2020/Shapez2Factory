@@ -26,6 +26,11 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
+from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedEntry,
+    GeneticSampleSeedInvalid,
+    GeneticSampleSeedIssue,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     BundleCandidate,
     BundleCellRole,
@@ -77,7 +82,6 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
 
 if TYPE_CHECKING:
     from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
-        GeneticSampleSeedEntry,
         GeneticSampleSeedSnapshot,
     )
     from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
@@ -219,6 +223,17 @@ def _dedup_by_extension_layout(
         seen.add(key)
         deduped.append(variant)
     return tuple(deduped)
+
+
+def _require_l3_extractor_at_origin(entry: GeneticSampleSeedEntry) -> None:
+    """L3 projects ``extractor_cell = anchor``; non-zero catalog offsets are invalid."""
+
+    if entry.extractor_offset != (0, 0):
+        raise GeneticSampleSeedInvalid(
+            GeneticSampleSeedIssue.MALFORMED,
+            f"gene_id={entry.gene_id!r}: L3 requires extractor_offset == (0, 0), "
+            f"got {entry.extractor_offset!r}",
+        )
 
 
 def _resource_eligible(entry_resource_kind: str, field_kind: str) -> bool:
@@ -409,6 +424,7 @@ def generate_candidates_for_profile(
             continue
         ax, ay = anchor.coord
         for entry in genetic_sample_seeds.entries:
+            _require_l3_extractor_at_origin(entry)
             if not _resource_eligible(entry.resource_kind, anchor.field_kind):
                 continue
             resource_kind = _FIELD_KIND_TO_RESOURCE[anchor.field_kind]

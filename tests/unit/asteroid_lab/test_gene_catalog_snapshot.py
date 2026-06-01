@@ -60,6 +60,13 @@ def test_bad_throughput_factor_rejected():
         GeneticSampleSeedSnapshot.from_payload(payload)
 
 
+def test_nonzero_extractor_offset_rejected_for_l3():
+    payload = _valid_payload()
+    payload["entries"][0]["extractor_offset"] = [1, 0]
+    with pytest.raises(GeneticSampleSeedInvalid, match="extractor_offset"):
+        GeneticSampleSeedSnapshot.from_payload(payload)
+
+
 def test_empty_entries_is_valid_but_has_no_usable_genes():
     payload = _valid_payload()
     payload["entries"] = []

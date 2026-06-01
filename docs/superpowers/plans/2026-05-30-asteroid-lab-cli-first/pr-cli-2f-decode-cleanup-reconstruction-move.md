@@ -184,7 +184,7 @@ path resolution against `BASE_DIR`, any `os.environ` gate that selects a Django 
   `django`/ORM/settings import in any algorithm body, boundary side-effect localized to 3 emit sites,
   DTOs already core, `display_map` helpers already core. No stop condition triggered. (See chat audit
   report + deltas folded into this doc.)
-- [ ] **Step 2 (TDD, tests-first → red):** add the 5 failing tests below (no DTO move — DTOs already
+- [ ] **Step 2 (SDD, acceptance tests from spec):** add the 5 acceptance tests below (from spec) (no DTO move — DTOs already
   core, so this step only asserts the *target* core pipeline modules exist + are pure):
   1. `test_pipeline_importable_without_django.py` — subprocess, `DJANGO_SETTINGS_MODULE` unset, import
      core decode/cleanup/reconstruction.
@@ -199,7 +199,7 @@ path resolution against `BASE_DIR`, any `os.environ` gate that selects a Django 
 - [ ] **Step 4 (move):** copy the 15 modules to core; rewrite intra-core imports to core paths; repoint
   `reconstruction/pipeline.py` lazy `display_map` import → core `complete_map_merge`; replace originals
   with explicit-name shims. (Greens tests 1, 4, 5.)
-- [ ] **Step 5 (TDD, parity):** green `test_pipeline_core_parity.py` — decode→cleanup→recon on a fixture
+- [ ] **Step 5 (SDD, parity):** green `test_pipeline_core_parity.py` — decode→cleanup→recon on a fixture
   copy code produces a `ReconstructionCompleteMap` identical (field cells / external void / counts)
   to the Django path; Django-free subprocess run of the full pipeline.
 - [ ] **Step 6:** full `tests/unit/asteroid_lab/` suite green (parity, zero churn); purity gate +

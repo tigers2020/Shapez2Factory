@@ -93,11 +93,11 @@ def iter_replay_core_frames(path: Path) -> Iterator[ReplayFrameDTO]:
 ## Tasks
 
 - [ ] **Step 1:** Migration for `artifact_root` + `lifecycle_status` (nullable; backfill not required).
-- [ ] **Step 2 (TDD):** `test_artifact_first_replay.py` — given indexed artifact, payload reads JSONL file not DB.
+- [ ] **Step 2 (SDD):** `test_artifact_first_replay.py` — given indexed artifact, payload reads JSONL file not DB.
 - [ ] **Step 3:** Implement artifact-first resolution in timeline payload + lazy handle; DB fallback when no `artifact_root`.
 - [ ] **Step 4:** Summary service reads manifest mirror.
-- [ ] **Step 5 (TDD):** `test_artifact_replay_loader_iterator.py` — loader returns iterator/generator, not list; SSR no-inline guard D.
-- [ ] **Step 6 (TDD):** contract test that fields documented as cache; assert core has no `create_solver_run` import (AST).
+- [ ] **Step 5 (SDD):** `test_artifact_replay_loader_iterator.py` — loader returns iterator/generator, not list; SSR no-inline guard D.
+- [ ] **Step 6 (SDD):** contract test that fields documented as cache; assert core has no `create_solver_run` import (AST).
 - [ ] **Step 7:** ruff + mypy + full gate + reconstruction narrow.
 
 ## Tests / verification

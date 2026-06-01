@@ -1,0 +1,20 @@
+---
+description: "Base processing router: /using-superpowers before action"
+alwaysApply: true
+---
+
+# Superpowers Router
+
+Canon: `AGENTS.md`.
+
+Use `/using-superpowers` as the base processing strategy before analysis, planning, searching, or editing.
+
+Required behavior:
+
+- Check whether a relevant skill exists before acting.
+- Follow applicable skill instructions unless user instruction or `AGENTS.md` conflicts.
+- Use domain skills after base process routing.
+- For Shapez2/Asteroid Lab, route to `/grill-me-shapez2`.
+- For done claims, require verification evidence or an explicit skipped reason.
+
+Do not invent fake tools, commands, plugins, or MCP behavior.

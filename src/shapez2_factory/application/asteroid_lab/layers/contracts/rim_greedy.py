@@ -49,6 +49,7 @@ class RimGreedyObservationPhase(StrEnum):
 @dataclass(frozen=True, slots=True)
 class RimGreedyPolicy:
     dps_search_margin: int = 12
+    min_rim_anchor_fill_ratio: float = 0.95
 
     @classmethod
     def default(cls) -> RimGreedyPolicy:

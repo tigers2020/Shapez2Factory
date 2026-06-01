@@ -28,7 +28,7 @@ metadata:
 
 1. 로그/재현 절차를 읽고 root cause 가설을 1~2개로 줄인다.
 2. 관련 소스(`src/`)와 테스트(`tests/`)를 찾는다.
-3. 수정 전 실패 테스트가 없으면 최소 재현 테스트를 먼저 작성한다.
+3. 수정 전 spec-linked 재현(acceptance) 테스트가 없으면 최소 재현 테스트를 먼저 작성한다.
 4. 수정은 smallest diff 원칙으로 수행한다.
 5. 동일 종류 회귀를 막는 테스트 한 개 이상을 추가한다.
 6. 검증 체인을 실행한다: narrow `python -m pytest <path>` → `ruff check .` → `mypy django_apps config src` → `black --check .` (`-q` / `--quiet` / `--tb=no` 금지 — [`testing.md`](../../../documents/ai/manuals/testing.md)).

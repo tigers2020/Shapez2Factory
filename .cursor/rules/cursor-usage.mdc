@@ -1,35 +1,26 @@
-# Cursor Usage
+---
+description: "Cursor usage router: contract brief, one purpose, references"
+alwaysApply: false
+---
 
-## Spec-first · scoped tasks
+# Cursor Usage Router
 
-- ⬜ Fill [`contract-brief.md`](mdc:documents/ai/templates/contract-brief.md) or link CANON spec before code
-- ⬜ One PR purpose per session when possible ([`pr-plan.md`](mdc:documents/ai/templates/pr-plan.md))
-- ⬜ "plan only" / "audit only" → **no production edits**; tests-only when scoped
-- ⬜ Task prompt includes **Position · Authority · Acceptance · Stop conditions** ([`AGENTS.md`](mdc:AGENTS.md))
+Canon: `AGENTS.md`.
 
-## @ References
+Use when managing Cursor-side sessions, prompts, or handoffs.
 
-- Workflow: [`workflow.mdc`](mdc:.cursor/rules/workflow.mdc) · [`protocols/README.md`](mdc:protocols/README.md)
-- Domain lenses: [`persona/README.md`](mdc:persona/README.md) + matching manual
-- UI: [`frontend.md`](mdc:documents/ai/manuals/frontend.md) + [web-interface.mdc](mdc:.cursor/rules/web-interface.mdc)
-- Architecture: [architecture.mdc](mdc:.cursor/rules/architecture.mdc)
+Session defaults:
 
-## Memo
+- State position, authority, acceptance, and stop conditions before edits.
+- Use current canon/spec or `documents/ai/templates/contract-brief.md` for behavior changes.
+- Keep one PR purpose; split mixed work.
+- Treat `plan only` and `audit only` as read-only.
+- Re-verify other-chat conclusions against files and current canon.
 
-- Recurring mistakes → `documents/CURSOR_MEMO.md` when user requests (date + reason).
+Routing:
 
-## Multiple chats
-
-- New thread per PR purpose or topic change.
-- Conclusions from another chat: re-verify against files + CANON spec.
-
-## Bugbot
-
-- [bugbot-policy.mdc](mdc:.cursor/rules/bugbot-policy.mdc) — selective, not default on every PR.
-
-## Completion report
-
-- ⬜ Caveman six sections ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc))
-- ⬜ Goal status + exact commands run
-- ⬜ Failures: command · reason · next step
-- ⬜ Skipped gates: list + risk
+- Workflow: `.cursor/rules/workflow.mdc`
+- Shapez2/Asteroid Lab: `.cursor/rules/shapez2-domain.mdc`
+- UI: `.cursor/rules/web-interface.mdc`
+- Layers: `.cursor/rules/architecture.mdc`
+- Bugbot: `.cursor/rules/bugbot-policy.mdc`

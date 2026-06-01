@@ -125,29 +125,30 @@ def compose_lab_replay_frames_from_artifact_run(run: SolverRun) -> list[dict[str
         complete_map = _load_complete_map(complete_map_path)
         core_records = list(iter_replay_core_frames(replay_core_path))
     except (OSError, json.JSONDecodeError, ValueError, ArtifactReplayLoadError):
+        complete_map = None
         core_records = []
-
-    if core_records:
-        return [
-            replay_timeline_frame_to_json_dict(
-                _timeline_frame_from_core_record(record, complete_map=complete_map)
-            )
-            for record in core_records
-        ]
 
     from django_apps.asteroid_lab.services.artifact_runtime_replay_compose import (
         build_solver_runtime_replay_frames_from_artifact_run,
     )
 
     runtime_frames = build_solver_runtime_replay_frames_from_artifact_run(run)
-    if runtime_frames:
+    if runtime_frames and lab_replay_frames_are_renderable(runtime_frames):
         for frame in runtime_frames:
             inspector = frame.get("inspector")
             if not isinstance(inspector, dict):
                 inspector = {}
                 frame["inspector"] = inspector
-            inspector.setdefault("replay_source", "artifact_replay_core")
+            inspector.setdefault("replay_source", "artifact_runtime_recompose")
         return runtime_frames
+
+    if complete_map is not None and core_records:
+        return [
+            replay_timeline_frame_to_json_dict(
+                _timeline_frame_from_core_record(record, complete_map=complete_map)
+            )
+            for record in core_records
+        ]
 
     return None
 

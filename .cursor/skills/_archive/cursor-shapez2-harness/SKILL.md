@@ -37,7 +37,7 @@ disable-model-invocation: true
 
 ## 5. 마감·검증 (렉스 · dual gate)
 
-작업 분류: [AGENTS.md § Contract-first TDD](../../../AGENTS.md#development-mode-contract-first-tdd).
+작업 분류: [AGENTS.md § Contract-first SDD](../../../AGENTS.md) · [testing.md § Development Mode](../../../documents/ai/manuals/testing.md#development-mode-contract-first-sdd).
 
 **반복:** narrow `python -m pytest <path>` → 필요 시 `ruff` / `mypy` / `black .`
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+    GeneticSampleSeedEntry,
     GeneticSampleSeedSnapshot,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
@@ -71,6 +72,40 @@ def test_empty_gene_catalog_returns_skip() -> None:
     )
     assert result.committed_placements == ()
     assert result.metrics.layer_skip_reason == Layer03SkipReason.MISSING_GENETIC_SAMPLE_SEEDS.value
+
+
+def test_nonzero_extractor_offset_skips_with_invalid_snapshot_reason() -> None:
+    bad_entry = GeneticSampleSeedEntry(
+        gene_id="shifted_m",
+        resource_kind="both",
+        canonical_output_dir="E",
+        occupied_offsets=((1, 0), (2, 0)),
+        extractor_offset=(1, 0),
+        extension_offsets=((2, 0),),
+        output_stub_offset=(1, 0),
+        route_probe_start_offset=(2, 0),
+        throughput_factor=4,
+        topology_signature_base="shifted",
+    )
+    snapshot = GeneticSampleSeedSnapshot(
+        schema_version="genetic_sample_seed_v1",
+        generated_at="",
+        provenance_hash="",
+        source_batch_id="",
+        deterministic_sort_key="",
+        entries=(bad_entry,),
+    )
+    result = run_layer_03_rim_greedy_placement(
+        complete_map=golden_5x5_complete_map(),
+        exterior_plan=minimal_l2_plan_for_golden(),
+        budget_ctx=_budget_ctx(),
+        genetic_sample_seeds=snapshot,
+    )
+    assert result.committed_placements == ()
+    assert (
+        result.metrics.layer_skip_reason
+        == Layer03SkipReason.INVALID_GENETIC_SAMPLE_SEED_SNAPSHOT.value
+    )
 
 
 def test_present_catalog_runs_v2_and_commits() -> None:

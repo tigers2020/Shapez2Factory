@@ -1,107 +1,31 @@
 ---
-description: "Spec-first · Small PR · Test-gated · Review-driven workflow — contract before code, one purpose per PR"
+description: "SDD router: spec/contract before code; tests verify contracts"
 alwaysApply: true
 ---
 
-# Workflow — Spec-first · Small PR · Test-gated
+# Workflow Router
 
-Canonical copy: [`AGENTS.md`](mdc:AGENTS.md). Templates: [`documents/ai/templates/`](mdc:documents/ai/templates/).
+Canon: `AGENTS.md`.
 
-## Pipeline
-
-```text
-Problem → Spec/contract → Failing tests (if behavior) → Small PR → Gate → Review → Merge
-```
-
-## Contract before code
-
-No production edits until **Problem · Goal · Non-goals · Contract · Acceptance** exist or are restated in the task.
-
-- **Contract change:** spec amendment + tests **before** production.
-- **Regression:** reproduction test **before** fix.
-- **Audit-only task:** read-only; no production edits.
-
-## One PR · one purpose
+Pipeline:
 
 ```text
-Good: PR-3 failing tests only · PR-4 minimal implementation
-Bad:  redesign + UI + cleanup + perf in one PR
+problem -> authority -> contract -> plan -> acceptance tests -> small change -> gate
 ```
 
-Split when scope exceeds one contract change or one refactor goal.
+Rules:
 
-## Agent scope (required every task)
+- No production edit until problem, goal, non-goals, contract, and acceptance are clear.
+- Contract change: spec/brief -> acceptance -> tests -> production.
+- Regression: failing repro -> fix -> regression gate.
+- Refactor: preserve behavior; update tests only when contract shifts.
+- Docs-only: no runtime claims.
+- One PR-sized purpose; split mixed work.
 
-Restate or confirm:
+Tests must assert real contracts. Avoid weak generated tests and implementation trivia.
 
-```text
-Position · Mission · Authority (may / must not) · Primary lens · Inputs · Acceptance · Stop conditions
-```
+Never relax tests to force green.
 
-Reject (BLOCKED) when:
+If behavior authority is missing, stop with `BLOCKED:`.
 
-- ❌ No failing test for behavior change (except docs-only contract)
-- ❌ Public contract changes without spec/doc update
-- ❌ Scope spans multiple PR purposes
-- ❌ Stale/superseded doc used as authority
-
-## Test order
-
-```text
-audit → failing test → minimal fix → regression/golden → focused pytest → ruff
-```
-
-PR merge: full gate per [`AGENTS.md`](mdc:AGENTS.md).
-
-## Document authority
-
-| Source | Weight |
-|---|---|
-| CANON spec + ADR | Design authority |
-| ACTIVE plan | Tracker only |
-| Superseded / deleted docs | Not implementation context |
-
-## Human · Agent · CI
-
-| Actor | Role |
-|---|---|
-| Human | Contract · scope approval · merge |
-| Agent | Scoped audit · tests · implementation · report |
-| CI | Full gate |
-
-## Checklists
-
-**Before start**
-
-- ⬜ problem one-liner
-- ⬜ non-goals written
-- ⬜ invariants listed
-- ⬜ authority doc (CANON spec) identified
-- ⬜ audit if behavior uncertain
-
-**Before production edit**
-
-- ⬜ contract brief written
-- ⬜ failing test when behavior changes
-- ⬜ scope = one PR purpose
-- ⬜ compatibility checked
-
-**Before PR**
-
-- ⬜ focused gates green
-- ⬜ golden/snapshot diffs intentional
-- ⬜ docs match code
-- ⬜ dead code noted
-
-**Before merge**
-
-- ⬜ single PR purpose
-- ⬜ rollback plausible
-- ⬜ contract impact in PR body
-- ⬜ next PR named
-
-## Position vs persona
-
-Use **Position + scope + acceptance**, not abstract persona fluff.
-
-Domain lenses: [`persona/README.md`](mdc:persona/README.md) — routing hints only, not mandatory dialogue roleplay.
+References: `documents/ai/templates/contract-brief.md`, `documents/ai/templates/pr-plan.md`, `documents/ai/manuals/testing.md`.

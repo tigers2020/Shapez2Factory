@@ -71,9 +71,14 @@ def build_layer03_rim_greedy_post_summary_metrics(
     append = result.append_result
     pass2_tf = int(metrics.pass2_score or 0)
     routed_shape_throughput_per_min = pass2_tf * SHAPE_MINI_UNIT_OUTPUT_PER_MIN
+    rim_anchor_count = int(metrics.rim_anchor_count or 0)
+    committed = int(metrics.committed_placement_count or 0)
+    rim_fill_ratio = (committed / rim_anchor_count) if rim_anchor_count else 0.0
     return {
-        "rim_anchor_count": metrics.rim_anchor_count,
-        "committed_placement_count": metrics.committed_placement_count,
+        "rim_anchor_count": rim_anchor_count,
+        "committed_placement_count": committed,
+        "rim_anchor_fill_ratio": rim_fill_ratio,
+        "min_rim_anchor_fill_ratio_target": 0.95,
         "rejected_attempt_count": metrics.rejected_attempt_count,
         "reserved_route_cell_count": metrics.reserved_route_cell_count,
         "winning_variant_id": metrics.winning_variant_id,

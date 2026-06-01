@@ -131,12 +131,20 @@ def _parse_entry(raw: object) -> GeneticSampleSeedEntry:
             GeneticSampleSeedIssue.MALFORMED,
             f"throughput_factor {throughput_factor} not allowed",
         )
+    gene_id = str(raw["gene_id"])
+    extractor_offset = _coord(raw.get("extractor_offset", [0, 0]))
+    if extractor_offset != (0, 0):
+        raise GeneticSampleSeedInvalid(
+            GeneticSampleSeedIssue.MALFORMED,
+            f"gene_id={gene_id!r}: L3 requires extractor_offset == (0, 0), "
+            f"got {extractor_offset!r}",
+        )
     return GeneticSampleSeedEntry(
-        gene_id=str(raw["gene_id"]),
+        gene_id=gene_id,
         resource_kind=resource_kind,
         canonical_output_dir=output_dir,
         occupied_offsets=tuple(_coord(c) for c in raw.get("occupied_offsets", [])),
-        extractor_offset=_coord(raw.get("extractor_offset", [0, 0])),
+        extractor_offset=extractor_offset,
         extension_offsets=tuple(_coord(c) for c in raw.get("extension_offsets", [])),
         output_stub_offset=_coord(raw.get("output_stub_offset", [1, 0])),
         route_probe_start_offset=_coord(raw.get("route_probe_start_offset", [2, 0])),

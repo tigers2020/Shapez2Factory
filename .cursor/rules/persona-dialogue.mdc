@@ -1,20 +1,19 @@
-# Persona Dialogue — Retired
+---
+description: "Retired router: use contract brief instead of persona dialogue"
+alwaysApply: false
+---
 
-**Status:** Retired 2026-05-31. Replaced by **Spec-first · Position · scoped task** workflow.
+# Persona Dialogue Router
 
-## Use instead
+Canon: `AGENTS.md`.
 
-| Old | New |
-|---|---|
-| 3-stage `[Name]` dialogue before every edit | [`contract-brief.md`](mdc:documents/ai/templates/contract-brief.md) + task **Position · Authority · Acceptance** |
-| 10-stage persona pipeline | [`protocols/README.md`](mdc:protocols/README.md) workflow stages |
-| `[Simon]` mandatory briefing | Optional scope restate in task prompt; [`persona/simon.md`](mdc:persona/simon.md) coordinator lens |
-| Character roleplay output | Caveman Korean chat + six-section close ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc)) |
+Mandatory persona scripts are retired.
 
-## Canonical workflow
+Use instead:
 
-[`AGENTS.md`](mdc:AGENTS.md) · [`.cursor/rules/workflow.mdc`](mdc:.cursor/rules/workflow.mdc)
+- Position, authority, acceptance, stop conditions.
+- `documents/ai/templates/contract-brief.md` for behavior changes.
+- `protocols/README.md` for workflow routing.
+- `persona/README.md` only as optional lens reference.
 
-## Domain routing
-
-[`persona/README.md`](mdc:persona/README.md) — position **lenses** only (paths, manuals, verification habits). Not dialogue scripts.
+Do not roleplay personas as required process.

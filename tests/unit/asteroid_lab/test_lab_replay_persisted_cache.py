@@ -61,7 +61,7 @@ def test_is_cache_summary_valid_rejects_wrong_schema() -> None:
                 "replay_core_path": "F:/tmp/replay_core.jsonl",
             }
         )
-        is True
+        is False
     )
 
 
@@ -90,7 +90,11 @@ def test_persist_preserves_unrelated_config_json_keys(cache_project: m.AsteroidP
 @pytest.mark.django_db
 def test_load_composed_frames_and_manifest_round_trip(cache_project: m.AsteroidProject) -> None:
     run = m.SolverRun.objects.create(project=cache_project, run_key="rk-cache-2", config_json={})
-    frames = [{"frame_index": 0}, {"frame_index": 1}]
+    cell = {"x": 0, "y": 0, "kind": "asteroid_fluid_field", "transport": "none"}
+    frames = [
+        {"frame_index": 0, "map_view": {"full_cells": [cell]}},
+        {"frame_index": 1, "map_view": {"full_cells": [cell]}},
+    ]
     metrics = {"frame_count": 2, "replay_truncated": False}
     persist_composed_replay_for_run_id(int(run.pk), frames=frames, metrics=metrics)
     loaded_frames = load_composed_frames_for_run_id(int(run.pk))

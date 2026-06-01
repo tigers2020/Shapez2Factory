@@ -487,6 +487,10 @@ def _layer03_greedy_highlights(solver_summary: dict[str, Any]) -> list[dict[str,
     return [
         _highlight("Rim anchor slots", _obs_field_count(solver_summary, "rim_anchor_count")),
         _highlight(
+            "Route-feasible rim slots",
+            _obs_field_count(solver_summary, "route_feasible_rim_anchor_count"),
+        ),
+        _highlight(
             "Committed placements",
             _obs_field_count(
                 solver_summary,

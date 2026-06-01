@@ -19,7 +19,11 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind im
 from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transport_route_domain import (  # noqa: E501
     WeightedTransportRouteDomain,
 )
-from shapez2_factory.application.asteroid_lab.layers.shared.route_probe import weighted_route_probe
+from shapez2_factory.application.asteroid_lab.layers.shared.route_probe import (
+    RouteProbeLimits,
+    resolve_layer03_route_probe_limits,
+    weighted_route_probe,
+)
 from shapez2_factory.domain.asteroid_lab.grid_contract import BBox, Coord, bbox_from_coords
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
@@ -42,6 +46,7 @@ class CommitReprobeContext:
     search_bbox: BBox
     base_walkable: frozenset[Coord]
     field_cells: frozenset[Coord]
+    probe_limits: RouteProbeLimits
 
 
 def _build_route_goals(exterior_plan: ExteriorConnectionPlan) -> tuple[RouteGoal, ...]:
@@ -59,11 +64,13 @@ def build_commit_reprobe_context(
     base_walkable = field_cells | complete_map.external_void_cells
     if not base_walkable:
         return None
+    search_bbox = bbox_from_coords(base_walkable)
     return CommitReprobeContext(
         route_goals=_build_route_goals(exterior_plan),
-        search_bbox=bbox_from_coords(base_walkable),
+        search_bbox=search_bbox,
         base_walkable=frozenset(base_walkable),
         field_cells=frozenset(field_cells),
+        probe_limits=resolve_layer03_route_probe_limits(search_bbox=search_bbox),
     )
 
 
@@ -96,6 +103,7 @@ def try_commit_reprobe(
         route_goals=ctx.route_goals,
         domain=domain,
         field_cells=ctx.field_cells,
+        probe_limits=ctx.probe_limits,
     )
     if reprobed.route_probe_status != RouteProbeStatus.SUCCEEDED or (
         reprobed.route_probe_result is None

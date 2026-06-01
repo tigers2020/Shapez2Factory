@@ -65,7 +65,7 @@ def test_artifact_jsonl_does_not_return_stale_non_renderable_db_cache(tmp_path: 
 
     assert loaded_frames is None
     assert summary is not None
-    assert is_cache_summary_valid(summary)
+    assert not is_cache_summary_valid(summary)
     assert summary["mode"] == "artifact_jsonl"
 
 

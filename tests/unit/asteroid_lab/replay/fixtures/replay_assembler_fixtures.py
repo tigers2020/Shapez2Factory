@@ -90,6 +90,7 @@ def golden_complete_map() -> ReconstructionCompleteMap:
 def rim_bundle_candidate_set_missing_exterior_plan() -> RimBundleCandidateSet:
     metrics = Layer03ExpansionMetrics(
         rim_anchor_count=0,
+        route_feasible_rim_anchor_count=0,
         seed_projection_attempt_count=0,
         local_geometry_rejected_count=0,
         route_probe_attempt_count=0,
@@ -135,6 +136,7 @@ def rim_bundle_candidate_set_with_observability_for_golden() -> RimBundleCandida
     )
     metrics = Layer03ExpansionMetrics(
         rim_anchor_count=expected_golden_rim_anchor_count(),
+        route_feasible_rim_anchor_count=expected_golden_rim_anchor_count(),
         seed_projection_attempt_count=2,
         local_geometry_rejected_count=0,
         route_probe_attempt_count=len(probes),

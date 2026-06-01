@@ -110,6 +110,7 @@ def run_layer_03_rim_greedy_placement(
         finalize=finalize,
         selection=selection,
         rim_anchor_count=len(anchors),
+        route_feasible_rim_anchor_count=candidate_set.metrics.route_feasible_rim_anchor_count,
     )
 
 

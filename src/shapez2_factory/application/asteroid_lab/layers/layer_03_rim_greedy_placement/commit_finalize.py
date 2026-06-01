@@ -274,6 +274,7 @@ def build_integrated_rim_greedy_result(
     finalize: FinalizeResult,
     selection: BeamSelectionResult,
     rim_anchor_count: int,
+    route_feasible_rim_anchor_count: int,
 ) -> IntegratedRimGreedyResult:
     """Assemble the canonical L3 result DTO from the finalized commit-time re-probe."""
 
@@ -293,6 +294,7 @@ def build_integrated_rim_greedy_result(
     )
     metrics = RimGreedyMetrics(
         rim_anchor_count=rim_anchor_count,
+        route_feasible_rim_anchor_count=route_feasible_rim_anchor_count,
         committed_placement_count=len(committed),
         rejected_attempt_count=len(finalize.rejected_attempts),
         reserved_route_cell_count=len(finalize.reserved_route_cells),

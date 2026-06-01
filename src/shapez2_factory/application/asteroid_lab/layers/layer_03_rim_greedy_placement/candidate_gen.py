@@ -69,7 +69,7 @@ from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placeme
 )
 from shapez2_factory.application.asteroid_lab.layers.shared.route_probe import weighted_route_probe
 from shapez2_factory.domain.asteroid_lab.genetic_sample.enums import Direction
-from shapez2_factory.domain.asteroid_lab.grid_contract import Coord, bbox_from_coords
+from shapez2_factory.domain.asteroid_lab.grid_contract import BBox, Coord, bbox_from_coords
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
     mineable_field_kind_by_coord,
@@ -363,6 +363,18 @@ def _d1_key(probed: RouteProbedBundleCandidate) -> tuple[int, int, int, int, str
     )
 
 
+@dataclass(frozen=True, slots=True)
+class _ProfileExpansionInputs:
+    complete_map: ReconstructionCompleteMap
+    genetic_sample_seeds: GeneticSampleSeedSnapshot
+    anchors: tuple[RimAnchor, ...]
+    field_cells: frozenset[Coord]
+    external_void: frozenset[Coord]
+    kind_by_coord: dict[Coord, str]
+    base_walkable: frozenset[Coord]
+    search_bbox: BBox
+
+
 @dataclass
 class _ProfileExpansionAccum:
     normal: list[RouteProbedBundleCandidate] = field(default_factory=list)
@@ -375,15 +387,8 @@ class _ProfileExpansionAccum:
 
 def generate_candidates_for_profile(
     *,
-    complete_map: ReconstructionCompleteMap,
     profile: Layer03TransportProfile,
-    genetic_sample_seeds: GeneticSampleSeedSnapshot,
-    anchors: tuple[RimAnchor, ...],
-    field_cells: frozenset[Coord],
-    external_void: frozenset[Coord],
-    kind_by_coord: dict[Coord, str],
-    base_walkable: frozenset[Coord],
-    search_bbox: tuple[int, int, int, int],
+    inputs: _ProfileExpansionInputs,
     restrict_anchors_to_profile: bool = True,
 ) -> _ProfileExpansionAccum:
     """Expand and route-probe one transport profile (matching-resource rim anchors only)."""
@@ -391,6 +396,13 @@ def generate_candidates_for_profile(
     accum = _ProfileExpansionAccum()
     route_goals = profile.route_goals
     expected_field_kind = ANCHOR_FIELD_KIND_BY_TRANSPORT[profile.transport_kind]
+    anchors = inputs.anchors
+    field_cells = inputs.field_cells
+    external_void = inputs.external_void
+    kind_by_coord = inputs.kind_by_coord
+    base_walkable = inputs.base_walkable
+    search_bbox = inputs.search_bbox
+    genetic_sample_seeds = inputs.genetic_sample_seeds
 
     for anchor in anchors:
         if restrict_anchors_to_profile and anchor.field_kind != expected_field_kind:
@@ -517,45 +529,49 @@ def generate_candidates(
     search_bbox = bbox_from_coords(base_walkable)
 
     merged = _ProfileExpansionAccum()
-    shared_kw = {
-        "complete_map": complete_map,
-        "genetic_sample_seeds": genetic_sample_seeds,
-        "anchors": anchors,
-        "field_cells": field_cells,
-        "external_void": external_void,
-        "kind_by_coord": kind_by_coord,
-        "base_walkable": base_walkable,
-        "search_bbox": search_bbox,
-    }
-    if exterior_plan is None:
-        part = generate_candidates_for_profile(
-            profile=Layer03TransportProfile(
-                transport_kind=TransportKind.SHAPE_BELT,
-                resource_kind=ResourceKind.SHAPE,
-                route_goals=(),
-            ),
-            restrict_anchors_to_profile=False,
-            **shared_kw,
-        )
+
+    def _merge_profile_part(part: _ProfileExpansionAccum) -> None:
         merged.normal.extend(part.normal)
         merged.diagnostics.extend(part.diagnostics)
         merged.seed_projection_attempts += part.seed_projection_attempts
         merged.geometry_rejected += part.geometry_rejected
         merged.route_probe_attempts += part.route_probe_attempts
         merged.dedupe_duplicates += part.dedupe_duplicates
+
+    expansion_inputs = _ProfileExpansionInputs(
+        complete_map=complete_map,
+        genetic_sample_seeds=genetic_sample_seeds,
+        anchors=anchors,
+        field_cells=field_cells,
+        external_void=external_void,
+        kind_by_coord=kind_by_coord,
+        base_walkable=base_walkable,
+        search_bbox=search_bbox,
+    )
+    if exterior_plan is None:
+        _merge_profile_part(
+            generate_candidates_for_profile(
+                profile=Layer03TransportProfile(
+                    transport_kind=TransportKind.SHAPE_BELT,
+                    resource_kind=ResourceKind.SHAPE,
+                    route_goals=(),
+                ),
+                inputs=expansion_inputs,
+                restrict_anchors_to_profile=False,
+            ),
+        )
     else:
         profiles = build_layer03_transport_profiles(
             complete_map=complete_map,
             exterior_plan=exterior_plan,
         )
         for profile in profiles:
-            part = generate_candidates_for_profile(profile=profile, **shared_kw)
-            merged.normal.extend(part.normal)
-            merged.diagnostics.extend(part.diagnostics)
-            merged.seed_projection_attempts += part.seed_projection_attempts
-            merged.geometry_rejected += part.geometry_rejected
-            merged.route_probe_attempts += part.route_probe_attempts
-            merged.dedupe_duplicates += part.dedupe_duplicates
+            _merge_profile_part(
+                generate_candidates_for_profile(
+                    profile=profile,
+                    inputs=expansion_inputs,
+                ),
+            )
 
     normal = merged.normal
     diagnostics = merged.diagnostics

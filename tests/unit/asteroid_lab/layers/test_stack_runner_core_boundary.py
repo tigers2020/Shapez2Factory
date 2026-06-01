@@ -67,6 +67,8 @@ def test_django_run_full_wrapper_delegates_to_core_runner() -> None:
         complete_map=sentinel_map,
         budget_ctx=sentinel_ctx,
         runners=sentinel_runners,
+        capacity_envelope=None,
+        throughput_target_percent=80,
     )
     assert result is core_stack
     written = [call.args[0] for call in session.write_layer_post_summary.call_args_list]

@@ -133,9 +133,7 @@ def _extend(
 def _rim_neighbor_count(anchor: Coord, rim_anchor_coords: frozenset[Coord]) -> int:
     x, y = anchor
     return sum(
-        1
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
-        if (x + dx, y + dy) in rim_anchor_coords
+        1 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)) if (x + dx, y + dy) in rim_anchor_coords
     )
 
 
@@ -183,14 +181,9 @@ def _group_by_anchor(
         group.sort(key=_fitness_sort_key)
     if anchor_order is not None:
         return tuple(
-            (anchor, tuple(by_anchor[anchor]))
-            for anchor in anchor_order
-            if anchor in by_anchor
+            (anchor, tuple(by_anchor[anchor])) for anchor in anchor_order if anchor in by_anchor
         )
-    return tuple(
-        (anchor, tuple(by_anchor[anchor]))
-        for anchor in sorted(by_anchor.keys())
-    )
+    return tuple((anchor, tuple(by_anchor[anchor])) for anchor in sorted(by_anchor.keys()))
 
 
 def _finalize_selection_result(
@@ -413,7 +406,7 @@ def select_bundles(
     on distinct rim anchors can share exterior belt trunks toward the same connector.
     """
 
-    ordered = sorted(normal_candidates, key=_fitness_sort_key)
+    ordered = tuple(sorted(normal_candidates, key=_fitness_sort_key))
     if commit_ctx is not None:
         if rim_anchor_coords is not None:
             return _select_bundles_rim_platform_commit(

@@ -20,7 +20,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transpor
     WeightedTransportRouteDomain,
 )
 from shapez2_factory.application.asteroid_lab.layers.shared.route_probe import weighted_route_probe
-from shapez2_factory.domain.asteroid_lab.grid_contract import Coord, bbox_from_coords
+from shapez2_factory.domain.asteroid_lab.grid_contract import BBox, Coord, bbox_from_coords
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
 )
@@ -39,7 +39,7 @@ class CommitReprobeContext:
     """Shared route-domain inputs for finalize and commit-aware beam selection."""
 
     route_goals: tuple[RouteGoal, ...]
-    search_bbox: tuple[int, int, int, int]
+    search_bbox: BBox
     base_walkable: frozenset[Coord]
     field_cells: frozenset[Coord]
 

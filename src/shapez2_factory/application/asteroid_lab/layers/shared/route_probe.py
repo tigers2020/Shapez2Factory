@@ -19,7 +19,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.route_probe_diagn
 from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transport_route_domain import (  # noqa: E501
     WeightedTransportRouteDomain,
 )
-from shapez2_factory.domain.asteroid_lab.grid_contract import Coord, neighbors4
+from shapez2_factory.domain.asteroid_lab.grid_contract import Coord, bbox_from_coords, neighbors4
 
 LAYER03_ROUTE_PROBE_MAX_PATH_CELLS = 64
 LAYER03_ROUTE_PROBE_MAX_EXPANDED_NODES = 512
@@ -219,8 +219,9 @@ def immediate_route_probe(
         if external_void_cells is not None
         else frozenset(cell for cell in placeable_cells)
     )
+    empty_bbox = bbox_from_coords(frozenset())
     domain = WeightedTransportRouteDomain(
-        search_bbox=(0, 0, 0, 0),
+        search_bbox=empty_bbox,
         blocked_cells=frozenset(),
         walkable_cells=placeable_cells,
         field_cost_cells=frozenset(),

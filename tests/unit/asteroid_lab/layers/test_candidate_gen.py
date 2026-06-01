@@ -35,6 +35,11 @@ _ROUTE_FAILURE_REASONS = frozenset(
     {
         CandidateRejectReason.EXTERIOR_ENTRY_NOT_REACHABLE,
         CandidateRejectReason.EXTERIOR_CONNECTOR_UNREACHABLE,
+        CandidateRejectReason.EXTERIOR_GOAL_UNREACHABLE_NO_GOALS,
+        CandidateRejectReason.EXTERIOR_GOAL_UNREACHABLE_INVALID_STUB_COMPONENT,
+        CandidateRejectReason.EXTERIOR_GOAL_UNREACHABLE_NO_SAME_VOID_COMPONENT,
+        CandidateRejectReason.EXTERIOR_GOAL_UNREACHABLE_PROBE_LIMIT_HIT,
+        CandidateRejectReason.EXTERIOR_GOAL_UNREACHABLE_FRONTIER_EXHAUSTED,
         CandidateRejectReason.ROUTE_PROBE_FAILED,
     }
 )

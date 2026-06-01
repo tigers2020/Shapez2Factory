@@ -502,6 +502,7 @@ def generate_candidates(
                         route_goals=route_goals,
                         domain=domain,
                         field_cells=field_cells,
+                        external_void_cells=external_void,
                     )
                     if probed.route_probe_status == RouteProbeStatus.SUCCEEDED:
                         normal.append(probed)

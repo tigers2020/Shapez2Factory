@@ -10,6 +10,9 @@ if TYPE_CHECKING:
     from shapez2_factory.application.asteroid_lab.layers.contracts.layer03_observability import (
         Layer03Observability,
     )
+    from shapez2_factory.application.asteroid_lab.layers.contracts.route_probe_diagnostic import (
+        RouteProbeDiagnostic,
+    )
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_03_RIM_MINING_BUNDLES,
@@ -42,6 +45,17 @@ class CandidateRejectReason(StrEnum):
     TRANSPORT_COLLIDES_WITH_MINING_EQUIPMENT = "transport_collides_with_mining_equipment"
     EXTERIOR_ENTRY_NOT_REACHABLE = "exterior_entry_not_reachable"
     EXTERIOR_CONNECTOR_UNREACHABLE = "exterior_connector_unreachable"
+    EXTERIOR_GOAL_UNREACHABLE_NO_GOALS = "exterior_goal_unreachable_no_goals"
+    EXTERIOR_GOAL_UNREACHABLE_INVALID_STUB_COMPONENT = (
+        "exterior_goal_unreachable_invalid_stub_component"
+    )
+    EXTERIOR_GOAL_UNREACHABLE_NO_SAME_VOID_COMPONENT = (
+        "exterior_goal_unreachable_no_same_void_component"
+    )
+    EXTERIOR_GOAL_UNREACHABLE_PROBE_LIMIT_HIT = "exterior_goal_unreachable_probe_limit_hit"
+    EXTERIOR_GOAL_UNREACHABLE_FRONTIER_EXHAUSTED = (
+        "exterior_goal_unreachable_frontier_exhausted"
+    )
     ROUTE_PROBE_FAILED = "route_probe_failed"
     BUDGET_EXHAUSTED = "budget_exhausted"
 
@@ -129,6 +143,7 @@ class RouteProbedBundleCandidate:
     route_probe_result: RouteProbeResult | None
     route_goal_id: str | None
     reject_reason: CandidateRejectReason | None
+    route_probe_diagnostic: RouteProbeDiagnostic | None = None
 
     def __post_init__(self) -> None:
         _validate_route_probed_bundle_candidate(self)

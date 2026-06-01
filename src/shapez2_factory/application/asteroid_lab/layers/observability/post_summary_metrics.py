@@ -74,8 +74,10 @@ def build_layer03_rim_greedy_post_summary_metrics(
     rim_anchor_count = int(metrics.rim_anchor_count or 0)
     committed = int(metrics.committed_placement_count or 0)
     rim_fill_ratio = (committed / rim_anchor_count) if rim_anchor_count else 0.0
+    route_feasible = int(getattr(metrics, "route_feasible_rim_anchor_count", 0) or 0)
     return {
         "rim_anchor_count": rim_anchor_count,
+        "route_feasible_rim_anchor_count": route_feasible,
         "committed_placement_count": committed,
         "rim_anchor_fill_ratio": rim_fill_ratio,
         "min_rim_anchor_fill_ratio_target": 0.95,

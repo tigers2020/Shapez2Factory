@@ -150,6 +150,7 @@ class RouteProbedBundleCandidate:
 @dataclass(frozen=True, slots=True)
 class Layer03ExpansionMetrics:
     rim_anchor_count: int
+    route_feasible_rim_anchor_count: int
     seed_projection_attempt_count: int
     local_geometry_rejected_count: int
     route_probe_attempt_count: int
@@ -172,6 +173,7 @@ class Layer03ExpansionMetrics:
     def empty(cls) -> Layer03ExpansionMetrics:
         return cls(
             rim_anchor_count=0,
+            route_feasible_rim_anchor_count=0,
             seed_projection_attempt_count=0,
             local_geometry_rejected_count=0,
             route_probe_attempt_count=0,

@@ -84,7 +84,9 @@ def test_lab_js_declares_island_raw_coord_build_and_identity_visual_col() -> Non
     assert "return xi;" in js[js.index("function visualCol") : js.index("function cellIndexDemo")]
     assert "x - 1" not in js[js.index("function visualCol") : js.index("function cellIndexDemo")]
     assert "const xWorld = d;" in js
-    dom_slice = js[js.index("function domIndexToWorldXY") : js.index("function findLabCellFromPoint")]
+    dom_slice = js[
+        js.index("function domIndexToWorldXY") : js.index("function findLabCellFromPoint")
+    ]
     assert "d + 1" not in dom_slice
 
 

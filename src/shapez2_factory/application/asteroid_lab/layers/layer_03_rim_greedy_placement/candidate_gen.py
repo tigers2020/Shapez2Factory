@@ -72,7 +72,10 @@ from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placeme
     Layer03TransportProfile,
     build_layer03_transport_profiles,
 )
-from shapez2_factory.application.asteroid_lab.layers.shared.route_probe import weighted_route_probe
+from shapez2_factory.application.asteroid_lab.layers.shared.route_probe import (
+    resolve_layer03_route_probe_limits,
+    weighted_route_probe,
+)
 from shapez2_factory.domain.asteroid_lab.genetic_sample.enums import Direction
 from shapez2_factory.domain.asteroid_lab.grid_contract import BBox, Coord, bbox_from_coords
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
@@ -410,6 +413,7 @@ def generate_candidates_for_profile(
 
     accum = _ProfileExpansionAccum()
     route_goals = profile.route_goals
+    probe_limits = resolve_layer03_route_probe_limits(search_bbox=inputs.search_bbox)
     expected_field_kind = ANCHOR_FIELD_KIND_BY_TRANSPORT[profile.transport_kind]
     anchors = inputs.anchors
     field_cells = inputs.field_cells
@@ -512,6 +516,7 @@ def generate_candidates_for_profile(
                         domain=domain,
                         field_cells=field_cells,
                         external_void_cells=external_void,
+                        probe_limits=probe_limits,
                     )
                     if probed.route_probe_status == RouteProbeStatus.SUCCEEDED:
                         accum.normal.append(probed)
@@ -602,8 +607,12 @@ def generate_candidates(
     reject_counts = Counter(
         probed.reject_reason.value for probed in diagnostics if probed.reject_reason is not None
     )
+    route_feasible_rim_anchor_count = len(
+        {probed.candidate.anchor_coord for probed in normal},
+    )
     metrics = Layer03ExpansionMetrics(
         rim_anchor_count=len(anchors),
+        route_feasible_rim_anchor_count=route_feasible_rim_anchor_count,
         seed_projection_attempt_count=seed_projection_attempts,
         local_geometry_rejected_count=geometry_rejected,
         route_probe_attempt_count=route_probe_attempts,

@@ -131,7 +131,10 @@ def test_build_integrated_result_is_well_formed() -> None:
         exterior_plan=minimal_l2_plan_for_golden(),
     )
     result = build_integrated_rim_greedy_result(
-        finalize=finalize, selection=selection, rim_anchor_count=12
+        finalize=finalize,
+        selection=selection,
+        rim_anchor_count=12,
+        route_feasible_rim_anchor_count=12,
     )
     assert result.metrics.committed_placement_count == 1
     assert result.metrics.layer_skip_reason is None

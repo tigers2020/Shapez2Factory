@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import heapq
 from collections import deque
+from dataclasses import dataclass
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     BundleCandidate,
@@ -19,11 +20,52 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.route_probe_diagn
 from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transport_route_domain import (  # noqa: E501
     WeightedTransportRouteDomain,
 )
-from shapez2_factory.domain.asteroid_lab.grid_contract import Coord, bbox_from_coords, neighbors4
+from shapez2_factory.domain.asteroid_lab.grid_contract import (
+    BBox,
+    Coord,
+    bbox_from_coords,
+    neighbors4,
+)
 
-LAYER03_ROUTE_PROBE_MAX_PATH_CELLS = 64
-LAYER03_ROUTE_PROBE_MAX_EXPANDED_NODES = 512
+LAYER03_ROUTE_PROBE_MIN_PATH_CELLS = 64
+LAYER03_ROUTE_PROBE_MAX_PATH_CELLS_CAP = 512
+LAYER03_ROUTE_PROBE_MIN_EXPANDED_NODES = 512
+LAYER03_ROUTE_PROBE_MAX_EXPANDED_NODES_CAP = 4096
+LAYER03_ROUTE_PROBE_MAX_PATH_CELLS = LAYER03_ROUTE_PROBE_MIN_PATH_CELLS
+LAYER03_ROUTE_PROBE_MAX_EXPANDED_NODES = LAYER03_ROUTE_PROBE_MIN_EXPANDED_NODES
 LAYER03_ROUTE_PROBE_MAX_STEPS = LAYER03_ROUTE_PROBE_MAX_PATH_CELLS
+
+
+@dataclass(frozen=True, slots=True)
+class RouteProbeLimits:
+    max_path_cells: int
+    max_expanded_nodes: int
+
+
+def resolve_layer03_route_probe_limits(*, search_bbox: BBox) -> RouteProbeLimits:
+    """Scale Phase B probe budget so rim stubs can reach exterior goals on large maps."""
+
+    span_x = search_bbox.max_x - search_bbox.min_x + 1
+    span_y = search_bbox.max_y - search_bbox.min_y + 1
+    manhattan_span = span_x + span_y
+    max_path = max(
+        LAYER03_ROUTE_PROBE_MIN_PATH_CELLS,
+        min(LAYER03_ROUTE_PROBE_MAX_PATH_CELLS_CAP, manhattan_span * 4),
+    )
+    max_expanded = max(
+        LAYER03_ROUTE_PROBE_MIN_EXPANDED_NODES,
+        min(LAYER03_ROUTE_PROBE_MAX_EXPANDED_NODES_CAP, max_path * 16),
+    )
+    return RouteProbeLimits(max_path_cells=max_path, max_expanded_nodes=max_expanded)
+
+
+def _limits_or_default(probe_limits: RouteProbeLimits | None) -> RouteProbeLimits:
+    if probe_limits is not None:
+        return probe_limits
+    return RouteProbeLimits(
+        max_path_cells=LAYER03_ROUTE_PROBE_MAX_PATH_CELLS,
+        max_expanded_nodes=LAYER03_ROUTE_PROBE_MAX_EXPANDED_NODES,
+    )
 
 
 def _reconstruct_path(parent: dict[Coord, Coord | None], goal: Coord) -> tuple[Coord, ...]:
@@ -65,6 +107,7 @@ def _failed_probe(
     max_depth_reached: int,
     frontier_exhausted: bool,
     probe_limit_hit: bool,
+    max_path_cells: int,
 ) -> RouteProbedBundleCandidate:
     reason, diagnostic = classify_exterior_goal_unreachable(
         anchor_coord=candidate.anchor_coord,
@@ -76,7 +119,7 @@ def _failed_probe(
         matching_goals=matching,
         walkable_cells=domain.walkable_cells,
         external_void_cells=external_void_cells,
-        bfs_limit=LAYER03_ROUTE_PROBE_MAX_PATH_CELLS,
+        bfs_limit=max_path_cells,
         visited_count=visited_count,
         max_depth_reached=max_depth_reached,
         frontier_exhausted=frontier_exhausted,
@@ -99,7 +142,11 @@ def weighted_route_probe(
     domain: WeightedTransportRouteDomain,
     field_cells: frozenset[Coord],
     external_void_cells: frozenset[Coord] | None = None,
+    probe_limits: RouteProbeLimits | None = None,
 ) -> RouteProbedBundleCandidate:
+    limits = _limits_or_default(probe_limits)
+    max_path_cells = limits.max_path_cells
+    max_expanded_nodes = limits.max_expanded_nodes
     matching = tuple(g for g in route_goals if g.transport_kind == candidate.transport_kind)
     void_cells = _resolve_external_void_cells(domain, external_void_cells)
     if not matching:
@@ -112,6 +159,7 @@ def weighted_route_probe(
             max_depth_reached=0,
             frontier_exhausted=True,
             probe_limit_hit=False,
+            max_path_cells=max_path_cells,
         )
 
     start = candidate.route_probe_start_coord
@@ -133,7 +181,7 @@ def weighted_route_probe(
 
     best_goal: tuple[int, int, int, str, Coord, tuple[Coord, ...]] | None = None
 
-    while heap and expanded < LAYER03_ROUTE_PROBE_MAX_EXPANDED_NODES:
+    while heap and expanded < max_expanded_nodes:
         cost, current = heapq.heappop(heap)
         if dist_cost.get(current) != cost:
             continue
@@ -142,7 +190,7 @@ def weighted_route_probe(
 
         if current in goal_coords:
             path = _reconstruct_path(parent, current)
-            if len(path) <= LAYER03_ROUTE_PROBE_MAX_PATH_CELLS:
+            if len(path) <= max_path_cells:
                 goal = next(g for g in matching if g.coord == current)
                 candidate_tuple = (
                     cost,
@@ -192,7 +240,7 @@ def weighted_route_probe(
             reject_reason=None,
         )
 
-    probe_limit_hit = bool(heap) and expanded >= LAYER03_ROUTE_PROBE_MAX_EXPANDED_NODES
+    probe_limit_hit = bool(heap) and expanded >= max_expanded_nodes
     frontier_exhausted = not heap
     return _failed_probe(
         candidate=candidate,
@@ -203,6 +251,7 @@ def weighted_route_probe(
         max_depth_reached=max_depth,
         frontier_exhausted=frontier_exhausted,
         probe_limit_hit=probe_limit_hit,
+        max_path_cells=max_path_cells,
     )
 
 
@@ -212,7 +261,10 @@ def immediate_route_probe(
     route_goals: tuple[RouteGoal, ...],
     placeable_cells: frozenset[Coord],
     external_void_cells: frozenset[Coord] | None = None,
+    probe_limits: RouteProbeLimits | None = None,
 ) -> RouteProbedBundleCandidate:
+    limits = _limits_or_default(probe_limits)
+    max_path_cells = limits.max_path_cells
     matching = tuple(g for g in route_goals if g.transport_kind == candidate.transport_kind)
     void_cells = (
         external_void_cells
@@ -236,6 +288,7 @@ def immediate_route_probe(
             max_depth_reached=0,
             frontier_exhausted=True,
             probe_limit_hit=False,
+            max_path_cells=max_path_cells,
         )
 
     start = candidate.route_probe_start_coord
@@ -258,7 +311,7 @@ def immediate_route_probe(
         current = queue.popleft()
         dist = distance[current]
         max_depth = max(max_depth, dist)
-        if dist >= LAYER03_ROUTE_PROBE_MAX_PATH_CELLS:
+        if dist >= max_path_cells:
             probe_limit_hit = True
             continue
         for neighbor in neighbors4(current):
@@ -312,13 +365,20 @@ def immediate_route_probe(
         max_depth_reached=max_depth,
         frontier_exhausted=frontier_exhausted,
         probe_limit_hit=probe_limit_hit,
+        max_path_cells=max_path_cells,
     )
 
 
 __all__ = [
     "LAYER03_ROUTE_PROBE_MAX_EXPANDED_NODES",
+    "LAYER03_ROUTE_PROBE_MAX_EXPANDED_NODES_CAP",
     "LAYER03_ROUTE_PROBE_MAX_PATH_CELLS",
+    "LAYER03_ROUTE_PROBE_MAX_PATH_CELLS_CAP",
     "LAYER03_ROUTE_PROBE_MAX_STEPS",
+    "LAYER03_ROUTE_PROBE_MIN_EXPANDED_NODES",
+    "LAYER03_ROUTE_PROBE_MIN_PATH_CELLS",
+    "RouteProbeLimits",
     "immediate_route_probe",
+    "resolve_layer03_route_probe_limits",
     "weighted_route_probe",
 ]

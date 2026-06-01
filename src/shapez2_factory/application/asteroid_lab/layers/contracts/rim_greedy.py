@@ -107,6 +107,7 @@ class RimGreedyPass2Report:
 @dataclass(frozen=True, slots=True)
 class RimGreedyMetrics:
     rim_anchor_count: int = 0
+    route_feasible_rim_anchor_count: int = 0
     committed_placement_count: int = 0
     rejected_attempt_count: int = 0
     reserved_route_cell_count: int = 0

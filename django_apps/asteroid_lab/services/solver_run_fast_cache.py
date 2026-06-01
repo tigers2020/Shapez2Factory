@@ -14,7 +14,7 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
 )
 
 # Keep in sync with ``lab_replay_persisted_cache.CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION``.
-_CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION = 1
+_CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION = 2
 
 _FAST_CACHE_UPDATE_FIELDS = (
     "lab_replay_manifest_summary_json",

@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models.fields.json import KeyTransform
 
@@ -22,6 +23,15 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
 )
 
 CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION = 2
+
+
+def replay_compose_cache_enabled() -> bool:
+    """Whether composed replay may be read/written on ``SolverRun`` (not solver CLI input)."""
+
+    raw = getattr(settings, "ASTEROID_LAB_REPLAY_COMPOSE_CACHE_ENABLED", True)
+    if isinstance(raw, bool):
+        return raw
+    return str(raw).strip().lower() not in {"0", "false", "no", "off"}
 
 
 def _is_stale_thin_artifact_l3_cache(frames: list[dict[str, Any]]) -> bool:
@@ -124,6 +134,9 @@ def load_manifest_summary_for_run_id(run_id: int) -> dict[str, Any] | None:
 def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
     """Load replay frames artifact-first, then dedicated DB cache, then legacy config."""
 
+    if not replay_compose_cache_enabled():
+        return None
+
     row = (
         SolverRun.objects.filter(pk=int(run_id))
         .values(
@@ -138,9 +151,9 @@ def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
             composed = payload.get("composed_frames")
             if isinstance(composed, list) and composed:
                 frames = [dict(item) for item in composed if isinstance(item, dict)]
-                if lab_replay_frames_are_renderable(frames) and not _is_stale_thin_artifact_l3_cache(
-                    frames
-                ):
+                renderable = lab_replay_frames_are_renderable(frames)
+                stale_thin_l3 = _is_stale_thin_artifact_l3_cache(frames)
+                if renderable and not stale_thin_l3:
                     return frames
 
     key = SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY
@@ -174,6 +187,9 @@ def persist_composed_replay_for_run_id(
     metrics: dict[str, Any],
 ) -> None:
     """Fresh read-merge-write; preserve unrelated ``config_json`` keys (§4.8)."""
+
+    if not replay_compose_cache_enabled():
+        return
 
     summary = build_manifest_summary_from_compose(frames=frames, metrics=metrics)
     run = SolverRun.objects.select_for_update().get(pk=int(run_id))
@@ -217,4 +233,5 @@ __all__ = [
     "load_composed_frames_for_run_id",
     "load_manifest_summary_for_run_id",
     "persist_composed_replay_for_run_id",
+    "replay_compose_cache_enabled",
 ]

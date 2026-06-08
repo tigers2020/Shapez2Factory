@@ -194,4 +194,4 @@ For repo work, prioritize **AGENTS + shapez2-core** over long prose.
 
 ### On-demand
 
-Long replay/DTO sessions: optional link hub [`.cursor/skills/_archive/caveman-mode/SKILL.md`](../../../.cursor/skills/_archive/caveman-mode/SKILL.md) (`@caveman-mode`) — checklist only; chat + close canon stays AGENTS + shapez2-core.
+Long replay/DTO sessions: optional compressed style via [`.cursor/rules/caveman.mdc`](../../../.cursor/rules/caveman.mdc); chat canon stays AGENTS + shapez2-core.

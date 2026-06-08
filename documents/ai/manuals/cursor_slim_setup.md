@@ -52,7 +52,7 @@ Putting long workflow · test · layer rules in User Rules double-loads them eve
 
 **Optional global skill** (e.g. `C:\Users\<user>\.agents\skills\caveman\`): OK when user attaches `/caveman`; must not override six-section headings or AGENTS language table.
 
-**Archived project hub** [`.cursor/skills/_archive/caveman-mode/`](../../../.cursor/skills/_archive/caveman-mode/) stays `disable-model-invocation: true` — link checklist only, not a second always-on rule stack.
+**Project caveman router:** [`.cursor/rules/caveman.mdc`](../../../.cursor/rules/caveman.mdc) — thin router; optional global `/caveman` skill when attached.
 
 ## Context-saving habits
 

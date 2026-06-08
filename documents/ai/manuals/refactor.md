@@ -24,4 +24,4 @@ Pass [`testing.md`](testing.md) Contract-first SDD · dual gate, or document why
 
 ## Related
 
-- PR · scope-level **comprehensive review** (architecture · security · performance · style parallel audit, then integrated report): [`.cursor/skills/code-review-harness/SKILL.md`](../../../.cursor/skills/code-review-harness/SKILL.md) (`@code-review-harness`)
+- PR · scope-level **comprehensive review** (architecture · security · performance · style parallel audit, then integrated report): [`.cursor/skills/quality-check/SKILL.md`](../../../.cursor/skills/quality-check/SKILL.md) (`@quality-check`)

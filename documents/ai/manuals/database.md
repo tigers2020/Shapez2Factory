@@ -16,4 +16,4 @@ Per-app `models.py` and migrations follow each Django app directory convention. 
 ## Related
 
 - Django app structure: [`django.md`](django.md)
-- Agent procedure for **layered** schema · ETL · data validation · monitoring: [`.cursor/skills/data-pipeline-harness/SKILL.md`](../../../.cursor/skills/data-pipeline-harness/SKILL.md) (`@data-pipeline-harness`)
+- Layered schema · ETL · data validation: [`django.md`](django.md) and [`.cursor/skills/shapez2-workflow/SKILL.md`](../../../.cursor/skills/shapez2-workflow/SKILL.md) (`@shapez2-workflow`)

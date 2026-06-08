@@ -23,5 +23,6 @@ Always route:
 - Shapez2 domain: `.cursor/rules/shapez2-domain.mdc`
 - SDD/testing: `.cursor/rules/workflow.mdc`
 - Core constraints: `.cursor/rules/shapez2-core.mdc`
+- Hermes skill workflow: `.cursor/rules/00-hermes-skill-suggestion.mdc`
 
 Do not claim done without evidence. Do not commit/push/PR unless user asks.

@@ -21,6 +21,10 @@ After the final listed task: run plan-listed validation, final report, stop. Fin
 
 Forbidden without explicit user approval: extra subtasks (D-1…), follow-up phases, deferred implementation, opportunistic cleanup/refactor/docs. Discoveries → **Deferred Work** only; router `.cursor/rules/agent_scope.mdc`, prompt `documents/ai/templates/execution-scope-contract.md`.
 
+## Cursor ↔ Hermes Skill Suggestion
+
+Cursor implements; Hermes researches and suggests skills — not APPROVE/BLOCK. Flow: Plan Mode → `PLAN_TO_SKILL_REQUEST` → `SKILL_SUGGESTION` → implement → `SKILL_APPLICATION_SUMMARY`. Rules: `00-hermes-skill-suggestion.mdc`, `01-hermes-handoff-format.mdc`.
+
 ## Shapez2 Routing
 
 Use `/grill-me-shapez2` when the user/task/chat touches Shapez2, Asteroid Lab, solver layers, asteroid mining, placement, routing, replay, UI, reconstruction, transport, belt/pipe, L2/L3/L4, rim greedy placement, or related project code.

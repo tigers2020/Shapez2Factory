@@ -1,0 +1,45 @@
+---
+description: Cursor plans; Hermes researches and suggests project-specific development skills. Not a plan approval gate.
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Hermes Skill Suggestion Workflow
+
+Canon: `AGENTS.md`, `.cursor/rules/01-hermes-handoff-format.mdc`.
+
+## Role split
+
+**Cursor:** codebase analysis, implementation plans, code, tests, result summaries.
+
+**Hermes:** read Cursor's plan; research standards, libraries, algorithms, best practices; check project skills/conventions; suggest implementation skill; draft or improve `SKILL.md`; surface better approaches.
+
+Hermes is **not** a plan approval gate. Do not ask Hermes only for APPROVE/BLOCK.
+
+Ask Hermes for: research findings, recommended approach, project-specific skill suggestion, implementation checklist, validation checklist, risks and alternatives.
+
+## Non-trivial workflow
+
+1. Use Cursor Plan Mode first.
+2. Do not implement immediately.
+3. Produce `PLAN_TO_SKILL_REQUEST` for Hermes.
+4. Wait for Hermes `SKILL_SUGGESTION`.
+5. Apply the suggested skill when implementing.
+6. After implementation, send `SKILL_APPLICATION_SUMMARY`; request `SKILL_IMPROVEMENT_REQUEST` if needed.
+
+## Cursor must not
+
+- treat Hermes as the implementer
+- ask Hermes to write production code directly
+- ask Hermes only for APPROVE/BLOCK
+- skip research for new algorithms, libraries, standards, or complex design
+- install dependencies without explicit justification
+- modify unrelated files
+- claim a skill is final without testing it on the actual task
+
+## Trivial exception
+
+Skip for typo-only markdown or local scratch notes only.
+
+Never skip for: Python, Django behavior, models/views/forms/serializers/services/tasks, tests, migrations, settings, dependencies, algorithms, performance-sensitive or security-sensitive code.

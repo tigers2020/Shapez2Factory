@@ -1,0 +1,68 @@
+---
+description: Cursor-to-Hermes handoff formats for skill suggestion workflow.
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Hermes Skill Handoff Formats
+
+## PLAN_TO_SKILL_REQUEST
+
+After Plan Mode, before implementation.
+
+```md
+[PLAN_TO_SKILL_REQUEST]
+
+## Task goal
+...
+
+## Cursor plan
+...
+
+## Current project context
+- Framework / relevant files / existing vs expected behavior
+- Related AGENTS.md / .cursor rules / skills checked
+
+## Technical uncertainty
+...
+
+## Research needed
+- Current standard / better algorithm / library / security / performance / Django concerns
+
+## Constraints
+...
+
+## Desired Hermes output
+Research current standards and project context; suggest a development skill.
+Do not simply APPROVE or BLOCK.
+
+Return: research summary, recommended direction, rejected alternatives,
+SKILL.md draft or patch, implementation checklist, validation checklist, open risks.
+```
+
+## SKILL_APPLICATION_SUMMARY
+
+After Cursor applies a Hermes skill and implements.
+
+```md
+[SKILL_APPLICATION_SUMMARY]
+
+## Skill used / implementation summary / files changed
+## Tests or validation run / what worked / where skill was unclear
+## Deviations from skill / suggested skill improvements
+```
+
+## SKILL_IMPROVEMENT_REQUEST
+
+When implementation shows the skill should be updated.
+
+```md
+[SKILL_IMPROVEMENT_REQUEST]
+
+## Original skill / problem found / evidence / requested improvement
+```
+
+## Hermes response: SKILL_SUGGESTION
+
+`[SKILL_SUGGESTION]` with: research summary, recommended direction, fit for shapez2Factory, rejected alternatives, skill name, `SKILL.md` draft, implementation + validation checklists, risks, follow-up research.

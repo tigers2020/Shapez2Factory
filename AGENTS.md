@@ -15,56 +15,47 @@ shapez2 Factory Planner governance: short rules, strict contracts, small safe ch
 
 ## Agent Scope
 
-Plan execution is closed-world: only tasks explicitly listed in the approved plan or user prompt.
-
-After the final listed task: run plan-listed validation, final report, stop. Final response must include `STOPPED_AT_APPROVED_SCOPE`.
-
-Forbidden without explicit user approval: extra subtasks (D-1…), follow-up phases, deferred implementation, opportunistic cleanup/refactor/docs. Discoveries → **Deferred Work** only; router `.cursor/rules/agent_scope.mdc`, prompt `documents/ai/templates/execution-scope-contract.md`.
+Closed-world execution only — tasks explicitly listed in the approved plan or user prompt. Handoff prep excepted: `.cursor/rules/agent_scope.mdc`. Stop marker: `STOPPED_AT_APPROVED_SCOPE`.
 
 ## Cursor ↔ Hermes Skill Suggestion
 
-Cursor implements; Hermes researches and suggests skills — not APPROVE/BLOCK. Flow: Plan Mode → `PLAN_TO_SKILL_REQUEST` → `SKILL_SUGGESTION` → implement → `SKILL_APPLICATION_SUMMARY`. Rules: `00-hermes-skill-suggestion.mdc`, `01-hermes-handoff-format.mdc`.
+Cursor implements; Hermes researches and suggests skills — not APPROVE/BLOCK. Canon: `docs/agent-workflows/hermes-skill-suggestion.md`, `skill-trust-boundary.md`, `hermes-handoff.md`. Routers: `00-hermes-skill-suggestion.mdc`, `01-hermes-handoff-format.mdc`.
 
 ## Shapez2 Routing
 
-Use `/grill-me-shapez2` when the user/task/chat touches Shapez2, Asteroid Lab, solver layers, asteroid mining, placement, routing, replay, UI, reconstruction, transport, belt/pipe, L2/L3/L4, rim greedy placement, or related project code.
-
-For Shapez2/Asteroid Lab, current canon/spec/ADR beats stale older docs, archived notes, and agent memory.
+Use `/grill-me-shapez2` for Shapez2/Asteroid Lab/solver work when contract is ambiguous. Pipeline: `shapez2-domain.mdc` -> `docs/agent-workflows/hermes-skill-suggestion.md`. Canon/spec/ADR beats stale docs and agent memory.
 
 ## SDD / Testing
 
 - Spec/contract first; tests verify contracts, not agent guesses.
-- Acceptance tests must map to real behavior: Given/When/Then, regression, golden, invariant, schema, or API contract.
-- Do not add weak tests that merely pass or assert implementation trivia.
-- Do not weaken, delete, skip, or relax tests to force green.
-- Regression work needs a failing repro before the fix unless impossible; record why if skipped.
-- Solver/replay/runtime changes must preserve invariants named in matching rules and canon docs.
+- Acceptance tests: Given/When/Then, regression, golden, invariant, schema, or API contract.
+- No weak tests, no relaxed/skipped tests to force green.
+- Regression: failing repro before fix unless impossible.
+- Solver/replay/runtime: preserve invariants in matching rules and canon docs.
 
 ## Validation
 
-Use focused gates while iterating, then broader gates before done claims:
+Canonical commands — handoff docs and Hermes checklists must reference this section only:
 
 ```bash
+python manage.py check
 powershell -File scripts/test_fast.ps1
 ruff check .
 mypy django_apps config src
 black --check .
 ```
 
-PR/full gate when requested: `scripts/test_full.ps1` plus lint/type/format. Solver smoke: `python manage.py run_solver --slug <slug>`.
+PR/full: `scripts/test_full.ps1` plus lint/type/format. Solver smoke: `python manage.py run_solver --slug <slug>`.
 
 ## Scope / Permissions
 
 - Allowed edits by default: source, tests, docs, governance files.
-- This governance task scope: only `AGENTS.md` and `.cursor/rules/**/*.mdc`.
-- Ask before editing `.env`, secrets, CI/deploy, security-sensitive config, or doing large delete/rename.
+- Ask before `.env`, secrets, CI/deploy, security-sensitive config, or large delete/rename.
 - Do not invent commands, tool behavior, MCP behavior, or unverified pass claims.
 
 ## Governance Files
 
-`AGENTS.md` and every `.cursor/rules/**/*.mdc` must stay <= 75 lines.
-
-Canonical project rules live here. Cursor `.mdc` files are thin routers: frontmatter, trigger, globs, and pointers only.
+`AGENTS.md` and every `.cursor/rules/**/*.mdc` must stay <= 75 lines. `.mdc` files are thin routers; operational detail lives in `docs/agent-workflows/`. Check: `scripts/check_governance.ps1`.
 
 ## Conflict Precedence
 

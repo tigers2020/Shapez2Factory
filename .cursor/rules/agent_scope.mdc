@@ -22,36 +22,30 @@ Forbidden without explicit user approval:
 - Cleanup, refactor, optimization, or docs outside the approved task list
 - File changes outside approved scope
 
-Allowed after the final listed task:
+## Hermes handoff exception (non-trivial)
 
-1. Run validation commands explicitly listed in the plan or prompt
-2. Produce the final report (format below)
-3. List deferred work as text only
-4. Stop
+Per `00-hermes-skill-suggestion.mdc`, these are **preparatory handoff steps**, not extra implementation scope:
 
-## Final report (plan execution)
+- `PLAN_TO_SKILL_REQUEST`
+- waiting for Hermes `SKILL_SUGGESTION`
+- `SKILL_APPLICATION_SUMMARY`
+
+Not D-1 subtasks. User may explicitly skip Hermes.
+
+## After final listed task
+
+1. Run validation from plan/prompt or `AGENTS.md` § Validation
+2. Final report (below) with `STOPPED_AT_APPROVED_SCOPE`
+3. Deferred work as text only — do not implement
+
+## Final report
 
 ```md
 ## Final Report
-
-### Completed
-- …
-
-### Validation
-- command: …
-- result: …
-
-### Deferred Work
-Observations only. Do not implement without explicit user approval.
-
-- …
-
-### Stop Marker
+### Completed / Validation / Deferred Work
 STOPPED_AT_APPROVED_SCOPE
 ```
 
-## Execution prompt
-
-Paste block: `documents/ai/templates/execution-scope-contract.md`
+Execution prompt: `documents/ai/templates/execution-scope-contract.md`
 
 Routers: `.cursor/rules/workflow.mdc`, `.cursor/rules/cursor-usage.mdc`

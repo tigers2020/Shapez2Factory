@@ -1,68 +1,23 @@
 ---
-description: Cursor-to-Hermes handoff formats for skill suggestion workflow.
-globs:
-  - "**/*"
+description: "Hermes handoff format router"
 alwaysApply: true
 ---
 
-# Hermes Skill Handoff Formats
+# Hermes Handoff Router
 
-## PLAN_TO_SKILL_REQUEST
+Templates and `SKILL_SUGGESTION` quality contract:
 
-After Plan Mode, before implementation.
+`docs/agent-workflows/hermes-handoff.md`
 
-```md
-[PLAN_TO_SKILL_REQUEST]
+Markers:
 
-## Task goal
-...
+- `PLAN_TO_SKILL_REQUEST` — after Plan Mode, before implementation
+- `SKILL_SUGGESTION` — Hermes response with full skill draft
+- `SKILL_APPLICATION_SUMMARY` — after implementation
+- `SKILL_IMPROVEMENT_REQUEST` — when skill needs update
 
-## Cursor plan
-...
+Validation commands: `AGENTS.md` § Validation only. Do not invent generic `pytest` / `mypy .` unless listed there.
 
-## Current project context
-- Framework / relevant files / existing vs expected behavior
-- Related AGENTS.md / .cursor rules / skills checked
+Skill trust: `docs/agent-workflows/skill-trust-boundary.md`
 
-## Technical uncertainty
-...
-
-## Research needed
-- Current standard / better algorithm / library / security / performance / Django concerns
-
-## Constraints
-...
-
-## Desired Hermes output
-Research current standards and project context; suggest a development skill.
-Do not simply APPROVE or BLOCK.
-
-Return: research summary, recommended direction, rejected alternatives,
-SKILL.md draft or patch, implementation checklist, validation checklist, open risks.
-```
-
-## SKILL_APPLICATION_SUMMARY
-
-After Cursor applies a Hermes skill and implements.
-
-```md
-[SKILL_APPLICATION_SUMMARY]
-
-## Skill used / implementation summary / files changed
-## Tests or validation run / what worked / where skill was unclear
-## Deviations from skill / suggested skill improvements
-```
-
-## SKILL_IMPROVEMENT_REQUEST
-
-When implementation shows the skill should be updated.
-
-```md
-[SKILL_IMPROVEMENT_REQUEST]
-
-## Original skill / problem found / evidence / requested improvement
-```
-
-## Hermes response: SKILL_SUGGESTION
-
-`[SKILL_SUGGESTION]` with: research summary, recommended direction, fit for shapez2Factory, rejected alternatives, skill name, `SKILL.md` draft, implementation + validation checklists, risks, follow-up research.
+Workflow: `.cursor/rules/00-hermes-skill-suggestion.mdc`

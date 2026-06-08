@@ -1,24 +1,25 @@
 ---
-description: "Shapez2 router: trigger /grill-me-shapez2; current canon wins"
+description: "Shapez2 router: grill + Hermes pipeline; current canon wins"
 alwaysApply: true
 ---
 
 # Shapez2 Domain Router
 
-Canon: `AGENTS.md`.
+Canon: `AGENTS.md` § Shapez2 Routing.
 
-Use `/grill-me-shapez2` when task/chat touches:
+Trigger `/grill-me-shapez2` when task touches Shapez2, Asteroid Lab, solver layers, mining, placement, routing, replay, UI, reconstruction, transport, belt/pipe, L2/L3/L4, rim placement, DTO/replay contracts, or related code.
 
-Shapez2, Asteroid Lab, solver layers, asteroid mining, placement, routing, replay, UI, reconstruction, transport, belt/pipe, L2/L3/L4, rim greedy placement, DTO/replay contracts, or related project code.
+## Canonical pipeline
 
-Purpose: clarify contract, authority, risks, and acceptance before implementation.
+Full order: `docs/agent-workflows/hermes-skill-suggestion.md`
 
-Current canon/spec/ADR wins over stale docs, archived notes, generated summaries, and assumptions.
+```text
+Problem → contract check → Plan Mode → grill (if ambiguous) → PLAN_TO_SKILL_REQUEST
+→ SKILL_SUGGESTION → implement → SKILL_APPLICATION_SUMMARY
+```
 
-Related routers:
+Grill only when domain contract is ambiguous, solver behavior changes, or user asks. If grill and Hermes conflict: **tell the user** — do not silently choose.
 
-- Asteroid Lab invariants: `.cursor/rules/asteroid-lab-invariants.mdc`
-- Django apps: `.cursor/rules/django-apps.mdc`
-- Web UI: `.cursor/rules/web-interface.mdc`
-- Layers: `.cursor/rules/architecture.mdc`
-- SDD/testing: `.cursor/rules/workflow.mdc`
+Current canon/spec/ADR beats stale docs, archived notes, and agent memory.
+
+Related: `asteroid-lab-invariants.mdc`, `django-apps.mdc`, `web-interface.mdc`, `architecture.mdc`, `workflow.mdc`

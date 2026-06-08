@@ -63,6 +63,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django_apps.web.middleware.request_id.RequestIdMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.gzip.GZipMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -325,10 +326,8 @@ if _google_cid and _google_sec:
     }
 SOCIALACCOUNT_PROVIDERS = _social_providers
 
-# --- Asteroid Lab POST / optimization replay observability (12K) ---
-# Writes ``django_apps.web.views.public_pages`` (``asteroid_lab_projects_json``) and
-# ``django_apps.web.services.asteroid_lab_post_inspection_evolution`` (attach summary)
-# to ``var/log/asteroid_lab.log`` (gitignored). Set ``ASTEROID_LAB_FILE_LOG=0`` to disable.
+# --- Ambient structured JSON file logging (asteroid_lab + solver services) ---
+# JSON Lines under ``var/log/`` (gitignored). Set ``ASTEROID_LAB_FILE_LOG=0`` to disable.
 _asteroid_lab_file_log = os.environ.get("ASTEROID_LAB_FILE_LOG", "1").strip().lower() not in (
     "",
     "0",
@@ -341,10 +340,14 @@ if _asteroid_lab_file_log:
     LOGGING = {
         "version": 1,
         "disable_existing_loggers": False,
+        "filters": {
+            "request_id": {
+                "()": "config.logging_json.RequestIdFilter",
+            },
+        },
         "formatters": {
-            "asteroid_lab_file": {
-                "format": "{levelname} {asctime} {name} {message}",
-                "style": "{",
+            "json_file": {
+                "()": "config.logging_json.JsonLogFormatter",
             },
         },
         "handlers": {
@@ -353,7 +356,16 @@ if _asteroid_lab_file_log:
                 "filename": str(_VAR_LOG_DIR / "asteroid_lab.log"),
                 "maxBytes": 5 * 1024 * 1024,
                 "backupCount": 3,
-                "formatter": "asteroid_lab_file",
+                "formatter": "json_file",
+                "filters": ["request_id"],
+            },
+            "solver_file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": str(_VAR_LOG_DIR / "solver.log"),
+                "maxBytes": 5 * 1024 * 1024,
+                "backupCount": 3,
+                "formatter": "json_file",
+                "filters": ["request_id"],
             },
         },
         "loggers": {
@@ -366,6 +378,16 @@ if _asteroid_lab_file_log:
                 "handlers": ["asteroid_lab_file"],
                 "level": "INFO",
                 "propagate": True,
+            },
+            "django_apps.asteroid_lab.services": {
+                "handlers": ["asteroid_lab_file"],
+                "level": "INFO",
+                "propagate": True,
+            },
+            "django_apps.shapez_solver": {
+                "handlers": ["solver_file"],
+                "level": "DEBUG",
+                "propagate": False,
             },
         },
     }

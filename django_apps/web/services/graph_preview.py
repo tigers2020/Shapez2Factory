@@ -116,7 +116,10 @@ class _PlaywrightPrerenderer:
         json_parent: Path | None = None,
     ) -> bool:
         if not self._script_path.is_file():
-            logger.warning("Graph preview renderer script missing: %s", self._script_path)
+            logger.warning(
+                "graph_preview_script_missing",
+                extra={"script_path": str(self._script_path)},
+            )
             return False
 
         parent = json_parent if json_parent is not None else self._cache_dir
@@ -154,10 +157,12 @@ class _PlaywrightPrerenderer:
                 if len(err_tail) > 600:
                     err_tail = err_tail[:600] + "…"
                 logger.warning(
-                    "Graph preview render failed: returncode=%s stderr_tail=%r stdout=%s",
-                    completed.returncode,
-                    err_tail,
-                    completed.stdout,
+                    "graph_preview_render_failed",
+                    extra={
+                        "returncode": completed.returncode,
+                        "stderr_tail": err_tail,
+                        "stdout": completed.stdout,
+                    },
                 )
                 return False
             return True

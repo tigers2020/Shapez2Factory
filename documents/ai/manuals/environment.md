@@ -64,7 +64,32 @@ var/log/asteroid_lab_layer_stack/projects/{project_slug}/runs/{run_id}/
 Separate optional paths (not merged into layer-stack):
 
 - `var/asteroid_boundary_logs/` — boundary JSONL (`ASTEROID_LAB_BOUNDARY_JSONL`)
-- `var/log/asteroid_lab.log` — Django file logger (`ASTEROID_LAB_FILE_LOG`)
+- `var/log/asteroid_lab.log` — ambient JSON Lines (`ASTEROID_LAB_FILE_LOG`) — web views + `asteroid_lab.services`
+- `var/log/solver.log` — ambient JSON Lines (`ASTEROID_LAB_FILE_LOG`) — `django_apps.shapez_solver`
+- `var/log/asteroid_lab_perf/lab_perf.jsonl` — HTTP latency JSONL (`ASTEROID_LAB_PERF_TRACE` only)
+
+**Ambient file log schema** (`asteroid_lab.log`, `solver.log` — one JSON object per line; not layer-stack / perf trace):
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `ts` | string | ISO8601 UTC timestamp |
+| `level` | string | `DEBUG`, `INFO`, `WARNING`, `ERROR`, … |
+| `logger` | string | Python logger name |
+| `message` | string | Event name or message text |
+| `request_id` | string \| null | HTTP correlation ID (null outside request) |
+| *(extra)* | any | Non-colliding `logger.*(..., extra={...})` keys promoted to top level |
+
+Filter examples:
+
+```bash
+# jq (one request)
+jq -c 'select(.request_id=="abcd1234")' var/log/asteroid_lab.log
+
+# grep slug in structured extra
+grep '"slug":"abc123"' var/log/solver.log
+```
+
+| `ASTEROID_LAB_FILE_LOG` | on (`1`) | `config/settings.py` — `0` disables all ambient file handlers |
 | `SHAPEZ_COPY_DEBUG_DIR` | off (empty string) | `config/shapez_runtime_flags.py` (no consumer code — reserved dump path) |
 
 OAuth · Support URL, etc.: see `config/settings.py`.

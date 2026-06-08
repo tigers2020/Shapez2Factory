@@ -59,13 +59,16 @@ def gene_template_from_gene_seed(
     resolved_cache = cache if cache is not None else _build_exhaustive_cache(generator_version)
     gene = resolved_cache.get(gene_key)
     if gene is None:
-        logger.debug("gene_key not in exhaustive cache: %r", gene_key)
+        logger.debug(
+            "gene_cache_miss",
+            extra={"gene_key": gene_key, "step": "validate", "cache": "exhaustive"},
+        )
         return None, GeneTemplateExportErrorCode.GENE_KEY_NOT_IN_CACHE
 
     try:
         template = gene_template_from_generated_sample(gene)
     except Exception:
-        logger.exception("conversion error for gene_key=%r", gene_key)
+        logger.error("gene_conversion_error", extra={"gene_key": gene_key}, exc_info=True)
         return None, GeneTemplateExportErrorCode.CONVERSION_ERROR
 
     return template, None
@@ -140,10 +143,12 @@ def load_gene_templates_from_gene_seeds(
 
     expanded = expand_gene_templates_with_fluid_clones(templates)
     logger.info(
-        "load_gene_templates_from_gene_seeds loaded=%d expanded=%d skipped=%d",
-        len(templates),
-        len(expanded),
-        skipped,
+        "gene_templates_loaded",
+        extra={
+            "loaded": len(templates),
+            "expanded": len(expanded),
+            "skipped": skipped,
+        },
     )
     return expanded, skipped, error_codes
 

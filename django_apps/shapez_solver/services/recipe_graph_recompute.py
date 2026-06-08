@@ -9,6 +9,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Any
 
+from config.log_timing import log_timing
 from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_core.domain.shape_catalog import FLUID_SOURCE_PRIMARY_COLORS
 from django_apps.shapez_solver.domain.operations import OperationType
@@ -712,20 +713,16 @@ def _recompute_one_operation_in_topo(
     if not ok:
         if op_type == OperationType.SWAPPER:
             logger.warning(
-                "recipe_graph swapper failed op_id=%s msg=%r inputs=%s",
-                op_id,
-                msg,
-                input_codes,
+                "recipe_graph_swapper_failed",
+                extra={"op_id": op_id, "reason": msg, "inputs": input_codes},
             )
         warnings.append(msg)
         return
 
     if op_type == OperationType.SWAPPER:
         logger.info(
-            "recipe_graph swapper ok op_id=%s inputs=%s outputs=%s",
-            op_id,
-            input_codes,
-            outputs,
+            "recipe_graph_swapper_ok",
+            extra={"op_id": op_id, "inputs": input_codes, "outputs": outputs},
         )
     out_edges = _sorted_output_edges_for_operation(op_id, output_edges_by_from)
     output_quantities = _output_quantities_for_recomputed_op(
@@ -799,7 +796,12 @@ def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[
     Returns (updated_document, warnings).
     """
     work = validate_graph_document(doc)
-    return recompute_validated_graph_document(work)
+    with log_timing(
+        logger,
+        "recipe_graph_recompute",
+        node_count=len(work.get("nodes", [])),
+    ):
+        return recompute_validated_graph_document(work)
 
 
 def _validated_graph_document_for_pattern_macro(raw: object) -> dict[str, Any] | None:

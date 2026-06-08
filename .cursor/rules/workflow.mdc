@@ -13,6 +13,8 @@ Pipeline:
 problem -> authority -> contract -> plan -> acceptance tests -> small change -> gate
 ```
 
+For Shapez2 domain or Hermes skill-suggestion workflows, route to `shapez2-domain.mdc` and `docs/agent-workflows/`.
+
 Rules:
 
 - No production edit until problem, goal, non-goals, contract, and acceptance are clear.

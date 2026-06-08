@@ -1,0 +1,32 @@
+{
+  "exterior_transport_capacity": [
+    {
+      "per_connector_capacity_per_min": "5760.0000",
+      "resource_kind": "shape",
+      "speed_tier": 1
+    },
+    {
+      "per_connector_capacity_per_min": "345600.0000",
+      "resource_kind": "fluid",
+      "speed_tier": 1
+    }
+  ],
+  "game_data_dump_hash": "sha256:ddd8a0ece0813048e2c50580d72bf398b653ab1046ea92e8537013a0c9911a04",
+  "mining_extraction_rules": [
+    {
+      "max_extension_count": 3,
+      "mini_unit_output_per_min": "300.0000",
+      "output_unit": "liters_per_min",
+      "resource_kind": "fluid",
+      "source_kind": "CANON_MANUAL"
+    },
+    {
+      "max_extension_count": 3,
+      "mini_unit_output_per_min": "30.0000",
+      "output_unit": "shapes_per_min",
+      "resource_kind": "shape",
+      "source_kind": "CANON_MANUAL"
+    }
+  ],
+  "schema_version": "game_data_snapshot_v1"
+}

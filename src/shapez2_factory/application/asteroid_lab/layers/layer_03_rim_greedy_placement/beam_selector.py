@@ -22,6 +22,11 @@ from dataclasses import dataclass, field, replace
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
     RouteProbedBundleCandidate,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.penalty_mode import (
+    BeamPenaltyWeights,
+    PenaltyMode,
+    beam_penalty_weights,
+)
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_reprobe import (  # noqa: E501
     CommitDomainState,
     CommitReprobeContext,
@@ -29,11 +34,6 @@ from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placeme
 )
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 
-# Fitness weights (integer arithmetic keeps selection deterministic ??no float rounding).
-# Throughput dominates; route cost and shared-corridor pressure only break near-ties.
-_THROUGHPUT_WEIGHT = 1000
-_ROUTE_COST_WEIGHT = 1
-_CORRIDOR_PRESSURE_WEIGHT = 10
 _DEFAULT_BEAM_WIDTH = 16
 _DEFAULT_MIN_RIM_ANCHOR_FILL_RATIO = 0.95
 # Per-anchor commit greedy scans the full normal pool (deterministic anchor order).
@@ -102,6 +102,12 @@ def _route_cost(probed: RouteProbedBundleCandidate) -> int:
     return 0 if result is None else result.route_cost
 
 
+def _future_expansion_cells(probed: RouteProbedBundleCandidate) -> int:
+    """Extension cells beyond the extractor (predictive future-expansion pressure)."""
+
+    return max(0, len(probed.candidate.mining_occupied_cells) - 1)
+
+
 def _fitness_sort_key(probed: RouteProbedBundleCandidate) -> tuple[int, int, str]:
     # Deterministic seed order: highest throughput first, then cheapest route, then id.
     return (-probed.candidate.throughput_factor, _route_cost(probed), probed.candidate.candidate_id)
@@ -124,14 +130,17 @@ def _extend(
     equipment: frozenset[Coord],
     corridor: frozenset[Coord],
     domain: CommitDomainState,
+    weights: BeamPenaltyWeights,
 ) -> _BeamState:
     shared = len(state.domain.corridor & corridor)
     route_cost = _route_cost(probed)
     throughput = probed.candidate.throughput_factor
+    expansion = _future_expansion_cells(probed)
     net = (
-        throughput * _THROUGHPUT_WEIGHT
-        - route_cost * _ROUTE_COST_WEIGHT
-        - shared * _CORRIDOR_PRESSURE_WEIGHT
+        throughput * weights.throughput_weight
+        - route_cost * weights.route_cost_weight
+        - shared * weights.corridor_pressure_weight
+        - expansion * weights.future_expansion_weight
     )
     breakdown = FitnessBreakdown(
         candidate_id=probed.candidate.candidate_id,
@@ -216,6 +225,7 @@ def _rebuild_beam_state_from_selection(
     *,
     commit_ctx: CommitReprobeContext,
     rim_anchor_coords: frozenset[Coord],
+    weights: BeamPenaltyWeights,
 ) -> _BeamState:
     state = _BeamState(domain=CommitDomainState())
     for probed in selected:
@@ -239,6 +249,7 @@ def _rebuild_beam_state_from_selection(
             equipment=equipment,
             corridor=corridor,
             domain=next_domain,
+            weights=weights,
         )
     return state
 
@@ -250,11 +261,13 @@ def _apply_fill_pass_to_result(
     commit_ctx: CommitReprobeContext,
     rim_anchor_coords: frozenset[Coord],
     min_fill_ratio: float,
+    weights: BeamPenaltyWeights,
 ) -> BeamSelectionResult:
     state = _rebuild_beam_state_from_selection(
         result.selected,
         commit_ctx=commit_ctx,
         rim_anchor_coords=rim_anchor_coords,
+        weights=weights,
     )
     filled = _greedy_fill_remaining_anchors(
         state,
@@ -262,8 +275,24 @@ def _apply_fill_pass_to_result(
         commit_ctx=commit_ctx,
         rim_anchor_coords=rim_anchor_coords,
         min_fill_ratio=min_fill_ratio,
+        weights=weights,
     )
     return _finalize_selection_result(state=filled, ordered=ordered)
+
+
+def _pick_higher_net_score(
+    left: BeamSelectionResult,
+    right: BeamSelectionResult,
+) -> BeamSelectionResult:
+    if right.total_net_score > left.total_net_score:
+        return right
+    if left.total_net_score > right.total_net_score:
+        return left
+    if right.total_throughput > left.total_throughput:
+        return right
+    if left.total_throughput > right.total_throughput:
+        return left
+    return left if len(left.selected) <= len(right.selected) else right
 
 
 def _pick_best_rim_commit_selection(
@@ -272,6 +301,7 @@ def _pick_best_rim_commit_selection(
     *,
     rim_anchor_count: int,
     min_fill_ratio: float,
+    prefer_net_score: bool = False,
 ) -> BeamSelectionResult:
     target = _min_committed_anchor_count(rim_anchor_count, min_fill_ratio)
     left_fill = _committed_anchor_count(left)
@@ -282,6 +312,8 @@ def _pick_best_rim_commit_selection(
         return left if left_met else right
     if left_met and right_met and left_fill != right_fill:
         return left if left_fill > right_fill else right
+    if prefer_net_score:
+        return _pick_higher_net_score(left, right)
     return _pick_higher_throughput(left, right)
 
 
@@ -313,6 +345,7 @@ def _select_bundles_commit_greedy(
     commit_ctx: CommitReprobeContext,
     rim_anchor_coords: frozenset[Coord] | None = None,
     one_per_anchor: bool = False,
+    weights: BeamPenaltyWeights,
 ) -> BeamSelectionResult:
     """Global greedy under Phase D reprobe (throughput-first; full pool)."""
 
@@ -344,8 +377,25 @@ def _select_bundles_commit_greedy(
             equipment=equipment,
             corridor=corridor,
             domain=next_domain,
+            weights=weights,
         )
     return _finalize_selection_result(state=state, ordered=ordered)
+
+
+def _marginal_net_score(
+    probed: RouteProbedBundleCandidate,
+    *,
+    state: CommitDomainState,
+    corridor: frozenset[Coord],
+    weights: BeamPenaltyWeights,
+) -> int:
+    shared = len(state.corridor & corridor)
+    return (
+        probed.candidate.throughput_factor * weights.throughput_weight
+        - _route_cost(probed) * weights.route_cost_weight
+        - shared * weights.corridor_pressure_weight
+        - _future_expansion_cells(probed) * weights.future_expansion_weight
+    )
 
 
 def _select_bundles_per_anchor_commit_greedy(
@@ -354,11 +404,23 @@ def _select_bundles_per_anchor_commit_greedy(
     commit_ctx: CommitReprobeContext,
     rim_anchor_coords: frozenset[Coord] | None = None,
     anchor_order: tuple[Coord, ...] | None = None,
+    weights: BeamPenaltyWeights,
+    pick_best_marginal_net: bool = False,
 ) -> BeamSelectionResult:
     """One commit per rim anchor: best feasible gene variant under Phase D reprobe."""
 
     state = _BeamState(domain=CommitDomainState())
     for anchor, group in _group_by_anchor(ordered, anchor_order=anchor_order):
+        best_feasible: (
+            tuple[
+                int,
+                RouteProbedBundleCandidate,
+                CommitDomainState,
+                frozenset[Coord],
+                frozenset[Coord],
+            ]
+            | None
+        ) = None
         for probed in group:
             equipment = _equipment_cells(probed)
             if rim_anchor_coords is not None and not _respects_rim_platform(
@@ -375,14 +437,35 @@ def _select_bundles_per_anchor_commit_greedy(
             )
             if not ok:
                 continue
+            if pick_best_marginal_net:
+                marginal = _marginal_net_score(
+                    probed,
+                    state=state.domain,
+                    corridor=corridor,
+                    weights=weights,
+                )
+                if best_feasible is None or marginal > best_feasible[0]:
+                    best_feasible = (marginal, probed, next_domain, equipment, corridor)
+                continue
             state = _extend(
                 state,
                 probed,
                 equipment=equipment,
                 corridor=corridor,
                 domain=next_domain,
+                weights=weights,
             )
             break
+        if pick_best_marginal_net and best_feasible is not None:
+            _marginal, probed, next_domain, equipment, corridor = best_feasible
+            state = _extend(
+                state,
+                probed,
+                equipment=equipment,
+                corridor=corridor,
+                domain=next_domain,
+                weights=weights,
+            )
     return _finalize_selection_result(state=state, ordered=ordered)
 
 
@@ -393,6 +476,7 @@ def _greedy_fill_remaining_anchors(
     commit_ctx: CommitReprobeContext,
     rim_anchor_coords: frozenset[Coord],
     min_fill_ratio: float,
+    weights: BeamPenaltyWeights,
 ) -> _BeamState:
     """Second pass: place any feasible bundle on unfilled anchors until fill ratio target."""
 
@@ -433,6 +517,7 @@ def _greedy_fill_remaining_anchors(
                 equipment=equipment,
                 corridor=corridor,
                 domain=next_domain,
+                weights=weights,
             )
             break
     return state
@@ -444,15 +529,21 @@ def _select_bundles_rim_platform_commit(
     commit_ctx: CommitReprobeContext,
     rim_anchor_coords: frozenset[Coord],
     min_rim_anchor_fill_ratio: float = _DEFAULT_MIN_RIM_ANCHOR_FILL_RATIO,
+    weights: BeamPenaltyWeights,
+    pick_best_marginal_net: bool = False,
+    prefer_net_score: bool = False,
 ) -> BeamSelectionResult:
     """Rim-platform-aware commit greedy with a second-pass sandwich reorder."""
 
+    pick_result = _pick_higher_net_score if prefer_net_score else _pick_higher_throughput
     many_order = _many_neighbor_anchor_order(rim_anchor_coords)
     first_pass = _select_bundles_per_anchor_commit_greedy(
         ordered,
         commit_ctx=commit_ctx,
         rim_anchor_coords=rim_anchor_coords,
         anchor_order=many_order,
+        weights=weights,
+        pick_best_marginal_net=pick_best_marginal_net,
     )
     failed = frozenset(rim_anchor_coords) - {
         probed.candidate.anchor_coord for probed in first_pass.selected
@@ -464,8 +555,10 @@ def _select_bundles_rim_platform_commit(
             commit_ctx=commit_ctx,
             rim_anchor_coords=rim_anchor_coords,
             anchor_order=sandwich_order,
+            weights=weights,
+            pick_best_marginal_net=pick_best_marginal_net,
         )
-        per_anchor = _pick_higher_throughput(first_pass, second_pass)
+        per_anchor = pick_result(first_pass, second_pass)
     else:
         per_anchor = first_pass
     global_greedy = _select_bundles_commit_greedy(
@@ -473,6 +566,7 @@ def _select_bundles_rim_platform_commit(
         commit_ctx=commit_ctx,
         rim_anchor_coords=rim_anchor_coords,
         one_per_anchor=True,
+        weights=weights,
     )
     per_anchor = _apply_fill_pass_to_result(
         per_anchor,
@@ -480,6 +574,7 @@ def _select_bundles_rim_platform_commit(
         commit_ctx=commit_ctx,
         rim_anchor_coords=rim_anchor_coords,
         min_fill_ratio=min_rim_anchor_fill_ratio,
+        weights=weights,
     )
     global_greedy = _apply_fill_pass_to_result(
         global_greedy,
@@ -487,12 +582,14 @@ def _select_bundles_rim_platform_commit(
         commit_ctx=commit_ctx,
         rim_anchor_coords=rim_anchor_coords,
         min_fill_ratio=min_rim_anchor_fill_ratio,
+        weights=weights,
     )
     return _pick_best_rim_commit_selection(
         per_anchor,
         global_greedy,
         rim_anchor_count=len(rim_anchor_coords),
         min_fill_ratio=min_rim_anchor_fill_ratio,
+        prefer_net_score=prefer_net_score,
     )
 
 
@@ -515,6 +612,7 @@ def _select_bundles_beam(
     ordered: tuple[RouteProbedBundleCandidate, ...],
     *,
     beam_width: int,
+    weights: BeamPenaltyWeights,
 ) -> BeamSelectionResult:
     """Classic beam search using isolated Phase B corridors (no commit reprobe)."""
 
@@ -537,6 +635,7 @@ def _select_bundles_beam(
                             occupied=state.domain.occupied | equipment,
                             corridor=state.domain.corridor | corridor,
                         ),
+                        weights=weights,
                     )
                 )
         next_beam.sort(key=_BeamState.rank_key)
@@ -567,6 +666,7 @@ def select_bundles(
     commit_ctx: CommitReprobeContext | None = None,
     rim_anchor_coords: frozenset[Coord] | None = None,
     min_rim_anchor_fill_ratio: float = _DEFAULT_MIN_RIM_ANCHOR_FILL_RATIO,
+    penalty_mode: PenaltyMode = PenaltyMode.STANDARD,
 ) -> BeamSelectionResult:
     """Deterministically select a non-conflicting, throughput-maximizing subset (Phase C1).
 
@@ -579,6 +679,10 @@ def select_bundles(
     """
 
     ordered = tuple(sorted(normal_candidates, key=_fitness_sort_key))
+    weights = beam_penalty_weights(penalty_mode)
+    conservative = penalty_mode is PenaltyMode.CONSERVATIVE
+    pick_best_marginal_net = conservative
+    prefer_net_score = conservative
     if commit_ctx is not None:
         if rim_anchor_coords is not None:
             return _select_bundles_rim_platform_commit(
@@ -586,11 +690,24 @@ def select_bundles(
                 commit_ctx=commit_ctx,
                 rim_anchor_coords=rim_anchor_coords,
                 min_rim_anchor_fill_ratio=min_rim_anchor_fill_ratio,
+                weights=weights,
+                pick_best_marginal_net=pick_best_marginal_net,
+                prefer_net_score=prefer_net_score,
             )
-        per_anchor = _select_bundles_per_anchor_commit_greedy(ordered, commit_ctx=commit_ctx)
-        global_greedy = _select_bundles_commit_greedy(ordered, commit_ctx=commit_ctx)
-        return _pick_higher_throughput(per_anchor, global_greedy)
-    return _select_bundles_beam(ordered, beam_width=beam_width)
+        per_anchor = _select_bundles_per_anchor_commit_greedy(
+            ordered,
+            commit_ctx=commit_ctx,
+            weights=weights,
+            pick_best_marginal_net=pick_best_marginal_net,
+        )
+        global_greedy = _select_bundles_commit_greedy(
+            ordered,
+            commit_ctx=commit_ctx,
+            weights=weights,
+        )
+        pick_result = _pick_higher_net_score if prefer_net_score else _pick_higher_throughput
+        return pick_result(per_anchor, global_greedy)
+    return _select_bundles_beam(ordered, beam_width=beam_width, weights=weights)
 
 
 __all__ = [

@@ -57,11 +57,13 @@ def build_l4_route_search_domain(
     complete_map: ReconstructionCompleteMap,
     miner_cells: frozenset[Coord],
     extension_cells: frozenset[Coord],
+    interior_occupied_cells: frozenset[Coord] = frozenset(),
 ) -> L4RouteSearchDomain:
     field_cells = complete_map.field_cells
     void_cells = complete_map.external_void_cells - field_cells
     equipment = miner_cells | extension_cells
-    walkable = void_cells | field_cells | equipment
+    interior_block = interior_occupied_cells - equipment
+    walkable = (void_cells | field_cells | equipment) - interior_block
     terrain_at: dict[Coord, L4TerrainKind] = {}
     for coord in walkable:
         kind = terrain_kind_at(

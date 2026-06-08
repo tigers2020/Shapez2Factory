@@ -140,6 +140,15 @@ L4_CELL_WEIGHT = {
 
 A* may score `e`/`m` for reachability; `commit_validator` rejects generic equipment overlap on `transport_tiles`.
 
+### L4 interior occupancy (normative, PR-L5-P0)
+
+L4 inner pattern fill runs before L5 transport routing. When `interior_occupied_cells` is provided:
+
+- Cells are **hard blocked** in the L5 search domain (not a soft penalty).
+- `commit_validator` rejects belt/pipe on those cells with `INTERIOR_OCCUPIED_BLOCKED`.
+- Whitelist unchanged: source stub, connector attach, same-kind trunk endpoint attach.
+- L3 equipment cells remain governed by existing equipment overlap rules.
+
 **Allowed commit exceptions:** `m_output_stub` adjacency, L2 connector attachment cell, explicitly declared port cells.
 
 ### Same-kind merge (v1)

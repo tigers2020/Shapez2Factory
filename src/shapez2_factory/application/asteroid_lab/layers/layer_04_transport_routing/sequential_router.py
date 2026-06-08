@@ -77,6 +77,19 @@ def _build_goal_set(
     return connector + trunk
 
 
+def _route_not_found_detail(
+    *,
+    source_id: str,
+    interior_occupied_cells: frozenset,
+    equipment_cells: frozenset,
+) -> str:
+    return (
+        f"source_id={source_id};"
+        f"blocked_by_l4_interior_count={len(interior_occupied_cells)};"
+        f"blocked_by_equipment_count={len(equipment_cells)}"
+    )
+
+
 def route_layer04_sequential(
     *,
     complete_map: ReconstructionCompleteMap,
@@ -84,6 +97,7 @@ def route_layer04_sequential(
     rim_result: IntegratedRimGreedyResult,
     resource_kind: str,
     transport_catalog: SpaceTransportTileCatalog | None = None,
+    interior_occupied_cells: frozenset[tuple[int, int]] = frozenset(),
 ) -> Layer04RoutePlan:
     transport_kind_slug = _transport_kind_for_resource(resource_kind)
     transport_enum = _transport_kind_enum(resource_kind)
@@ -124,19 +138,16 @@ def route_layer04_sequential(
         )
 
     miner_cells, extension_cells = _collect_equipment(rim_result)
+    equipment_cells = miner_cells | extension_cells
+    interior_block = frozenset(interior_occupied_cells)
     domain = build_l4_route_search_domain(
         complete_map=complete_map,
         miner_cells=miner_cells,
         extension_cells=extension_cells,
+        interior_occupied_cells=interior_block,
     )
     stub_cells = frozenset(s.m_output_stub for s in sources)
     connector_cells = frozenset(g.coord for g in connector_goals)
-    validator = L4CommitValidator(
-        equipment_cells=miner_cells | extension_cells,
-        connector_cells=connector_cells,
-        stub_cells=stub_cells,
-    )
-
     registry = RouteGroupRegistry(
         unit_capacity_m=_unit_capacity_m(resource_kind),
         transport_kind=transport_enum,
@@ -168,6 +179,11 @@ def route_layer04_sequential(
                 Layer04Failure(
                     placement_id=source.placement_id,
                     reason=Layer04FailureReason.ROUTE_NOT_FOUND,
+                    detail=_route_not_found_detail(
+                        source_id=source.placement_id,
+                        interior_occupied_cells=interior_block,
+                        equipment_cells=equipment_cells,
+                    ),
                 )
             )
             continue
@@ -196,7 +212,16 @@ def route_layer04_sequential(
             )
             continue
 
-        commit_err = validator.validate_path(result.path)
+        trunk_attach = registry.trunk_goals()
+        trunk_cells = frozenset(g.coord for g in trunk_attach)
+        commit_validator = L4CommitValidator(
+            equipment_cells=equipment_cells,
+            connector_cells=connector_cells,
+            stub_cells=stub_cells,
+            interior_occupied_cells=interior_block,
+            trunk_attach_cells=trunk_cells,
+        )
+        commit_err = commit_validator.validate_path(result.path)
         if commit_err is not None:
             failures.append(
                 Layer04Failure(

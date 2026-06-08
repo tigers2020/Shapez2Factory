@@ -43,8 +43,10 @@ def run_layer_05_transport_routing(
     interior_occupied_cells: frozenset[tuple[int, int]] | None = None,
 ) -> Layer04RoutePlan:
     """MVP routing when map + rim + exterior plan are present (canonical L5 slug)."""
-    _ = interior_occupied_cells
     _ = budget_ctx
+    interior = (
+        frozenset(interior_occupied_cells) if interior_occupied_cells is not None else frozenset()
+    )
     if exterior_plan is None:
         return Layer04RoutePlan(
             version=LAYER04_ROUTE_PLAN_VERSION,
@@ -74,6 +76,7 @@ def run_layer_05_transport_routing(
         rim_result=rim_result,
         resource_kind=rk,
         transport_catalog=transport_catalog,
+        interior_occupied_cells=interior,
     )
 
 

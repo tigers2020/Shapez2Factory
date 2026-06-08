@@ -15,10 +15,16 @@ class L4CommitValidator:
     equipment_cells: frozenset[Coord]
     connector_cells: frozenset[Coord]
     stub_cells: frozenset[Coord]
+    interior_occupied_cells: frozenset[Coord] = frozenset()
+    trunk_attach_cells: frozenset[Coord] = frozenset()
 
     def validate_route_cell(self, coord: Coord) -> Layer04FailureReason | None:
         if coord in self.connector_cells or coord in self.stub_cells:
             return None
+        if coord in self.trunk_attach_cells:
+            return None
+        if coord in self.interior_occupied_cells:
+            return Layer04FailureReason.INTERIOR_OCCUPIED_BLOCKED
         if coord in self.equipment_cells:
             return Layer04FailureReason.COMMIT_OVERLAP_BLOCKED
         return None

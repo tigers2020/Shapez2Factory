@@ -23,6 +23,7 @@ class Layer05FailureReason(StrEnum):
     ROUTE_NOT_FOUND = "route_not_found"
     CAPACITY_OVERFLOW = "capacity_overflow"
     COMMIT_OVERLAP_BLOCKED = "commit_overlap_blocked"
+    INTERIOR_OCCUPIED_BLOCKED = "interior_occupied_blocked"
     CATALOG_MISSING_TILE = "catalog_missing_tile"
     UNSUPPORTED_IO_SIGNATURE = "unsupported_io_signature"
 

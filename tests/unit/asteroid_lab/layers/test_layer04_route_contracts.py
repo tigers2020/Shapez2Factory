@@ -13,6 +13,14 @@ def test_layer04_failure_reason_route_not_found() -> None:
     assert Layer04FailureReason.ROUTE_NOT_FOUND.value == "route_not_found"
 
 
+def test_layer05_failure_reason_interior_occupied_blocked() -> None:
+    from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route import (
+        Layer05FailureReason,
+    )
+
+    assert Layer05FailureReason.INTERIOR_OCCUPIED_BLOCKED.value == "interior_occupied_blocked"
+
+
 def test_layer04_source_view_frozen() -> None:
     view = Layer04SourceView(
         placement_id="p1",

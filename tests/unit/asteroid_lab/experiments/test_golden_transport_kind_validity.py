@@ -1,4 +1,4 @@
-"""PR-4: artifact-level golden eval tests."""
+"""PR-10: transport kind normalization for golden hard-validity."""
 
 from __future__ import annotations
 
@@ -8,8 +8,6 @@ from decimal import Decimal
 import pytest
 
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_eval import (
-    GoldenEvalResult,
-    _connectivity_roots,
     evaluate_against_golden,
 )
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures import (
@@ -27,6 +25,11 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_
     GoldenSolverArtifacts,
     GoldenSolverConfig,
     run_golden_solver,
+)
+from shapez2_factory.application.asteroid_lab.experiments.transport_kind_normalization import (
+    format_transport_kind_mismatch_diagnostic,
+    normalize_transport_family,
+    transport_families_compatible,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
@@ -62,10 +65,12 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.stack_result impo
 from shapez2_factory.application.asteroid_lab.layers.contracts.stack_status import (
     StackRunStatus,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import (
+    TransportKind,
+)
 from shapez2_factory.application.asteroid_lab.stack_runner import CoreStackRunResult
 from shapez2_factory.domain.asteroid_lab.coord_frames import CoordFrame
 from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string
-from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
 )
@@ -87,29 +92,61 @@ def _fixtures_ready() -> bool:
 
 def _empty_oracle() -> GoldenOracle:
     return GoldenOracle(
-        extractor_anchors_direct=frozenset({(1, 1), (2, 2)}),
-        extractor_anchors_normalized=frozenset({(0, 0), (1, 1)}),
-        extension_cells=frozenset({(0, 0)}),
+        extractor_anchors_direct=frozenset(),
+        extractor_anchors_normalized=frozenset(),
+        extension_cells=frozenset(),
         belt_edges=frozenset(),
-        layout_miner_count=2,
-        layout_extension_count=1,
+        layout_miner_count=0,
+        layout_extension_count=0,
         belt_count=0,
-        entry_count=3,
-        bbox=(0, 2, 0, 2),
+        entry_count=0,
+        bbox=(0, 0, 0, 0),
     )
 
 
-def _minimal_complete_map(
-    *, void_cells: frozenset[Coord] | None = None
-) -> ReconstructionCompleteMap:
-    return ReconstructionCompleteMap(
-        cells=(),
-        field_cells=frozenset(),
-        shape_field_cell_count=0,
-        fluid_field_cell_count=0,
-        external_void_cells=void_cells or frozenset(),
-        coord_frame=CoordFrame.ISLAND_RAW,
+def test_normalize_transport_family_aliases() -> None:
+    assert normalize_transport_family("shape") == "shape"
+    assert normalize_transport_family("space_belt") == "shape"
+    assert normalize_transport_family(TransportKind.SHAPE_BELT) == "shape"
+    assert normalize_transport_family("fluid") == "fluid"
+    assert normalize_transport_family("space_pipe") == "fluid"
+    assert normalize_transport_family(TransportKind.FLUID_PIPE) == "fluid"
+    assert normalize_transport_family("unknown") is None
+
+
+@pytest.mark.parametrize(
+    ("exterior_kind", "route_kind", "expected"),
+    [
+        ("shape", "space_belt", True),
+        ("fluid", "space_pipe", True),
+        ("shape", "space_pipe", False),
+        ("fluid", "space_belt", False),
+    ],
+)
+def test_transport_families_compatible_matrix(
+    exterior_kind: str,
+    route_kind: str,
+    expected: bool,
+) -> None:
+    assert (
+        transport_families_compatible(
+            exterior_transport_kind=exterior_kind,
+            route_transport_kind=route_kind,
+        )
+        is expected
     )
+
+
+def test_mismatch_diagnostic_includes_raw_and_normalized_values() -> None:
+    line = format_transport_kind_mismatch_diagnostic(
+        exterior_transport_kind="shape",
+        route_transport_kind="space_pipe",
+    )
+    assert line.startswith("transport_kind_mismatch:")
+    assert "exterior=shape" in line
+    assert "route=space_pipe" in line
+    assert "exterior_family=shape" in line
+    assert "route_family=fluid" in line
 
 
 def _layer_summaries_completed() -> tuple[LayerPostSummaryRecord, ...]:
@@ -134,7 +171,7 @@ def _layer_summaries_completed() -> tuple[LayerPostSummaryRecord, ...]:
     )
 
 
-def _exterior_plan() -> ExteriorConnectionPlan:
+def _exterior_plan(*, transport_kind: str) -> ExteriorConnectionPlan:
     connector = ExteriorConnector(
         connector_id="c0",
         void_coord=(0, 0),
@@ -146,7 +183,7 @@ def _exterior_plan() -> ExteriorConnectionPlan:
         role=ExteriorConnectorRole.REQUIRED,
     )
     return ExteriorConnectionPlan(
-        transport_kind="shape",
+        transport_kind=transport_kind,
         terrain_upper_bound_per_min=Decimal("1000"),
         planning_target_per_min=Decimal("800"),
         per_connector_capacity_per_min=Decimal("100"),
@@ -158,11 +195,12 @@ def _exterior_plan() -> ExteriorConnectionPlan:
     )
 
 
-def _valid_route_plan() -> Layer05RoutePlan:
+def _route_plan(*, transport_kind: str) -> Layer05RoutePlan:
+    resource_kind = "fluid" if transport_kind == "space_pipe" else "shape"
     return Layer05RoutePlan(
         version="layer05_route_plan_v1",
-        resource_kind="shape",
-        transport_kind="shape",
+        resource_kind=resource_kind,
+        transport_kind=transport_kind,
         routes=(
             CommittedRoute(
                 route_id="route_p0",
@@ -175,12 +213,12 @@ def _valid_route_plan() -> Layer05RoutePlan:
         groups=(
             RouteGroupSummary(
                 group_id="g0",
-                transport_kind="shape",
+                transport_kind=transport_kind,
                 connector_ids=frozenset({"c0"}),
                 member_placement_ids=frozenset({"p0"}),
                 route_cells=frozenset({(1, 1), (2, 1)}),
-                used_m=16,
-                capacity_m=100,
+                used_m=1,
+                capacity_m=12,
             ),
         ),
         transport_tiles=(),
@@ -194,7 +232,11 @@ def _valid_route_plan() -> Layer05RoutePlan:
     )
 
 
-def _rim_with_placement() -> object:
+def _artifacts(
+    *,
+    exterior_kind: str,
+    route_kind: str,
+) -> GoldenSolverArtifacts:
     placement = CommittedRimSeedPlacement(
         placement_id="p0",
         variant_id="v0",
@@ -202,102 +244,88 @@ def _rim_with_placement() -> object:
         output_dir="E",
         seed_id="m0e",
         miner_cells=frozenset({(1, 1)}),
-        extension_cells=frozenset({(0, 1)}),
+        extension_cells=frozenset(),
         m_output_stub=(2, 1),
         throughput_factor=16,
-        route_probe_path=((2, 1), (3, 1)),
+        route_probe_path=(),
     )
-    return replace(
-        build_empty_integrated_rim_greedy_result(),
-        committed_placements=(placement,),
-    )
-
-
-def _artifacts(
-    *,
-    failed_layer: str | None = None,
-    route_plan: Layer05RoutePlan | None = None,
-    include_completed_layers: bool = True,
-) -> GoldenSolverArtifacts:
-    summaries = _layer_summaries_completed() if include_completed_layers else ()
-    completed = tuple(record.layer_slug for record in summaries)
+    summaries = _layer_summaries_completed()
     core = CoreStackRunResult(
         stack_result=StackRunResult(
-            status=(
-                StackRunStatus.SUCCESS
-                if failed_layer is None
-                else StackRunStatus.TIMEOUT_FAIL_CLOSED
-            ),
-            completed_layer_slugs=completed,
-            failed_layer_slug=failed_layer,
+            status=StackRunStatus.SUCCESS,
+            completed_layer_slugs=tuple(record.layer_slug for record in summaries),
+            failed_layer_slug=None,
             diagnostic_snapshot=None,
         ),
         layer_summaries=summaries,
     )
     return GoldenSolverArtifacts(
         core_result=core,
-        complete_map=_minimal_complete_map(),
-        exterior_plan=_exterior_plan(),
-        rim_result=_rim_with_placement(),
+        complete_map=ReconstructionCompleteMap(
+            cells=(),
+            field_cells=frozenset(),
+            shape_field_cell_count=0,
+            fluid_field_cell_count=0,
+            external_void_cells=frozenset(),
+            coord_frame=CoordFrame.ISLAND_RAW,
+        ),
+        exterior_plan=_exterior_plan(transport_kind=exterior_kind),
+        rim_result=replace(
+            build_empty_integrated_rim_greedy_result(),
+            committed_placements=(placement,),
+        ),
         inner_fill=None,
-        route_plan=route_plan,
+        route_plan=_route_plan(transport_kind=route_kind),
         layer_summaries=summaries,
     )
 
 
-def test_golden_eval_deterministic_score() -> None:
-    artifacts = _artifacts(route_plan=_valid_route_plan())
-    oracle = _empty_oracle()
-    assert evaluate_against_golden(artifacts, oracle) == evaluate_against_golden(artifacts, oracle)
-
-
-def test_invalid_scores_below_valid() -> None:
-    invalid = evaluate_against_golden(
-        _artifacts(failed_layer=LAYER_05_TRANSPORT_ROUTING),
+@pytest.mark.parametrize(
+    ("exterior_kind", "route_kind"),
+    [
+        ("shape", "space_belt"),
+        ("fluid", "space_pipe"),
+    ],
+)
+def test_compatible_transport_kinds_are_valid(
+    exterior_kind: str,
+    route_kind: str,
+) -> None:
+    result = evaluate_against_golden(
+        _artifacts(exterior_kind=exterior_kind, route_kind=route_kind),
         _empty_oracle(),
     )
-    valid = evaluate_against_golden(_artifacts(route_plan=_valid_route_plan()), _empty_oracle())
-    assert not invalid.valid
-    assert valid.valid
-    assert invalid.score < valid.score
+    assert result.valid
+    assert not any(d.startswith("transport_kind_mismatch") for d in result.diagnostics)
 
 
-def test_eval_result_fields() -> None:
-    result = evaluate_against_golden(_artifacts(route_plan=_valid_route_plan()), _empty_oracle())
-    assert isinstance(result, GoldenEvalResult)
-    assert isinstance(result.diagnostics, tuple)
-    assert result.routed_throughput == 16 * 30
-
-
-def test_route_island_roots_ignore_exterior_void_cells() -> None:
-    void_cells = frozenset((x, y) for x in range(-5, 6) for y in range(-5, 6))
-    artifacts = GoldenSolverArtifacts(
-        core_result=CoreStackRunResult(
-            stack_result=StackRunResult(
-                status=StackRunStatus.SUCCESS,
-                completed_layer_slugs=(),
-                failed_layer_slug=None,
-                diagnostic_snapshot=None,
-            ),
-            layer_summaries=(),
-        ),
-        complete_map=_minimal_complete_map(void_cells=void_cells),
-        exterior_plan=_exterior_plan(),
-        rim_result=None,
-        inner_fill=None,
-        route_plan=_valid_route_plan(),
-        layer_summaries=(),
+@pytest.mark.parametrize(
+    ("exterior_kind", "route_kind"),
+    [
+        ("shape", "space_pipe"),
+        ("fluid", "space_belt"),
+    ],
+)
+def test_incompatible_transport_kinds_are_invalid(
+    exterior_kind: str,
+    route_kind: str,
+) -> None:
+    result = evaluate_against_golden(
+        _artifacts(exterior_kind=exterior_kind, route_kind=route_kind),
+        _empty_oracle(),
     )
-    roots = _connectivity_roots(artifacts)
-    assert roots != void_cells
-    assert len(roots) < len(void_cells)
-    assert (0, 0) in roots
+    assert not result.valid
+    assert any(
+        d.startswith("transport_kind_mismatch:")
+        and f"exterior={exterior_kind}" in d
+        and f"route={route_kind}" in d
+        for d in result.diagnostics
+    )
 
 
 @pytest.mark.skipif(not _fixtures_ready(), reason="asteroid_golden fixtures incomplete")
-def test_eval_on_stack_smoke_artifacts() -> None:
-    golden_copy = load_golden_copy().removesuffix("$")
-    oracle = build_golden_oracle(decode_copy_string(golden_copy).root)
+def test_golden_stack_smoke_valid_after_transport_kind_normalization() -> None:
+    oracle = build_golden_oracle(decode_copy_string(load_golden_copy()).root)
     artifacts = run_golden_solver(
         copy_text=load_empty_copy(),
         game_data_rules=load_game_data_rules(),
@@ -305,9 +333,10 @@ def test_eval_on_stack_smoke_artifacts() -> None:
         config=GoldenSolverConfig(budget_ms=60_000),
     )
     result = evaluate_against_golden(artifacts, oracle)
-    assert isinstance(result, GoldenEvalResult)
-    assert isinstance(result.diagnostics, tuple)
     assert result.miner_count == 76
     assert result.routed_throughput >= 30960.0
+    assert result.route_island_count == 0
+    assert result.orphan_count == 0
     assert not any(d.startswith("transport_kind_mismatch") for d in result.diagnostics)
     assert result.valid
+    assert result.score > 0.0

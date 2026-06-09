@@ -60,6 +60,7 @@ def run_golden_loop(
     out_dir: Path | str = DEFAULT_OUT,
     configs: tuple[GoldenLoopRunConfig, ...] | None = None,
     write_snapshots: bool = False,
+    write_best_copy: bool = False,
     now_fn: Callable[[], datetime] | None = None,
 ) -> dict[str, Any]:
     """Run the golden fixture loop and write JSON artifacts under ``out_dir``."""
@@ -107,6 +108,7 @@ def run_golden_loop(
     failure_patterns: dict[str, int] = {}
     best_valid_score = float("-inf")
     best_valid_record: dict[str, Any] | None = None
+    best_valid_artifacts: Any | None = None
     best_any_score = float("-inf")
     best_any_record: dict[str, Any] | None = None
     run_records: list[dict[str, Any]] = []
@@ -143,6 +145,7 @@ def run_golden_loop(
             if result.valid and result.score > best_valid_score:
                 best_valid_score = result.score
                 best_valid_record = record
+                best_valid_artifacts = artifacts
 
     best_record = best_valid_record or best_any_record
     best_config_path = out / "best_config.json"
@@ -163,11 +166,25 @@ def run_golden_loop(
         encoding="utf-8",
     )
 
+    best_copy_path: Path | None = None
+    if write_best_copy and best_valid_artifacts is not None:
+        from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_assembler import (
+            encode_candidate_copy_string,
+        )
+
+        best_copy_path = out / "best_result.shapez.txt"
+        copy_out = encode_candidate_copy_string(
+            artifacts=best_valid_artifacts,
+            empty_copy=empty_copy,
+        )
+        best_copy_path.write_text(copy_out + "\n", encoding="utf-8")
+
     return {
         "out_dir": str(out),
         "runs_path": str(runs_path),
         "best_config_path": str(best_config_path),
         "diagnostics_path": str(diagnostics_path),
+        "best_copy_path": str(best_copy_path) if best_copy_path is not None else None,
         "run_count": len(run_records),
         "best_valid": best_valid_record is not None,
         "best_score": best_valid_score if best_valid_record is not None else None,
@@ -193,6 +210,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Output directory for runs.jsonl and summary JSON files",
     )
     parser.add_argument("--write-snapshots", action="store_true")
+    parser.add_argument(
+        "--write-best-copy",
+        action="store_true",
+        help="Write best_result.shapez.txt from best valid solver artifacts",
+    )
     return parser.parse_args(argv)
 
 
@@ -208,6 +230,7 @@ def main(argv: list[str] | None = None) -> int:
             speed_tiers=speed_tiers,
         ),
         write_snapshots=args.write_snapshots,
+        write_best_copy=args.write_best_copy,
     )
     print(f"wrote {summary['out_dir']}")
     return 0

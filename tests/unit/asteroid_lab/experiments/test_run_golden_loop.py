@@ -71,10 +71,11 @@ def _eval_result(
     )
 
 
-def test_run_golden_loop_no_assembler_import() -> None:
+def test_run_golden_loop_write_best_copy_is_opt_in() -> None:
     source = (_SCRIPTS / "run_golden_loop.py").read_text(encoding="utf-8")
-    assert "golden_fixture_assembler" not in source
-    assert "best_result.shapez.txt" not in source
+    assert "--write-best-copy" in source
+    assert "write_best_copy" in source
+    assert "if write_best_copy" in source
 
 
 @pytest.mark.skipif(not _fixtures_ready(), reason="asteroid_golden fixtures incomplete")
@@ -156,3 +157,64 @@ def test_run_golden_loop_writes_outputs(tmp_path: Path) -> None:
     assert diagnostics["run_count"] == 3
     assert diagnostics["best_valid"] is True
     assert diagnostics["best_score"] == 800.0
+    assert not (tmp_path / "best_result.shapez.txt").exists()
+
+
+@pytest.mark.skipif(not _fixtures_ready(), reason="asteroid_golden fixtures incomplete")
+def test_run_golden_loop_writes_best_copy_when_requested(tmp_path: Path) -> None:
+    loop = _load_loop_module()
+    configs = (
+        loop.GoldenLoopRunConfig(throughput_target_percent=80, budget_ms=60_000, speed_tier=1),
+    )
+    eval_results = [_eval_result(valid=True, score=500.0)]
+    fake_artifacts = mock.Mock(name="artifacts")
+
+    with (
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_run.run_golden_solver",
+            return_value=fake_artifacts,
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_eval.evaluate_against_golden",
+            side_effect=eval_results,
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures.load_empty_copy",
+            return_value="empty$",
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures.load_golden_copy",
+            return_value="golden$",
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures.load_game_data_rules",
+            return_value=mock.Mock(),
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures.load_genetic_sample_seeds",
+            return_value=mock.Mock(),
+        ),
+        mock.patch(
+            "shapez2_factory.domain.asteroid_lab.copy_decode.decode_copy_string",
+            return_value=mock.Mock(root={"mock": True}),
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_loader.build_golden_oracle",
+            return_value=mock.Mock(),
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_assembler.encode_candidate_copy_string",
+            return_value="SHAPEZ2-4-test$",
+        ) as encode_mock,
+    ):
+        summary = loop.run_golden_loop(
+            out_dir=tmp_path,
+            configs=configs,
+            write_best_copy=True,
+        )
+
+    best_copy_path = tmp_path / "best_result.shapez.txt"
+    assert best_copy_path.is_file()
+    assert best_copy_path.read_text(encoding="utf-8") == "SHAPEZ2-4-test$\n"
+    assert summary["best_copy_path"] == str(best_copy_path)
+    encode_mock.assert_called_once_with(artifacts=fake_artifacts, empty_copy="empty$")

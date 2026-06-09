@@ -91,6 +91,12 @@ env/
 .idea/
 *.iml
 
+# --- Local Hermes bridge / agent exchange (machine-specific) ---
+.agent-exchange/
+scripts/hermes_skill_request.ps1
+docs/agent-workflows/hermes-bridge.md
+lab-layout-*.png
+
 # --- Cursor / Serena / local AI & MCP (machine-specific, not for GitHub) ---
 # .cursor/rules/ and .cursor/skills/ are tracked for team harness sharing.
 # Machine-specific items remain ignored:

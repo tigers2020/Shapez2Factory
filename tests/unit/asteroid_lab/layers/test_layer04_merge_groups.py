@@ -8,6 +8,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind im
 from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.merge_groups import (  # noqa: E501
     RouteGroupRegistry,
 )
+from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.source_adapter import (  # noqa: E501
+    throughput_factor_to_source_load_m,
+)
 
 
 def test_two_connectors_merged_capacity_24_shape() -> None:
@@ -36,6 +39,21 @@ def test_shared_trunk_cell_unions_connector_groups() -> None:
     assert reg.find(g0) == reg.find(g1)
     assert reg.capacity_m(g0) == 24
     assert reg.remaining_m(g0) == 16
+
+
+def test_twelve_tf16_lane_loads_saturate_single_connector() -> None:
+    reg = RouteGroupRegistry(unit_capacity_m=12, transport_kind=TransportKind.SHAPE_BELT)
+    lane_load = throughput_factor_to_source_load_m(16)
+    root = reg.connector_group("c0")
+    for index in range(12):
+        reg.commit_path(
+            path=((0, index), (0, 0)),
+            placement_id=f"p{index}",
+            connector_id="c0" if index == 0 else None,
+            source_load_m=lane_load,
+        )
+    assert reg.remaining_m(root) == 0
+    assert lane_load == 1
 
 
 def test_group_at_cell_returns_merged_root() -> None:

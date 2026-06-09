@@ -15,6 +15,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connecto
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_route import (
     Layer04FailureReason,
+    Layer04RoutePlan,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_failed_source_diagnostics import (  # noqa: E501
     Layer05FailureBucket,
@@ -130,7 +131,7 @@ def test_sequential_router_emits_failed_source_diagnostics() -> None:
         build_empty_integrated_rim_greedy_result(),
         committed_placements=(
             _placement("p1", (-1, 1), 8),
-            _placement("p2", (-1, 2), 8),
+            _placement("p2", (10, 10), 8),
         ),
         metrics=RimGreedyMetrics(committed_placement_count=2),
     )
@@ -145,27 +146,29 @@ def test_sequential_router_emits_failed_source_diagnostics() -> None:
     assert len(plan.failed_source_diagnostics) == 1
     entry = plan.failed_source_diagnostics[0]
     assert entry.source_id == "p2"
-    assert entry.failure_bucket == Layer05FailureBucket.ROUTE_BUDGET_EXHAUSTED
+    assert entry.failure_reason is Layer04FailureReason.ROUTE_NOT_FOUND
     histogram = aggregate_failure_histogram(plan.failed_source_diagnostics)
-    assert histogram[Layer05FailureBucket.ROUTE_BUDGET_EXHAUSTED.value] == 1
+    assert sum(histogram.values()) == 1
 
 
 def test_format_l5_failure_eval_diagnostics_histogram() -> None:
-    cm = build_rect_field_with_void_shell(width=4, height=4, void_pad=2)
-    exterior = _exterior_plan((-1, 0))
     rim = replace(
         build_empty_integrated_rim_greedy_result(),
-        committed_placements=(
-            _placement("p1", (-1, 1), 8),
-            _placement("p2", (-1, 2), 8),
-        ),
-        metrics=RimGreedyMetrics(committed_placement_count=2),
+        committed_placements=(_placement("p2", (-1, 2), 8),),
+        metrics=RimGreedyMetrics(committed_placement_count=1),
     )
-    plan = route_layer04_sequential(
-        complete_map=cm,
-        exterior_plan=exterior,
-        rim_result=rim,
-        resource_kind="shape",
+    source = build_layer04_sources(rim)[0]
+    diagnostic = build_failed_source_diagnostic(
+        source=source,
+        placement=rim.committed_placements[0],
+        transport_kind="space_belt",
+        reason=Layer04FailureReason.CAPACITY_OVERFLOW,
+        detail="ext_conn_00",
+        goals=(),
+    )
+    plan = replace(
+        Layer04RoutePlan.empty(resource_kind="shape", transport_kind="space_belt"),
+        failed_source_diagnostics=(diagnostic,),
     )
     lines = format_l5_failure_eval_diagnostics(plan)
     assert any(line.startswith("l5_failure_bucket:") for line in lines)

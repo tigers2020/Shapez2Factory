@@ -72,15 +72,15 @@ def _placement(
     )
 
 
-def test_second_source_overflows_single_connector_capacity() -> None:
+def test_two_tf16_sources_route_with_lane_m_unit_load() -> None:
     cm = build_rect_field_with_void_shell(width=4, height=4, void_pad=2)
     connector_void = (-1, 0)
     exterior = _exterior_plan(connector_void)
     rim = replace(
         build_empty_integrated_rim_greedy_result(),
         committed_placements=(
-            _placement("p1", (-1, 1), 8),
-            _placement("p2", (-1, 2), 8),
+            _placement("p1", (-1, 1), 16),
+            _placement("p2", (-1, 2), 16),
         ),
         metrics=RimGreedyMetrics(committed_placement_count=2),
     )
@@ -90,8 +90,9 @@ def test_second_source_overflows_single_connector_capacity() -> None:
         rim_result=rim,
         resource_kind="shape",
     )
-    assert len(plan.routes) == 1
-    assert any(f.reason is Layer04FailureReason.CAPACITY_OVERFLOW for f in plan.failures)
+    assert len(plan.routes) == 2
+    assert plan.groups[0].used_m == 2
+    assert not any(f.reason is Layer04FailureReason.CAPACITY_OVERFLOW for f in plan.failures)
 
 
 def test_routes_populate_group_summaries() -> None:
@@ -111,5 +112,5 @@ def test_routes_populate_group_summaries() -> None:
     )
     assert len(plan.routes) == 1
     assert len(plan.groups) == 1
-    assert plan.groups[0].used_m == 4
+    assert plan.groups[0].used_m == 1
     assert plan.groups[0].capacity_m == 12

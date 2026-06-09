@@ -26,6 +26,9 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_
     GoldenSolverConfig,
     run_golden_solver,
 )
+from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline import (
+    assert_master_valid_eval_result,
+)
 from shapez2_factory.application.asteroid_lab.experiments.transport_kind_normalization import (
     format_transport_kind_mismatch_diagnostic,
     normalize_transport_family,
@@ -70,9 +73,6 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind im
 )
 from shapez2_factory.application.asteroid_lab.stack_runner import CoreStackRunResult
 from shapez2_factory.domain.asteroid_lab.coord_frames import CoordFrame
-from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline import (
-    assert_master_valid_eval_result,
-)
 from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,

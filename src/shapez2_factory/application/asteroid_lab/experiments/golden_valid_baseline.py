@@ -31,10 +31,7 @@ def assert_master_valid_route_plan(route_plan: Layer05RoutePlan | None) -> None:
         raise AssertionError(msg)
     metrics = route_plan.metrics
     if metrics.source_count < FROZEN_MIN_SOURCE_COUNT:
-        msg = (
-            f"source_count={metrics.source_count}, "
-            f"expected >= {FROZEN_MIN_SOURCE_COUNT}"
-        )
+        msg = f"source_count={metrics.source_count}, " f"expected >= {FROZEN_MIN_SOURCE_COUNT}"
         raise AssertionError(msg)
     if metrics.routed_source_count != metrics.source_count:
         msg = (
@@ -58,9 +55,7 @@ def assert_master_valid_eval_result(result: GoldenEvalResult) -> None:
         msg = f"score={result.score}, expected > 0 for valid baseline"
         raise AssertionError(msg)
     if result.miner_count < FROZEN_MIN_SOURCE_COUNT:
-        msg = (
-            f"miner_count={result.miner_count}, expected >= {FROZEN_MIN_SOURCE_COUNT}"
-        )
+        msg = f"miner_count={result.miner_count}, expected >= {FROZEN_MIN_SOURCE_COUNT}"
         raise AssertionError(msg)
     if result.routed_throughput < MASTER_MIN_ROUTED_THROUGHPUT:
         msg = (

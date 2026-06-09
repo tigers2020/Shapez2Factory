@@ -12,9 +12,6 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_eval im
     _connectivity_roots,
     evaluate_against_golden,
 )
-from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline import (
-    assert_master_valid_eval_result,
-)
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures import (
     golden_fixture_dir,
     load_empty_copy,
@@ -30,6 +27,9 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_
     GoldenSolverArtifacts,
     GoldenSolverConfig,
     run_golden_solver,
+)
+from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline import (
+    assert_master_valid_eval_result,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (

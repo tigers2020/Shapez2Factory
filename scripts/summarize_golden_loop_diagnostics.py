@@ -75,9 +75,54 @@ def render_markdown(*, out_dir: Path) -> str:
             "",
         ],
     )
-    if isinstance(diagnostics, list) and diagnostics:
+    bucket_rows: list[tuple[str, str]] = []
+    reason_rows: list[tuple[str, str]] = []
+    examples: list[str] = []
+    other_diag: list[str] = []
+    if isinstance(diagnostics, list):
         for item in diagnostics:
+            text = str(item)
+            if text.startswith("l5_failure_bucket:"):
+                _, payload = text.split(":", 1)
+                bucket, count = payload.rsplit("=", 1)
+                bucket_rows.append((bucket, count))
+            elif text.startswith("l5_failure_reason:"):
+                _, payload = text.split(":", 1)
+                reason, count = payload.rsplit("=", 1)
+                reason_rows.append((reason, count))
+            elif text.startswith("l5_failed_example:"):
+                examples.append(text.removeprefix("l5_failed_example:"))
+            else:
+                other_diag.append(text)
+
+    if other_diag:
+        for item in other_diag:
             lines.append(f"- `{item}`")
+    else:
+        lines.append("- _(none)_")
+
+    lines.extend(["", "### L5 failure bucket histogram", ""])
+    if bucket_rows:
+        lines.append("| Bucket | Count |")
+        lines.append("| --- | --- |")
+        for bucket, count in sorted(bucket_rows):
+            lines.append(f"| `{bucket}` | `{count}` |")
+    else:
+        lines.append("- _(none)_")
+
+    lines.extend(["", "### L5 failure reason histogram", ""])
+    if reason_rows:
+        lines.append("| Reason | Count |")
+        lines.append("| --- | --- |")
+        for reason, count in sorted(reason_rows):
+            lines.append(f"| `{reason}` | `{count}` |")
+    else:
+        lines.append("- _(none)_")
+
+    lines.extend(["", "### L5 failed source examples", ""])
+    if examples:
+        for example in examples:
+            lines.append(f"- `{example}`")
     else:
         lines.append("- _(none)_")
 

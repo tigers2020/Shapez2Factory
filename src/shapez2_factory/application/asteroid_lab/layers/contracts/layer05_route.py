@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-
 from typing import TYPE_CHECKING
 
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 
 if TYPE_CHECKING:
-    from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_failed_source_diagnostics import (
+    from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_failed_source_diagnostics import (  # noqa: E501
         Layer05FailedSourceDiagnostic,
     )
 
@@ -105,7 +104,7 @@ class Layer05RoutePlan:
     transport_tiles: tuple[ProjectedTransportTile, ...]
     failures: tuple[Layer05Failure, ...]
     metrics: Layer05Metrics
-    failed_source_diagnostics: tuple["Layer05FailedSourceDiagnostic", ...] = ()
+    failed_source_diagnostics: tuple[Layer05FailedSourceDiagnostic, ...] = ()
 
     @classmethod
     def empty(cls, *, resource_kind: str, transport_kind: str) -> Layer05RoutePlan:

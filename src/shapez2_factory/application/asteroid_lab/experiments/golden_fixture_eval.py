@@ -10,7 +10,7 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_loader 
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_run import (
     GoldenSolverArtifacts,
 )
-from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_failed_source_diagnostics import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_failed_source_diagnostics import (  # noqa: E501
     format_l5_failure_eval_diagnostics,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_post_summary import (

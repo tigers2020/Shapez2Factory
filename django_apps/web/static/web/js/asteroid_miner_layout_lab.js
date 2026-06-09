@@ -240,6 +240,12 @@
     return String(clamped + 1) + " / " + String(total);
   }
 
+  function setLabFrameCounterDisplay(frameEl, text) {
+    if (frameEl) frameEl.textContent = text;
+    const toolbarEl = document.getElementById("lab-frame-display-toolbar");
+    if (toolbarEl) toolbarEl.textContent = text;
+  }
+
   /** HUD: ``data-overlay-role``, ``data-cell-kind``, ``data-tile-type`` (cleared in ``resetGridBase``). */
   function applyLabCellHudAttributes(el, cell, overlayRoleForAttr) {
     if (!el) return;
@@ -2208,7 +2214,7 @@
       if (et) et.textContent = dash;
       if (ti) ti.textContent = dash;
       if (de) de.textContent = dash;
-      if (frameEl) frameEl.textContent = formatLabFrameCounter(0, denom);
+      setLabFrameCounterDisplay(frameEl, formatLabFrameCounter(0, denom));
       return;
     }
     if (phaseEl) phaseEl.textContent = frame.phase != null ? String(frame.phase) : dash;
@@ -2223,7 +2229,7 @@
       const fi = Number(frame.frame_index);
       slot = Number.isFinite(fi) ? fi : 0;
     }
-    if (frameEl) frameEl.textContent = formatLabFrameCounter(slot, denom);
+    setLabFrameCounterDisplay(frameEl, formatLabFrameCounter(slot, denom));
     if (gridEl) gridEl.dataset.overlay = frame.frame_key ? String(frame.frame_key) : "";
   }
 
@@ -3239,7 +3245,7 @@
           }
           syncLabTimelineScrub();
         } else if (frameEl) {
-          frameEl.textContent = formatLabFrameCounter(replayArrayIndex, replayFrames.length);
+          setLabFrameCounterDisplay(frameEl, formatLabFrameCounter(replayArrayIndex, replayFrames.length));
           syncLabTimelineScrub();
         }
         if (labPerfDebugEnabled()) {
@@ -3275,7 +3281,7 @@
       if (phaseEl) {
         phaseEl.textContent = TOTAL_FRAMES <= 0 ? "—" : replayPhaseForFrame(frame);
       }
-      if (frameEl) frameEl.textContent = formatLabFrameCounter(frame, TOTAL_FRAMES);
+      setLabFrameCounterDisplay(frameEl, formatLabFrameCounter(frame, TOTAL_FRAMES));
       if (gridEl) gridEl.dataset.overlay = overlay;
       const cycle = document.getElementById("lab-computation-cycle");
       if (cycle) cycle.textContent = "computation_cycle #" + String(frame);
@@ -3585,17 +3591,25 @@
       });
     }
 
+    function expandLabPanel(panelId) {
+      const panel = document.getElementById(panelId);
+      if (panel && panel.tagName === "DETAILS") {
+        panel.open = true;
+      }
+    }
+
     function setRunDetail(run) {
       const dash = labUiDash();
       if (!run) {
         const title = document.getElementById("lab-detail-run-id");
-        if (title) title.textContent = dash;
+        if (title) title.textContent = "No solver runs yet";
         const statusEl = document.getElementById("lab-detail-status");
-        if (statusEl) statusEl.textContent = dash;
+        if (statusEl) statusEl.textContent = "Paste a blueprint, then run solver";
         updateOpsSlugBadge(null);
         renderLabLayerSummaries(null);
         return;
       }
+      expandLabPanel("lab-selected-run-panel");
       const statusEl = document.getElementById("lab-detail-status");
       if (statusEl) statusEl.textContent = runDetailStatusLabel(run);
       updateOpsSlugBadge(run);
@@ -3634,10 +3648,11 @@
       if (!runs.length) {
         const empty = document.createElement("p");
         empty.className = "text-sm text-slate-500";
-        empty.textContent = "No runs";
+        empty.textContent = "No solver runs yet";
         list.appendChild(empty);
         return;
       }
+      expandLabPanel("lab-evolution-runs-panel");
       const selected =
         selectedRunId != null ? String(selectedRunId) : runs[0] && runs[0].id ? String(runs[0].id) : null;
       runs.forEach(function (run) {

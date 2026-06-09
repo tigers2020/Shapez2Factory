@@ -62,13 +62,19 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     scrub_idx = content.index('id="lab-timeline-scrub"', controls_idx)
     assert scrub_idx > controls_idx
     g_grid_early = content.index('id="lab-replay-grid"')
+    viewport_idx = content.index('id="lab-replay-grid-viewport"')
     phase_idx = content.index('id="lab-replay-phase"')
-    assert controls_idx < g_grid_early
-    assert phase_idx > g_grid_early
+    assert viewport_idx < controls_idx
+    assert g_grid_early > viewport_idx
+    assert g_grid_early < controls_idx
+    assert phase_idx > controls_idx
     assert "lab-cell-overlay-matrix-data" in content
     assert 'id="lab-ui-initial-state"' in content
     assert "G-042" not in content
-    assert "No runs" in content
+    assert "No solver runs yet" in content
+    assert "Paste a blueprint, then run solver" in content
+    assert "Run Solver to generate constraints" in content
+    assert "2xl:grid-cols-" in content
     assert 'id="lab-replay-grid-stage"' in content
     assert 'id="lab-replay-terrain-canvas"' in content
     assert 'id="lab-replay-overlay-canvas"' in content

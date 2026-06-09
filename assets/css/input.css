@@ -70,14 +70,12 @@
     image-rendering: auto;
   }
 
-  /* Replay timeline controls: isolate pointer targets from grid viewport pan. */
+  /* Replay timeline toolbar below canvas: isolate pointer targets from grid viewport pan. */
   #lab-timeline-controls {
     touch-action: manipulation;
     position: relative;
     z-index: 10;
-    min-height: 3.5rem;
-    padding-top: 0.25rem;
-    padding-bottom: 0.25rem;
+    min-height: 2.75rem;
   }
 
   /* Replay timeline scrub (native range; dark track via accent). */

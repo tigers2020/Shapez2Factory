@@ -21,8 +21,9 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_
     GoldenSolverConfig,
     run_golden_solver,
 )
-from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route import (
-    Layer05FailureReason,
+from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline import (
+    assert_master_valid_eval_result,
+    assert_master_valid_route_plan,
 )
 from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string
 
@@ -50,23 +51,6 @@ def test_golden_capacity_overflow_reduced_after_lane_load_mapping() -> None:
         genetic_sample_seeds=load_genetic_sample_seeds(),
         config=GoldenSolverConfig(budget_ms=60_000),
     )
-    route_plan = artifacts.route_plan
-    assert route_plan is not None
-    metrics = route_plan.metrics
-    assert metrics.source_count == 76
-    assert metrics.routed_source_count > 16
-    assert metrics.failed_source_count < 60
-    assert metrics.routed_source_count + metrics.failed_source_count == 76
-
-    overflow_count = sum(
-        1
-        for diag in route_plan.failed_source_diagnostics
-        if diag.failure_reason is Layer05FailureReason.CAPACITY_OVERFLOW
-    )
-    assert overflow_count < 60
-
+    assert_master_valid_route_plan(artifacts.route_plan)
     result = evaluate_against_golden(artifacts, oracle)
-    assert result.routed_throughput >= 2160.0
-    assert result.route_island_count == 0
-    assert result.orphan_count == 0
-    assert not any(d.startswith("transport_kind_mismatch") for d in result.diagnostics)
+    assert_master_valid_eval_result(result)

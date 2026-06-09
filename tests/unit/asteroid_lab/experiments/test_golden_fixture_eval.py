@@ -12,6 +12,9 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_eval im
     _connectivity_roots,
     evaluate_against_golden,
 )
+from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline import (
+    assert_master_valid_eval_result,
+)
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures import (
     golden_fixture_dir,
     load_empty_copy,
@@ -307,7 +310,4 @@ def test_eval_on_stack_smoke_artifacts() -> None:
     result = evaluate_against_golden(artifacts, oracle)
     assert isinstance(result, GoldenEvalResult)
     assert isinstance(result.diagnostics, tuple)
-    assert result.miner_count == 76
-    assert result.routed_throughput >= 30960.0
-    assert not any(d.startswith("transport_kind_mismatch") for d in result.diagnostics)
-    assert result.valid
+    assert_master_valid_eval_result(result)

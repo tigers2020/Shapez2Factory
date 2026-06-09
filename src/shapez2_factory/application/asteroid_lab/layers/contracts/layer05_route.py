@@ -5,7 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from typing import TYPE_CHECKING
+
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
+
+if TYPE_CHECKING:
+    from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_failed_source_diagnostics import (
+        Layer05FailedSourceDiagnostic,
+    )
 
 LAYER05_ROUTE_PLAN_VERSION = "layer05_route_plan_v1"
 DEPRECATED_LAYER04_ROUTE_PLAN_VERSION = "layer04_route_plan_v1"
@@ -98,6 +105,7 @@ class Layer05RoutePlan:
     transport_tiles: tuple[ProjectedTransportTile, ...]
     failures: tuple[Layer05Failure, ...]
     metrics: Layer05Metrics
+    failed_source_diagnostics: tuple["Layer05FailedSourceDiagnostic", ...] = ()
 
     @classmethod
     def empty(cls, *, resource_kind: str, transport_kind: str) -> Layer05RoutePlan:
@@ -110,6 +118,7 @@ class Layer05RoutePlan:
             transport_tiles=(),
             failures=(),
             metrics=Layer05Metrics(),
+            failed_source_diagnostics=(),
         )
 
 

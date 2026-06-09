@@ -10,6 +10,9 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_loader 
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_run import (
     GoldenSolverArtifacts,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_failed_source_diagnostics import (
+    format_l5_failure_eval_diagnostics,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_post_summary import (
     LayerPostSummaryOutcome,
 )
@@ -327,6 +330,8 @@ def evaluate_against_golden(
 
     if anchor_f1_normalized < anchor_f1_direct:
         diagnostics.append("anchor_normalized_below_direct")
+
+    diagnostics.extend(format_l5_failure_eval_diagnostics(route_plan))
 
     return GoldenEvalResult(
         valid=valid,

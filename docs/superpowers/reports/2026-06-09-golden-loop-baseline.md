@@ -1,5 +1,9 @@
 # Golden Loop Baseline Report (2026-06-09)
 
+> **Historical (invalid MVP baseline).** Superseded by
+> [`2026-06-09-golden-loop-valid-baseline.md`](2026-06-09-golden-loop-valid-baseline.md)
+> at commit `1b6f3219` after PR-7 through PR-10.
+
 Canonical baseline for the Golden Fixture Optimization Loop after MVP PR-1 through PR-6.
 No solver behavior was changed for this report.
 

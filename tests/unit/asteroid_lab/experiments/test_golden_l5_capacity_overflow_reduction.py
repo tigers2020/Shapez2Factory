@@ -69,3 +69,4 @@ def test_golden_capacity_overflow_reduced_after_lane_load_mapping() -> None:
     assert result.routed_throughput >= 2160.0
     assert result.route_island_count == 0
     assert result.orphan_count == 0
+    assert not any(d.startswith("transport_kind_mismatch") for d in result.diagnostics)

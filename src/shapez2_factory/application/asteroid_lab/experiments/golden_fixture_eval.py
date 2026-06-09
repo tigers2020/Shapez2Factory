@@ -10,6 +10,10 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_loader 
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_run import (
     GoldenSolverArtifacts,
 )
+from shapez2_factory.application.asteroid_lab.experiments.transport_kind_normalization import (
+    format_transport_kind_mismatch_diagnostic,
+    transport_families_compatible,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_failed_source_diagnostics import (  # noqa: E501
     format_l5_failure_eval_diagnostics,
 )
@@ -276,8 +280,16 @@ def _hard_validity(
         )
         return False
     exterior = artifacts.exterior_plan
-    if route_plan.transport_kind != exterior.transport_kind:
-        diagnostics.append("transport_kind_mismatch")
+    if not transport_families_compatible(
+        exterior_transport_kind=exterior.transport_kind,
+        route_transport_kind=route_plan.transport_kind,
+    ):
+        diagnostics.append(
+            format_transport_kind_mismatch_diagnostic(
+                exterior_transport_kind=exterior.transport_kind,
+                route_transport_kind=route_plan.transport_kind,
+            )
+        )
         return False
     return True
 

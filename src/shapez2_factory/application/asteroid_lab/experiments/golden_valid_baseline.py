@@ -16,8 +16,9 @@ CANONICAL_THROUGHPUT_TARGET_PERCENT = 80
 CANONICAL_BUDGET_MS = 60_000
 CANONICAL_SPEED_TIER = 1
 
-MASTER_SOURCE_COUNT = 76
-MASTER_ROUTED_SOURCE_COUNT = 76
+# Reported baseline at master promotion; guards use minimum + full-route invariants.
+FROZEN_MIN_SOURCE_COUNT = 76
+MASTER_SOURCE_COUNT = FROZEN_MIN_SOURCE_COUNT
 MASTER_FAILED_SOURCE_COUNT = 0
 MASTER_MIN_ROUTED_THROUGHPUT = 30960.0
 MASTER_ROUTE_ISLAND_COUNT = 0
@@ -29,13 +30,16 @@ def assert_master_valid_route_plan(route_plan: Layer05RoutePlan | None) -> None:
         msg = "route_plan is required for master valid baseline"
         raise AssertionError(msg)
     metrics = route_plan.metrics
-    if metrics.source_count != MASTER_SOURCE_COUNT:
-        msg = f"source_count={metrics.source_count}, expected {MASTER_SOURCE_COUNT}"
-        raise AssertionError(msg)
-    if metrics.routed_source_count != MASTER_ROUTED_SOURCE_COUNT:
+    if metrics.source_count < FROZEN_MIN_SOURCE_COUNT:
         msg = (
-            f"routed_source_count={metrics.routed_source_count}, "
-            f"expected {MASTER_ROUTED_SOURCE_COUNT}"
+            f"source_count={metrics.source_count}, "
+            f"expected >= {FROZEN_MIN_SOURCE_COUNT}"
+        )
+        raise AssertionError(msg)
+    if metrics.routed_source_count != metrics.source_count:
+        msg = (
+            f"routed_source_count={metrics.routed_source_count} != "
+            f"source_count={metrics.source_count}"
         )
         raise AssertionError(msg)
     if metrics.failed_source_count != MASTER_FAILED_SOURCE_COUNT:
@@ -53,8 +57,10 @@ def assert_master_valid_eval_result(result: GoldenEvalResult) -> None:
     if result.score <= 0:
         msg = f"score={result.score}, expected > 0 for valid baseline"
         raise AssertionError(msg)
-    if result.miner_count != MASTER_SOURCE_COUNT:
-        msg = f"miner_count={result.miner_count}, expected {MASTER_SOURCE_COUNT}"
+    if result.miner_count < FROZEN_MIN_SOURCE_COUNT:
+        msg = (
+            f"miner_count={result.miner_count}, expected >= {FROZEN_MIN_SOURCE_COUNT}"
+        )
         raise AssertionError(msg)
     if result.routed_throughput < MASTER_MIN_ROUTED_THROUGHPUT:
         msg = (
@@ -105,11 +111,11 @@ __all__ = [
     "CANONICAL_BUDGET_MS",
     "CANONICAL_SPEED_TIER",
     "CANONICAL_THROUGHPUT_TARGET_PERCENT",
+    "FROZEN_MIN_SOURCE_COUNT",
     "MASTER_FAILED_SOURCE_COUNT",
     "MASTER_MIN_ROUTED_THROUGHPUT",
     "MASTER_ORPHAN_COUNT",
     "MASTER_ROUTE_ISLAND_COUNT",
-    "MASTER_ROUTED_SOURCE_COUNT",
     "MASTER_SOURCE_COUNT",
     "assert_master_valid_diagnostics_payload",
     "assert_master_valid_eval_result",

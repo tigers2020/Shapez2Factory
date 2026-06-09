@@ -30,8 +30,8 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline 
     CANONICAL_BUDGET_MS,
     CANONICAL_SPEED_TIER,
     CANONICAL_THROUGHPUT_TARGET_PERCENT,
+    FROZEN_MIN_SOURCE_COUNT,
     MASTER_MIN_ROUTED_THROUGHPUT,
-    MASTER_SOURCE_COUNT,
     assert_master_valid_diagnostics_payload,
     assert_master_valid_eval_result,
     assert_master_valid_loop_summary,
@@ -74,7 +74,7 @@ def test_master_valid_baseline_constants_match_report() -> None:
     assert CANONICAL_THROUGHPUT_TARGET_PERCENT == 80
     assert CANONICAL_BUDGET_MS == 60_000
     assert CANONICAL_SPEED_TIER == 1
-    assert MASTER_SOURCE_COUNT == 76
+    assert FROZEN_MIN_SOURCE_COUNT == 76
     assert MASTER_MIN_ROUTED_THROUGHPUT == 30960.0
 
 
@@ -119,6 +119,7 @@ def test_master_valid_baseline_loop_outputs_guard(tmp_path: Path) -> None:
 
     best = json.loads((tmp_path / "best_config.json").read_text(encoding="utf-8"))
     assert best["result"]["valid"] is True
+    assert best["result"]["miner_count"] >= FROZEN_MIN_SOURCE_COUNT
     assert best["result"]["routed_throughput"] >= MASTER_MIN_ROUTED_THROUGHPUT
     assert best["result"]["route_island_count"] == 0
     assert best["result"]["orphan_count"] == 0

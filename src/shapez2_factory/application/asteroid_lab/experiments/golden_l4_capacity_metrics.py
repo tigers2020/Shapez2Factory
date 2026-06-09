@@ -70,7 +70,11 @@ def compute_golden_l4_capacity_metrics(
 
     l4_interior_occupied_cell_count = 0
     if artifacts.inner_fill is not None:
-        l4_interior_occupied_cell_count = artifacts.inner_fill.metrics.interior_occupied_cell_count
+        fill_metrics = artifacts.inner_fill.metrics
+        if fill_metrics is not None:
+            l4_interior_occupied_cell_count = fill_metrics.interior_occupied_cell_count
+        else:
+            l4_interior_occupied_cell_count = len(artifacts.inner_fill.interior_occupied_cells)
 
     l4_interior_group_set_equivalent = l4_interior_occupied_cell_count // FIELD_CELLS_PER_GROUP_SET
     inner_max_group_sets = max(0, max_group_sets - rim_group_count)

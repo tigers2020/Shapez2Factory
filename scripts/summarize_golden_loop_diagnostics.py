@@ -78,11 +78,16 @@ def render_markdown(*, out_dir: Path) -> str:
     bucket_rows: list[tuple[str, str]] = []
     reason_rows: list[tuple[str, str]] = []
     examples: list[str] = []
+    l4_capacity_rows: list[tuple[str, str]] = []
     other_diag: list[str] = []
     if isinstance(diagnostics, list):
         for item in diagnostics:
             text = str(item)
-            if text.startswith("l5_failure_bucket:"):
+            if text.startswith("l4_capacity:"):
+                _, payload = text.split(":", 1)
+                key, value = payload.split("=", 1)
+                l4_capacity_rows.append((key, value))
+            elif text.startswith("l5_failure_bucket:"):
                 _, payload = text.split(":", 1)
                 bucket, count = payload.rsplit("=", 1)
                 bucket_rows.append((bucket, count))
@@ -98,6 +103,15 @@ def render_markdown(*, out_dir: Path) -> str:
     if other_diag:
         for item in other_diag:
             lines.append(f"- `{item}`")
+    else:
+        lines.append("- _(none)_")
+
+    lines.extend(["", "### L4 capacity / inner-fill target", ""])
+    if l4_capacity_rows:
+        lines.append("| Metric | Value |")
+        lines.append("| --- | --- |")
+        for key, value in l4_capacity_rows:
+            lines.append(f"| `{key}` | `{value}` |")
     else:
         lines.append("- _(none)_")
 

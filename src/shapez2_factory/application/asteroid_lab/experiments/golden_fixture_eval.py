@@ -10,6 +10,10 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_loader 
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_run import (
     GoldenSolverArtifacts,
 )
+from shapez2_factory.application.asteroid_lab.experiments.golden_l4_capacity_metrics import (
+    compute_golden_l4_capacity_metrics,
+    format_l4_capacity_diagnostics,
+)
 from shapez2_factory.application.asteroid_lab.experiments.transport_kind_normalization import (
     format_transport_kind_mismatch_diagnostic,
     transport_families_compatible,
@@ -344,6 +348,9 @@ def evaluate_against_golden(
         diagnostics.append("anchor_normalized_below_direct")
 
     diagnostics.extend(format_l5_failure_eval_diagnostics(route_plan))
+    diagnostics.extend(
+        format_l4_capacity_diagnostics(compute_golden_l4_capacity_metrics(artifacts)),
+    )
 
     return GoldenEvalResult(
         valid=valid,

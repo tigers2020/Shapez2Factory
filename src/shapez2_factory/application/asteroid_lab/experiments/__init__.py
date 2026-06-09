@@ -1,5 +1,9 @@
 """Golden fixture experiments package (PR-1 loader; PR-2 fixtures; PR-3/4 solver eval)."""
 
+from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_assembler import (
+    assemble_candidate_blueprint,
+    encode_candidate_copy_string,
+)
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_eval import (
     GoldenEvalResult,
     evaluate_against_golden,
@@ -29,7 +33,9 @@ __all__ = [
     "GoldenOracle",
     "GoldenSolverArtifacts",
     "GoldenSolverConfig",
+    "assemble_candidate_blueprint",
     "build_golden_oracle",
+    "encode_candidate_copy_string",
     "evaluate_against_golden",
     "golden_fixture_dir",
     "load_game_data_rules",

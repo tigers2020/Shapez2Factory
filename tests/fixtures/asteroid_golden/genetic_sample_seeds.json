@@ -1,0 +1,1699 @@
+{
+  "deterministic_sort_key": "by_gene_id_then_throughput_desc",
+  "entries": [
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m0e_01",
+      "occupied_offsets": [
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 4,
+      "topology_signature_base": "aeb4bb8e6d89af70931087e2c7f1214a1e002e2020269a01f48cedcbffbe82b7"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m1e_01",
+      "occupied_offsets": [
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 8,
+      "topology_signature_base": "ff4c577e6a854969a92252ac008780082f6c7512db5fc7a4f833d3b13bb87f4f"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m2e_01",
+      "occupied_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 12,
+      "topology_signature_base": "5d8f5d5866f1d521e46dc58dd506b88436268461c80625061edd5f6931eaf062"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m2e_02",
+      "occupied_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 12,
+      "topology_signature_base": "48b9438a404d9ee658f0c73f060335fb803064b56d6f87a7eb1c877060f4d052"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m2e_03",
+      "occupied_offsets": [
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 12,
+      "topology_signature_base": "6023b0d64c5178898a0ea0857ad12f61d10410354276a5d55743e137c0b78e5b"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m2e_04",
+      "occupied_offsets": [
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 12,
+      "topology_signature_base": "d503b9d5fefc32156a64c430867572d88bccd34ea85b607881d90c3eb3dde7fc"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -3,
+          0
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_01",
+      "occupied_offsets": [
+        [
+          -3,
+          0
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "7b6d268f22a82ecc9a17c3819964c041ac71651533bdf22ff1edab4e6b6bd01f"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_02",
+      "occupied_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "bbbb07118f897c637da4f8d28edf8e77a734e7f6e1e0a76ea65e89f3b203bb23"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_03",
+      "occupied_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "b0589aa372195d415a688d52b9b1b7e81eaebe50e97b050b984e44eb0be89fd9"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_04",
+      "occupied_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "e1b34d2fbaa9e9e91f84073cd362cdad315e7d7106ff29809bdecb7048151e63"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_05",
+      "occupied_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "aa54005f77b983f3c7bf8a4881aff44fe374267cf5080385583113c3ebfb9053"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_06",
+      "occupied_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "4d780edf8a2fd55b8449dc7491a9355c4a15f8e909986873975e06a61a2acb93"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          0,
+          -2
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_07",
+      "occupied_offsets": [
+        [
+          0,
+          -2
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "4ed5dc69519d2912faf40f806c6464d2f83dece29ba69ad4d99d3c7893dcc934"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_08",
+      "occupied_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "8d83fce58ba19ca05e8d77d9ad341eff834760dd2eb073971e5373a7207d1670"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_09",
+      "occupied_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "f6e5cb410cc51e3de34252ec2c8aeaa1dfa75d3fe4fc5f080eec6e8ce5a998d3"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_11",
+      "occupied_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "83cfaa197bee2cab8e7421de3075cc4873ff6a8f257d966cb93e3a56c6a5eefb"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_12",
+      "occupied_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "723926d3e454e3d0f4f06892642d19b8b2527530865fa8e5f3f8433febdc0ea4"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "fluid_miner_seed_m3e_13",
+      "occupied_offsets": [
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "fluid",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "cb5e0a6c6776bb9687414efaa527c7ea8ff13a400109e62f99ba973cc75fe5d8"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m0e_01",
+      "occupied_offsets": [
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 4,
+      "topology_signature_base": "aeb4bb8e6d89af70931087e2c7f1214a1e002e2020269a01f48cedcbffbe82b7"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m1e_01",
+      "occupied_offsets": [
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 8,
+      "topology_signature_base": "ff4c577e6a854969a92252ac008780082f6c7512db5fc7a4f833d3b13bb87f4f"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m2e_01",
+      "occupied_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 12,
+      "topology_signature_base": "5d8f5d5866f1d521e46dc58dd506b88436268461c80625061edd5f6931eaf062"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m2e_02",
+      "occupied_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 12,
+      "topology_signature_base": "48b9438a404d9ee658f0c73f060335fb803064b56d6f87a7eb1c877060f4d052"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m2e_03",
+      "occupied_offsets": [
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 12,
+      "topology_signature_base": "6023b0d64c5178898a0ea0857ad12f61d10410354276a5d55743e137c0b78e5b"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m2e_04",
+      "occupied_offsets": [
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 12,
+      "topology_signature_base": "d503b9d5fefc32156a64c430867572d88bccd34ea85b607881d90c3eb3dde7fc"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -3,
+          0
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_01",
+      "occupied_offsets": [
+        [
+          -3,
+          0
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "7b6d268f22a82ecc9a17c3819964c041ac71651533bdf22ff1edab4e6b6bd01f"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_02",
+      "occupied_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "bbbb07118f897c637da4f8d28edf8e77a734e7f6e1e0a76ea65e89f3b203bb23"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_03",
+      "occupied_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "b0589aa372195d415a688d52b9b1b7e81eaebe50e97b050b984e44eb0be89fd9"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_04",
+      "occupied_offsets": [
+        [
+          -2,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "e1b34d2fbaa9e9e91f84073cd362cdad315e7d7106ff29809bdecb7048151e63"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_05",
+      "occupied_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "aa54005f77b983f3c7bf8a4881aff44fe374267cf5080385583113c3ebfb9053"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_06",
+      "occupied_offsets": [
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "4d780edf8a2fd55b8449dc7491a9355c4a15f8e909986873975e06a61a2acb93"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          0,
+          -2
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_07",
+      "occupied_offsets": [
+        [
+          0,
+          -2
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "4ed5dc69519d2912faf40f806c6464d2f83dece29ba69ad4d99d3c7893dcc934"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_08",
+      "occupied_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "8d83fce58ba19ca05e8d77d9ad341eff834760dd2eb073971e5373a7207d1670"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_09",
+      "occupied_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "f6e5cb410cc51e3de34252ec2c8aeaa1dfa75d3fe4fc5f080eec6e8ce5a998d3"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_11",
+      "occupied_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "83cfaa197bee2cab8e7421de3075cc4873ff6a8f257d966cb93e3a56c6a5eefb"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_12",
+      "occupied_offsets": [
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "723926d3e454e3d0f4f06892642d19b8b2527530865fa8e5f3f8433febdc0ea4"
+    },
+    {
+      "canonical_output_dir": "E",
+      "extension_offsets": [
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "extractor_offset": [
+        0,
+        0
+      ],
+      "gene_id": "miner_seed_m3e_13",
+      "occupied_offsets": [
+        [
+          -1,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "output_stub_offset": [
+        1,
+        0
+      ],
+      "resource_kind": "shape",
+      "route_probe_start_offset": [
+        2,
+        0
+      ],
+      "throughput_factor": 16,
+      "topology_signature_base": "cb5e0a6c6776bb9687414efaa527c7ea8ff13a400109e62f99ba973cc75fe5d8"
+    }
+  ],
+  "generated_at": "2026-06-09T12:41:23.274876Z",
+  "provenance_hash": "9f82b3407a75de1cb95a4f54e1a1061c2f91d2767c02bd10fbe55f2baeb0a051",
+  "schema_version": "genetic_sample_seed_v1",
+  "source_batch_id": "miner_seed_v2"
+}

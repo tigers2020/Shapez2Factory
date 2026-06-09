@@ -70,6 +70,45 @@
     image-rendering: auto;
   }
 
+  /* Lab workspace IDE split-pane (explicit breakpoints; survives stale Tailwind arbitrary-class builds). */
+  #lab-root .lab-workspace-grid {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    overflow-x: hidden;
+  }
+
+  @media (min-width: 64rem) {
+    #lab-root .lab-workspace-grid {
+      grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+    }
+
+    #lab-root .lab-workspace-grid > .lab-workspace-right {
+      grid-column: 1 / -1;
+    }
+
+    #lab-root .lab-workspace-left {
+      min-height: auto;
+    }
+  }
+
+  @media (min-width: 96rem) {
+    #lab-root .lab-workspace-grid {
+      grid-template-columns: minmax(0, 280px) minmax(0, 1fr) minmax(0, 300px);
+    }
+
+    #lab-root .lab-workspace-grid > .lab-workspace-right {
+      grid-column: auto;
+    }
+
+    #lab-root .lab-workspace-left {
+      min-height: calc(100dvh - 10rem);
+    }
+  }
+
   /* Replay timeline toolbar below canvas: isolate pointer targets from grid viewport pan. */
   #lab-timeline-controls {
     touch-action: manipulation;

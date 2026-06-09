@@ -11,6 +11,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.source_adapter import (  # noqa: E501
     build_layer04_sources,
+    throughput_factor_to_source_load_m,
 )
 
 
@@ -35,10 +36,18 @@ def _minimal_rim_result():
     )
 
 
-def test_source_load_m_equals_throughput_factor() -> None:
+def test_source_load_m_maps_throughput_factor_to_lane_m_units() -> None:
     views = build_layer04_sources(_minimal_rim_result())
     assert len(views) == 1
-    assert views[0].source_load_m == views[0].throughput_factor == 16
+    assert views[0].throughput_factor == 16
+    assert views[0].source_load_m == throughput_factor_to_source_load_m(16) == 1
+
+
+def test_throughput_factor_lane_mapping_table() -> None:
+    assert throughput_factor_to_source_load_m(4) == 1
+    assert throughput_factor_to_source_load_m(8) == 1
+    assert throughput_factor_to_source_load_m(12) == 1
+    assert throughput_factor_to_source_load_m(16) == 1
 
 
 def test_equipment_cells_union_miner_and_extension() -> None:

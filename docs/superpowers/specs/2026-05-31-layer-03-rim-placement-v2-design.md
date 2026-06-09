@@ -54,7 +54,7 @@ and the output stub/route in the void. The result is a **provisional** rim overl
 
 - Interior full-field fill or coverage optimization (L4 inner pattern fill).
 - Final layout mutation / commit-validate (L6).
-- Final transport routing (committed `SpaceBelt_*` / `SpacePipe_*` tiles, merge groups, transport replay authority) — **Layer 04** [`2026-05-31-layer-04-transport-routing-design.md`](2026-05-31-layer-04-transport-routing-design.md). L3 does not emit committed space transport tiles.
+- Final transport routing (committed `SpaceBelt_*` / `SpacePipe_*` tiles, merge groups, transport replay authority) — **Layer 05** [`2026-05-31-layer-04-transport-routing-design.md`](2026-05-31-layer-04-transport-routing-design.md) (canonical slug `layer_05_transport_routing`). L3 does not emit committed space transport tiles.
 - Reproducing `golden_map_result` cell-for-cell (forbidden as an acceptance target; see Amendment 5).
 - Any DB read or ORM import inside the core/CLI solver.
 
@@ -62,7 +62,7 @@ and the output stub/route in the void. The result is a **provisional** rim overl
 
 Layer 3 `route_probe_path`, route probe, and commit-time re-probe are **feasibility witnesses only**. They are not final transport placement, do not reserve transport cells for downstream layers, do not emit committed `SpaceBelt` / `SpacePipe` tiles, and must not be rendered as final transport in Lab replay.
 
-Layer 4 transport routing (`layer_04_transport_routing`) is the **sole authority** for final belt/pipe route cells, transport groups, M-bundle capacity accounting, sprite/tile projection, and transport replay overlay.
+Layer 5 transport routing (canonical `layer_05_transport_routing`; package `layer_04_transport_routing/` until PR-2) is the **sole authority** for final belt/pipe route cells, transport groups, M-bundle capacity accounting, sprite/tile projection, and transport replay overlay.
 
 ## Work classification
 

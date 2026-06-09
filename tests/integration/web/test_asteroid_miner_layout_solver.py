@@ -74,7 +74,10 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert "No solver runs yet" in content
     assert "Paste a blueprint, then run solver" in content
     assert "Run Solver to generate constraints" in content
-    assert "2xl:grid-cols-" in content
+    assert 'class="lab-workspace-grid' in content
+    assert "lab-workspace-left" in content
+    assert "lab-workspace-center" in content
+    assert "lab-workspace-right" in content
     assert 'id="lab-replay-grid-stage"' in content
     assert 'id="lab-replay-terrain-canvas"' in content
     assert 'id="lab-replay-overlay-canvas"' in content

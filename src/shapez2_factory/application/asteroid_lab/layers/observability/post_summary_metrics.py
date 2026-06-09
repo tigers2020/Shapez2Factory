@@ -128,13 +128,27 @@ def build_layer03_post_summary_metrics(result: RimBundleCandidateSet) -> dict[st
 def build_layer04_inner_fill_post_summary_metrics(
     result: object | None = None,
 ) -> dict[str, object]:
-    _ = result
-    return {"stub": True, "interior_occupied_cell_count": 0}
+    from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+        Layer04InnerFillResult,
+    )
+
+    if not isinstance(result, Layer04InnerFillResult):
+        return {"stub": True, "interior_occupied_cell_count": 0}
+    metrics = result.metrics
+    return {
+        "stub": False,
+        "interior_occupied_cell_count": len(result.interior_occupied_cells),
+        "coverage_ratio": metrics.coverage_ratio if metrics is not None else 0.0,
+        "budget_interrupted": metrics.budget_interrupted if metrics is not None else False,
+        "layer_skip_reason": result.skip_reason.value if result.skip_reason else None,
+    }
 
 
-def build_layer05_post_summary_metrics() -> dict[str, object]:
+def build_layer05_post_summary_metrics(
+    result: object | None = None,
+) -> dict[str, object]:
     """Deprecated alias for ``build_layer04_inner_fill_post_summary_metrics``."""
-    return build_layer04_inner_fill_post_summary_metrics()
+    return build_layer04_inner_fill_post_summary_metrics(result)
 
 
 def build_layer06_post_summary_metrics() -> dict[str, object]:

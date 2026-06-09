@@ -15,7 +15,11 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_route imp
     Layer04FailureReason,
     Layer04Metrics,
     Layer04RoutePlan,
+    Layer04SourceView,
     ProjectedTransportTile,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_failed_source_diagnostics import (  # noqa: E501
+    Layer05FailedSourceDiagnostic,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
     IntegratedRimGreedyResult,
@@ -29,6 +33,9 @@ from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.commit_validator import (  # noqa: E501
     L4CommitValidator,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.failed_source_diagnostics import (  # noqa: E501
+    build_failed_source_diagnostic,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.merge_groups import (  # noqa: E501
     RouteGroupRegistry,
@@ -80,8 +87,8 @@ def _build_goal_set(
 def _route_not_found_detail(
     *,
     source_id: str,
-    interior_occupied_cells: frozenset,
-    equipment_cells: frozenset,
+    interior_occupied_cells: frozenset[tuple[int, int]],
+    equipment_cells: frozenset[tuple[int, int]],
 ) -> str:
     return (
         f"source_id={source_id};"
@@ -157,15 +164,42 @@ def route_layer04_sequential(
 
     routes: list[CommittedRoute] = []
     failures: list[Layer04Failure] = []
+    failed_source_diagnostics: list[Layer05FailedSourceDiagnostic] = []
+    placement_by_id = {p.placement_id: p for p in rim_result.committed_placements}
+
+    def _record_source_failure(
+        source: Layer04SourceView,
+        *,
+        reason: Layer04FailureReason,
+        detail: str,
+        goals: tuple[RouteGoal, ...],
+    ) -> None:
+        failures.append(
+            Layer04Failure(
+                placement_id=source.placement_id,
+                reason=reason,
+                detail=detail,
+            )
+        )
+        failed_source_diagnostics.append(
+            build_failed_source_diagnostic(
+                source=source,
+                placement=placement_by_id.get(source.placement_id),
+                transport_kind=transport_kind_slug,
+                reason=reason,
+                detail=detail,
+                goals=goals,
+            )
+        )
 
     for source in _sort_sources(sources, connector_goals):
         goals = _build_goal_set(connector_goals, registry)
         if not goals:
-            failures.append(
-                Layer04Failure(
-                    placement_id=source.placement_id,
-                    reason=Layer04FailureReason.NO_CONNECTOR_WITH_CAPACITY,
-                )
+            _record_source_failure(
+                source,
+                reason=Layer04FailureReason.NO_CONNECTOR_WITH_CAPACITY,
+                detail="",
+                goals=goals,
             )
             continue
 
@@ -175,16 +209,15 @@ def route_layer04_sequential(
             goals=goals,
         )
         if result is None:
-            failures.append(
-                Layer04Failure(
-                    placement_id=source.placement_id,
-                    reason=Layer04FailureReason.ROUTE_NOT_FOUND,
-                    detail=_route_not_found_detail(
-                        source_id=source.placement_id,
-                        interior_occupied_cells=interior_block,
-                        equipment_cells=equipment_cells,
-                    ),
-                )
+            _record_source_failure(
+                source,
+                reason=Layer04FailureReason.ROUTE_NOT_FOUND,
+                detail=_route_not_found_detail(
+                    source_id=source.placement_id,
+                    interior_occupied_cells=interior_block,
+                    equipment_cells=equipment_cells,
+                ),
+                goals=goals,
             )
             continue
 
@@ -193,22 +226,20 @@ def route_layer04_sequential(
         else:
             cell_group = registry.group_at_cell(result.goal_coord)
             if cell_group is None:
-                failures.append(
-                    Layer04Failure(
-                        placement_id=source.placement_id,
-                        reason=Layer04FailureReason.ROUTE_NOT_FOUND,
-                        detail="trunk_goal_missing_group",
-                    )
+                _record_source_failure(
+                    source,
+                    reason=Layer04FailureReason.ROUTE_NOT_FOUND,
+                    detail="trunk_goal_missing_group",
+                    goals=goals,
                 )
                 continue
             target_gid = cell_group
         if registry.remaining_m(target_gid) < source.source_load_m:
-            failures.append(
-                Layer04Failure(
-                    placement_id=source.placement_id,
-                    reason=Layer04FailureReason.CAPACITY_OVERFLOW,
-                    detail=result.goal_id,
-                )
+            _record_source_failure(
+                source,
+                reason=Layer04FailureReason.CAPACITY_OVERFLOW,
+                detail=result.goal_id,
+                goals=goals,
             )
             continue
 
@@ -223,11 +254,11 @@ def route_layer04_sequential(
         )
         commit_err = commit_validator.validate_path(result.path)
         if commit_err is not None:
-            failures.append(
-                Layer04Failure(
-                    placement_id=source.placement_id,
-                    reason=commit_err,
-                )
+            _record_source_failure(
+                source,
+                reason=commit_err,
+                detail="",
+                goals=goals,
             )
             continue
 
@@ -282,6 +313,7 @@ def route_layer04_sequential(
             total_route_cells=sum(len(r.path_coords) for r in routes),
             total_route_cost=sum(r.route_cost for r in routes),
         ),
+        failed_source_diagnostics=tuple(failed_source_diagnostics),
     )
 
 

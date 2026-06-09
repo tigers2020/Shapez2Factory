@@ -129,9 +129,7 @@ def _belt_adjacency_edges(
         for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
             if (nx, ny) in belt_cells:
                 a, b = (x, y), (nx, ny)
-                norm: tuple[tuple[int, int], tuple[int, int]] = (
-                    (a, b) if a <= b else (b, a)
-                )
+                norm: tuple[tuple[int, int], tuple[int, int]] = (a, b) if a <= b else (b, a)
                 edges.add(norm)
     return frozenset(edges)
 

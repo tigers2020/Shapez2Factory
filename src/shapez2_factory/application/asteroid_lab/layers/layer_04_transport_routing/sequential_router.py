@@ -80,8 +80,8 @@ def _build_goal_set(
 def _route_not_found_detail(
     *,
     source_id: str,
-    interior_occupied_cells: frozenset,
-    equipment_cells: frozenset,
+    interior_occupied_cells: frozenset[tuple[int, int]],
+    equipment_cells: frozenset[tuple[int, int]],
 ) -> str:
     return (
         f"source_id={source_id};"

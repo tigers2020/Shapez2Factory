@@ -17,7 +17,7 @@ from django_apps.asteroid_lab.replay.timeline_serialization import replay_map_vi
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.wire import (
     exterior_connector_plan_to_metrics_dict,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.candidate_gen import (
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.candidate_gen import (  # noqa: E501
     generate_candidates,
 )
 from tests.unit.asteroid_lab.layers.fixtures.narrow_corridor_maps import (

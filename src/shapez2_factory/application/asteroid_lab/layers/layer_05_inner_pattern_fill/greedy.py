@@ -73,9 +73,7 @@ def run_greedy_inner_fill(
         )
 
     occupied = frozenset(p.coord for p in placements)
-    if not occupied and (
-        budget_interrupted or budget_ctx.remaining_budget_ms() <= 0
-    ):
+    if not occupied and (budget_interrupted or budget_ctx.remaining_budget_ms() <= 0):
         return Layer04InnerFillResult(
             interior_occupied_cells=frozenset(),
             placements=(),

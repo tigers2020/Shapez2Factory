@@ -2,20 +2,24 @@
 
 from __future__ import annotations
 
-from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import RouteProbedBundleCandidate
-from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import RimGreedyRejectReason
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
+    RouteProbedBundleCandidate,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
+    RimGreedyRejectReason,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import TransportKind
-from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.beam_selector import (
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.beam_selector import (  # noqa: E501
     FitnessBreakdown,
     select_bundles,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.candidate_gen import (
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.candidate_gen import (  # noqa: E501
     generate_candidates,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_finalize import (
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_finalize import (  # noqa: E501
     finalize_selection,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_reprobe import (
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_reprobe import (  # noqa: E501
     build_commit_reprobe_context,
 )
 from tests.unit.asteroid_lab.layers.fixtures.narrow_corridor_maps import (
@@ -40,14 +44,12 @@ def _pick(
     gene_key: str,
 ) -> RouteProbedBundleCandidate:
     return next(
-        c
-        for c in pool
-        if c.candidate.anchor_coord == anchor and c.candidate.gene_key == gene_key
+        c for c in pool if c.candidate.anchor_coord == anchor and c.candidate.gene_key == gene_key
     )
 
 
 def test_narrow_corridor_probe_vs_commit_regression() -> None:
-    """S1: both pool-feasible at probe time; B alone commits; A then B rejects B after reservation."""
+    """S1: pool-feasible at probe; B alone commits; A then B rejects B after reservation."""
 
     complete_map = s1_probe_vs_commit_complete_map()
     exterior_plan = s1_probe_vs_commit_exterior_plan()
@@ -98,7 +100,10 @@ def test_shared_corridor_pressure_regression() -> None:
         exterior_plan=exterior_plan,
         genetic_sample_seeds=s3_corridor_sharing_catalog(),
     ).normal_candidates
-    by_anchor = {(1, 1): _pick(pool, anchor=(1, 1), gene_key="m0e"), (1, 3): _pick(pool, anchor=(1, 3), gene_key="m0e")}
+    by_anchor = {
+        (1, 1): _pick(pool, anchor=(1, 1), gene_key="m0e"),
+        (1, 3): _pick(pool, anchor=(1, 3), gene_key="m0e"),
+    }
     commit_ctx = build_commit_reprobe_context(
         complete_map=complete_map,
         exterior_plan=exterior_plan,

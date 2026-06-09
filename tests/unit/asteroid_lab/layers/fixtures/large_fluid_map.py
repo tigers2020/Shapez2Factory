@@ -12,9 +12,13 @@ from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
 from shapez2_factory.adapters.asteroid_lab.json_snapshot_rules import (
     JsonSnapshotGameDataRulesAdapter,
 )
-from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
+from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
+    ReconstructionCompleteMap,
+)
 
-_FIXTURE_ROOT = Path(__file__).resolve().parents[4] / "fixtures" / "asteroid_lab" / "large_fluid_map"
+_FIXTURE_ROOT = (
+    Path(__file__).resolve().parents[4] / "fixtures" / "asteroid_lab" / "large_fluid_map"
+)
 
 
 def large_fluid_map_fixture_dir() -> Path:

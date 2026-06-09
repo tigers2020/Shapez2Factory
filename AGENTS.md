@@ -45,7 +45,7 @@ mypy django_apps config src
 black --check .
 ```
 
-PR/full: `scripts/test_full.ps1` plus lint/type/format. Solver smoke: `python manage.py run_solver --slug <slug>`.
+When to run which gate: `docs/agent-workflows/validation-routine.md`. PR/full: `scripts/test_full.ps1` plus lint/type/format. Solver smoke: `python manage.py run_solver --slug <slug>`.
 
 ## Scope / Permissions
 

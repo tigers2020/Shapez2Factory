@@ -31,4 +31,6 @@ Never relax tests to force green.
 
 If behavior authority is missing, stop with `BLOCKED:`.
 
+Validation tiers (when, not what): `docs/agent-workflows/validation-routine.md`.
+
 References: `documents/ai/templates/contract-brief.md`, `documents/ai/templates/pr-plan.md`, `documents/ai/manuals/testing.md`.

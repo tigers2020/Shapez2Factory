@@ -8,15 +8,15 @@ from shapez2_factory.adapters.asteroid_lab.space_transport_catalog_snapshot impo
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    Layer04InnerFillResult,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_route import (
     LAYER04_ROUTE_PLAN_VERSION,
     Layer04Failure,
     Layer04FailureReason,
     Layer04Metrics,
     Layer04RoutePlan,
-)
-from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
-    Layer04InnerFillResult,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,

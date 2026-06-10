@@ -3,11 +3,10 @@ name: plan-run
 description: >-
   Linear plan queue executor for shapez2Factory. Scans plans/{high,mid,low},
   picks one eligible plan, runs it in an isolated worktree via executing-plans,
-  validates, updates Linear, opens PR, and babysits. Invoke via /plan-run pick |
+  validates, updates Linear, opens PR, and babysits when ≥5 open PRs on master.
+  Invoke via /plan-run (default: auto) | pick |
   run [SHA-XX] | skip [SHA-XX] | ship | babysit | auto [SHA-XX] [--merge] |
-  status | recover | clear. Optional: auto --allow-linear-offline (no merge). Forbidden:
-  --merge with --allow-linear-offline. recover inspects stale active.md and stale
-  Linear claims.
+  status | recover | clear. Use status only with explicit /plan-run status.
 disable-model-invocation: true
 ---
 
@@ -16,7 +15,7 @@ disable-model-invocation: true
 Execute approved plans from the repo plan queue. One plan per run.
 
 - **Manual subcommands** — confirm at pick and ship; see [Manual confirmation semantics](#manual-confirmation-semantics).
-- **`auto`** — chains phases without re-prompting; see [Auto mode](#plan-run-auto).
+- **`auto`** — default headless mode; chains phases without re-prompting; see [Auto mode](#plan-run-auto).
 
 Canon: [`AGENTS.md`](../../../AGENTS.md) · [`.cursor/rules/agent_scope.mdc`](../../rules/agent_scope.mdc) · [`.cursor/rules/git-worktree.mdc`](../../rules/git-worktree.mdc)
 
@@ -36,14 +35,28 @@ State file (session handoff): `var/plan-run/active.md` (gitignored via `var/`).
 | `/plan-run run [SHA-XX]` | Worktree + implement + validate; stop before PR |
 | `/plan-run skip [SHA-XX]` | Mark no-code plan skipped (user confirmed) |
 | `/plan-run ship` | Push branch + `gh pr create` (user confirmed) |
-| `/plan-run babysit` | Triage open PR; merge only on user confirm |
-| `/plan-run auto [SHA-XX] [--merge]` | Chain pick → run → commit → ship → babysit |
+| `/plan-run babysit` | Batch triage when ≥5 open PRs on `master`; merge only on user confirm |
+| `/plan-run auto [SHA-XX] [--merge]` | Chain pick → run → commit → ship → babysit (when batch gate passes) |
 | `/plan-run auto resume [--merge]` | Continue `active.md` from current phase |
 | `/plan-run status` | Report `active.md`, worktrees, open PR |
 | `/plan-run recover` | Inspect stale `active.md`; classify resumable state |
 | `/plan-run clear` | Mark run cleared; does not delete worktree or branch |
 
-Parse subcommand from user message. If `/plan-run` alone, run **`status`**.
+### Default invocation
+
+| Input | Action |
+|-------|--------|
+| `/plan-run` alone | Headless **`auto`** — see routing below |
+| `/plan-run status` | Read-only status report only |
+
+**`/plan-run` alone (no subcommand)** — same consent as `/plan-run auto` / `auto resume`:
+
+1. If `active.md` has `status: active` and run is resumable (`phase` / `last_successful_phase` < `merged`, including `failed`) **and** not babysit-deferred at `pr-open` → **`auto resume`**.
+2. If `last_successful_phase: pr-open` and open PRs on `master` **< 5** ([babysit batch gate](#babysit-batch-gate-5-open-prs)) → fresh **`auto`** (next plan; [mutex exception](#active-run-mutex)).
+3. Else if no active run, or `status: cleared` / `achieved` → fresh **`auto`**.
+4. Dirty root before fresh `auto` → `/clean-root auto` then retry.
+
+**Never** default to `status`. Status is explicit: **`/plan-run status`** only.
 
 **Aliases:** `auto --merge`, `auto merge`, `auto --through-merge` enable merge phase. `auto --allow-linear-offline` permits auto when Linear MCP unavailable (use sparingly).
 
@@ -55,12 +68,14 @@ What each command **counts as** user confirmation:
 
 | Command | Confirms | Does **not** confirm |
 |---------|----------|----------------------|
+| `/plan-run` (alone) | same as `/plan-run auto` or `auto resume` per [default invocation](#default-invocation) | merge (needs `--merge`) |
+| `/plan-run status` | nothing (read-only) | all mutating phases |
 | `/plan-run pick` | nothing (read-only) | worktree, Linear, commit, PR, merge |
 | `/plan-run run SHA-XX` | worktree create, plan `in_progress`, Linear → In Progress (or Linear offline if user confirmed) | commit, push, PR, merge |
 | `/plan-run skip SHA-XX` | plan `skipped`, Linear comment only | worktree, commit, PR, merge |
 | `/plan-run ship` | commit (if needed), push, PR, Linear → In Review | merge |
 | `/plan-run babysit` | in-scope CI/review fixes | merge (unless user also says merge) |
-| `/plan-run auto` | commit, push, PR, Linear through babysit | merge (needs `--merge`) |
+| `/plan-run auto` | commit, push, PR, Linear; babysit only when [batch gate](#babysit-batch-gate-5-open-prs) passes | merge (needs `--merge`) |
 | `/plan-run auto --merge` | merge when [merge gate](#merge-gate---merge-only) passes | — |
 
 Do **not** re-ask for Linear In Progress when user already invoked `/plan-run run SHA-XX`.
@@ -105,6 +120,42 @@ If `active.md` has `status: active`:
 
 Use `/plan-run recover` before `/plan-run clear` when unsure whether worktree/PR still exist.
 
+**Babysit batch gate exception:** When `last_successful_phase` is `pr-open`, open PR count on `master` is **< 5**, and babysit was deferred — fresh `pick`, `run`, and `auto` (without `resume`) are **allowed** so the queue can ship more PRs before batch babysit.
+
+### Babysit batch gate (≥5 open PRs)
+
+Do **not** enter babysit / `ci-green` until **≥ 5** open PRs target `master`.
+
+**Count open PRs:**
+
+```bash
+gh pr list --state open --base master --json number
+```
+
+Use the JSON array length. Report as `open_prs_on_master: N`.
+
+| Command | When open PRs < 5 | When open PRs ≥ 5 |
+|---------|-------------------|-------------------|
+| `/plan-run babysit` | **Defer** — report count; do not triage or merge | Run **`babysit`** on deferred PRs (start with `active.md` `pr_url` when set, then other open plan-run PRs) |
+| `/plan-run auto` / `auto resume` at `ci-green` | **Stop at `pr-open`** — checkpoint ok + babysit deferred | Continue babysit → `ci-green` |
+| `/plan-run ship` (manual) | After PR open: suggest next plan, not babysit | May suggest `/plan-run babysit` |
+| `/plan-run status` | Always report `open_prs_on_master` vs threshold | Same |
+
+**Defer output (babysit batch gate):**
+
+```text
+Summary
+- Issue: SHA-XX · phase: pr-open
+- Open PRs on master: N / 5 (babysit deferred)
+
+Next
+- /plan-run pick  (ship more plans)
+- /plan-run run SHA-YY
+- /plan-run babysit  (when N ≥ 5)
+```
+
+Do not treat babysit deferral as `failed`. Keep `last_successful_phase: pr-open`.
+
 ### Hermes
 
 - Do **not** invoke Hermes unless plan frontmatter has `hermes: required`.
@@ -129,7 +180,7 @@ When Linear MCP is not connected or query fails:
 
 `--allow-linear-offline` does not bypass dirty guard, mutex, or merge gate.
 
-**Forbidden flag combination:** `--allow-linear-offline` and `--merge` together → **`BLOCKED:`** immediately. Linear must be available before auto merge. With offline mode, auto may open PR and babysit but must stop at `ci-green`.
+**Forbidden flag combination:** `--allow-linear-offline` and `--merge` together → **`BLOCKED:`** immediately. Linear must be available before auto merge. With offline mode, auto may open PR but must stop at `pr-open` (or `ci-green` only when [babysit batch gate](#babysit-batch-gate-5-open-prs) passes).
 
 ### Auto forbidden (manual subcommands only)
 
@@ -384,6 +435,7 @@ Push branch and open PR. Requires `active.md` phase `implemented` (or user names
 4. `gh pr create --base master --title "..." --body` with plan summary + test checklist — **skip if `pr_url` already set** (resume path).
 5. Linear → **In Review**; label `plan-run:pr-opened` (or skip Linear write in offline mode).
 6. Update `active.md`: `phase: pr-open`, `pr_url`, `last_successful_phase: pr-open`.
+7. Count open PRs on `master` ([babysit batch gate](#babysit-batch-gate-5-open-prs)). If **< 5**, report babysit deferred and suggest next plan — do **not** invoke babysit.
 
 ### Commit if needed (staging rules)
 
@@ -400,7 +452,15 @@ Follow superpowers **`finishing-a-development-branch`** Option 2 only.
 
 ## `/plan-run babysit`
 
-Use Cursor **`babysit`** skill on PR from `active.md` (or user-supplied URL).
+Batch PR triage — run only when [babysit batch gate](#babysit-batch-gate-5-open-prs) passes (**≥ 5** open PRs on `master`).
+
+### Preflight
+
+1. `gh pr list --state open --base master --json number,url,headRefName,title`
+2. If count **< 5** → **defer** (see batch gate defer output). Do not triage.
+3. If count **≥ 5** → proceed.
+
+Use Cursor **`babysit`** skill. Start with PR from `active.md` when `pr_url` set; then other open plan-run PRs (`auto/SHA-*` branches) in PR number order unless user names a URL.
 
 - Resolve merge conflicts preserving plan intent.
 - Triage Bugbot / review — fix only valid in-scope issues.
@@ -426,6 +486,7 @@ Read and report (never blocked by dirty root):
 - `var/plan-run/active.md`
 - `git worktree list` (`.worktrees/auto-*`)
 - `gh pr view` when `pr_url` set
+- `open_prs_on_master` vs babysit batch gate (≥5)
 - Linear issue state when MCP available
 - dirty root as info if present
 
@@ -451,7 +512,7 @@ Inspect stale or interrupted runs (never blocked by dirty root).
 | `stale-linear-claim` | Linear In Progress; no active.md/worktree/PR | `/plan-run run SHA-XX` or Todo in Linear |
 | `resumable` | worktree + branch OK; phase < merged | `/plan-run auto resume` |
 | `stale-active-no-worktree` | active.md but worktree missing | `/plan-run clear` then `/plan-run run SHA-XX` or abandon |
-| `stale-active-pr-open` | PR exists; worktree may be gone | `/plan-run babysit` |
+| `stale-active-pr-open` | PR exists; worktree may be gone | `/plan-run babysit` when ≥5 open PRs, else `/plan-run pick` |
 | `manual-cleanup-required` | branch/PR/worktree mismatch | report paths; user decides |
 
 Do not auto-clear or auto-delete anything.
@@ -470,7 +531,7 @@ Set `active.md` `status: cleared`. Does not remove worktree, branch, or PR.
 
 Chains phases **in order**. After each phase: update `active.md`, emit checkpoint, continue — **no re-prompt**.
 
-Invoking `/plan-run auto` = consent for commit, push, PR, Linear through babysit. Merge requires `--merge`.
+Invoking `/plan-run auto` = consent for commit, push, PR, Linear; babysit only when [batch gate](#babysit-batch-gate-5-open-prs) passes. Merge requires `--merge`.
 
 ### Syntax
 
@@ -501,7 +562,7 @@ Execute from first incomplete phase per `active.md`.
 | 4 | `implemented` | [Execute + validate](#4-execute) | `failed`; record side effects |
 | 5 | `committed` | Commit plan scope; set `commit_sha` | `failed`; keep worktree |
 | 6 | `pr-open` | [Ship steps](#steps); set `remote_pushed`, `pr_url` | `failed`; record push/PR state |
-| 7 | `ci-green` | `babysit` until checks green or blocked | stop; `failure_phase: ci-green` |
+| 7 | `ci-green` | If open PRs on `master` **≥ 5**: `babysit` until checks green or blocked. If **< 5**: stop at `pr-open` (babysit deferred, not failed) | stop; `failure_phase: ci-green` only after babysit started |
 | 8 | `merged` | **Only if `--merge`:** merge + [cleanup](#on-merge) | stop at `ci-green` |
 
 **Resume (normal):** enter at the phase **after** `last_successful_phase`. `auto resume` never re-picks unless `phase` is missing.
@@ -527,11 +588,12 @@ Execute from first incomplete phase per `active.md`.
 2. **Commit before ship** — always phase `committed`.
 3. **Human Review Required: yes** — exclude at pick; never auto-run.
 4. **Validation retry** — one in-scope fix loop per command; then `failed`.
-5. **Babysit** — max **10** rounds; then `BLOCKED: babysit round limit`.
-6. **Hermes** — first eligible plan `hermes: required` without Hermes → `BLOCKED:` (unless user skipped Hermes-blocked plans).
-7. **Linear** — without MCP, `BLOCKED:` unless `--allow-linear-offline`; offline auto stops at `ci-green` (no merge).
-8. **Flag conflict** — `--allow-linear-offline` + `--merge` → `BLOCKED:` before start.
-9. **Long plans** — stop at `failed` or complete validation; continue via `auto resume` after `/goal`.
+5. **Babysit batch gate** — do not start `ci-green` / babysit until **≥ 5** open PRs on `master`; stop at `pr-open` with defer report (not `failed`).
+6. **Babysit rounds** — max **10** rounds once batch gate passes; then `BLOCKED: babysit round limit`.
+7. **Hermes** — first eligible plan `hermes: required` without Hermes → `BLOCKED:` (unless user skipped Hermes-blocked plans).
+8. **Linear** — without MCP, `BLOCKED:` unless `--allow-linear-offline`; offline auto stops at `pr-open` or deferred `ci-green` (no merge).
+9. **Flag conflict** — `--allow-linear-offline` + `--merge` → `BLOCKED:` before start.
+10. **Long plans** — stop at `failed` or complete validation; continue via `auto resume` after `/goal`.
 
 ### Merge gate (`--merge` only)
 
@@ -565,6 +627,7 @@ BLOCKED: <what> · tried: <steps> · next: /plan-run auto resume | /plan-run bab
 | Worktree + Linear In Progress | `/run SHA-XX` | automatic |
 | Commit | user ask | automatic |
 | Push / PR | `/ship` | automatic |
+| Babysit | when ≥5 open PRs | when batch gate passes |
 | Linear writes | per semantics | automatic |
 | Merge | user ask | `--merge` + gates |
 
@@ -579,7 +642,7 @@ BLOCKED: <what> · tried: <steps> · next: /plan-run auto resume | /plan-run bab
 /plan-run auto resume --merge
 ```
 
-Manual: `/plan-run run SHA-6` → `/goal` → `/plan-run ship`.
+Manual: `/plan-run run SHA-6` → `/goal` → `/plan-run ship` → (repeat until ≥5 open PRs) → `/plan-run babysit`.
 
 ---
 
@@ -597,7 +660,7 @@ Manual: `/plan-run run SHA-6` → `/goal` → `/plan-run ship`.
 | Domain grill | `grill-me-shapez2` |
 | Commit/push | `git-workflow` |
 | PR completion | superpowers `finishing-a-development-branch` |
-| PR triage | `babysit` |
+| PR batch triage (≥5 open PRs) | `babysit` |
 | Pre-merge | `quality-check` |
 
 ---

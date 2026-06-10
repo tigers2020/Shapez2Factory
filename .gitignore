@@ -136,4 +136,8 @@ persona/
 shapez_2_data/
 
 .understand-anything/
+
+# --- graphify (local knowledge graph; regenerate: graphify update .) ---
+graphify-out/
+
 data/

@@ -1,4 +1,4 @@
-"""PR-16: golden fixture must expose at least one inner routeable L4 source."""
+"""PR-16+: golden fixture must reach 90% routeable fill via inner groups."""
 
 from __future__ import annotations
 
@@ -22,7 +22,11 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_
     run_golden_solver,
 )
 from shapez2_factory.application.asteroid_lab.experiments.golden_l4_capacity_metrics import (
+    CANONICAL_GOLDEN_FIELD_COUNT,
     compute_golden_l4_capacity_metrics,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    target_routeable_group_count_for_field,
 )
 from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline import (
     CANONICAL_BUDGET_MS,
@@ -61,9 +65,12 @@ def test_golden_solver_exposes_inner_routeable_group_source() -> None:
         ),
     )
     metrics = compute_golden_l4_capacity_metrics(artifacts)
+    target_routeable = target_routeable_group_count_for_field(CANONICAL_GOLDEN_FIELD_COUNT)
 
-    assert metrics.inner_routeable_group_count >= 1
-    assert metrics.routeable_gap_to_target_b < 55
+    assert metrics.routeable_group_count >= target_routeable
+    assert metrics.inner_routeable_group_count >= (
+        target_routeable - metrics.rim_group_count
+    )
     assert metrics.routeable_group_count > metrics.rim_group_count
 
     assert_master_valid_route_plan(artifacts.route_plan)

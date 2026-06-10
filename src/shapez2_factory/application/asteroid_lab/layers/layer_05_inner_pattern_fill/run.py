@@ -28,12 +28,14 @@ def run_layer_04_inner_pattern_fill(
     exterior_plan: ExteriorConnectionPlan | None,
     provisional_overlay: ProvisionalLayoutOverlay,
     budget_ctx: LayerBudgetContext,
+    target_routeable_group_count: int | None = None,
 ) -> Layer04InnerFillResult:
     return run_greedy_inner_fill(
         complete_map=complete_map,
         exterior_plan=exterior_plan,
         provisional_overlay=provisional_overlay,
         budget_ctx=budget_ctx,
+        target_routeable_group_count=target_routeable_group_count,
     )
 
 

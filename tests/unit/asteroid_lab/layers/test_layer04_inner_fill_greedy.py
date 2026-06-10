@@ -65,6 +65,10 @@ def _generous_budget() -> LayerBudgetContext:
     return LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0)
 
 
+# Golden 5x5 fixture has one synthetic rim placement id — skip inner routeable groups.
+_FILL_KWARGS = {"target_routeable_group_count": 1}
+
+
 def _barrier_l3_overlay_miner_only() -> ProvisionalLayoutOverlay:
     cell = ProvisionalPlacedCell(
         coord=L5_L4_MINER,
@@ -139,6 +143,7 @@ def test_greedy_places_builtin_1x1_field_block() -> None:
         exterior_plan=None,
         provisional_overlay=golden_5x5_interior_provisional_overlay(),
         budget_ctx=_generous_budget(),
+        **_FILL_KWARGS,
     )
     assert len(result.interior_occupied_cells) >= 1
     assert result.interior_occupied_cells <= GOLDEN_5X5_INTERIOR_CANDIDATES
@@ -160,6 +165,7 @@ def test_greedy_lexicographic_scan_order() -> None:
         exterior_plan=None,
         provisional_overlay=golden_5x5_interior_provisional_overlay(),
         budget_ctx=_generous_budget(),
+        **_FILL_KWARGS,
     )
     assert result.placements[0].coord == (2, 2)
     expected_coords = tuple(sorted(GOLDEN_5X5_INTERIOR_CANDIDATES, key=lambda c: (c[0], c[1])))
@@ -172,6 +178,7 @@ def test_coverage_ratio_denominator() -> None:
         exterior_plan=None,
         provisional_overlay=golden_5x5_interior_provisional_overlay(),
         budget_ctx=_generous_budget(),
+        **_FILL_KWARGS,
     )
     assert result.metrics is not None
     assert result.metrics.coverage_ratio == len(result.interior_occupied_cells) / 13
@@ -183,6 +190,7 @@ def test_no_candidates_skip_reason() -> None:
         exterior_plan=None,
         provisional_overlay=golden_5x5_interior_full_field_overlay(),
         budget_ctx=_generous_budget(),
+        **_FILL_KWARGS,
     )
     assert result.skip_reason is Layer04SkipReason.NO_CANDIDATES
     assert result.interior_occupied_cells == frozenset()
@@ -198,6 +206,7 @@ def test_budget_exhausted_zero_placements() -> None:
             started_monotonic=0.0,
             now_fn=lambda: 1.0,
         ),
+        **_FILL_KWARGS,
     )
     assert result.skip_reason is Layer04SkipReason.BUDGET_EXHAUSTED
     assert result.interior_occupied_cells == frozenset()
@@ -221,6 +230,7 @@ def test_budget_partial_fill_valid_result() -> None:
             started_monotonic=0.0,
             now_fn=now_fn,
         ),
+        **_FILL_KWARGS,
     )
     assert result.skip_reason is None
     assert result.metrics is not None
@@ -235,6 +245,7 @@ def test_corridor_shadow_disjoint_from_interior_occupied() -> None:
         exterior_plan=None,
         provisional_overlay=golden_5x5_interior_provisional_overlay(),
         budget_ctx=_generous_budget(),
+        **_FILL_KWARGS,
     )
     assert result.corridor_shadow_cells.isdisjoint(result.interior_occupied_cells)
 
@@ -246,6 +257,7 @@ def test_no_void_contamination() -> None:
         exterior_plan=None,
         provisional_overlay=golden_5x5_interior_provisional_overlay(),
         budget_ctx=_generous_budget(),
+        **_FILL_KWARGS,
     )
     assert result.interior_occupied_cells.isdisjoint(complete_map.external_void_cells)
 
@@ -257,6 +269,7 @@ def test_l4_fill_excluded_from_l5_walkable_domain() -> None:
         exterior_plan=None,
         provisional_overlay=golden_5x5_interior_provisional_overlay(),
         budget_ctx=_generous_budget(),
+        **_FILL_KWARGS,
     )
     domain = route_domain.build_l4_route_search_domain(
         complete_map=complete_map,
@@ -276,6 +289,7 @@ def test_l4_to_l5_case_b_reroute_via_fill_interior() -> None:
         exterior_plan=None,
         provisional_overlay=overlay,
         budget_ctx=_generous_budget(),
+        **_FILL_KWARGS,
     )
     assert L5_L4_CHOKE_VOID in fill.interior_occupied_cells
 
@@ -304,6 +318,7 @@ def test_layer04_post_summary_metrics_from_fill_result() -> None:
         exterior_plan=None,
         provisional_overlay=golden_5x5_interior_provisional_overlay(),
         budget_ctx=_generous_budget(),
+        **_FILL_KWARGS,
     )
     metrics = build_layer04_inner_fill_post_summary_metrics(fill)
     assert metrics["stub"] is False
@@ -335,6 +350,7 @@ def test_layer04_post_summary_metrics_partial_fill_budget_interrupted() -> None:
             started_monotonic=0.0,
             now_fn=now_fn,
         ),
+        **_FILL_KWARGS,
     )
     metrics = build_layer04_inner_fill_post_summary_metrics(fill)
     assert metrics["budget_interrupted"] is True
@@ -350,6 +366,7 @@ def test_l4_to_l5_case_c_route_not_found_via_fill_interior() -> None:
         exterior_plan=None,
         provisional_overlay=overlay,
         budget_ctx=_generous_budget(),
+        **_FILL_KWARGS,
     )
     assert L5_L4_CHOKE_VOID in fill.interior_occupied_cells
     assert L5_L4_WEST_VOID in fill.interior_occupied_cells

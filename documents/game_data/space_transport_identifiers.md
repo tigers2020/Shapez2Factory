@@ -60,6 +60,8 @@ Island space transport uses **two horizontal layers** on the same `(x, y)` grid:
 
 **Solver contract (PR-16+):** After L3 rim placement fills the outer field ring, L4 inner routeable sources **cannot** rely on `z=0` field-plane paths to exterior connectors. They must egress via **Space Lift to the `z=1` void network**, then route void-only to L2 connector goals. Lift tiles are **1:1** — do not model lift cells as merge/split attachment points.
 
+**Installation target:** Greedy inner routeable placement loops until total routeable groups reach `ceil(max_group_sets × 0.90)` (578-field golden → 144 × 0.9 → **130**), subject to geometry and full-route constraints.
+
 Simulation CLR (see `simulation_systems.json`): `BeltLift1LayerSimulation`, `BeltLift2LayerSimulation`, `Lift1LayerSimulationState`, `Lift2LayerSimulationState`.
 
 ---

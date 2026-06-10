@@ -21,6 +21,12 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_
     GoldenSolverConfig,
     run_golden_solver,
 )
+from shapez2_factory.application.asteroid_lab.experiments.golden_l4_capacity_metrics import (
+    CANONICAL_GOLDEN_FIELD_COUNT,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    target_routeable_group_count_for_field,
+)
 from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string
 
 _FIXTURE_ROOT = golden_fixture_dir()
@@ -64,7 +70,9 @@ def test_golden_solver_route_metrics_full_route_with_inner_source() -> None:
     )
     assert artifacts.route_plan is not None
     metrics = artifacts.route_plan.metrics
-    assert metrics.source_count == 77
+    assert metrics.source_count >= target_routeable_group_count_for_field(
+        CANONICAL_GOLDEN_FIELD_COUNT,
+    )
     assert metrics.routed_source_count == metrics.source_count
     assert metrics.failed_source_count == 0
     assert len(artifacts.route_plan.failed_source_diagnostics) == metrics.failed_source_count

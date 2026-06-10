@@ -1,11 +1,12 @@
-"""Place one minimal routeable inner miner group (m3e east) when feasible."""
+"""Place routeable inner miner groups (m3e east) until target or exhaustion."""
 
 from __future__ import annotations
 
-from collections import deque
-
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
     RouteableInnerGroupPlacement,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.space_lift_routing import (  # noqa: E501
+    lift_void_egress_for_stub,
 )
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
@@ -31,59 +32,48 @@ def _manhattan(a: Coord, b: Coord) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
-def _stub_reaches_connector(
+def _stub_has_lift_egress(
     *,
     complete_map: ReconstructionCompleteMap,
     stub: Coord,
-    connector_voids: frozenset[Coord],
-    blocked_cells: frozenset[Coord],
+    connector_void_coords: frozenset[Coord],
 ) -> bool:
-    if not connector_voids:
-        return False
-    field_cells = complete_map.field_cells
-    void_cells = complete_map.external_void_cells - field_cells
-    walkable = (field_cells | void_cells) - blocked_cells
-    if stub not in walkable:
-        return False
-    queue: deque[Coord] = deque([stub])
-    seen = {stub}
-    while queue:
-        current = queue.popleft()
-        if current in connector_voids:
-            return True
-        x, y = current
-        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            nxt = (nx, ny)
-            if nxt in seen or nxt not in walkable:
-                continue
-            seen.add(nxt)
-            queue.append(nxt)
-    return False
+    if not connector_void_coords:
+        return True
+    return (
+        lift_void_egress_for_stub(
+            stub=stub,
+            complete_map=complete_map,
+            connector_void_coords=connector_void_coords,
+        )
+        is not None
+    )
 
 
-def try_place_first_routeable_inner_group(
+def try_place_one_routeable_inner_group(
     *,
     complete_map: ReconstructionCompleteMap,
     interior_candidates: frozenset[Coord],
     blocked_cells: frozenset[Coord],
     connector_void_coords: frozenset[Coord] = frozenset(),
     placement_index: int = 1,
+    prefer_connector_distance: bool = True,
 ) -> RouteableInnerGroupPlacement | None:
-    """Return the nearest-routable anchor where an m3e east group fits."""
+    """Return a lift-feasible anchor where an m3e east group fits."""
 
     field_cells = complete_map.field_cells
-    ranked_anchors: list[tuple[int, int, int, Coord]] = []
+    ranked_anchors: list[tuple[int, ...]] = []
     for anchor in interior_candidates:
         _miner_cells, _extension_cells, stub = _footprint_at_anchor(anchor)
-        dist = (
-            min(_manhattan(stub, goal) for goal in connector_void_coords)
-            if connector_void_coords
-            else 0
-        )
-        ranked_anchors.append((dist, anchor[0], anchor[1], anchor))
+        if prefer_connector_distance and connector_void_coords:
+            dist = min(_manhattan(stub, goal) for goal in connector_void_coords)
+            ranked_anchors.append((dist, anchor[0], anchor[1], anchor))
+        else:
+            ranked_anchors.append((anchor[1], anchor[0], anchor))
     ranked_anchors.sort()
 
-    for _dist, _x, _y, anchor in ranked_anchors:
+    for _rank in ranked_anchors:
+        anchor = _rank[-1]
         miner_cells, extension_cells, stub = _footprint_at_anchor(anchor)
         footprint = miner_cells | extension_cells
         if not footprint <= field_cells:
@@ -92,11 +82,10 @@ def try_place_first_routeable_inner_group(
             continue
         if stub in blocked_cells:
             continue
-        if not _stub_reaches_connector(
+        if not _stub_has_lift_egress(
             complete_map=complete_map,
             stub=stub,
-            connector_voids=connector_void_coords,
-            blocked_cells=blocked_cells | footprint,
+            connector_void_coords=connector_void_coords,
         ):
             continue
         return RouteableInnerGroupPlacement(
@@ -110,4 +99,55 @@ def try_place_first_routeable_inner_group(
     return None
 
 
-__all__ = ["try_place_first_routeable_inner_group"]
+def place_routeable_inner_groups(
+    *,
+    complete_map: ReconstructionCompleteMap,
+    interior_candidates: frozenset[Coord],
+    blocked_cells: frozenset[Coord],
+    connector_void_coords: frozenset[Coord] = frozenset(),
+    max_groups: int,
+) -> tuple[RouteableInnerGroupPlacement, ...]:
+    """Greedy loop: place non-overlapping inner routeable groups up to ``max_groups``."""
+
+    if max_groups <= 0:
+        return ()
+    placed: list[RouteableInnerGroupPlacement] = []
+    occupied = set(blocked_cells)
+    for index in range(1, max_groups + 1):
+        group = try_place_one_routeable_inner_group(
+            complete_map=complete_map,
+            interior_candidates=interior_candidates,
+            blocked_cells=frozenset(occupied),
+            connector_void_coords=connector_void_coords,
+            placement_index=index,
+            prefer_connector_distance=False,
+        )
+        if group is None:
+            break
+        placed.append(group)
+        occupied |= group.miner_cells | group.extension_cells | {group.m_output_stub}
+    return tuple(placed)
+
+
+def try_place_first_routeable_inner_group(
+    *,
+    complete_map: ReconstructionCompleteMap,
+    interior_candidates: frozenset[Coord],
+    blocked_cells: frozenset[Coord],
+    connector_void_coords: frozenset[Coord] = frozenset(),
+    placement_index: int = 1,
+) -> RouteableInnerGroupPlacement | None:
+    return try_place_one_routeable_inner_group(
+        complete_map=complete_map,
+        interior_candidates=interior_candidates,
+        blocked_cells=blocked_cells,
+        connector_void_coords=connector_void_coords,
+        placement_index=placement_index,
+    )
+
+
+__all__ = [
+    "place_routeable_inner_groups",
+    "try_place_first_routeable_inner_group",
+    "try_place_one_routeable_inner_group",
+]

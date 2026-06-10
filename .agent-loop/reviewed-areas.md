@@ -244,3 +244,21 @@ Notes:
 - `mountGraph()` / `updateThroughputSummary()` have zero production importers; only `TIMELINE_DEBOUNCE_MS` from `constants.js` is used (via `quick_solver_preview.js`)
 - No template defines `[data-solver-throughput-summary]`; `/solver/` loads preview-only module while page copy says graph UI is under construction
 - Staff graphs use committed `recipe-graph-editor.js`, not `solver_timeline/` Canvas stack
+
+## 2026-06-10 21:05
+
+Reviewed area:
+- path/module/feature: `django_apps/asteroid_lab/layers/observability/layer_post_summary_log.py` + retention test `tests/unit/asteroid_lab/layers/test_layer_post_summary_log.py`
+
+Skipped:
+- `solver_subprocess_runner.py` — SHA-45 already filed
+- `pytest.ini` vs `pyproject.toml` marker drift — draft noted in daily inspection log; defer to dedicated infra run
+- L2–L6 solver layers, replay cache, CI bundle drift — SHA-7..SHA-65 already filed
+- Issues labeled `reviewing` — SHA-16 autotest probe (archived)
+
+Findings:
+- SHA-66: Layer post-summary log retention sorts runs by mtime; prune test fails and can delete wrong runs
+
+Notes:
+- `_prune_old_runs` orders by `st_mtime` only; `test_retention_prunes_oldest_runs_per_project` fails 5/5 with `{'run-0','run-3'}` vs expected `{'run-2','run-3'}`
+- Mutex lock held on SHA-66 during run (`auto:project-review-running`), removed on completion

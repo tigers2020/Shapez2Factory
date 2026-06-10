@@ -71,6 +71,7 @@ from django_apps.asteroid_lab.services.solver_runtime_entry import (
     run_solver_runtime_for_project,
 )
 from django_apps.game_data.services.game_data_snapshot_export import (
+    GameDataSnapshotExportError,
     build_game_data_snapshot_payload,
 )
 from django_apps.game_data.snapshots.errors import SnapshotBuildError
@@ -442,7 +443,29 @@ def _run_solver_post_traced(
                 status=400,
             )
 
-        snapshot_payload = build_game_data_snapshot_payload()
+        try:
+            snapshot_payload = build_game_data_snapshot_payload()
+        except GameDataSnapshotExportError as exc:
+            cli_trace.update(exit=1, error_code=exc.code.value, ok=False)
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "error_code": exc.code.value,
+                    "solver_run_id": None,
+                    "lab_replay_frames_json": [],
+                    "replay_track_metrics": {
+                        "frame_count": 0,
+                        "replay_truncated": False,
+                        "truncation_reason": None,
+                        "dropped_frame_count": None,
+                        "diagnostic_reason": None,
+                    },
+                    "solver_summary": {},
+                    "validation_passed": False,
+                },
+                status=400,
+            )
+
         if _solver_async_enabled(request):
 
             def _status_url(run_id: int) -> str:

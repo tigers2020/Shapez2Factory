@@ -6,9 +6,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from django.core.management.base import BaseCommand, CommandParser
+from django.core.management.base import BaseCommand, CommandError, CommandParser
 
 from django_apps.game_data.services.game_data_snapshot_export import (
+    GameDataSnapshotExportError,
     build_game_data_snapshot_payload,
 )
 
@@ -25,7 +26,10 @@ class Command(BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> None:
         out_path = Path(options["out"])
-        payload = build_game_data_snapshot_payload()
+        try:
+            payload = build_game_data_snapshot_payload()
+        except GameDataSnapshotExportError as exc:
+            raise CommandError(str(exc)) from exc
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(
             json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",

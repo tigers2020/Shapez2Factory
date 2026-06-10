@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from enum import StrEnum
 from typing import Any
 
 from django_apps.game_data.models.exterior_transport_capacity import (
@@ -17,11 +18,55 @@ from django_apps.game_data.models.exterior_transport_capacity import (
 )
 from django_apps.game_data.models.mining import MiningExtractionRule
 from django_apps.game_data.services.exterior_transport_capacity import (
+    get_active_exterior_fluid_transport_capacity,
+    get_active_exterior_shape_transport_capacity,
     space_belt_connector_capacity_per_min_from_row,
     space_pipe_max_per_min_from_row,
 )
+from django_apps.game_data.services.mining_extraction_rules import get_active_rule
 
 SNAPSHOT_SCHEMA_VERSION = "game_data_snapshot_v1"
+
+
+class GameDataSnapshotExportErrorCode(StrEnum):
+    MISSING_SHAPE_EVTC = "missing_shape_evtc_row"
+    MISSING_FLUID_EVTC = "missing_fluid_evtc_row"
+    MISSING_SHAPE_MINING = "missing_shape_mining_rule"
+    MISSING_FLUID_MINING = "missing_fluid_mining_rule"
+
+
+class GameDataSnapshotExportError(Exception):
+    def __init__(self, code: GameDataSnapshotExportErrorCode, message: str) -> None:
+        self.code = code
+        super().__init__(message)
+
+
+def _raise_export_error(
+    code: GameDataSnapshotExportErrorCode,
+    exc: LookupError,
+) -> None:
+    raise GameDataSnapshotExportError(code, str(exc)) from exc
+
+
+def _assert_required_snapshot_rows() -> None:
+    """Fail closed when BA-8 minimum active ORM rows are absent."""
+
+    try:
+        get_active_exterior_shape_transport_capacity(speed_tier=1)
+    except LookupError as exc:
+        _raise_export_error(GameDataSnapshotExportErrorCode.MISSING_SHAPE_EVTC, exc)
+    try:
+        get_active_exterior_fluid_transport_capacity(speed_tier=1)
+    except LookupError as exc:
+        _raise_export_error(GameDataSnapshotExportErrorCode.MISSING_FLUID_EVTC, exc)
+    try:
+        get_active_rule("shape")
+    except LookupError as exc:
+        _raise_export_error(GameDataSnapshotExportErrorCode.MISSING_SHAPE_MINING, exc)
+    try:
+        get_active_rule("fluid")
+    except LookupError as exc:
+        _raise_export_error(GameDataSnapshotExportErrorCode.MISSING_FLUID_MINING, exc)
 
 
 def _exterior_transport_capacity_rows() -> list[dict[str, Any]]:
@@ -82,6 +127,7 @@ def _dump_hash(*, exterior_rows: list[dict[str, Any]], mining_rows: list[dict[st
 def build_game_data_snapshot_payload() -> dict[str, Any]:
     """ORM → snapshot payload (resolver output only; capacity formula stays in game_data)."""
 
+    _assert_required_snapshot_rows()
     exterior_rows = _exterior_transport_capacity_rows()
     mining_rows = _mining_extraction_rule_rows()
     return {
@@ -95,4 +141,9 @@ def build_game_data_snapshot_payload() -> dict[str, Any]:
     }
 
 
-__all__ = ["SNAPSHOT_SCHEMA_VERSION", "build_game_data_snapshot_payload"]
+__all__ = [
+    "GameDataSnapshotExportError",
+    "GameDataSnapshotExportErrorCode",
+    "SNAPSHOT_SCHEMA_VERSION",
+    "build_game_data_snapshot_payload",
+]

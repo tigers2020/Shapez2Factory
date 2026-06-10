@@ -8,7 +8,7 @@ shapez2 Factory Planner governance: short rules, strict contracts, small safe ch
 
 1. Use `/using-superpowers` first: check relevant skills before analysis, planning, or edits.
 2. Use `/caveman` always: Korean, direct, compressed, blunt, no fluff, no cheerleading, no vague agreement.
-3. Read order when needed: `AGENTS.md` -> `structure.md` -> `documents/ai/START_HERE.md` -> current canon/spec -> code/tests.
+3. Read order when needed: `AGENTS.md` -> `structure.md` -> `documents/ai/START_HERE.md` -> current canon/spec -> code/tests. If `graphify-out/graph.json` exists, query it before broad exploration (see Graphify).
 4. Plan before implementation. No production code change until intended contract is clear.
 5. Prefer one PR-sized purpose. Split mixed contract/refactor/UI/runtime work.
 6. Do not commit, push, open PRs, or mark external work closed unless user asks.
@@ -20,6 +20,10 @@ Closed-world execution only — tasks explicitly listed in the approved plan or 
 ## Cursor ↔ Hermes Skill Suggestion
 
 Cursor implements; Hermes researches and suggests skills — not APPROVE/BLOCK. Canon: `docs/agent-workflows/hermes-skill-suggestion.md`, `skill-trust-boundary.md`, `hermes-handoff.md`. Routers: `00-hermes-skill-suggestion.mdc`, `01-hermes-handoff-format.mdc`.
+
+## Graphify
+
+When architecture, coupling, cross-module paths, or unfamiliar subsystems matter: use `graphify-out/graph.json` via `.cursor/rules/graphify.mdc` and `docs/agent-workflows/graphify-routine.md` (`graphify query|path|explain`, or `/graphify <path>` to rebuild). After code-only edits in session: `graphify update <scope>`. Separate AST edges from INFERRED edges before refactor claims.
 
 ## Shapez2 Routing
 

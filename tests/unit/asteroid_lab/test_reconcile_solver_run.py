@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from django.urls import reverse
 from django.utils import timezone
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.solver_run_reconcile import (
+    RECONCILE_FAILURE_INGEST,
     RECONCILE_FAILURE_TIMEOUT,
     RECONCILE_FAILURE_VALIDATION,
     reconcile_running_solver_runs,
@@ -47,6 +50,38 @@ def _running_run(
             ),
         },
     )
+
+
+def _write_hashed_invalid_summary_artifact(
+    artifact_dir: Path,
+    *,
+    run_key: str,
+) -> None:
+    summary_path = artifact_dir / "output" / "solver_summary.json"
+    replay_path = artifact_dir / "output" / "replay_core.jsonl"
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_path.write_text("NOT-JSON", encoding="utf-8")
+    replay_path.write_text('{"frame_index":0,"phase":"decode"}\n', encoding="utf-8")
+    summary_hash = hashlib.sha256(summary_path.read_bytes()).hexdigest()
+    replay_hash = hashlib.sha256(replay_path.read_bytes()).hexdigest()
+    manifest = {
+        "schema_version": 1,
+        "run_key": run_key,
+        "lifecycle_status": "artifact_written",
+        "created_at_utc": "2026-05-30T00:00:00Z",
+        "core_build_id": "test",
+        "content_hashes": {
+            "output/solver_summary.json": summary_hash,
+            "output/replay_core.jsonl": replay_hash,
+        },
+        "paths": {
+            "solver_summary": "output/solver_summary.json",
+            "replay_core": "output/replay_core.jsonl",
+        },
+        "game_data_provenance": {"snapshot": "test"},
+        "error_code": None,
+    }
+    (artifact_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
 
 def test_reconcile_ingests_finalized_artifact_once(artifact_root: Path) -> None:
@@ -109,6 +144,53 @@ def test_reconcile_validation_failure_without_manifest_rewrite(artifact_root: Pa
     manifest_after = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
     assert manifest_after == manifest_before
     assert manifest_after["lifecycle_status"] == "artifact_written"
+
+
+def test_reconcile_ingest_error_marks_failed_without_exception_leak(
+    artifact_root: Path,
+) -> None:
+    project = m.AsteroidProject.objects.create(name="BadJson", slug="bad-json-ingest")
+    run = _running_run(project, artifact_root)
+    artifact_dir = artifact_root / run.run_key
+    _write_hashed_invalid_summary_artifact(artifact_dir, run_key=run.run_key)
+    manifest_before = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
+
+    result = reconcile_solver_run(int(run.pk))
+
+    assert result.status == m.SolverRun.RunStatus.FAILED
+    assert result.error_code == RECONCILE_FAILURE_INGEST
+    assert result.message is not None
+    assert "invalid JSON" in result.message
+    refreshed = m.SolverRun.objects.get(pk=int(run.pk))
+    assert refreshed.lifecycle_status == "failed"
+    assert refreshed.solver_summary_json == {}
+    manifest_after = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest_after == manifest_before
+
+
+def test_reconcile_status_get_returns_json_on_ingest_failure(
+    client,
+    artifact_root: Path,
+) -> None:
+    project = m.AsteroidProject.objects.create(name="StatusJson", slug="status-json-ingest")
+    run = _running_run(project, artifact_root)
+    _write_hashed_invalid_summary_artifact(
+        artifact_root / run.run_key,
+        run_key=run.run_key,
+    )
+
+    response = client.get(
+        reverse(
+            "web:asteroid-miner-layout-project-solver-run-status",
+            kwargs={"slug": project.slug, "run_id": int(run.pk)},
+        )
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == m.SolverRun.RunStatus.FAILED
+    assert body["error_code"] == RECONCILE_FAILURE_INGEST
+    assert body["message"] is not None
 
 
 def test_reconcile_status_path_does_not_warm_replay_cache(artifact_root: Path) -> None:

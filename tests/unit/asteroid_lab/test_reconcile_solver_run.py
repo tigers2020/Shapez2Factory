@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from django.utils import timezone
@@ -108,6 +109,19 @@ def test_reconcile_validation_failure_without_manifest_rewrite(artifact_root: Pa
     manifest_after = json.loads((artifact_dir / "manifest.json").read_text(encoding="utf-8"))
     assert manifest_after == manifest_before
     assert manifest_after["lifecycle_status"] == "artifact_written"
+
+
+def test_reconcile_status_path_does_not_warm_replay_cache(artifact_root: Path) -> None:
+    project = m.AsteroidProject.objects.create(name="NoWarmReconcile", slug="no-warm-reconcile")
+    run = _running_run(project, artifact_root)
+    _write_artifact(artifact_root / run.run_key, run_key=run.run_key)
+
+    with patch(
+        "django_apps.asteroid_lab.services.artifact_ingest._warm_lab_replay_cache_after_artifact_ingest",
+    ) as warm_mock:
+        reconcile_solver_run(int(run.pk))
+
+    warm_mock.assert_not_called()
 
 
 def test_duplicate_status_polls_do_not_double_ingest(artifact_root: Path) -> None:

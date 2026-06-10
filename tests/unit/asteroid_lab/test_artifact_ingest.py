@@ -13,6 +13,7 @@ import pytest
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.artifact_ingest import (
     ArtifactIngestError,
+    ArtifactIngestOptions,
     ingest_artifact_for_project,
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
@@ -167,6 +168,40 @@ def _write_artifact_with_stack_summary(artifact_dir: Path) -> dict[str, Any]:
     }
     (artifact_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     return summary
+
+
+def test_ingest_fast_summary_does_not_iterate_replay_core(tmp_path: Path) -> None:
+    project = m.AsteroidProject.objects.create(name="FastSummary", slug="fast-summary")
+    _write_artifact(tmp_path)
+
+    with patch(
+        "django_apps.asteroid_lab.services.artifact_ingest.iter_replay_core_frames",
+    ) as iter_mock:
+        result = ingest_artifact_for_project(
+            project_id=int(project.pk),
+            artifact_dir=tmp_path,
+            ingest_options=ArtifactIngestOptions(summarize_replay_frames=False),
+        )
+
+    iter_mock.assert_not_called()
+    summary = result.solver_run.lab_replay_manifest_summary_json
+    assert summary["frame_count"] == 0
+    assert summary["preview_frame_index"] == 0
+    assert summary["mode"] == "artifact_jsonl"
+
+
+def test_ingest_with_warm_replay_cache_false_skips_compose(tmp_path: Path) -> None:
+    project = m.AsteroidProject.objects.create(name="NoWarm", slug="no-warm")
+    _write_artifact_with_stack_summary(tmp_path)
+    with patch(
+        "django_apps.asteroid_lab.services.artifact_ingest.build_lab_replay_frames_for_project",
+    ) as compose_mock:
+        ingest_artifact_for_project(
+            project_id=int(project.pk),
+            artifact_dir=tmp_path,
+            ingest_options=ArtifactIngestOptions(warm_replay_cache=False),
+        )
+    compose_mock.assert_not_called()
 
 
 def test_ingest_warm_compose_preserves_solver_summary_json(tmp_path: Path) -> None:

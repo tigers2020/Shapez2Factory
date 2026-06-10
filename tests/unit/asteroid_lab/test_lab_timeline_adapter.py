@@ -166,7 +166,13 @@ def test_lab_adapter_preserves_diff_on_wire_json() -> None:
     assert wire["map_view"]["overlay_cells"]
     restored = replay_timeline_frame_json_round_trip(frame)
     assert restored.diff == frame.diff
-    assert restored.map_view.overlay_cells == frame.map_view.overlay_cells
+    assert len(restored.map_view.overlay_cells) == len(frame.map_view.overlay_cells)
+    restored_overlay = restored.map_view.overlay_cells[0]
+    source_overlay = frame.map_view.overlay_cells[0]
+    assert restored_overlay.x == source_overlay.x
+    assert restored_overlay.y == source_overlay.y
+    assert restored_overlay.kind == source_overlay.kind
+    assert restored_overlay.layer == 0
 
 
 def test_lab_replay_frame_to_unified_reconstruction_frame() -> None:

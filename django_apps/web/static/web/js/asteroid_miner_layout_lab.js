@@ -15,7 +15,7 @@
 (function () {
   "use strict";
 
-  const LAB_COORD_FRAME_BUILD = "island_raw_v4";
+  const LAB_COORD_FRAME_BUILD = "map_l_picker_v6";
 
   const GRID_W = 23;
   const GRID_H = 15;
@@ -1065,6 +1065,11 @@
     }
     const diffT = collectDiffPaintTargets(frame);
     for (let i = 0; i < diffT.length; i++) out.push(diffT[i]);
+    const overlayJson = cellOverlayJsonFromFrame(frame);
+    if (overlayJson && typeof overlayJson === "object") {
+      const ovTargets = collectOverlayPaintTargets(overlayJson);
+      for (let oi = 0; oi < ovTargets.length; oi++) out.push(ovTargets[oi]);
+    }
     return out;
   }
 
@@ -3284,6 +3289,30 @@
       labCanvasRenderer = null;
     }
 
+    function collectSpriteRelpathsFromFrames(framesArr) {
+      if (!Array.isArray(framesArr) || !framesArr.length) {
+        return [];
+      }
+      const rels = new Set();
+      for (let fi = 0; fi < framesArr.length; fi++) {
+        const fr = framesArr[fi];
+        if (!fr || typeof fr !== "object") continue;
+        const targets = collectFrameSpatialTargets(fr);
+        for (let ti = 0; ti < targets.length; ti++) {
+          const rel = labSpriteRelpathForCell(targets[ti].cell, fr);
+          if (rel) rels.add(rel);
+        }
+      }
+      return Array.from(rels);
+    }
+
+    function warmupLabReplaySpriteCache(framesArr) {
+      if (!labCanvasRenderer || !labCanvasRenderer.preloadSprites) {
+        return Promise.resolve();
+      }
+      return labCanvasRenderer.preloadSprites(collectSpriteRelpathsFromFrames(framesArr));
+    }
+
     function applyLabCanvasHitLayer(indices) {
       if (!labCanvasRendererEnabled() || !domCells || !baseClasses) {
         return;
@@ -3444,6 +3473,11 @@
         gridEl.classList.add("lab-replay-grid--canvas-mode");
       }
       applyLabCanvasHitLayer(null);
+      warmupLabReplaySpriteCache(replayFrames).then(function () {
+        if (labCanvasRenderer && hasServerReplay) {
+          applyFrame();
+        }
+      });
     }
 
     function applyLabCanvasServerReplayFrame(fr, rimDrawCtx, useIncremental, paintedIndices) {

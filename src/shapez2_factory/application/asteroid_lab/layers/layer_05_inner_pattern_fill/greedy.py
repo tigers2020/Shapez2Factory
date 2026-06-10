@@ -12,10 +12,10 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connecto
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
     PATTERN_BUILTIN_1X1_FIELD_BLOCK,
     InnerPlacement,
-    target_routeable_group_count_for_field,
     Layer04FillMetrics,
     Layer04InnerFillResult,
     Layer04SkipReason,
+    target_routeable_group_count_for_field,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
@@ -59,7 +59,7 @@ def run_greedy_inner_fill(
     budget_ctx: LayerBudgetContext,
     target_routeable_group_count: int | None = None,
 ) -> Layer04InnerFillResult:
-    connector_void_coords = frozenset()
+    connector_void_coords: frozenset[Coord] = frozenset()
     if exterior_plan is not None:
         connector_void_coords = frozenset(
             connector.void_coord

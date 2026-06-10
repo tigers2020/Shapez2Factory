@@ -62,18 +62,18 @@ def try_place_one_routeable_inner_group(
     """Return a lift-feasible anchor where an m3e east group fits."""
 
     field_cells = complete_map.field_cells
-    ranked_anchors: list[tuple[int, ...]] = []
-    for anchor in interior_candidates:
-        _miner_cells, _extension_cells, stub = _footprint_at_anchor(anchor)
-        if prefer_connector_distance and connector_void_coords:
+    if prefer_connector_distance and connector_void_coords:
+        ranked: list[tuple[int, int, int, Coord]] = []
+        for anchor in interior_candidates:
+            _miner_cells, _extension_cells, stub = _footprint_at_anchor(anchor)
             dist = min(_manhattan(stub, goal) for goal in connector_void_coords)
-            ranked_anchors.append((dist, anchor[0], anchor[1], anchor))
-        else:
-            ranked_anchors.append((anchor[1], anchor[0], anchor))
-    ranked_anchors.sort()
+            ranked.append((dist, anchor[0], anchor[1], anchor))
+        ranked.sort()
+        ordered_anchors = [anchor for *_prefix, anchor in ranked]
+    else:
+        ordered_anchors = sorted(interior_candidates, key=lambda c: (c[1], c[0]))
 
-    for _rank in ranked_anchors:
-        anchor = _rank[-1]
+    for anchor in ordered_anchors:
         miner_cells, extension_cells, stub = _footprint_at_anchor(anchor)
         footprint = miner_cells | extension_cells
         if not footprint <= field_cells:

@@ -33,14 +33,14 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_l4_capacity_met
     max_group_sets_for_field_count,
     min_inner_group_sets_target,
 )
-from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
-    TARGET_ROUTEABLE_FILL_RATIO,
-    target_routeable_group_count_for_field,
-)
 from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline import (
     CANONICAL_BUDGET_MS,
     CANONICAL_SPEED_TIER,
     CANONICAL_THROUGHPUT_TARGET_PERCENT,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    TARGET_ROUTEABLE_FILL_RATIO,
+    target_routeable_group_count_for_field,
 )
 
 _FIXTURE_ROOT = golden_fixture_dir()
@@ -71,7 +71,9 @@ def test_pure_capacity_formulas() -> None:
     assert target_inner == 55
     assert 76 + target_inner == 131
     assert 76 / 144 < MIN_INNER_FILL_RATIO
-    assert target_routeable_group_count_for_field(578) == math.ceil(144 * TARGET_ROUTEABLE_FILL_RATIO)
+    assert target_routeable_group_count_for_field(578) == math.ceil(
+        144 * TARGET_ROUTEABLE_FILL_RATIO
+    )
     assert target_routeable_group_count_for_field(578) == 130
 
 
@@ -94,9 +96,7 @@ def test_golden_solver_l4_capacity_metrics_expose_target_gap() -> None:
     assert metrics.rim_group_count == RIM_BASELINE_GROUP_COUNT
     target_routeable = target_routeable_group_count_for_field(CANONICAL_GOLDEN_FIELD_COUNT)
     assert metrics.routeable_group_count >= target_routeable
-    assert metrics.inner_routeable_group_count >= (
-        target_routeable - RIM_BASELINE_GROUP_COUNT
-    )
+    assert metrics.inner_routeable_group_count >= (target_routeable - RIM_BASELINE_GROUP_COUNT)
     assert metrics.inner_max_group_sets == 68
     assert metrics.min_inner_group_sets_target == 55
     assert metrics.min_total_routeable_target == 131

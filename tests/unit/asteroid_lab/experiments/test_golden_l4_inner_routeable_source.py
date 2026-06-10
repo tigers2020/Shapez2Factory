@@ -25,15 +25,15 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_l4_capacity_met
     CANONICAL_GOLDEN_FIELD_COUNT,
     compute_golden_l4_capacity_metrics,
 )
-from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
-    target_routeable_group_count_for_field,
-)
 from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline import (
     CANONICAL_BUDGET_MS,
     CANONICAL_SPEED_TIER,
     CANONICAL_THROUGHPUT_TARGET_PERCENT,
     assert_master_valid_eval_result,
     assert_master_valid_route_plan,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    target_routeable_group_count_for_field,
 )
 from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string
 
@@ -68,9 +68,7 @@ def test_golden_solver_exposes_inner_routeable_group_source() -> None:
     target_routeable = target_routeable_group_count_for_field(CANONICAL_GOLDEN_FIELD_COUNT)
 
     assert metrics.routeable_group_count >= target_routeable
-    assert metrics.inner_routeable_group_count >= (
-        target_routeable - metrics.rim_group_count
-    )
+    assert metrics.inner_routeable_group_count >= (target_routeable - metrics.rim_group_count)
     assert metrics.routeable_group_count > metrics.rim_group_count
 
     assert_master_valid_route_plan(artifacts.route_plan)

@@ -45,6 +45,10 @@ class ReplayEventType(StrEnum):
     LAYER03_RIM_GREEDY_SEED_COMMITTED = "layer03_rim_greedy_seed_committed"
     LAYER03_RIM_GREEDY_COMPLETE = "layer03_rim_greedy_complete"
 
+    # Layer 04 inner pattern fill (canonical L4)
+    LAYER04_INNER_PATTERN_FILL_BEGIN = "layer04_inner_pattern_fill_begin"
+    LAYER04_INNER_PATTERN_FILL_COMPLETE = "layer04_inner_pattern_fill_complete"
+
     # Layer 04 rim provisional placement (solver runtime segment)
     LAYER04_RIM_PLACEMENT_BEGIN = "layer04_rim_placement_begin"
     LAYER04_RIM_CANDIDATE_SELECTED = "layer04_rim_candidate_selected"

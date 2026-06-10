@@ -15,6 +15,8 @@ def test_canvas_renderer_module_contract() -> None:
     assert "createLabCanvasRenderer" in src
     assert "drawFrame" in src
     assert "hitTest" in src
+    assert "preloadSprites" in src
+    assert "spriteDrawGeneration" in src
     assert "overlayFillForKind" in src
     assert "let layout = opts.layout" in src
     assert "const layout = opts.layout" not in src
@@ -32,6 +34,7 @@ def test_lab_js_wires_canvas_renderer() -> None:
     assert "function labCanvasRendererEnabled(" in src
     assert "function mountLabCanvasRenderer(" in src
     assert "function buildCanvasPaintPlan(" in src
+    assert "function warmupLabReplaySpriteCache(" in src
     assert "function lastFrameWithSpriteCapableCells(" in src
     assert "function applyLabCanvasServerReplayFrame(" in src
     assert "lab-replay-canvas-hit-layer" in src
@@ -49,3 +52,43 @@ def test_lab_replay_hooks_preserved() -> None:
     assert "window.AsteroidLabReplay" in src
     assert "renderReplayFrame:" in src
     assert "applyLabCanvasServerReplayFrame" in src
+
+
+def test_lab_map_z_layer_picker_contract() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    tpl = TPL.read_text(encoding="utf-8")
+    assert "LAB_MAP_Z_LAYER_OPTIONS" in src
+    assert "All layers" in src
+    assert "L=0 · Floor" in src
+    assert "L=1 · Layer 1" in src
+    assert "L=2 · Layer 2" in src
+    assert "function labCellMapZ(" in src
+    assert "function inferLabCellMapZ(" in src
+    assert "function cellPassesMapZFilter(" in src
+    assert 'id="lab-replay-layer-picker"' in tpl
+    assert 'id="lab-replay-grid-viewport"' in tpl
+    assert "Height layer (L)" in tpl
+    assert "flex-col-reverse" in tpl
+    assert 'lab-replay-layer-picker"' in tpl
+    assert "absolute bottom-3 right-3" in tpl
+    assert 'input.type = "radio"' in src
+    assert "labMapZSelectedLayer" in src
+
+
+def test_collect_frame_spatial_targets_includes_cell_overlay_json() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    idx = src.find("function collectFrameSpatialTargets(frame)")
+    body = src[idx : idx + 900]
+    assert "cellOverlayJsonFromFrame(frame)" in body
+    assert "collectOverlayPaintTargets(overlayJson)" in body
+
+
+def test_lab_sprite_path_handles_space_belt_transport_wire() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    assert "function normalizeReplayWireCell(" in src
+    assert "function inferTransportSpriteIdentifier(" in src
+    assert 'tk === "space_belt"' in src
+    assert (
+        "overlayCellKind(cell)" in src.split("function inferTransportSpriteIdentifier(", 1)[1][:700]
+    )
+    assert "SpaceBelt_Forward" in src

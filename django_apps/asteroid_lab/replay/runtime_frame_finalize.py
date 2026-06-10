@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from django_apps.asteroid_lab.replay.map_height_layer import enrich_replay_wire_row_with_layer
 from django_apps.asteroid_lab.replay.overlay_composition import compose_replay_overlay_cells
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
 from django_apps.asteroid_lab.replay.timeline_dtos import (
@@ -41,14 +42,17 @@ def transient_overlay_cells_to_wire(
     cells: Sequence[ReplayOverlayCell],
 ) -> list[dict[str, object]]:
     return [
-        {
-            "x": int(cell.x),
-            "y": int(cell.y),
-            "kind": str(cell.kind),
-            "transport": str(cell.transport),
-            "tile_type": str(cell.tile_type),
-            "rotation": int(cell.rotation),
-        }
+        enrich_replay_wire_row_with_layer(
+            {
+                "x": int(cell.x),
+                "y": int(cell.y),
+                "kind": str(cell.kind),
+                "transport": str(cell.transport),
+                "tile_type": str(cell.tile_type),
+                "rotation": int(cell.rotation),
+                **({} if cell.layer is None else {"layer": int(cell.layer)}),
+            }
+        )
         for cell in cells
     ]
 

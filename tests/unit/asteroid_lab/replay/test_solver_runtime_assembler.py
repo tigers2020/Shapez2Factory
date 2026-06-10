@@ -380,7 +380,7 @@ def test_assembler_l3_probe_windows_follow_summary() -> None:
     )
 
 
-def test_assembler_prefers_transport_routing_segment_over_rim_placement() -> None:
+def test_assembler_prefers_transport_routing_segment_over_legacy_rim_placement() -> None:
     from django_apps.asteroid_lab.replay.event_types import (
         EVENT_TYPE_LAYER04_RIM_PLACEMENT_BEGIN,
         EVENT_TYPE_LAYER05_TRANSPORT_ROUTING_BEGIN,

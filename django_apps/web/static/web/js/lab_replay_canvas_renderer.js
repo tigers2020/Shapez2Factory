@@ -22,6 +22,7 @@
     route_probe_path: "rgba(56, 189, 248, 0.3)",
     confirmed_route: "rgba(74, 222, 128, 0.35)",
     route_goal: "rgba(250, 204, 21, 0.4)",
+    inner_field_block: "rgba(167, 139, 250, 0.38)",
     diff_removed: "rgba(239, 68, 68, 0.4)",
     diff_added: "rgba(52, 211, 153, 0.38)",
     diff_changed: "rgba(250, 204, 21, 0.35)",
@@ -84,6 +85,7 @@
     const spriteCtx = spriteCanvas ? spriteCanvas.getContext("2d") : null;
     const imgCache = new Map();
     let dims = { w: 0, h: 0, step: 0, cellPx: 0, gapPx: 0, dpr: 1 };
+    let spriteDrawGeneration = 0;
 
     function syncSize(nextLayout, nextCellPx, nextGapPx) {
       if (nextLayout) {
@@ -140,11 +142,12 @@
       return img;
     }
 
-    function drawSpriteCell(entry) {
+    function drawSpriteCell(entry, generation) {
       if (!spriteCtx || !layout || !entry || entry.idx == null || !entry.rel) return;
       const img = loadSprite(entry.rel);
       if (!img) return;
       const draw = function () {
+        if (generation !== spriteDrawGeneration) return;
         if (!img.naturalWidth) return;
         const box = cellTopLeft(entry.idx, layout, dims.step, dims.cellPx);
         const cx = box.x + box.w / 2;
@@ -165,20 +168,46 @@
         draw();
       } else {
         img.addEventListener("load", draw, { once: true });
+        img.addEventListener("error", draw, { once: true });
       }
+    }
+
+    function preloadSprites(rels) {
+      if (!Array.isArray(rels) || !rels.length) {
+        return Promise.resolve();
+      }
+      const jobs = [];
+      for (let i = 0; i < rels.length; i++) {
+        const rel = rels[i];
+        if (!rel) continue;
+        const img = loadSprite(rel);
+        if (!img || img.complete) continue;
+        jobs.push(
+          new Promise(function (resolve) {
+            img.addEventListener("load", resolve, { once: true });
+            img.addEventListener("error", resolve, { once: true });
+          }),
+        );
+      }
+      if (!jobs.length) {
+        return Promise.resolve();
+      }
+      return Promise.all(jobs);
     }
 
     function drawFrame(paintPlan) {
       const plan = paintPlan || {};
       syncSize();
       clearLayers();
+      spriteDrawGeneration += 1;
+      const generation = spriteDrawGeneration;
       const overlays = Array.isArray(plan.overlays) ? plan.overlays : [];
       const sprites = Array.isArray(plan.sprites) ? plan.sprites : [];
       for (let i = 0; i < overlays.length; i++) {
         drawOverlayCell(overlays[i]);
       }
       for (let j = 0; j < sprites.length; j++) {
-        drawSpriteCell(sprites[j]);
+        drawSpriteCell(sprites[j], generation);
       }
     }
 
@@ -220,6 +249,7 @@
       drawFrame: drawFrame,
       hitTest: hitTest,
       syncSize: syncSize,
+      preloadSprites: preloadSprites,
       destroy: destroy,
     };
   }

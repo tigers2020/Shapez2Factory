@@ -157,7 +157,13 @@ def test_replay_timeline_frame_json_round_trip() -> None:
         map_view=ReplayMapView(
             base_ref="reconstruction_complete",
             overlay_cells=(
-                ReplayOverlayCell(x=12, y=5, kind="route_probe_path", transport="shape_belt"),
+                ReplayOverlayCell(
+                    x=12,
+                    y=5,
+                    kind="route_probe_path",
+                    transport="shape_belt",
+                    layer=2,
+                ),
             ),
             annotations=(ReplayAnnotation(x=20, y=5, label="external goal"),),
             bbox=ReplayBBox(min_x=10, min_y=4, max_x=22, max_y=7),
@@ -165,8 +171,11 @@ def test_replay_timeline_frame_json_round_trip() -> None:
         inspector={"candidate_id": "cand_017"},
         metrics={"goal_priority": 2},
     )
+    before = replay_timeline_frame_to_json_dict(frame)
     restored = replay_timeline_frame_json_round_trip(frame)
-    assert restored == frame
+    after = replay_timeline_frame_to_json_dict(restored)
+    assert after == before
+    assert restored.map_view.overlay_cells[0].layer == 2
 
 
 def test_unified_replay_serialization_is_json_safe() -> None:

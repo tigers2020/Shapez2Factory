@@ -46,9 +46,7 @@ def _overlay_cells_for_result(
             )
         )
 
-    seen: set[tuple[int, int]] = {
-        (cell.x, cell.y) for cell in cells
-    }
+    seen: set[tuple[int, int]] = {(cell.x, cell.y) for cell in cells}
     for placement in result.placements:
         x, y = placement.coord
         if (x, y) in seen:

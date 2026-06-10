@@ -90,11 +90,12 @@ def _lab_replay_manifest_summary(
     *,
     artifact_dir: Path,
     manifest: ArtifactManifestRecord,
+    summarize_replay_frames: bool = True,
 ) -> dict[str, Any]:
     replay_path = _manifest_path(artifact_dir, manifest, "replay_core")
     frame_count = 0
     preview_frame_index = 0
-    if replay_path is not None and replay_path.is_file():
+    if summarize_replay_frames and replay_path is not None and replay_path.is_file():
         for _frame in iter_replay_core_frames(replay_path):
             frame_count += 1
         if frame_count:
@@ -188,6 +189,7 @@ def ingest_artifact_for_project(
         run.lab_replay_manifest_summary_json = _lab_replay_manifest_summary(
             artifact_dir=Path(artifact_dir),
             manifest=manifest,
+            summarize_replay_frames=options.summarize_replay_frames,
         )
         run.lab_replay_payload_json = {}
         run.solver_runtime_replay_frames_json = []

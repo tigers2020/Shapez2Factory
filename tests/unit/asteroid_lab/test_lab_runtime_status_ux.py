@@ -28,3 +28,20 @@ def test_render_replay_run_status_uses_log_tail_when_running() -> None:
     block = js[js.index("function renderReplayRunStatus") : js.index("function getCookie")]
     assert "renderReplayRunLogTail" in block
     assert "feedback.log_tail" in block or "log_tail" in block
+
+
+def test_poll_solver_run_status_uses_pending_finalize_timer() -> None:
+    js = JS.read_text(encoding="utf-8")
+    block = js[js.index("function pollSolverRunStatus") : js.index("const runSolverBtn")]
+    assert "LAB_STATUS_LONG_POLL_MS" in block
+    assert "pending_finalize" in block
+    assert "setInterval" in block or "setTimeout" in block
+    assert "clearTimeout" in block or "clearInterval" in block
+    assert "elapsed_seconds" in block
+
+
+def test_poll_solver_run_status_does_not_overlap_fetches() -> None:
+    js = JS.read_text(encoding="utf-8")
+    block = js[js.index("function pollSolverRunStatus") : js.index("const runSolverBtn")]
+    assert "Promise.all" not in block
+    assert "parallel" not in block.lower()

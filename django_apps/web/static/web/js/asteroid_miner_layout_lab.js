@@ -4564,12 +4564,60 @@
 
     function pollSolverRunStatus(statusUrl, onTerminal, onSettled) {
       const pollIntervalMs = 1500;
+      const LAB_STATUS_LONG_POLL_MS = 3000;
+      const runStartedAt = Date.now();
+      let lastLogTail = "";
+
       function settlePoll() {
         if (typeof onSettled === "function") {
           onSettled();
         }
       }
+
+      function elapsedSeconds() {
+        return Math.floor((Date.now() - runStartedAt) / 1000);
+      }
+
+      function renderRunningFeedback(extra) {
+        const base = {
+          running: true,
+          log_tail: lastLogTail,
+          elapsed_seconds: elapsedSeconds(),
+        };
+        const merged = extra && typeof extra === "object" ? Object.assign(base, extra) : base;
+        replayRunFeedback = merged;
+        renderReplayRunStatus(replayRunFeedback);
+      }
+
       function tick() {
+        let longPollTimer = null;
+        let elapsedTimer = null;
+
+        function clearTimers() {
+          if (longPollTimer !== null) {
+            window.clearTimeout(longPollTimer);
+            longPollTimer = null;
+          }
+          if (elapsedTimer !== null) {
+            window.clearInterval(elapsedTimer);
+            elapsedTimer = null;
+          }
+        }
+
+        renderRunningFeedback();
+
+        elapsedTimer = window.setInterval(function () {
+          if (replayRunFeedback && replayRunFeedback.running === true) {
+            renderRunningFeedback(
+              replayRunFeedback.pending_finalize ? { pending_finalize: true } : null
+            );
+          }
+        }, 1000);
+
+        longPollTimer = window.setTimeout(function () {
+          renderRunningFeedback({ pending_finalize: true });
+        }, LAB_STATUS_LONG_POLL_MS);
+
         fetch(statusUrl, {
           method: "GET",
           credentials: "same-origin",
@@ -4586,10 +4634,13 @@
               });
           })
           .then(function (bundle) {
+            clearTimers();
             const data = bundle.data || {};
+            if (typeof data.log_tail === "string" && data.log_tail) {
+              lastLogTail = data.log_tail;
+            }
             if (data.status === "running") {
-              replayRunFeedback = { running: true, log_tail: data.log_tail || "" };
-              renderReplayRunStatus(replayRunFeedback);
+              renderRunningFeedback();
               window.setTimeout(tick, pollIntervalMs);
               return;
             }
@@ -4600,6 +4651,7 @@
             }
           })
           .catch(function () {
+            clearTimers();
             replayRunFeedback = { error_code: "network_error" };
             renderReplayRunStatus(replayRunFeedback);
             settlePoll();

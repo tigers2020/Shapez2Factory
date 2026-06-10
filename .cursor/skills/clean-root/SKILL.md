@@ -22,7 +22,7 @@ dirty root
 → preserve all user work
 → commit safe agent/governance changes
 → stash risky/unknown changes
-→ remove ignored junk only
+→ preview ignored junk (delete only via clear-ignored)
 → report clean root
 ```
 
@@ -55,12 +55,12 @@ If `/clean-root` alone, run **`status`**.
 
 - committing safe agent/governance changes
 - stashing product-code or unknown changes
-- deleting ignored files only via `git clean -fdX`
+- **previewing** ignored junk (report only — no delete)
 - reporting next recommended command
 
 It is **not** consent for:
 
-- deleting untracked unknown files
+- deleting ignored files (use `/clean-root clear-ignored` explicitly)
 - `git reset --hard`
 - `git clean -fd` without `-X`
 - force push
@@ -150,16 +150,37 @@ dist/**
 build/**
 coverage/**
 htmlcov/**
-var/**
 graphify-out/**
 graphify_out/**
 ```
 
+**Not junk — never delete via clean (even if under ignored `var/`):**
+
+```text
+var/plan-run/**
+.worktrees/**
+plans/**
+```
+
 Rules:
 
-- May delete only when ignored by git.
-- Use `git clean -fdX`.
+- May delete only when ignored by git **and** not under [protected paths](#protected-ignored-paths).
+- Use protected clean via [`/clean-root clear-ignored`](#clean-root-clear-ignored) only — never plain `git clean -fdX`.
 - Never use `git clean -fd`.
+
+### Protected ignored paths
+
+Never delete these paths, even if ignored:
+
+```text
+var/plan-run/**
+.worktrees/**
+plans/**
+```
+
+- `var/plan-run/active.md` — plan-run session handoff state, not disposable cache.
+- `.worktrees/**` — may contain active implementation worktrees.
+- `plans/**` — queue metadata or in-progress frontmatter (tracked or dirty); never `git clean` target.
 
 ### Class E — unknown untracked
 
@@ -218,13 +239,12 @@ Cleanup Plan
 2. Stash risky/unknown changes:
    - <paths>
 
-3. Remove ignored junk:
-   - <paths>
+3. Remove ignored junk (preview only in auto):
+   - <paths from protected preview, excluding protected>
 
 Will not:
-- restore tracked files
-- delete unknown untracked files
-- touch Linear/GitHub
+- delete ignored files in auto (use clear-ignored)
+- delete protected workflow state (var/plan-run, .worktrees, plans)
 ```
 
 Do not edit files.
@@ -281,15 +301,35 @@ If active run exists and dirty root includes plan files:
 BLOCKED: active plan-run plus plan-file dirty state · next: /plan-run recover
 ```
 
-### Step 2 — remove ignored junk
+### Step 2 — preview ignored junk (no delete)
 
-Run:
+**Do not run `git clean -fdX` in `/clean-root auto`.** Deleting ignored files is **`/clean-root clear-ignored` only**.
+
+Preview safe-to-delete ignored paths:
+
+```bash
+git clean -ndX \
+  -e var/plan-run/ \
+  -e var/plan-run/** \
+  -e .worktrees/ \
+  -e .worktrees/** \
+  -e plans/ \
+  -e plans/**
+```
+
+Report preview paths in output. Set `Ignored junk removed: no (preview only)`.
+
+If preview would touch protected paths despite excludes:
+
+```text
+BLOCKED: ignored clean would delete protected workflow state · next: /clean-root plan
+```
+
+Never run plain:
 
 ```bash
 git clean -fdX
 ```
-
-Allowed because `-X` removes ignored files only.
 
 Never run:
 
@@ -401,7 +441,7 @@ Summary
 - Branch: <branch> @ <sha>
 - Agent commit: <sha or none>
 - Stash: <stash@{n} or none>
-- Ignored junk removed: yes|no
+- Ignored junk removed: no (auto previews only; use clear-ignored)
 - Root clean: yes|no
 
 Next
@@ -468,21 +508,49 @@ Stashed
 
 ## `/clean-root clear-ignored`
 
-Remove ignored junk only.
+Remove ignored junk only — **explicit command**; never part of `/clean-root auto`.
 
-Precheck:
+### Protected excludes (required)
 
-```bash
-git clean -ndX
+Never delete:
+
+```text
+var/plan-run/**
+.worktrees/**
+plans/**
 ```
 
-Then:
+### Precheck
 
 ```bash
-git clean -fdX
+git clean -ndX \
+  -e var/plan-run/ \
+  -e var/plan-run/** \
+  -e .worktrees/ \
+  -e .worktrees/** \
+  -e plans/ \
+  -e plans/**
 ```
 
-Never use `git clean -fd`.
+If output lists anything under `var/plan-run/`, `.worktrees/`, or `plans/`:
+
+```text
+BLOCKED: ignored clean would delete protected workflow state
+```
+
+### Delete
+
+```bash
+git clean -fdX \
+  -e var/plan-run/ \
+  -e var/plan-run/** \
+  -e .worktrees/ \
+  -e .worktrees/** \
+  -e plans/ \
+  -e plans/**
+```
+
+Never use plain `git clean -fdX` without excludes. Never use `git clean -fd`.
 
 Output deleted ignored paths when possible.
 

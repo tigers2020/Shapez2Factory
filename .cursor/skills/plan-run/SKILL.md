@@ -499,13 +499,14 @@ Inspect stale or interrupted runs (never blocked by dirty root).
 ### Steps
 
 1. Read `active.md` if present.
-2. **Scan stale Linear claims:** walk `plans/{high,mid,low}` in pick order; for each `planned`/`in_progress` plan, query Linear; apply [stale-linear-claim](#stale-linear-claim) detection. List all matches.
-3. If `active.md` present, verify:
+2. If `active.md` **missing**: scan open PRs on `master` (`gh pr list --state open --base master --json number,url,headRefName,title`); match `auto/SHA-*` branches to `plans/**` `linear_issue`; note worktrees (`git worktree list`). Use this to classify PR-open runs lost to accidental state deletion.
+3. **Scan stale Linear claims:** walk `plans/{high,mid,low}` in pick order; for each `planned`/`in_progress` plan, query Linear; apply [stale-linear-claim](#stale-linear-claim) detection. List all matches.
+4. If `active.md` present (or reconstructed from step 2), verify:
    - worktree path exists (`git worktree list`)
    - branch exists locally/remotely
    - PR open if `pr_url` set (`gh pr view`)
    - Linear state if MCP available
-4. Classify:
+5. Classify:
 
 | Class | Meaning | Suggested next |
 |-------|---------|----------------|

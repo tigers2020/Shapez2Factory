@@ -22,6 +22,7 @@ from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
     EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
 )
+from django_apps.asteroid_lab.replay.map_height_layer import wire_explicit_height_layer
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.replay_event_coverage import SUPPORTED_BY_9B_LAB_ADAPTER
 from django_apps.asteroid_lab.replay.timeline_dtos import (
@@ -99,6 +100,7 @@ def _cell_from_row(row: Mapping[str, Any]) -> ReplayCell:
         transport=str(row.get("transport_kind") or row.get("transport") or ""),
         tile_type=str(row.get("tile_type") or row.get("sprite_identifier") or ""),
         rotation=int(row.get("rotation") or 0),
+        layer=wire_explicit_height_layer(row),
     )
 
 
@@ -110,6 +112,7 @@ def _overlay_from_row(row: Mapping[str, Any]) -> ReplayOverlayCell:
         transport=str(row.get("transport_kind") or row.get("transport") or ""),
         tile_type=str(row.get("tile_type") or row.get("sprite_identifier") or ""),
         rotation=int(row.get("rotation") or 0),
+        layer=wire_explicit_height_layer(row),
     )
 
 

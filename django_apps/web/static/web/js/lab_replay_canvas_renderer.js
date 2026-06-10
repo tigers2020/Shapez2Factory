@@ -22,6 +22,7 @@
     route_probe_path: "rgba(56, 189, 248, 0.3)",
     confirmed_route: "rgba(74, 222, 128, 0.35)",
     route_goal: "rgba(250, 204, 21, 0.4)",
+    inner_field_block: "rgba(167, 139, 250, 0.38)",
     diff_removed: "rgba(239, 68, 68, 0.4)",
     diff_added: "rgba(52, 211, 153, 0.38)",
     diff_changed: "rgba(250, 204, 21, 0.35)",

@@ -12,6 +12,7 @@ Cursor project skills — open when task matches; not read every turn.
 | quality-check | `quality-check/SKILL.md` | REVIEW ONLY — contract/scope audit on diff |
 | cli-boundary | `cli-boundary/SKILL.md` | Thin CLI adapter — import/serialization/exit/determinism |
 | grill-me-shapez2 | `grill-me-shapez2/SKILL.md` | Pre-spec adversarial plan review — invariants, ≤8 Q, decision table |
+| fallow | `fallow/SKILL.md` | JS/TS code health — dead code, dupes, complexity, PR audit (`/fallow`) |
 
 ## Workflow alignment
 

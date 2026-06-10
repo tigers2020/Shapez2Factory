@@ -187,8 +187,9 @@
     if (!ctx || !window.LabReplayCanvas) {
       return;
     }
-    window.LabReplayCanvas.drawTerrainLayer(ctx, cells, layout, cellPx, gapPx);
-    canvas.hidden = false;
+    const visibleCells = cells.filter(cellPassesMapZFilter);
+    window.LabReplayCanvas.drawTerrainLayer(ctx, visibleCells, layout, cellPx, gapPx);
+    canvas.hidden = visibleCells.length === 0;
   }
 
   function applyLabTerrainCanvasHitTarget(el, base) {
@@ -299,7 +300,7 @@
   /** Last-resort: infer Forward-only sprite from transport kind when tile_type is absent.
    * Turn/splitter/merger variants require replay-provided tile_type — no topology inference here. */
   function inferTransportSpriteIdentifier(cell) {
-    const ck = cell.cell_kind != null ? String(cell.cell_kind) : "";
+    const ck = overlayCellKind(cell);
     if (
       ck === "miner" ||
       ck === "extension" ||
@@ -310,24 +311,28 @@
     ) {
       return null;
     }
-    const tk = cell.transport_kind || cell.transport;
-    if (!tk) return null;
-    if (tk === "shape_belt" || cell.cell_kind === "space_belt") return "SpaceBelt_Forward";
-    if (tk === "fluid_pipe" || cell.cell_kind === "space_pipe") return "SpacePipe_Forward";
+    const tk = String(cell.transport_kind || cell.transport || "");
+    if (!tk && !ck) return null;
+    if (tk === "shape_belt" || tk === "space_belt" || ck === "space_belt") {
+      return "SpaceBelt_Forward";
+    }
+    if (tk === "fluid_pipe" || tk === "space_pipe" || ck === "space_pipe") {
+      return "SpacePipe_Forward";
+    }
     return null;
   }
 
   function labSpriteRelpathForCell(cell, frame) {
     if (!cell || typeof cell !== "object") return null;
     if (isNonSpriteOverlayCell(cell, frame)) return null;
-    const ck = cell.cell_kind != null ? String(cell.cell_kind) : "";
+    const ck = overlayCellKind(cell);
     const fieldRel = ck ? LAB_SPRITE_CELL_KIND_STATIC_RELPATH[ck] : null;
     if (fieldRel) return fieldRel;
     // sprite_identifier is the alias emitted alongside tile_type; prefer it so either field works.
     const tileKey = cell.sprite_identifier || cell.tile_type;
     let rel = labSpriteRelpathFromTileType(tileKey);
-    if (!rel && cell.cell_kind != null) {
-      rel = labSpriteRelpathFromCellKind(cell.cell_kind);
+    if (!rel && ck) {
+      rel = labSpriteRelpathFromCellKind(ck);
     }
     if (!rel) {
       const inferred = inferTransportSpriteIdentifier(cell);
@@ -837,23 +842,76 @@
     }
   }
 
+  function wireExplicitLabCellMapZ(cell) {
+    if (!cell || typeof cell !== "object") {
+      return null;
+    }
+    const raw =
+      cell.layer != null
+        ? cell.layer
+        : cell.L != null
+          ? cell.L
+          : cell.z != null
+            ? cell.z
+            : cell.Z != null
+              ? cell.Z
+              : null;
+    if (raw == null || raw === "") {
+      return null;
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+      return null;
+    }
+    return Math.max(0, Math.min(2, Math.trunc(n)));
+  }
+
+  function normalizeReplayWireCell(c) {
+    if (!c || typeof c !== "object") {
+      return null;
+    }
+    const tileType =
+      c.tile_type != null
+        ? String(c.tile_type)
+        : c.sprite_identifier != null
+          ? String(c.sprite_identifier)
+          : "";
+    const row = {
+      x: c.x,
+      y: c.y,
+      cell_kind: c.kind != null ? c.kind : c.cell_kind,
+      transport_kind: c.transport != null ? c.transport : c.transport_kind,
+      tile_type: tileType,
+      sprite_identifier:
+        c.sprite_identifier != null ? String(c.sprite_identifier) : tileType,
+      rotation: c.rotation,
+    };
+    const layer = wireExplicitLabCellMapZ(c);
+    if (layer != null) {
+      row.layer = layer;
+    }
+    if (c.overlay_role != null && String(c.overlay_role) !== "") {
+      row.overlay_role = String(c.overlay_role);
+    }
+    if (c.connector_id != null && String(c.connector_id) !== "") {
+      row.connector_id = String(c.connector_id);
+    }
+    if (c.connector_role != null && String(c.connector_role) !== "") {
+      row.connector_role = String(c.connector_role);
+    }
+    return row;
+  }
+
   function labCellsFromMapView(mapView) {
     if (!mapView || typeof mapView !== "object") return [];
     const full = mapView.full_cells;
     if (!Array.isArray(full) || !full.length) return [];
     const out = [];
     for (let i = 0; i < full.length; i++) {
-      const c = full[i];
-      if (!c || typeof c !== "object") continue;
-      out.push({
-        x: c.x,
-        y: c.y,
-        cell_kind: c.kind != null ? c.kind : c.cell_kind,
-        transport_kind: c.transport != null ? c.transport : c.transport_kind,
-        tile_type: c.tile_type != null ? String(c.tile_type) : "",
-        sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
-        rotation: c.rotation,
-      });
+      const row = normalizeReplayWireCell(full[i]);
+      if (row) {
+        out.push(row);
+      }
     }
     return out;
   }
@@ -919,23 +977,9 @@
       ) {
         continue;
       }
-      const row = {
-        x: c.x,
-        y: c.y,
-        cell_kind: c.kind != null ? c.kind : c.cell_kind,
-        transport_kind: c.transport != null ? c.transport : c.transport_kind,
-        tile_type: c.tile_type != null ? String(c.tile_type) : "",
-        sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
-        rotation: c.rotation,
-      };
-      if (c.overlay_role != null && String(c.overlay_role) !== "") {
-        row.overlay_role = String(c.overlay_role);
-      }
-      if (c.connector_id != null && String(c.connector_id) !== "") {
-        row.connector_id = String(c.connector_id);
-      }
-      if (c.connector_role != null && String(c.connector_role) !== "") {
-        row.connector_role = String(c.connector_role);
+      const row = normalizeReplayWireCell(c);
+      if (!row) {
+        continue;
       }
       out.push(row);
     }
@@ -950,15 +994,10 @@
     for (let i = 0; i < delta.length; i++) {
       const c = delta[i];
       if (!c || typeof c !== "object") continue;
-      out.push({
-        x: c.x,
-        y: c.y,
-        cell_kind: c.kind != null ? c.kind : c.cell_kind,
-        transport_kind: c.transport != null ? c.transport : c.transport_kind,
-        tile_type: c.tile_type != null ? String(c.tile_type) : "",
-        sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
-        rotation: c.rotation,
-      });
+      const row = normalizeReplayWireCell(c);
+      if (row) {
+        out.push(row);
+      }
     }
     return out;
   }
@@ -1198,6 +1237,241 @@
   var LAYER03_POOL_SUMMARY_EVENT = "layer03_rim_bundle_pool_summary";
   var LAYER03_POOL_PROBE_WINDOW_EVENT = "layer03_rim_bundle_pool_probe_window";
   var LAYER03_GREEDY_EVENT_PREFIX = "layer03_rim_greedy_";
+  var LAYER04_INNER_FILL_EVENT_PREFIX = "layer04_inner_pattern_fill_";
+  var LAYER05_TRANSPORT_EVENT_PREFIX = "layer05_transport_routing_";
+
+  var LAB_LAYER_REPLAY_LABELS = {
+    layer_01_reconstruction: { index: 1, title: "Reconstruction" },
+    layer_02_exterior_transport: { index: 2, title: "Exterior transport" },
+    layer_03_rim_greedy_placement: { index: 3, title: "Rim greedy placement" },
+    layer_03_rim_mining_bundles: { index: 3, title: "Rim mining bundles" },
+    layer_04_inner_pattern_fill: { index: 4, title: "Inner pattern fill" },
+    layer_04_rim_bundle_placement: { index: 4, title: "Rim bundle placement" },
+    layer_05_transport_routing: { index: 5, title: "Transport routing" },
+    layer_04_transport_routing: { index: 5, title: "Transport routing" },
+    layer_06_commit_validate: { index: 6, title: "Commit & validate" },
+  };
+
+  function labPhaseStepFromFrame(frame) {
+    if (!frame || typeof frame !== "object") return "";
+    const insp = frame.inspector;
+    if (insp && typeof insp === "object" && insp.lab_phase_step) {
+      return String(insp.lab_phase_step);
+    }
+    const et = String(frame.event_type || "");
+    if (et.indexOf("reconstruction.") === 0 || et === "reconstruction.completed") {
+      return "layer_01_reconstruction";
+    }
+    if (et === "exterior_transport.completed") {
+      return "layer_02_exterior_transport";
+    }
+    if (et.indexOf(LAYER03_GREEDY_EVENT_PREFIX) === 0) {
+      return "layer_03_rim_greedy_placement";
+    }
+    if (et.indexOf("layer03_rim_bundle_") === 0) {
+      return "layer_03_rim_mining_bundles";
+    }
+    if (et.indexOf(LAYER04_INNER_FILL_EVENT_PREFIX) === 0) {
+      return "layer_04_inner_pattern_fill";
+    }
+    if (et.indexOf("layer04_rim_") === 0) {
+      return "layer_04_rim_bundle_placement";
+    }
+    if (
+      et.indexOf(LAYER05_TRANSPORT_EVENT_PREFIX) === 0 ||
+      et.indexOf("layer04_transport_routing_") === 0
+    ) {
+      return "layer_05_transport_routing";
+    }
+    if (et.indexOf("validation.") === 0) {
+      return "layer_06_commit_validate";
+    }
+    return "";
+  }
+
+  function formatLabLayerReplayLabel(frame) {
+    const slug = labPhaseStepFromFrame(frame);
+    if (!slug) return "";
+    const meta = LAB_LAYER_REPLAY_LABELS[slug];
+    if (!meta) return slug;
+    return "L" + String(meta.index) + " · " + meta.title;
+  }
+
+  function formatLabLayerMetricsLine(frame) {
+    if (!frame || typeof frame !== "object" || !frame.metrics || typeof frame.metrics !== "object") {
+      return "";
+    }
+    const slug = labPhaseStepFromFrame(frame);
+    const m = frame.metrics;
+    if (slug === "layer_04_inner_pattern_fill") {
+      const parts = [];
+      if (m.interior_occupied_cell_count != null) {
+        parts.push("occupied=" + String(m.interior_occupied_cell_count));
+      }
+      if (m.coverage_ratio != null && Number.isFinite(Number(m.coverage_ratio))) {
+        parts.push("coverage=" + Number(m.coverage_ratio).toFixed(2));
+      }
+      if (m.routeable_inner_group_count != null) {
+        parts.push("routeable_groups=" + String(m.routeable_inner_group_count));
+      }
+      if (m.placement_count != null) {
+        parts.push("placements=" + String(m.placement_count));
+      }
+      if (m.skip_reason) {
+        parts.push("skip=" + String(m.skip_reason));
+      }
+      if (m.budget_interrupted === true) {
+        parts.push("budget_interrupted");
+      }
+      return parts.join(" · ");
+    }
+    if (slug === "layer_05_transport_routing") {
+      const parts = [];
+      if (m.route_count != null) parts.push("routes=" + String(m.route_count));
+      if (m.transport_tile_count != null) {
+        parts.push("tiles=" + String(m.transport_tile_count));
+      }
+      if (m.failed_source_count != null) {
+        parts.push("failed_sources=" + String(m.failed_source_count));
+      }
+      return parts.join(" · ");
+    }
+    return "";
+  }
+
+  function findFirstReplayIndexForLayerSlug(slug, frames) {
+    if (!slug || !Array.isArray(frames) || !frames.length) return -1;
+    for (let i = 0; i < frames.length; i++) {
+      if (labPhaseStepFromFrame(frames[i]) === slug) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function syncLabLayerSummaryActiveState(activeSlug) {
+    const root = document.getElementById("lab-layer-summaries");
+    if (!root) return;
+    const cards = root.querySelectorAll("[data-lab-layer-slug]");
+    cards.forEach(function (card) {
+      const slug = card.getAttribute("data-lab-layer-slug");
+      const active = Boolean(activeSlug && slug && String(slug) === String(activeSlug));
+      card.classList.toggle("border-cyan-500/70", active);
+      card.classList.toggle("ring-1", active);
+      card.classList.toggle("ring-cyan-500/40", active);
+      card.setAttribute("aria-current", active ? "true" : "false");
+    });
+  }
+
+  /** Shapez 2 island height layers: BP.Entries ``L`` (wiki: defaults 0 = floor; E/Q when placing belts). */
+  var LAB_MAP_Z_LAYER_ALL = -1;
+  var LAB_MAP_Z_LAYER_OPTIONS = [
+    { id: LAB_MAP_Z_LAYER_ALL, label: "All layers" },
+    { id: 0, label: "L=0 · Floor" },
+    { id: 1, label: "L=1 · Layer 1" },
+    { id: 2, label: "L=2 · Layer 2" },
+  ];
+
+  /** Active Shapez height layer (L); ``LAB_MAP_Z_LAYER_ALL`` shows every plane. */
+  var labMapZSelectedLayer = LAB_MAP_Z_LAYER_ALL;
+
+  function inferLabCellMapZ(cell) {
+    const kind = overlayCellKind(cell);
+    const transport = String(cell.transport_kind || cell.transport || "");
+    const tile = String(cell.tile_type || cell.sprite_identifier || "");
+
+    if (kind === "candidate_miner") {
+      return transport === "fluid" || transport === "fluid_pipe" ? 1 : 0;
+    }
+    if (kind === "candidate_transport_stub") {
+      return transport === "fluid" || transport === "fluid_pipe" ? 1 : 2;
+    }
+    if (
+      kind === "space_belt" ||
+      kind === "shape_belt" ||
+      kind === "route_probe_path" ||
+      kind === "route_path" ||
+      kind === "route_probe" ||
+      kind === "route_goal" ||
+      kind === "confirmed_route" ||
+      kind === "candidate_route_path" ||
+      kind === "overlap_conflict"
+    ) {
+      if (
+        (transport === "fluid" || transport === "fluid_pipe") &&
+        kind !== "space_belt" &&
+        kind !== "shape_belt"
+      ) {
+        return 1;
+      }
+      return 2;
+    }
+    if (kind === "space_pipe" || kind === "fluid_pipe") {
+      return 1;
+    }
+    if (
+      kind === "asteroid_fluid_field" ||
+      kind === "fluid_miner" ||
+      kind === "fluid_miner_extension" ||
+      transport === "fluid" ||
+      transport === "fluid_pipe"
+    ) {
+      return 1;
+    }
+    if (
+      kind === "asteroid_shape_field" ||
+      kind === "shape_miner" ||
+      kind === "shape_miner_extension" ||
+      kind === "inner_field_block" ||
+      transport === "shape" ||
+      transport === "shape_belt"
+    ) {
+      return 0;
+    }
+    if (kind.indexOf("route") >= 0) {
+      return transport === "fluid" || transport === "fluid_pipe" ? 1 : 2;
+    }
+    if (tile.indexOf("SpacePipe") >= 0 || tile.indexOf("Lift1") >= 0) {
+      return 1;
+    }
+    if (tile.indexOf("SpaceBelt") >= 0 || tile.indexOf("Lift2") >= 0) {
+      return 2;
+    }
+    return 0;
+  }
+
+  function labCellMapZ(cell) {
+    const explicit = wireExplicitLabCellMapZ(cell);
+    if (explicit != null) {
+      return explicit;
+    }
+    return inferLabCellMapZ(cell);
+  }
+
+  function labMapZLayerVisible(z) {
+    if (labMapZSelectedLayer === LAB_MAP_Z_LAYER_ALL) {
+      return true;
+    }
+    const plane = Math.max(0, Math.min(2, Math.trunc(Number(z))));
+    return plane === labMapZSelectedLayer;
+  }
+
+  function cellPassesMapZFilter(cell) {
+    return labMapZLayerVisible(labCellMapZ(cell));
+  }
+
+  function summaryLabelForLabMapZVisibility() {
+    const selected = LAB_MAP_Z_LAYER_OPTIONS.find(function (opt) {
+      return opt.id === labMapZSelectedLayer;
+    });
+    if (!selected) {
+      return "All";
+    }
+    if (selected.id === LAB_MAP_Z_LAYER_ALL) {
+      return "All";
+    }
+    return selected.label.split("·")[0].trim();
+  }
 
   /** Pre-candidate_* replay wire on L3 pool summary frames only. */
   var LEGACY_L3_POOL_OVERLAY_CELL_KINDS = {
@@ -1487,6 +1761,7 @@
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (!cell || typeof cell !== "object") continue;
+      if (!cellPassesMapZFilter(cell)) continue;
       const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
@@ -1954,7 +2229,7 @@
       clearPatternBundleOutlineSvg();
       return;
     }
-    if (isTerrainRimHighlightEnabled()) {
+    if (isTerrainRimHighlightEnabled() && labMapZLayerVisible(0)) {
       const rimWire = resolveTerrainRimHighlightWire(frame, trackMetrics);
       if (rimWire) {
         applyTerrainRimHighlight(rimWire, rimDrawCtx.layout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
@@ -1964,7 +2239,7 @@
     } else {
       clearTerrainRimOutlineSvg();
     }
-    if (isPatternBundleHighlightEnabled()) {
+    if (isPatternBundleHighlightEnabled() && labMapZLayerVisible(0)) {
       const patternWire = resolvePatternBundleHighlightWire(frame);
       if (patternWire) {
         applyPatternBundleHighlightSvg(
@@ -2142,13 +2417,15 @@
     if (!isPatternBundleHighlightEnabled()) {
       applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
     }
-    renderPlannedExteriorConnectorHighlights(
-      frame,
-      baseClasses,
-      domCells,
-      resolveCellIndex,
-      trackMetrics,
-    );
+    if (labMapZLayerVisible(0) || labMapZLayerVisible(1) || labMapZLayerVisible(2)) {
+      renderPlannedExteriorConnectorHighlights(
+        frame,
+        baseClasses,
+        domCells,
+        resolveCellIndex,
+        trackMetrics,
+      );
+    }
     applyLabOverlayHighlights(frame, trackMetrics, rimDrawCtx);
     return true;
   }
@@ -2231,13 +2508,28 @@
       setLabFrameCounterDisplay(frameEl, formatLabFrameCounter(0, denom));
       return;
     }
-    if (phaseEl) phaseEl.textContent = frame.phase != null ? String(frame.phase) : dash;
+    const layerLabel = formatLabLayerReplayLabel(frame);
+    const metricsLine = formatLabLayerMetricsLine(frame);
+    if (phaseEl) {
+      const phase = frame.phase != null ? String(frame.phase) : "";
+      phaseEl.textContent = layerLabel
+        ? phase
+          ? phase + " · " + layerLabel
+          : layerLabel
+        : phase || dash;
+    }
     const et = document.getElementById("lab-replay-event-type");
     const ti = document.getElementById("lab-replay-title");
     const de = document.getElementById("lab-replay-description");
     if (et) et.textContent = frame.event_type ? String(frame.event_type) : dash;
     if (ti) ti.textContent = frame.title != null ? String(frame.title) : dash;
-    if (de) de.textContent = frame.description != null ? String(frame.description) : dash;
+    if (de) {
+      let desc = frame.description != null ? String(frame.description) : "";
+      if (metricsLine) {
+        desc = desc ? desc + "\n" + metricsLine : metricsLine;
+      }
+      de.textContent = desc || dash;
+    }
     let slot = timelineSlotIndex;
     if (slot == null || !Number.isFinite(Number(slot))) {
       const fi = Number(frame.frame_index);
@@ -2842,6 +3134,67 @@
 
     let replayArrayIndex = replaySlotForServerInitialFrame();
 
+    function syncLabReplayLayerMenuUi() {
+      const toggle = document.getElementById("lab-replay-layer-menu-toggle");
+      const menu = document.getElementById("lab-replay-layer-menu");
+      const optionsRoot = document.getElementById("lab-replay-layer-menu-options");
+      if (!toggle || !menu || !optionsRoot) return;
+      const label = summaryLabelForLabMapZVisibility();
+      toggle.setAttribute("title", "Map Z layers: " + label);
+      toggle.setAttribute("aria-label", "Map Z layers: " + label);
+      const radios = optionsRoot.querySelectorAll("[data-lab-map-z-layer]");
+      radios.forEach(function (input) {
+        const plane = Number(input.getAttribute("data-lab-map-z-layer"));
+        input.checked = plane === labMapZSelectedLayer;
+      });
+    }
+
+    function initLabReplayLayerMenu() {
+      const toggle = document.getElementById("lab-replay-layer-menu-toggle");
+      const menu = document.getElementById("lab-replay-layer-menu");
+      const optionsRoot = document.getElementById("lab-replay-layer-menu-options");
+      if (!toggle || !menu || !optionsRoot) return;
+      optionsRoot.replaceChildren();
+      LAB_MAP_Z_LAYER_OPTIONS.forEach(function (opt) {
+        const row = document.createElement("label");
+        row.className =
+          "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-slate-200 hover:bg-slate-800";
+        row.setAttribute("role", "menuitemradio");
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = "lab-map-z-layer";
+        input.className = "border-slate-600 bg-slate-900 text-cyan-500";
+        input.setAttribute("data-lab-map-z-layer", String(opt.id));
+        input.checked = opt.id === labMapZSelectedLayer;
+        input.addEventListener("change", function (event) {
+          event.stopPropagation();
+          if (!input.checked) {
+            return;
+          }
+          labMapZSelectedLayer = opt.id;
+          syncLabReplayLayerMenuUi();
+          applyFrame();
+        });
+        const text = document.createElement("span");
+        text.textContent = opt.label;
+        row.appendChild(input);
+        row.appendChild(text);
+        optionsRoot.appendChild(row);
+      });
+      toggle.addEventListener("click", function (event) {
+        event.stopPropagation();
+        menu.classList.toggle("hidden");
+        toggle.setAttribute("aria-expanded", menu.classList.contains("hidden") ? "false" : "true");
+      });
+      document.addEventListener("click", function (event) {
+        const picker = document.getElementById("lab-replay-layer-picker");
+        if (!picker || picker.contains(event.target)) return;
+        menu.classList.add("hidden");
+        toggle.setAttribute("aria-expanded", "false");
+      });
+      syncLabReplayLayerMenuUi();
+    }
+
     function getMaxTimelineIndex() {
       if (hasServerReplay) {
         if (
@@ -3003,6 +3356,7 @@
       const seen = new Set();
       function consider(cell, role, sourceFrame) {
         if (!cell || typeof cell !== "object") return;
+        if (!cellPassesMapZFilter(cell)) return;
         const paintFrame = sourceFrame || frame;
         if (isLabStaticTerrainCell(cell, paintFrame)) return;
         const idx = resolveCellIndex(cell);
@@ -3045,9 +3399,9 @@
         });
       }
       const layoutFrame =
-        frameHasSpriteCapableCells(frame) || !hasServerReplay
-          ? null
-          : lastFrameWithSpriteCapableCells(replayArrayIndex);
+        !frameHasSpriteCapableCells(frame) && hasServerReplay
+          ? lastFrameWithSpriteCapableCells(replayArrayIndex)
+          : null;
       if (layoutFrame && layoutFrame !== frame) {
         const carryTargets = collectFrameSpatialTargets(layoutFrame);
         for (let c = 0; c < carryTargets.length; c++) {
@@ -3193,15 +3547,16 @@
         if (replayArrayIndex < 0) replayArrayIndex = 0;
         if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
         const fr = getCurrentReplayFrame();
+        const paintFr = fr;
         const useIncremental =
           playback &&
           Array.isArray(replayPaintedCellIndices) &&
           replayPaintedCellIndices.length > 0 &&
-          !replayFrameNeedsFullGridReset(fr, domCells.length);
+          !replayFrameNeedsFullGridReset(paintFr, domCells.length);
         let painted = false;
         if (labCanvasRenderer) {
           painted = applyLabCanvasServerReplayFrame(
-            fr,
+            paintFr,
             rimDrawCtx,
             useIncremental,
             replayPaintedCellIndices,
@@ -3210,7 +3565,7 @@
         if (!painted) {
           /* READ: rimDrawCtx from cached cell sizing. WRITE: renderReplayFrame (no layout read). */
           renderReplayFrame(
-            fr,
+            paintFr,
             baseClasses,
             domCells,
             resolveCellIndex,
@@ -3223,9 +3578,10 @@
             },
           );
         }
-        replayPaintedCellIndices = collectReplayFrameCellIndices(fr, resolveCellIndex);
+        replayPaintedCellIndices = collectReplayFrameCellIndices(paintFr, resolveCellIndex);
         if (updateChrome) {
           updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl, replayArrayIndex);
+          syncLabLayerSummaryActiveState(labPhaseStepFromFrame(fr));
           updateReplayTruncationHud(fr, replayTrackMetrics);
           const cycle = document.getElementById("lab-computation-cycle");
           if (cycle) {
@@ -3562,10 +3918,17 @@
       run.layer_summaries.forEach(function (layer) {
         if (!layer || typeof layer !== "object") return;
         const card = document.createElement("article");
-        card.className = "rounded-xl border border-slate-800 bg-slate-900/80 p-3";
+        card.className =
+          "rounded-xl border border-slate-800 bg-slate-900/80 p-3 transition-colors hover:border-slate-600";
         card.setAttribute("role", "listitem");
         if (layer.layer_slug) {
           card.setAttribute("data-lab-layer-slug", String(layer.layer_slug));
+          card.classList.add("cursor-pointer");
+          card.setAttribute("tabindex", "0");
+          card.setAttribute(
+            "aria-label",
+            "Jump replay to " + String(layer.layer_slug),
+          );
         }
 
         const head = document.createElement("div");
@@ -3887,6 +4250,38 @@
         });
     });
     syncLabActionButtons();
+    initLabReplayLayerMenu();
+
+    function jumpReplayToLayerSlug(slug) {
+      if (!slug || !hasServerReplay) return;
+      ensureLabReplayFramesLoaded("layer-jump").then(function () {
+        if (labReplayLoadState.status === "error") return;
+        const idx = findFirstReplayIndexForLayerSlug(slug, replayFrames);
+        if (idx < 0) return;
+        setTimelineIndex(idx, { pause: true });
+      });
+    }
+
+    document.getElementById("lab-layer-summaries")?.addEventListener("click", function (event) {
+      const card = event.target && event.target.closest
+        ? event.target.closest("[data-lab-layer-slug]")
+        : null;
+      if (!card) return;
+      const slug = card.getAttribute("data-lab-layer-slug");
+      if (!slug) return;
+      jumpReplayToLayerSlug(slug);
+    });
+    document.getElementById("lab-layer-summaries")?.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const card = event.target && event.target.closest
+        ? event.target.closest("[data-lab-layer-slug]")
+        : null;
+      if (!card) return;
+      event.preventDefault();
+      const slug = card.getAttribute("data-lab-layer-slug");
+      if (!slug) return;
+      jumpReplayToLayerSlug(slug);
+    });
 
     document.getElementById("lab-timeline-prev")?.addEventListener("click", function () {
       ensureLabReplayFramesLoaded("prev").then(function () {

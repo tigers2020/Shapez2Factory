@@ -358,7 +358,7 @@
           <div class="min-w-0 p-4">
             <div
               id="lab-replay-grid-viewport"
-              class="relative flex aspect-video w-full min-h-0 min-w-0 max-w-full items-center justify-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/50 p-4"
+              class="relative flex aspect-video w-full min-h-0 min-w-0 max-w-full items-center justify-center overflow-visible rounded-2xl border border-slate-800 bg-slate-900/50 p-4"
             >
               <div
                 id="lab-replay-grid-hud"
@@ -374,7 +374,7 @@
                 </div>
               </div>
 
-              <div id="lab-replay-grid-stage" class="relative min-w-0">
+              <div id="lab-replay-grid-stage" class="relative min-h-0 min-w-0 max-h-full max-w-full overflow-hidden">
                 <canvas
                   id="lab-replay-terrain-canvas"
                   class="pointer-events-none absolute left-0 top-0 z-0"
@@ -405,6 +405,33 @@
                   class="pointer-events-none absolute inset-0 z-10"
                   aria-hidden="true"
                 ></div>
+              </div>
+              <div
+                id="lab-replay-layer-picker"
+                class="pointer-events-auto absolute bottom-3 right-3 z-[80] flex flex-col-reverse items-end gap-2"
+              >
+                <button
+                  type="button"
+                  id="lab-replay-layer-menu-toggle"
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-950/90 text-slate-100 shadow-lg backdrop-blur hover:border-cyan-500/60 hover:bg-slate-900"
+                  aria-expanded="false"
+                  aria-controls="lab-replay-layer-menu"
+                  aria-label="{% trans 'Map Z layers' %}"
+                  title="{% trans 'Map Z layers' %}"
+                >
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M4 7h16M4 12h16M4 17h16"/>
+                  </svg>
+                </button>
+                <div
+                  id="lab-replay-layer-menu"
+                  class="hidden max-h-[min(14rem,40vh)] min-w-[12rem] overflow-y-auto rounded-xl border border-slate-700 bg-slate-950/95 p-2 shadow-xl backdrop-blur"
+                  role="menu"
+                  aria-label="{% trans 'Map Z layers' %}"
+                >
+                  <p class="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-slate-500">{% trans "Height layer (L)" %}</p>
+                  <div id="lab-replay-layer-menu-options" class="space-y-0.5"></div>
+                </div>
               </div>
             </div>
 
@@ -545,5 +572,5 @@
 
   <script src="{% static 'web/js/lab_replay_canvas_terrain.js' %}?v=island_raw_v2" defer></script>
   <script src="{% static 'web/js/lab_replay_canvas_renderer.js' %}" defer></script>
-  <script src="{% static 'web/js/asteroid_miner_layout_lab.js' %}?v=island_raw_v4" defer></script>
+  <script src="{% static 'web/js/asteroid_miner_layout_lab.js' %}?v=map_l_picker_v6" defer></script>
 {% endblock %}

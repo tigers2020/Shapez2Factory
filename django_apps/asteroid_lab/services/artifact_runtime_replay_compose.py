@@ -1,4 +1,4 @@
-"""Viewer-only: rebuild L2/L3 solver runtime replay frames from a CLI artifact (output-only)."""
+"""Viewer-only: rebuild L2-L5 solver runtime replay frames from a CLI artifact (output-only)."""
 
 from __future__ import annotations
 
@@ -33,6 +33,12 @@ from shapez2_factory.adapters.asteroid_lab.json_snapshot_rules import (
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.provisional_overlay import (
+    ProvisionalLayoutOverlay,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
+    IntegratedRimGreedyResult,
+)
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.run import (
     execute_layer_02_exterior_transport_plan,
 )
@@ -44,6 +50,9 @@ from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placeme
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.run import (
     run_layer_05_transport_routing,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_05_inner_pattern_fill.run import (
+    run_layer_04_inner_pattern_fill,
 )
 from shapez2_factory.application.asteroid_lab.ports.game_data_rules import GameDataRulesPort
 from shapez2_factory.application.asteroid_lab.reconstruction_capacity import (
@@ -120,7 +129,7 @@ def _load_genetic_sample_seeds(
 def build_solver_runtime_replay_frames_from_artifact_run(
     run: SolverRun,
 ) -> list[dict[str, Any]] | None:
-    """Re-execute L2/L3 on artifact inputs and emit overlay-capable runtime replay frames."""
+    """Re-execute L2→L3→L4→L5 on artifact inputs and emit overlay-capable runtime replay frames."""
 
     artifact_root = str(run.artifact_root or "").strip()
     if not artifact_root:
@@ -170,12 +179,26 @@ def build_solver_runtime_replay_frames_from_artifact_run(
         genetic_sample_seeds=genetic_sample_seeds,
     )
 
+    provisional_overlay = (
+        layer03.provisional_overlay
+        if isinstance(layer03, IntegratedRimGreedyResult)
+        else ProvisionalLayoutOverlay.empty()
+    )
+    layer04_inner_fill = run_layer_04_inner_pattern_fill(
+        complete_map=complete_map,
+        exterior_plan=exterior_plan,
+        provisional_overlay=provisional_overlay,
+        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
+    )
+
     layer05_route_plan = run_layer_05_transport_routing(
         complete_map=complete_map,
         exterior_plan=exterior_plan,
         rim_result=layer03,
         resource_kind=exterior_plan.transport_kind,
         transport_catalog=try_load_default_space_transport_catalog(),
+        interior_occupied_cells=layer04_inner_fill.interior_occupied_cells,
+        inner_fill=layer04_inner_fill,
     )
 
     lab_source = [
@@ -192,7 +215,9 @@ def build_solver_runtime_replay_frames_from_artifact_run(
         exterior_plan_wire=plan_wire,
         layer03=layer03,
         layer04=None,
+        layer04_inner_fill=layer04_inner_fill,
         layer05_route_plan=layer05_route_plan,
+        transport_kind=str(exterior_plan.transport_kind or "shape_belt"),
     )
 
 

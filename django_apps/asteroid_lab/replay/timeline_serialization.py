@@ -6,6 +6,10 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
+from django_apps.asteroid_lab.replay.map_height_layer import (
+    resolve_replay_height_layer,
+    wire_explicit_height_layer,
+)
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayAnnotation,
@@ -70,6 +74,7 @@ def _cell_from_dict(data: dict[str, Any]) -> ReplayCell:
         transport=_wire_transport(data),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
+        layer=wire_explicit_height_layer(data),
     )
 
 
@@ -82,6 +87,7 @@ def _cell_delta_from_dict(data: dict[str, Any]) -> ReplayCellDelta:
         op=str(data.get("op") or "set"),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
+        layer=wire_explicit_height_layer(data),
     )
 
 
@@ -93,6 +99,22 @@ def _overlay_from_dict(data: dict[str, Any]) -> ReplayOverlayCell:
         transport=_wire_transport(data),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
+        layer=wire_explicit_height_layer(data),
+    )
+
+
+def _resolved_layer_for_cell(
+    *,
+    kind: str,
+    transport: str,
+    tile_type: str,
+    layer: int | None,
+) -> int:
+    return resolve_replay_height_layer(
+        cell_kind=kind,
+        transport_kind=transport,
+        tile_type=tile_type,
+        layer=layer,
     )
 
 
@@ -127,6 +149,12 @@ def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, Any]:
                 "tile_type": c.tile_type,
                 "sprite_identifier": c.tile_type,
                 "rotation": c.rotation,
+                "layer": _resolved_layer_for_cell(
+                    kind=c.kind,
+                    transport=c.transport,
+                    tile_type=c.tile_type,
+                    layer=c.layer,
+                ),
             }
             for c in map_view.full_cells
         ],
@@ -140,6 +168,12 @@ def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, Any]:
                 "tile_type": c.tile_type,
                 "sprite_identifier": c.tile_type,
                 "rotation": c.rotation,
+                "layer": _resolved_layer_for_cell(
+                    kind=c.kind,
+                    transport=c.transport,
+                    tile_type=c.tile_type,
+                    layer=c.layer,
+                ),
             }
             for c in map_view.cell_delta
         ],
@@ -152,6 +186,12 @@ def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, Any]:
                 "tile_type": c.tile_type,
                 "sprite_identifier": c.tile_type,
                 "rotation": c.rotation,
+                "layer": _resolved_layer_for_cell(
+                    kind=c.kind,
+                    transport=c.transport,
+                    tile_type=c.tile_type,
+                    layer=c.layer,
+                ),
             }
             for c in map_view.overlay_cells
         ],

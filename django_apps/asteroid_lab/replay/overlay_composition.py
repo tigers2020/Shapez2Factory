@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+from django_apps.asteroid_lab.replay.map_height_layer import enrich_replay_wire_row_with_layer
+
 _CONNECTOR_ROLE = "planned_exterior_connector"
 
 
@@ -43,7 +45,7 @@ def _dedupe_rows(rows: Sequence[Mapping[str, object]]) -> list[dict[str, object]
     seen: set[tuple[object, ...]] = set()
     out: list[dict[str, object]] = []
     for row in rows:
-        data = dict(row)
+        data = enrich_replay_wire_row_with_layer(dict(row))
         role = str(data.get("overlay_role") or "")
         if role == _CONNECTOR_ROLE:
             key = _connector_dedupe_key(data)

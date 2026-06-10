@@ -512,9 +512,13 @@ Inspect stale or interrupted runs (never blocked by dirty root).
 |-------|---------|----------------|
 | `stale-linear-claim` | Linear In Progress; no active.md/worktree/PR | `/plan-run run SHA-XX` or Todo in Linear |
 | `resumable` | worktree + branch OK; phase < merged | `/plan-run auto resume` |
+| `active-pr-open` | active.md + worktree + open PR; CI pending or green | `/plan-run babysit` when ≥5 open PRs, else monitor |
+| `active-pr-open-ci-red` | active.md + worktree + open PR; required CI failing | fix in worktree + push; `/plan-run babysit` when ≥5 open PRs |
 | `stale-active-no-worktree` | active.md but worktree missing | `/plan-run clear` then `/plan-run run SHA-XX` or abandon |
-| `stale-active-pr-open` | PR exists; worktree may be gone | `/plan-run babysit` when ≥5 open PRs, else `/plan-run pick` |
+| `stale-active-pr-open` | open PR exists but active.md/worktree incomplete or missing | reconstruct via PR scan; then `/plan-run babysit` when ≥5 open PRs |
 | `manual-cleanup-required` | branch/PR/worktree mismatch | report paths; user decides |
+
+**Classify PR-open runs:** when `active.md` + worktree + `pr_url` all verify, use `active-pr-open` or `active-pr-open-ci-red` (check `gh pr checks` / required CI). Reserve `stale-active-pr-open` for PR without complete session state.
 
 Do not auto-clear or auto-delete anything.
 

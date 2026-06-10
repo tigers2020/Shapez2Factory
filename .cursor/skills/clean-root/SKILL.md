@@ -653,3 +653,25 @@ BLOCKED: <what> · tried: <commands> · next: <one recovery command>
 ```
 
 Never hide dirty files. Never silently discard user work.
+
+---
+
+## Acceptance: protected ignored state
+
+Given:
+
+- `var/plan-run/active.md` exists
+- `.worktrees/auto-SHA-*` exists
+- `plans/high/*.md` has local metadata changes
+
+When:
+
+- `/clean-root auto` runs
+
+Then:
+
+- it must **not** run plain `git clean -fdX`
+- it must **not** delete `var/plan-run/active.md`
+- it must **not** delete `.worktrees/**`
+- it must **not** delete or restore `plans/**`
+- ignored junk cleanup is **preview-only** (use `/clean-root clear-ignored` to delete)

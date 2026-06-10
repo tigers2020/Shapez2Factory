@@ -130,6 +130,8 @@ skills-lock.json
 
 # --- Local workflow overlays (tracked stubs remain; new local copies ignored) ---
 AGENTS.md
+!AGENTS.md
+!**/AGENTS.md
 protocols/
 persona/
 *.zip

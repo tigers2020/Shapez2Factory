@@ -56,13 +56,17 @@ When to run which gate: `docs/agent-workflows/validation-routine.md`. PR/full: `
 ## Governance Files
 
 `AGENTS.md` and every `.cursor/rules/**/*.mdc` must stay <= 75 lines. `.mdc` files are thin routers; operational detail lives in `docs/agent-workflows/`. Check: `scripts/check_governance.ps1`.
+Nested `AGENTS.md` files are allowed only at responsibility boundaries. They add local import, invariant, and verification rules.
+Do not create file-level or tiny-module `AGENTS.md` files. If local rules repeat root policy, delete or compress them.
+For edited files, read root `AGENTS.md` plus every nested `AGENTS.md` from repo root to the file directory. The closest file wins on local conflicts.
 
 ## Conflict Precedence
 
 1. User explicit current instruction
 2. `AGENTS.md`
-3. Matching `.cursor/rules/*.mdc`
-4. Current docs/specs/ADRs
-5. Agent assumptions
+3. Closest nested `AGENTS.md`
+4. Matching `.cursor/rules/*.mdc`
+5. Current docs/specs/ADRs
+6. Agent assumptions
 
 When blocked, say `BLOCKED:` with context, risk, fixes tried, and next step.

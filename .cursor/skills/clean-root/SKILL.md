@@ -112,8 +112,9 @@ var/plan-run/active.md
 
 Rules:
 
-- Do not auto-commit plan queue changes unless command is `/plan-run`-owned.
-- `/clean-root auto` may stash these if they block root clean.
+- Do not auto-commit plan queue changes unless command is `/plan-run`-owned [metadata commit](plan-run/SKILL.md#metadata-commit).
+- At claim, plan-run writes `var/plan-run/**` only — frontmatter may stay `planned` until ship/merge/skip.
+- `/clean-root auto` may stash `plans/**` if they block root clean and are not part of an in-flight plan-run metadata commit.
 - If `var/plan-run/active.md` exists, report it but do not delete it.
 
 ### Class C — product code / tests / config
@@ -612,28 +613,27 @@ BLOCKED: both commit and stash exist · run /clean-root recover and choose manua
 
 ## Integration with `/plan-run`
 
-Before:
+Per [plan-run root mutation policy](../plan-run/SKILL.md#root-mutation-policy):
 
-```text
-/plan-run run SHA-XX
-/plan-run auto SHA-XX
-/plan-run skip SHA-XX
-```
+- **`/plan-run run`** — writes `var/plan-run/**` only; not blocked by unrelated root dirty unless skill patches block you.
+- **`/plan-run auto` (fresh)**, **`/plan-run skip`** — blocked when unrelated tracked edits remain.
+- **Plan metadata** (`plans/**` frontmatter) — changed only at ship/merge/skip with immediate metadata commit; never left dirty mid-phase.
 
-If dirty root blocks execution, run:
+Before fresh auto or skip when blocked:
 
 ```text
 /clean-root auto
 ```
 
-Then retry the original command.
+Then retry.
 
 Recommended flow for stale Linear claim:
 
 ```text
-/clean-root auto
 /plan-run run SHA-XX
 ```
+
+(clean root optional — only if skill patches or stale tracked edits block)
 
 Recommended flow for fresh auto:
 

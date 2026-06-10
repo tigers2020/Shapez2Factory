@@ -15,7 +15,7 @@ shapez2 Factory Planner governance: short rules, strict contracts, small safe ch
 
 ## Agent Scope
 
-Closed-world execution only — tasks explicitly listed in the approved plan or user prompt. Handoff prep excepted: `.cursor/rules/agent_scope.mdc`. Stop marker: `STOPPED_AT_APPROVED_SCOPE`.
+Closed-world execution only — tasks explicitly listed in the approved plan or user prompt. Handoff prep excepted: `.cursor/rules/agent_scope.mdc`. Stop marker: `STOPPED_AT_APPROVED_SCOPE`. Anti-silent-failure: after every run, verify actual artifact output (exit code + diff) — "forward-looking green" without real verification counts as red.
 
 ## Cursor ↔ Hermes Skill Suggestion
 
@@ -29,9 +29,10 @@ When architecture, coupling, cross-module paths, or unfamiliar subsystems matter
 
 Use `/grill-me-shapez2` for Shapez2/Asteroid Lab/solver work when contract is ambiguous. Pipeline: `shapez2-domain.mdc` -> `docs/agent-workflows/hermes-skill-suggestion.md`. Canon/spec/ADR beats stale docs and agent memory.
 
-## SDD / Testing
+## SDD / Testing (ICE: Intent · Context · Expectations)
 
-- Spec/contract first; tests verify contracts, not agent guesses.
+- ICE first — Intent(무엇), Context(제약), Expectations(언제 끝). Spec 전체가 아니라 3층 분할로 acceptance judgment 인간 유지.
+- Tests verify contracts, not agent guesses.
 - Acceptance tests: Given/When/Then, regression, golden, invariant, schema, or API contract.
 - No weak tests, no relaxed/skipped tests to force green.
 - Regression: failing repro before fix unless impossible.
@@ -59,7 +60,9 @@ When to run which gate: `docs/agent-workflows/validation-routine.md`. PR/full: `
 
 ## Governance Files
 
-`AGENTS.md` and every `.cursor/rules/**/*.mdc` must stay <= 75 lines. `.mdc` files are thin routers; operational detail lives in `docs/agent-workflows/`. Check: `scripts/check_governance.ps1`.
+**AGENTS.md size:** root target ~75 lines; review/split before 120. Nested/module `AGENTS.md` may reach ~150 for local commands, safety, tests, contracts; split past 150. Do not paste long specs — link focused docs and say when to read them.
+
+`.cursor/rules/**/*.mdc`: thin routers, stay <= 75; operational detail in `docs/agent-workflows/`. Check: `scripts/check_governance.ps1`.
 
 ## Conflict Precedence
 

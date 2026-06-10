@@ -1,22 +1,39 @@
-# Agent governance acceptance checks. Exit 1 on failure.
+# Agent governance acceptance checks.
+# WARN (root AGENTS.md above soft target): exit 0. FAIL (hard max / other checks): exit 1.
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 $failed = $false
+$warned = $false
 
 function Test-LineLimit {
-    param([string]$Path, [int]$Max = 75)
+    param(
+        [string]$Path,
+        [int]$Max,
+        [int]$Target = 0
+    )
     $lines = (Get-Content -LiteralPath $Path).Count
     if ($lines -gt $Max) {
         Write-Host "FAIL line limit: $Path has $lines lines (max $Max)"
         $script:failed = $true
+    } elseif ($Target -gt 0 -and $lines -gt $Target) {
+        Write-Host "WARN line target: $Path has $lines lines (target $Target, max $Max) — exit 0"
+        $script:warned = $true
     } else {
         Write-Host "OK   line limit: $Path ($lines)"
     }
 }
 
-Test-LineLimit (Join-Path $root "AGENTS.md")
+$rootAgents = Join-Path $root "AGENTS.md"
+Test-LineLimit -Path $rootAgents -Max 120 -Target 75
+
+Get-ChildItem -Path $root -Filter "AGENTS.md" -Recurse -File |
+    Where-Object { $_.FullName -ne $rootAgents } |
+    ForEach-Object {
+        Test-LineLimit -Path $_.FullName -Max 150
+    }
+
 Get-ChildItem -Path (Join-Path $root ".cursor\rules") -Filter "*.mdc" | ForEach-Object {
-    Test-LineLimit $_.FullName
+    Test-LineLimit -Path $_.FullName -Max 75
 }
 
 $rootMdc = Get-Content -LiteralPath (Join-Path $root ".cursor\rules\root.mdc") -Raw
@@ -45,7 +62,7 @@ foreach ($marker in @("PLAN_TO_SKILL_REQUEST", "SKILL_SUGGESTION", "SKILL_APPLIC
 }
 if (-not $failed) { Write-Host "OK   hermes-handoff markers" }
 
-$agents = Get-Content -LiteralPath (Join-Path $root "AGENTS.md") -Raw
+$agents = Get-Content -LiteralPath $rootAgents -Raw
 foreach ($cmd in @("python manage.py check", "mypy django_apps config src", "scripts/test_fast.ps1")) {
     if ($agents -notmatch [regex]::Escape($cmd)) {
         Write-Host "FAIL AGENTS.md missing validation: $cmd"
@@ -58,5 +75,9 @@ if ($failed) {
     Write-Host "`nGovernance check FAILED"
     exit 1
 }
-Write-Host "`nGovernance check PASSED"
+if ($warned) {
+    Write-Host "`nGovernance check PASSED (with warnings)"
+} else {
+    Write-Host "`nGovernance check PASSED"
+}
 exit 0

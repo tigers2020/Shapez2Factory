@@ -33,6 +33,7 @@ def _write_artifact(
     run_key: str = "run-1",
     lifecycle_status: str = "artifact_written",
     corrupt_hash: bool = False,
+    error_code: str | None = None,
 ) -> dict[str, Any]:
     summary_path = artifact_dir / "output" / "solver_summary.json"
     replay_path = artifact_dir / "output" / "replay_core.jsonl"
@@ -62,7 +63,7 @@ def _write_artifact(
             "replay_core": "output/replay_core.jsonl",
         },
         "game_data_provenance": {"snapshot": "test"},
-        "error_code": None,
+        "error_code": error_code,
     }
     (artifact_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     return summary
@@ -87,6 +88,26 @@ def test_ingest_artifact_writes_index_only_solver_run(tmp_path: Path) -> None:
     assert run.lab_replay_manifest_summary_json["frame_count"] == 1
     assert run.lab_replay_manifest_summary_json["preview_frame"] is None
     assert run.config_json["artifact_manifest"]["lifecycle_status"] == "artifact_written"
+    assert run.config_json[SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY] == expected_summary
+
+
+def test_ingest_artifact_with_error_code_marks_failed_and_skips_warm_cache(
+    tmp_path: Path,
+) -> None:
+    project = m.AsteroidProject.objects.create(name="ErrorCode", slug="error-code")
+    expected_summary = _write_artifact(tmp_path, error_code="STACK_UNAVAILABLE")
+
+    with patch(
+        "django_apps.asteroid_lab.services.artifact_ingest.build_lab_replay_frames_for_project",
+    ) as compose_mock:
+        result = ingest_artifact_for_project(project_id=int(project.pk), artifact_dir=tmp_path)
+
+    compose_mock.assert_not_called()
+    run = m.SolverRun.objects.get(pk=int(result.solver_run.pk))
+    assert run.status == m.SolverRun.RunStatus.FAILED
+    assert run.lifecycle_status == "failed"
+    assert run.solver_summary_json == expected_summary
+    assert run.config_json["artifact_manifest"]["error_code"] == "STACK_UNAVAILABLE"
     assert run.config_json[SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY] == expected_summary
 
 

@@ -3,7 +3,10 @@ name: plan-run
 description: >-
   Linear plan queue executor for shapez2Factory. Scans plans/{high,mid,low},
   picks one eligible plan, runs it in an isolated worktree via executing-plans,
-  validates, updates Linear, opens PR, and babysits when ≥5 open PRs on master.
+  validates, updates Linear, opens PR, babysits when ≥5 open PRs on master,
+  and on merge moves Linear In Review → Done with Korean summary comment per PR.
+  Batch babysit: resolve duplicate cards, merge passing PRs first;
+  defer infra/out-of-scope failures without blocking the batch.
   Invoke via /plan-run (default: auto) | pick |
   run [SHA-XX] | skip [SHA-XX] | ship | babysit | auto [SHA-XX] [--merge] |
   status | recover | clear | batch-status | clean-batch. Use status only with explicit /plan-run status.
@@ -59,7 +62,7 @@ Legacy dedicated worktrees (`.worktrees/auto-SHA-XX-<slug>/`) may still exist fr
 | `/plan-run run [SHA-XX]` | Worktree + implement + validate; stop before PR |
 | `/plan-run skip [SHA-XX]` | Mark no-code plan skipped (user confirmed) |
 | `/plan-run ship` | Push branch + `gh pr create` (user confirmed) |
-| `/plan-run babysit` | Batch triage when ≥5 open PRs on `master`; merge only on user confirm |
+| `/plan-run babysit [merge]` | Batch triage when ≥5 open PRs on `master`; merge → Linear Done + 한국어 summary per PR |
 | `/plan-run auto [SHA-XX] [--merge]` | Chain pick → run → commit → ship → babysit (when batch gate passes) |
 | `/plan-run auto resume [--merge]` | Continue `active.md` from current phase |
 | `/plan-run status` | Report `active.md`, worktrees, open PR |
@@ -79,7 +82,7 @@ Parse subcommand from user message.
 
 **`/plan-run` alone (no subcommand)** — same consent as `/plan-run auto` / `auto resume`:
 
-1. **Preflight:** dirty root guard (fresh auto only), active run mutex, [batch PR gate](#batch-pr-gate), open PR scan (`open_plan_run_prs`, `open_prs_on_master`).
+1. **Preflight:** [Runaway PR guard](#runaway-pr-guard) + dirty root guard (fresh auto only — **BLOCKED**, no auto PR/clean-root), active run mutex, [batch PR gate](#batch-pr-gate), open PR scan (`open_plan_run_prs`, `open_prs_on_master`).
 2. If `active.md` has `status: active`, run is resumable (`phase` / `last_successful_phase` < `merged`, including `failed`), **and** not babysit-deferred at `pr-open` → route to **`auto resume`**.
 3. Else → route to headless fresh **`auto`**.
 4. Headless fresh auto may [auto-attach stale Linear claims](#auto-stale-claim-attach) when preflight passes and queue-head is a `stale-linear-claim`.
@@ -108,7 +111,8 @@ What each command **counts as** user confirmation:
 | `/plan-run run SHA-XX` | worktree create, runtime claim in `var/plan-run/**`, Linear → In Progress (or Linear offline if user confirmed) | commit, push, PR, merge, `plans/**` frontmatter |
 | `/plan-run skip SHA-XX` | plan `skipped` + metadata commit, Linear comment only | worktree, commit (product), PR, merge |
 | `/plan-run ship` | commit (if needed), push, PR, Linear → In Review; may metadata-commit `plans/**` `in_progress` | merge |
-| `/plan-run babysit` | in-scope CI/review fixes | merge (unless user also says merge) |
+| `/plan-run babysit` | in-scope CI/review fixes; on merge → [Linear merge completion](#linear-merge-completion) per merged PR | merge (unless user also says merge) |
+| `/plan-run babysit merge` | [partition](#batch-babysit-partition); duplicate resolve; merge passing PRs + Linear Done/summary; defer infra-blocked | — |
 | `/plan-run auto` | commit, push, PR, Linear; [auto stale-claim attach](#auto-stale-claim-attach); babysit only when [babysit batch gate](#babysit-batch-gate-5-open-prs) passes | merge (needs `--merge`) |
 | `/plan-run auto --merge` | merge when [merge gate](#merge-gate---merge-only) passes | — |
 
@@ -117,6 +121,48 @@ Do **not** re-ask for Linear In Progress when user already invoked `/plan-run ru
 ---
 
 ## Global guards
+
+### Runaway PR guard
+
+**Dirty root is an automation stop gate — not a trigger to open a PR.**
+
+This automation must **never** create a GitHub PR solely to fix root dirty state, workflow rules, or `clean-root` behavior.
+
+If the root worktree is dirty before starting implementation:
+
+1. **Stop immediately** — no branch, no PR, no product commit on root.
+2. Do **not** run `/clean-root auto` unless the **operator** explicitly requested it in the same message.
+3. Do **not** run `git clean -fdX` or delete `var/plan-run/**`, `.worktrees/**`, `plans/**`.
+4. Do **not** commit workflow-state changes unless the operator explicitly asked (or a single [automation-safety PR](#automation-safety-pr) exception applies).
+
+Report:
+
+```text
+BLOCKED: dirty root worktree
+Dirty files:
+- <path> · <class A|B|C|E>
+Next:
+- operator must commit, stash, or discard manually
+- /clean-root plan (read-only preview)
+- operator may run /clean-root auto — not automatic
+```
+
+**Forbidden loop:**
+
+```text
+dirty root → clean-root auto → commit → branch → PR   # STOP
+```
+
+#### Automation-safety PR (only exception)
+
+A **single** explicitly operator-requested PR may patch automation rules (skills, prompts, guards).
+
+Requirements:
+
+- Title must contain `automation-safety`
+- Scope: `.cursor/skills/**`, `documents/prompt/**`, governance only — **no** product code
+- Do **not** open another automation-safety PR while one is already open
+- Never use automation-safety to bypass dirty root on unrelated implementation work
 
 ### Dirty main worktree guard
 
@@ -134,15 +180,21 @@ Does **not** block (runtime state only — no tracked root edits):
 - `pick`, `status`, `batch-status`, `clear`, `recover`
 - `babysit` read-only inspection (`gh pr view`, `gh pr checks`, comment triage without root edits)
 
-**Skill patches** (`.cursor/skills/**`) during workflow development are a separate dirty source — commit or stash before fresh `auto` if they block you. `/clean-root auto` commits safe agent/governance changes; it does **not** restore tracked edits.
+**Skill patches** (`.cursor/skills/**`) during workflow development are a separate dirty source — operator must commit/stash before fresh `auto`; do **not** auto-chain `/clean-root` or open a PR. See [Runaway PR guard](#runaway-pr-guard).
 
 If dirty root blocks a command:
 
 ```text
-BLOCKED: dirty main worktree · tried: git status --short · next: /clean-root auto | commit | stash then retry
+BLOCKED: dirty root worktree
+Dirty files:
+- <list from git status --short>
+Next:
+- operator intervention (commit | stash | discard)
+- /clean-root plan (read-only)
+- /clean-root auto only if operator explicitly requests it
 ```
 
-Run **`/clean-root auto`** (or `/clean-root plan` first) before fresh `auto` or `skip` when unrelated tracked edits remain. See [`.cursor/skills/clean-root/SKILL.md`](../clean-root/SKILL.md).
+Do **not** auto-invoke `/clean-root auto`, create a branch, or open a PR to clear the gate. See [`.cursor/skills/clean-root/SKILL.md`](../clean-root/SKILL.md).
 
 Read-only commands may report dirty root as **info**, not as a hard stop.
 
@@ -189,9 +241,10 @@ Product code commits happen only inside the active worktree branch — never on 
 
 **At merge:**
 
-1. Set frontmatter `status: done`.
-2. `git mv` plan file to `plans/done/<original-filename>`.
-3. Metadata-commit on root.
+1. [Linear merge completion](#linear-merge-completion) — In Review → Done + summary comment.
+2. Set frontmatter `status: done`.
+3. `git mv` plan file to `plans/done/<original-filename>`.
+4. Metadata-commit on root.
 
 **At skip:**
 
@@ -215,6 +268,214 @@ Examples:
 - `chore(plan-run): done SHA-12`
 
 Do not mix product-code files into metadata commits.
+
+### Linear lifecycle (plan-run)
+
+| Phase | Linear state | Write |
+|-------|--------------|-------|
+| `claimed` / `run` | **In Progress** | `save_issue` `state`; label `plan-run:claimed` if team uses labels |
+| `pr-open` / `ship` | **In Review** | `save_issue` `state`; label `plan-run:pr-opened`; optional PR link via `links` |
+| `merged` / babysit merge | **Done** | [Linear merge completion](#linear-merge-completion) — status + summary comment |
+
+Linear MCP required for merge (`babysit merge`, `auto --merge`). `--allow-linear-offline` forbids merge.
+
+**Batch babysit (≥5 open PRs):** when merging multiple plan-run PRs in one session, run [Linear merge completion](#linear-merge-completion) for **each** merged PR — not only the `active.md` issue. A merged PR with Linear still In Review is incomplete work.
+
+### Linear comment language
+
+All **`save_comment`** bodies for plan-run (merge, duplicate, deferred, skip) → **Korean** prose.
+
+Keep as-is (do not translate):
+
+- issue ids (`SHA-XX`), PR `#` / URL, branch names, paths, commit SHAs, check names, footer markers (`plan-run:merged`, `plan-run:duplicate`, `plan-run:deferred`, `plan-run:skipped`)
+
+**`### 요약`** bullets: concrete behavior/files in Korean — not generic "PR 머지됨".
+
+**Idempotency:** match footer marker + same PR number/URL — not English heading text.
+
+### Linear merge completion
+
+Required **immediately after** each plan-run PR merge (`gh pr merge` succeeds). Applies to `/plan-run babysit` with user merge consent, `auto --merge`, and manual merge during batch cleanup.
+
+**Requires Linear MCP** (`linear_offline` must be false).
+
+#### 1. Resolve issue
+
+From merged PR (in order):
+
+1. `headRefName` — `auto/SHA-XX-<slug>` → `SHA-XX`
+2. PR title/body — `SHA-XX` identifier
+3. `plans/{high,mid,low,done}/**` frontmatter `linear_issue` matching branch slug
+4. `claims.jsonl` row with matching `pr_url`
+
+If unresolved → `BLOCKED:` report PR; do not mark plan metadata done.
+
+#### 2. Verify Linear state
+
+`get_issue` for `SHA-XX`.
+
+| Current state | Action |
+|---------------|--------|
+| In Review | proceed |
+| In Progress | proceed (ship Linear write missed) |
+| Done | skip `save_issue` state; ensure summary comment exists (step 4) |
+| Todo / Backlog / Canceled | report drift; ask user — do not auto-Done |
+
+#### 3. Move to Done
+
+```text
+save_issue id=SHA-XX state=Done labels+=plan-run:merged
+```
+
+Record `linear_previous_state` / `linear_current_state: Done` in `active.md` when that issue is the active run; for other batch merges, append `claims.jsonl` only.
+
+#### 4. Summary comment (required, Korean)
+
+`save_comment` on the issue. **Idempotent:** skip if an existing top-level comment contains `plan-run:merged` and the same PR number/URL.
+
+Body template:
+
+```markdown
+## /plan-run 머지 완료
+
+- **PR:** #<number> <pr_url>
+- **브랜치:** auto/SHA-XX-<slug>
+- **머지 커밋:** <sha> (또는 squash 제목)
+- **플랜:** <plan_path or unknown>
+
+### 요약
+- <무엇이 반영됐는지 — plan 제목·PR 본문·diff 기준 1–3 bullet, 한국어>
+- **검증:** <실행한 검증, 예: test_fast / CI green>
+
+---
+plan-run:merged
+```
+
+요약은 구체적(동작/파일). "PR 머지됨" 같은 빈 문장 금지.
+
+#### 5. Plan metadata + claims (per issue)
+
+For the resolved `SHA-XX`:
+
+1. [Plan metadata at merge](#plan-metadata-lifecycle) on root (`status: done`, move to `plans/done/`).
+2. Append `claims.jsonl`: `{"event":"merged","phase":"merged","pr_url":"..."}`.
+3. If this issue matches `active.md` `linear_issue` → `status: achieved`, `phase: merged`.
+
+Repeat steps 1–5 for every PR merged in a batch babysit round before starting the next PR.
+
+#### Batch merge report
+
+```text
+Linear merge batch
+- #181 SHA-12 → Done + 한국어 요약
+- #182 SHA-18 → Done + 한국어 요약 (이미 Done; comment ok)
+- #184 SHA-10 → duplicate → SHA-12 (PR closed)
+- #186 SHA-13 → deferred (infra-blocked; golden CI out of scope)
+- #183 SHA-22 → BLOCKED: issue unresolved
+```
+
+### Duplicate card detection
+
+A plan-run card is **`duplicate-card`** when **any** true:
+
+| Signal | Meaning |
+|--------|---------|
+| Same `linear_issue` has **2+** open plan-run PRs (`auto/SHA-XX-*`) | pick newer/lower PR number as duplicate of oldest open |
+| `linear_issue` already **Done** in Linear and another open PR/plan claim exists | superseded run |
+| Plan `status: done` in `plans/done/` but open PR or `in_progress` plan duplicate exists | superseded plan file |
+| `claims.jsonl` shows `merged` for `SHA-XX` but another open PR for same issue | repeat run |
+| Same plan path or same title+`linear_issue` claimed twice with different branches | automation double-fire |
+| Linear issue already has `duplicateOf` set | already resolved — skip |
+
+**Not duplicate** (classify separately):
+
+| Signal | Class | Action |
+|--------|-------|--------|
+| CI red, failures **outside PR diff** (e.g. shared golden baseline) | `infra-blocked` | [defer](#batch-babysit-partition); merge passing PRs first |
+| CI red, failures **inside PR diff** | `failed-in-scope` | one babysit fix loop; then defer if still red |
+| Linear In Progress + no PR yet + no `active.md` | `stale-linear-claim` | attach, not duplicate |
+
+Scan at: `pick`, `run` (before claim), `babysit` preflight, `recover`.
+
+### Duplicate card resolution
+
+When `duplicate-card` confirmed (babysit merge, `recover`, or explicit user request):
+
+**Canonical issue** = first merged Done, else lowest open PR number, else earliest `claims.jsonl` `claimed` for that `linear_issue`.
+
+For each duplicate `SHA-YY` (non-canonical):
+
+1. **Linear** — `save_issue id=SHA-YY duplicateOf=<canonical> state=Canceled` (or team-equivalent canceled state). Label `plan-run:duplicate` if used.
+2. **Comment** on duplicate (Korean):
+
+```markdown
+## /plan-run 중복 처리
+
+- **정본 이슈:** SHA-XX
+- **사유:** <이미 처리 중 | 두 번째 PR #NNN | 플랜 이미 완료 | #MMM에서 머지됨>
+- **조치:** 중복 카드 종료; 정본 이슈에서 작업 계속.
+
+---
+plan-run:duplicate
+```
+
+3. **GitHub** — close duplicate PR with comment: `/plan-run: #<canonical_pr> 중복으로 종료.`
+4. **Plan** — frontmatter `status: skipped`; metadata-commit `chore(plan-run): duplicate SHA-YY → SHA-XX`
+5. **claims.jsonl** — `{"event":"duplicate","canonical":"SHA-XX","pr_url":"..."}`
+
+Do **not** delete branches until PR closed. Never mark canonical issue duplicate.
+
+If user did not confirm merge/babysit: report duplicates in `pick` / `recover` only — do not close PRs.
+
+### Batch babysit partition
+
+At `/plan-run babysit` / `ci-green` with ≥5 open PRs, **partition** open plan-run PRs before triage:
+
+```text
+1. duplicate-card  → resolve first ([Duplicate card resolution](#duplicate-card-resolution))
+2. passing         → merge gate green → merge + Linear Done
+3. failed-in-scope → one fix loop → re-check; if still red → deferred
+4. infra-blocked   → deferred (comment on Linear; do not block passing merges)
+```
+
+**Passing-first rule:** one red PR (active or infra-blocked) must **not** stop merge of green plan-run PRs. Process partition order above.
+
+**Deferred** (not global `failed`):
+
+- `active.md` issue infra-blocked → set `phase: deferred`, `failure_phase: ci-green`, `failure_reason: infra-blocked — <summary>`; clear mutex for next plan when user runs `/plan-run clear` or batch round completes
+- Append `claims.jsonl` `{"event":"deferred","reason":"infra-blocked"}`
+
+#### Infra-blocked comment (Linear, Korean)
+
+When CI fails outside PR scope (shared golden, master baseline drift, unrelated workflow):
+
+```markdown
+## /plan-run 보류 — infra-blocked
+
+- **PR:** #<number> <url>
+- **CI:** <failing check>
+- **범위:** PR diff 밖 실패 (<paths>)
+- **조치:** passing PR 먼저 babysit 계속; infra는 별도 수정 또는 master green 후 rebase.
+
+---
+plan-run:deferred
+```
+
+Do **not** auto-`duplicateOf` infra-blocked issues unless they are also `duplicate-card` by table above.
+
+#### Batch babysit report
+
+```text
+Batch babysit partition
+- passing (2): #181 SHA-12, #182 SHA-18
+- duplicate (1): #185 SHA-11 → canonical SHA-10
+- infra-blocked (1): #186 SHA-13
+- failed-in-scope (0):
+
+Merged: #181, #182
+Deferred: #186
+Duplicates closed: #185
+```
 
 ### Runtime claim resolution
 
@@ -252,7 +513,7 @@ Use the JSON array length. Report as `open_prs_on_master: N`.
 
 | Command | When open PRs < 5 | When open PRs ≥ 5 |
 |---------|-------------------|-------------------|
-| `/plan-run babysit` | **Defer** — report count; do not triage or merge | Run **`babysit`** on deferred PRs (start with `active.md` `pr_url` when set, then other open plan-run PRs) |
+| `/plan-run babysit` | **Defer** — report count; do not triage or merge | Run **`babysit`** on deferred PRs; on merge run [Linear merge completion](#linear-merge-completion) per PR |
 | `/plan-run auto` / `auto resume` at `ci-green` | **Stop at `pr-open`** — checkpoint ok + babysit deferred | Continue babysit → `ci-green` |
 | `/plan-run ship` (manual) | After PR open: suggest next plan, not babysit | May suggest `/plan-run babysit` |
 | `/plan-run status` | Always report `open_prs_on_master` vs threshold | Same |
@@ -300,7 +561,7 @@ Filter the JSON array by the rules above. Report as `open_plan_run_prs: N`.
 - report cleanup recommendation
 
 ```text
-BATCH_GATE: open plan-run PRs >= 5 · recommend babysit/merge/close stale PRs before starting more
+BATCH_GATE: open plan-run PRs >= 5 · recommend /plan-run babysit merge (PR cleanup + Linear In Review → Done + summary) before starting more
 ```
 
 Behavior:
@@ -393,7 +654,7 @@ mode: manual | auto
 auto_merge: false
 linear_issue: SHA-XX
 plan_path: plans/high/2026-06-10-SHA-12-....md
-phase: preflight | picked | claimed | worktree_ready | running | implemented | committed | pr-open | ci-green | merged | failed
+phase: preflight | picked | claimed | worktree_ready | running | implemented | committed | pr-open | ci-green | merged | deferred | failed
 status_shadow: in_progress
 
 worktree_mode: batch | dedicated
@@ -434,7 +695,7 @@ Append one JSON object per line (never rewrite the file):
 {"ts":"...","linear_issue":"SHA-XX","event":"merged","phase":"merged"}
 ```
 
-Terminal events: `cleared`, `skipped`, `merged`, `failed` (with `failure_reason` when set).
+Terminal events: `cleared`, `skipped`, `merged`, `duplicate`, `deferred`, `failed` (with `failure_reason` when set).
 
 On any failure after external side effects:
 
@@ -496,7 +757,8 @@ Read-only. Propose **one** plan; wait for user confirm before `run`.
    - any id in frontmatter **`depends_on`** not Done/Merged (Linear MCP or plan `status: done` in `plans/done/`)
    - body dependency text only when `depends_on` absent — if ambiguous, `BLOCKED:` and ask user
    - same `linear_issue` has [runtime claim](#runtime-claim-resolution) (open PR, active worktree, or `active.md`) and not stale-linear-claim
-5. First **eligible** (Todo/Backlog + not skipped) plan wins.
+   - [duplicate-card](#duplicate-card-detection) — report; suggest [duplicate resolution](#duplicate-card-resolution) or canonical `/plan-run run SHA-XX`
+5. First **eligible** (Todo/Backlog + not skipped, not duplicate) plan wins.
 6. If that plan has `hermes: required` and Hermes is unavailable → **`BLOCKED:`** (do not fall through to lower-priority plans unless user said to skip Hermes-blocked plans).
 
 ### Pick output (caveman)
@@ -529,7 +791,14 @@ Mark a no-code or intentionally skipped queued plan.
 3. Set frontmatter `status: skipped`.
 4. [Metadata-commit](#metadata-commit): `chore(plan-run): skip SHA-XX`.
 5. Append `claims.jsonl` terminal event `skipped`.
-6. If Linear MCP available, add comment: `Skipped by /plan-run: <reason from plan or user>.`
+6. If Linear MCP available, add Korean comment:
+
+```markdown
+/plan-run 스킵: <plan 또는 사용자 사유, 한국어>
+
+---
+plan-run:skipped
+```
 7. Do **not** create worktree, branch, product commit, push, PR, or merge.
 
 If `active.md` is `status: active` for a **different** issue, warn and require user confirm to abandon that run first.
@@ -568,6 +837,8 @@ If Linear MCP is **unavailable**, continue only when the message explicitly conf
 - Else: use last `pick` candidate; if none, run pick algorithm — user must confirm via `run`.
 
 ### 2. Claim state
+
+Before claim: [duplicate-card scan](#duplicate-card-detection). If duplicate → `BLOCKED:` report canonical `SHA-XX`; suggest [resolution](#duplicate-card-resolution) unless user explicitly re-runs canonical.
 
 Write `active.md` ([schema above](#activemd-schema)) with `mode: manual`, `phase: claimed`, `status_shadow: in_progress`.
 
@@ -750,30 +1021,42 @@ For **legacy dedicated** runs (`worktree_mode: dedicated`), keep the dedicated w
 
 Batch PR triage — run only when [babysit batch gate](#babysit-batch-gate-5-open-prs) passes (**≥ 5** open PRs on `master`).
 
+Primary cleanup path when PR pile hits batch gates: [partition](#batch-babysit-partition) → resolve duplicates → merge **passing** PRs → defer infra/failed without blocking batch.
+
 ### Preflight
 
-1. `gh pr list --state open --base master --json number,url,headRefName,title`
+1. `gh pr list --state open --base master --json number,url,headRefName,title,body,labels`
 2. If count **< 5** → **defer** (see batch gate defer output). Do not triage.
 3. If count **≥ 5** → proceed.
+4. Linear MCP must be available for merge path — else `BLOCKED:` (babysit triage/fix without merge still allowed).
+5. [Partition](#batch-babysit-partition) all open plan-run PRs; emit [batch babysit report](#batch-babysit-report).
 
-Use Cursor **`babysit`** skill. Start with PR from `active.md` when `pr_url` set; then other open plan-run PRs (`auto/SHA-*` branches) in PR number order unless user names a URL.
+Use Cursor **`babysit`** skill.
+
+**Order:** duplicates first → **passing** PRs (lowest PR number first) → deferred/failed last. Do **not** start with `active.md` red PR if green plan-run PRs exist.
 
 - Resolve merge conflicts preserving plan intent.
 - Triage Bugbot / review — fix only valid in-scope issues.
 - Fix CI failures in PR scope only; do not weaken CI/workflows.
+- CI red outside PR diff → `infra-blocked` → defer; continue passing merges.
 
 Read-only inspection (`gh pr view`, checks) is allowed even when root worktree is dirty.
 
-**Merge only if** user explicitly says merge AND [merge gate](#merge-gate---merge-only) passes.
+**Merge only if** user explicitly says merge AND [merge gate](#merge-gate---merge-only) passes **per PR**. Passing PRs merge even when other plan-run PRs are deferred/duplicate.
 
-### On merge
+### On merge (per PR)
 
-1. Linear → **Done**; label `plan-run:merged`.
-2. [Plan metadata at merge](#plan-metadata-lifecycle): set `status: done`, move to `plans/done/<original-filename>`, metadata-commit on root. Append `claims.jsonl` event `merged`.
-3. Worktree cleanup:
-   - **`worktree_mode: batch`:** do **not** remove `.worktrees/plan-run-batch`; suggest `/plan-run clean-batch` when ready for next plan.
+After **each** successful `gh pr merge`:
+
+1. Run [Linear merge completion](#linear-merge-completion) for that PR's `SHA-XX` (In Review → Done + summary comment). **Do not** merge the next PR until Linear step succeeds or is idempotent (already Done + comment).
+2. Worktree cleanup when merged issue matches `active.md`:
+   - **`worktree_mode: batch`:** do **not** remove `.worktrees/plan-run-batch`; suggest `/plan-run clean-batch` after batch round.
    - **`worktree_mode: dedicated`:** `git worktree remove <worktree>`; delete local branch when safe.
-4. `active.md` → `status: achieved`, `phase: merged`, `last_successful_phase: merged`.
+   - `active.md` → `status: achieved`, `phase: merged` only for the active issue.
+
+When multiple PRs merge in one babysit session, emit [batch merge report](#batch-merge-report) + [batch babysit report](#batch-babysit-report). Suggest `/plan-run clean-batch` when batch worktree is on a merged branch.
+
+If only deferred/duplicate remain → checkpoint ok (not global `failed`); suggest `/plan-run recover` or infra fix on master.
 
 ---
 
@@ -891,12 +1174,14 @@ Inspect stale or interrupted runs (never blocked by dirty root).
 1. Read `active.md` if present.
 2. If `active.md` **missing**: scan open PRs on `master` (`gh pr list --state open --base master --json number,url,headRefName,title`); match `auto/SHA-*` branches to `plans/**` `linear_issue`; note worktrees (`git worktree list`). Use this to classify PR-open runs lost to accidental state deletion.
 3. **Scan stale Linear claims:** walk `plans/{high,mid,low}` in pick order; for each `planned`/`in_progress` plan, query Linear; apply [stale-linear-claim](#stale-linear-claim) detection. List all matches.
-4. If `active.md` present (or reconstructed from step 2), verify:
+4. **Scan stale Linear In Review:** for merged/closed plan-run PRs (`gh pr list --state merged --limit 20`) and plans still `in_progress`, query Linear; if In Review → classify `stale-linear-in-review`; suggest [Linear merge completion](#linear-merge-completion).
+5. **Scan duplicate cards:** same `linear_issue` with multiple open PRs or merged+open overlap → [duplicate-card](#duplicate-card-detection).
+6. If `active.md` present (or reconstructed from step 2), verify:
    - worktree path exists (`git worktree list`)
    - branch exists locally/remotely
    - PR open if `pr_url` set (`gh pr view`)
    - Linear state if MCP available
-5. Classify:
+7. Classify:
 
 | Class | Meaning | Suggested next |
 |-------|---------|----------------|
@@ -907,6 +1192,9 @@ Inspect stale or interrupted runs (never blocked by dirty root).
 | `stale-active-no-worktree` | active.md but worktree missing | `/plan-run clear` then `/plan-run run SHA-XX` or abandon |
 | `stale-active-pr-open` | open PR exists but active.md/worktree incomplete or missing | reconstruct via PR scan; then `/plan-run babysit` when ≥5 open PRs |
 | `stale-frontmatter-drift` | frontmatter `in_progress` but no runtime claim | metadata-commit revert or `/plan-run recover` |
+| `stale-linear-in-review` | PR merged/closed but Linear still In Review; or plan still `in_progress` | [Linear merge completion](#linear-merge-completion) or manual Done + summary |
+| `duplicate-card` | same `SHA-XX` multiple PRs; plan done + open PR; repeat claim | [Duplicate card resolution](#duplicate-card-resolution) |
+| `infra-blocked` | CI red, failures outside PR diff (shared golden, etc.) | defer; `/plan-run babysit merge` passing PRs first |
 | `manual-cleanup-required` | branch/PR/worktree mismatch | report paths; user decides |
 
 **Classify PR-open runs:** when `active.md` + worktree + `pr_url` all verify, use `active-pr-open` or `active-pr-open-ci-red` (check `gh pr checks` / required CI). Reserve `stale-active-pr-open` for PR without complete session state.
@@ -959,8 +1247,8 @@ Execute from first incomplete phase per `active.md`.
 | 4 | `implemented` | [Execute + validate](#4-execute) | `failed`; record side effects |
 | 5 | `committed` | Commit plan scope; set `commit_sha` | `failed`; keep worktree |
 | 6 | `pr-open` | [Ship steps](#steps); set `remote_pushed`, `pr_url` | `failed`; record push/PR state |
-| 7 | `ci-green` | If open PRs on `master` **≥ 5**: `babysit` until checks green or blocked. If **< 5**: stop at `pr-open` (babysit deferred, not failed) | stop; `failure_phase: ci-green` only after babysit started |
-| 8 | `merged` | **Only if `--merge`:** merge + [cleanup](#on-merge) | stop at `ci-green` |
+| 7 | `ci-green` | If open PRs on `master` **≥ 5**: [partition](#batch-babysit-partition) + babysit; merge passing PRs; defer infra/duplicate — **partial success ok**. If **< 5**: stop at `pr-open` (babysit deferred, not failed) | active issue `infra-blocked` → `deferred`, not global `failed` if passing merged |
+| 8 | `merged` | **Only if `--merge`:** merge + [Linear merge completion](#linear-merge-completion) per PR | stop at `ci-green` |
 
 **Fresh auto entry:** always run step 0 `preflight` first, then step 1 `picked` (which may auto-attach stale claim and continue through step 6 without re-prompt).
 
@@ -992,7 +1280,7 @@ A `stale-linear-claim` means **all** true:
 - no conflicting active run — either no `active.md`, or [mutex exception](#active-run-mutex) allows replacing a babysit-deferred `pr-open` session
 - no legacy `.worktrees/auto-<issue>-*` or batch branch on `auto/<issue>-*` for that issue with unpushed work
 - no open PR for that issue
-- [dirty root guard](#dirty-main-worktree-guard) passes (fresh auto — skill patches may block until committed)
+- [Runaway PR guard](#runaway-pr-guard) + [dirty root guard](#dirty-main-worktree-guard) pass (fresh auto — operator must clear dirty root; no auto PR)
 - [batch PR gate](#batch-pr-gate) passes (open plan-run PRs **< 5**)
 
 When all conditions pass, auto continues **without asking**:
@@ -1066,8 +1354,11 @@ Next
 9. **Hermes** — first eligible plan `hermes: required` without Hermes → `BLOCKED:` (unless user skipped Hermes-blocked plans).
 10. **Linear** — without MCP, `BLOCKED:` unless `--allow-linear-offline`; offline auto stops at `pr-open` or deferred `ci-green` (no merge).
 11. **Flag conflict** — `--allow-linear-offline` + `--merge` → `BLOCKED:` before start.
-12. **Merge** — never without `--merge` and [merge gate](#merge-gate---merge-only).
-13. **Long plans** — stop at `failed` or complete validation; continue via `auto resume` after `/goal`.
+12. **Merge** — never without `--merge` and [merge gate](#merge-gate---merge-only); each merged PR → [Linear merge completion](#linear-merge-completion).
+13. **Linear on batch merge** — babysit with ≥5 PRs must Done + **Korean** summary every merged issue, not only `active.md`.
+14. **Passing-first** — duplicates resolved, then green PRs merge; infra-blocked/deferred must not block passing merges.
+15. **Duplicate cards** — [duplicate-card detection](#duplicate-card-detection) + [resolution](#duplicate-card-resolution); never pick/run duplicate when canonical exists.
+16. **Long plans** — stop at `failed` or complete validation; continue via `auto resume` after `/goal`.
 
 ### Merge gate (`--merge` only)
 
@@ -1116,7 +1407,7 @@ BLOCKED: <what> · tried: <steps> · next: /plan-run auto resume | /plan-run bab
 /plan-run auto resume --merge
 ```
 
-Manual: `/plan-run run SHA-6` → `/goal` → `/plan-run ship` → (repeat until ≥5 open PRs) → `/plan-run babysit`.
+Manual: `/plan-run run SHA-6` → `/goal` → `/plan-run ship` → (repeat until ≥5 open PRs) → `/plan-run babysit merge` (PR cleanup + Linear Done + summary per PR).
 
 ---
 
@@ -1136,6 +1427,8 @@ Manual: `/plan-run run SHA-6` → `/goal` → `/plan-run ship` → (repeat until
 | Commit/push | `git-workflow` |
 | PR completion | superpowers `finishing-a-development-branch` |
 | PR batch triage (≥5 open PRs) | `babysit` |
+| Linear In Review → Done + 한국어 summary on merge | [Linear merge completion](#linear-merge-completion) · [comment language](#linear-comment-language) |
+| Duplicate / passing-first batch | [Batch babysit partition](#batch-babysit-partition) |
 | Pre-merge | `quality-check` |
 
 ---

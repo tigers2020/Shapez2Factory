@@ -32,6 +32,35 @@ Never silently discard tracked work.
 
 ---
 
+## Runaway PR guard
+
+**`/clean-root` never opens a GitHub PR.** Dirty root is operator intervention state — not self-healing via branch/PR.
+
+If root is dirty when any automation (plan-run, todo-plan, clean-root chain) would start:
+
+1. **Stop** — do not create branch or PR.
+2. Do **not** auto-run `/clean-root auto` from another automation (operator must invoke explicitly).
+3. Do **not** run plain `git clean -fdX` — deletes workflow state without excludes.
+4. Report `BLOCKED: dirty root worktree` with exact dirty file list.
+
+Protected workflow state — **never** `git clean` target:
+
+```text
+var/plan-run/**
+.worktrees/**
+plans/**
+```
+
+**Automation-safety PR** (operator-only, ≤1 open): title contains `automation-safety`; skills/prompts only. Not a substitute for cleaning dirty root.
+
+**Forbidden loop:**
+
+```text
+dirty root → clean-root auto → commit → branch → PR
+```
+
+---
+
 ## Commands
 
 | Command | Purpose |
@@ -174,11 +203,15 @@ Rules:
 Never delete these paths, even if ignored:
 
 ```text
+.env
+.env.debug
+.env.webhook.local
 var/plan-run/**
 .worktrees/**
 plans/**
 ```
 
+- `.env` / `.env.debug` / `.env.webhook.local` — local secrets and runtime overrides; never `git clean` target.
 - `var/plan-run/active.md` — plan-run session handoff state, not disposable cache.
 - `.worktrees/**` — may contain active implementation worktrees.
 - `plans/**` — queue metadata or in-progress frontmatter (tracked or dirty); never `git clean` target.
@@ -245,7 +278,7 @@ Cleanup Plan
 
 Will not:
 - delete ignored files in auto (use clear-ignored)
-- delete protected workflow state (var/plan-run, .worktrees, plans)
+- delete protected workflow state (.env, var/plan-run, .worktrees, plans)
 ```
 
 Do not edit files.
@@ -310,6 +343,9 @@ Preview safe-to-delete ignored paths:
 
 ```bash
 git clean -ndX \
+  -e .env \
+  -e .env.debug \
+  -e .env.webhook.local \
   -e var/plan-run/ \
   -e var/plan-run/** \
   -e .worktrees/ \
@@ -516,6 +552,9 @@ Remove ignored junk only — **explicit command**; never part of `/clean-root au
 Never delete:
 
 ```text
+.env
+.env.debug
+.env.webhook.local
 var/plan-run/**
 .worktrees/**
 plans/**
@@ -525,6 +564,9 @@ plans/**
 
 ```bash
 git clean -ndX \
+  -e .env \
+  -e .env.debug \
+  -e .env.webhook.local \
   -e var/plan-run/ \
   -e var/plan-run/** \
   -e .worktrees/ \
@@ -533,7 +575,7 @@ git clean -ndX \
   -e plans/**
 ```
 
-If output lists anything under `var/plan-run/`, `.worktrees/`, or `plans/`:
+If output lists anything under `.env*`, `var/plan-run/`, `.worktrees/`, or `plans/`:
 
 ```text
 BLOCKED: ignored clean would delete protected workflow state
@@ -543,6 +585,9 @@ BLOCKED: ignored clean would delete protected workflow state
 
 ```bash
 git clean -fdX \
+  -e .env \
+  -e .env.debug \
+  -e .env.webhook.local \
   -e var/plan-run/ \
   -e var/plan-run/** \
   -e .worktrees/ \
@@ -619,13 +664,10 @@ Per [plan-run root mutation policy](../plan-run/SKILL.md#root-mutation-policy):
 - **`/plan-run auto` (fresh)**, **`/plan-run skip`** — blocked when unrelated tracked edits remain.
 - **Plan metadata** (`plans/**` frontmatter) — changed only at ship/merge/skip with immediate metadata commit; never left dirty mid-phase.
 
-Before fresh auto or skip when blocked:
+When `/plan-run` blocks on dirty root:
 
-```text
-/clean-root auto
-```
-
-Then retry.
+- Report BLOCKED with file list — **do not** auto-chain `/clean-root auto`.
+- Operator may run `/clean-root plan` (read-only) then `/clean-root auto` **explicitly**, then retry plan-run.
 
 Recommended flow for stale Linear claim:
 
@@ -633,12 +675,12 @@ Recommended flow for stale Linear claim:
 /plan-run run SHA-XX
 ```
 
-(clean root optional — only if skill patches or stale tracked edits block)
+(clean root only when operator explicitly chooses — not automatic)
 
-Recommended flow for fresh auto:
+Recommended flow for fresh auto (operator-driven):
 
 ```text
-/clean-root auto
+# operator clears dirty root first (commit | stash | /clean-root auto)
 /plan-run auto SHA-XX
 ```
 
@@ -671,6 +713,7 @@ When:
 Then:
 
 - it must **not** run plain `git clean -fdX`
+- it must **not** delete `.env`, `.env.debug`, or `.env.webhook.local`
 - it must **not** delete `var/plan-run/active.md`
 - it must **not** delete `.worktrees/**`
 - it must **not** delete or restore `plans/**`

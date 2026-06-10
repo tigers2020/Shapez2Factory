@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.solver_run_reconcile import (
+    RECONCILE_FAILURE_LOG_FATAL,
     RECONCILE_FAILURE_TIMEOUT,
     RECONCILE_FAILURE_VALIDATION,
     reconcile_running_solver_runs,
@@ -93,6 +94,23 @@ def test_reconcile_timeout_marks_failed_without_ingest(artifact_root: Path, sett
     assert result.error_code == RECONCILE_FAILURE_TIMEOUT
     refreshed = m.SolverRun.objects.get(pk=int(run.pk))
     assert refreshed.solver_summary_json == {}
+
+
+def test_reconcile_log_fatal_marker_marks_failed_without_manifest(artifact_root: Path) -> None:
+    project = m.AsteroidProject.objects.create(name="LogFatal", slug="log-fatal")
+    run = _running_run(project, artifact_root)
+    log_path = Path(run.config_json["sidecar_log_path"])
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("error: manifest not found: output/manifest.json\n", encoding="utf-8")
+
+    result = reconcile_solver_run(int(run.pk))
+
+    assert result.status == m.SolverRun.RunStatus.FAILED
+    assert result.error_code == RECONCILE_FAILURE_LOG_FATAL
+    refreshed = m.SolverRun.objects.get(pk=int(run.pk))
+    assert refreshed.lifecycle_status == "failed"
+    assert refreshed.config_json.get("reconcile_error_code") == RECONCILE_FAILURE_LOG_FATAL
+    assert not (artifact_root / run.run_key / "manifest.json").is_file()
 
 
 def test_reconcile_validation_failure_without_manifest_rewrite(artifact_root: Path) -> None:

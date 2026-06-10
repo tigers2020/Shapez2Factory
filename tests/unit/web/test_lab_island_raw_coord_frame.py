@@ -12,7 +12,7 @@ TERRAIN_JS = REPO / "django_apps" / "web" / "static" / "web" / "js" / "lab_repla
 TEMPLATE = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
 
 LAB_COORD_BUILD = "island_raw_v2"
-LAB_JS_CACHE_BUILD = "island_raw_v3"
+LAB_JS_CACHE_BUILD = "island_raw_v4"
 REPLAY_GRID_EDGE_PADDING = 5
 
 

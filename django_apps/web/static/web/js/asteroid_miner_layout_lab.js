@@ -15,7 +15,7 @@
 (function () {
   "use strict";
 
-  const LAB_COORD_FRAME_BUILD = "island_raw_v3";
+  const LAB_COORD_FRAME_BUILD = "island_raw_v4";
 
   const GRID_W = 23;
   const GRID_H = 15;

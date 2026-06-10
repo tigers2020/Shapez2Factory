@@ -244,3 +244,25 @@ Notes:
 - `mountGraph()` / `updateThroughputSummary()` have zero production importers; only `TIMELINE_DEBOUNCE_MS` from `constants.js` is used (via `quick_solver_preview.js`)
 - No template defines `[data-solver-throughput-summary]`; `/solver/` loads preview-only module while page copy says graph UI is under construction
 - Staff graphs use committed `recipe-graph-editor.js`, not `solver_timeline/` Canvas stack
+
+## 2026-06-10 17:30
+
+Reviewed area:
+- path/module/feature: Recipe graph editor Django wiring — `frontend/recipe_graph_editor/` (`useRecipeGraphRecompute`, bootstrap contract), `django_apps/shapez_solver/services/recipe_graph_recompute.py`, `django_apps/web/urls.py`, `django_apps/web/views/staff_shared.py`, `django_apps/web/templates/`, migration `0009_drop_pattern_catalog_tables`
+
+Skipped:
+- `recipe_graph_recompute` validation bugs — SHA-23, SHA-24 (in progress)
+- CI bundle drift — SHA-40 (open Backlog)
+- `solver_timeline/` dead modules — SHA-53 (reviewed 16:00)
+- `shape_part_sprite_manifest` missing-file check — SHA-51
+- Issues labeled `reviewing` — SHA-16 autotest probe (archived)
+- Replay frame cell x=0 — SHA-55 (filed ~17:14 UTC, not yet in prior memory entry)
+
+Findings:
+- SHA-56: Recipe graph editor Django wiring missing: no staff page, no recompute API, bootstrap URL never set
+
+Notes:
+- `#macro-graph-editor-root` / `#macro-graph-bootstrap` exist only in Vite `index.html`, not Django templates
+- `api_recipe_graph_recompute` empty → client shows "Missing recompute API URL in bootstrap."
+- `macro_pattern_staff_api_recipe_graph_recompute` documented in May notes/plans but absent from views/urls/tests
+- MacroRecipe ORM dropped in migration 0009; services + frontend remain without HTTP/page wiring

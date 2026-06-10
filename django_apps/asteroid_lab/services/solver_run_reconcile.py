@@ -14,6 +14,7 @@ from django.utils import timezone
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.artifact_ingest import (
     STATUS_RECONCILE_INGEST_OPTIONS,
+    ArtifactIngestError,
     ingest_artifact_for_project,
 )
 from django_apps.asteroid_lab.services.artifact_manifest_reader import (
@@ -32,6 +33,7 @@ from django_apps.asteroid_lab.services.solver_run_registry import (
 from django_apps.asteroid_lab.services.solver_subprocess_runner import default_artifact_root
 
 RECONCILE_FAILURE_VALIDATION = "artifact_validation_failed"
+RECONCILE_FAILURE_INGEST = "artifact_ingest_failed"
 RECONCILE_FAILURE_TIMEOUT = "solver_run_timeout"
 RECONCILE_FAILURE_LOG_FATAL = "subprocess_log_fatal"
 
@@ -143,22 +145,29 @@ def _result_from_run(run: m.SolverRun, *, log_tail: str) -> SolverRunReconcileRe
     )
 
 
-def _attempt_artifact_ingest(run: m.SolverRun, artifact_dir: Path) -> bool:
-    """Ingest when manifest validates; return True if ingest ran."""
+def _attempt_artifact_ingest(run: m.SolverRun, artifact_dir: Path) -> tuple[bool, str | None]:
+    """Ingest when manifest validates.
+
+    Returns ``(True, None)`` if ingest completed, ``(False, None)`` if not ready,
+    or ``(False, message)`` when manifest verified but ingest failed.
+    """
 
     if not artifact_dir.is_dir() or not (artifact_dir / "manifest.json").is_file():
-        return False
+        return False, None
     try:
         read_verified_artifact_manifest(artifact_dir)
     except ArtifactManifestReadError:
-        return False
-    ingest_artifact_for_project(
-        project_id=int(run.project_id),
-        artifact_dir=artifact_dir,
-        replace_existing_run=True,
-        ingest_options=STATUS_RECONCILE_INGEST_OPTIONS,
-    )
-    return True
+        return False, None
+    try:
+        ingest_artifact_for_project(
+            project_id=int(run.project_id),
+            artifact_dir=artifact_dir,
+            replace_existing_run=True,
+            ingest_options=STATUS_RECONCILE_INGEST_OPTIONS,
+        )
+    except ArtifactIngestError as exc:
+        return False, str(exc)
+    return True, None
 
 
 def reconcile_solver_run(run_id: int) -> SolverRunReconcileResult:
@@ -193,12 +202,24 @@ def reconcile_solver_run(run_id: int) -> SolverRunReconcileResult:
 
     assert artifact_dir is not None and log_path is not None
 
-    if _attempt_artifact_ingest(
+    ingested, ingest_failure_message = _attempt_artifact_ingest(
         m.SolverRun.objects.get(pk=int(run_id)),
         artifact_dir,
-    ):
+    )
+    if ingested:
         with transaction.atomic():
             run = m.SolverRun.objects.select_for_update().get(pk=int(run_id))
+            return _result_from_run(run, log_tail=tail_log_text(log_path))
+
+    if ingest_failure_message is not None:
+        with transaction.atomic():
+            run = m.SolverRun.objects.select_for_update().get(pk=int(run_id))
+            if not is_terminal_solver_run(run):
+                run = _mark_run_failed_locked(
+                    run,
+                    error_code=RECONCILE_FAILURE_INGEST,
+                    message=ingest_failure_message,
+                )
             return _result_from_run(run, log_tail=tail_log_text(log_path))
 
     if (artifact_dir / "manifest.json").is_file():
@@ -246,6 +267,7 @@ def reconcile_running_solver_runs() -> list[SolverRunReconcileResult]:
 
 
 __all__ = [
+    "RECONCILE_FAILURE_INGEST",
     "RECONCILE_FAILURE_LOG_FATAL",
     "RECONCILE_FAILURE_TIMEOUT",
     "RECONCILE_FAILURE_VALIDATION",

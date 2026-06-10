@@ -6,7 +6,7 @@ labels:
   - automation
   - infra
   - priority:high
-status: planned
+status: done
 created_by: todo-plan-automation
 ---
 

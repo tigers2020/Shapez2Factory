@@ -5,7 +5,7 @@ priority: High
 labels:
   - bug
   - priority:high
-status: in_progress
+status: done
 created_by: todo-plan-automation
 ---
 

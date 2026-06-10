@@ -1,7 +1,11 @@
 # Daily Project Inspection Log
 
 Tracks daily inspection automation runs (target rotation, evidence, filed/skipped findings).
-For project-review automation memory see `.agent-loop/reviewed-areas.md`.
+
+**Related docs:**
+
+- Project review memory: [`.agent-loop/reviewed-areas.md`](../../.agent-loop/reviewed-areas.md)
+- Project review mutex / holder card: [`project-review-mutex.md`](./project-review-mutex.md) — lock label `auto:project-review-running` on [SHA-67](https://linear.app/zkaufman/issue/SHA-67/automation-project-review-run-mutex-via-dedicated-linear-holder-card) (infrastructure only)
 
 ---
 

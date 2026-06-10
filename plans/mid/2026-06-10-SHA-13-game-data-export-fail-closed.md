@@ -5,7 +5,7 @@ priority: Mid
 labels:
   - bug
   - priority:mid
-status: planned
+status: in_progress
 created_by: todo-plan-automation
 ---
 

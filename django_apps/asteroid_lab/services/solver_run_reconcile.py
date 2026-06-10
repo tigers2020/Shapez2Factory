@@ -12,7 +12,10 @@ from django.db import transaction
 from django.utils import timezone
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.services.artifact_ingest import ingest_artifact_for_project
+from django_apps.asteroid_lab.services.artifact_ingest import (
+    STATUS_RECONCILE_INGEST_OPTIONS,
+    ingest_artifact_for_project,
+)
 from django_apps.asteroid_lab.services.artifact_manifest_reader import (
     ArtifactManifestReadError,
     read_verified_artifact_manifest,
@@ -153,6 +156,7 @@ def _attempt_artifact_ingest(run: m.SolverRun, artifact_dir: Path) -> bool:
         project_id=int(run.project_id),
         artifact_dir=artifact_dir,
         replace_existing_run=True,
+        ingest_options=STATUS_RECONCILE_INGEST_OPTIONS,
     )
     return True
 

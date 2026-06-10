@@ -719,18 +719,67 @@
     hudEl.classList.remove("hidden");
   }
 
+  const LAB_STATUS_LOG_TAIL_MAX_LINES = 20;
+  const LAB_STATUS_LOG_TAIL_MAX_CHARS = 4096;
+
+  function truncateLabStatusLogTail(raw) {
+    const text = typeof raw === "string" ? raw : "";
+    if (!text) {
+      return "";
+    }
+    let capped = text;
+    if (capped.length > LAB_STATUS_LOG_TAIL_MAX_CHARS) {
+      capped = capped.slice(-LAB_STATUS_LOG_TAIL_MAX_CHARS);
+    }
+    const lines = capped.split(/\r?\n/);
+    if (lines.length > LAB_STATUS_LOG_TAIL_MAX_LINES) {
+      return lines.slice(-LAB_STATUS_LOG_TAIL_MAX_LINES).join("\n");
+    }
+    return capped;
+  }
+
+  function renderReplayRunLogTail(tailText) {
+    const logEl = document.getElementById("lab-replay-run-log");
+    if (!logEl) {
+      return;
+    }
+    const display = truncateLabStatusLogTail(tailText);
+    if (!display) {
+      logEl.textContent = "";
+      logEl.classList.add("hidden");
+      return;
+    }
+    logEl.textContent = display;
+    logEl.classList.remove("hidden");
+  }
+
   function renderReplayRunStatus(feedback) {
     const runEl = document.getElementById("lab-replay-run-status");
     if (!runEl) return;
     const dash = "—";
     if (!feedback || typeof feedback !== "object") {
       runEl.textContent = dash;
+      renderReplayRunLogTail("");
       renderMacroCommitHud(null);
       return;
     }
     if (feedback.running === true) {
-      runEl.textContent = "run: running…";
-    } else if (typeof feedback.error_code === "string" && feedback.error_code) {
+      const pendingFinalize =
+        feedback.pending_finalize === true || feedback.phase_hint === "finalizing";
+      const elapsed =
+        typeof feedback.elapsed_seconds === "number" && feedback.elapsed_seconds >= 0
+          ? " (" + String(Math.floor(feedback.elapsed_seconds)) + "s)"
+          : "";
+      runEl.textContent = pendingFinalize
+        ? "run: finalizing artifacts…" + elapsed
+        : "run: running…" + elapsed;
+      if (typeof feedback.log_tail === "string" && feedback.log_tail) {
+        renderReplayRunLogTail(feedback.log_tail);
+      }
+      return;
+    }
+    renderReplayRunLogTail("");
+    if (typeof feedback.error_code === "string" && feedback.error_code) {
       runEl.textContent = "run: error " + feedback.error_code;
     } else if (feedback.solver_run_id != null) {
       const vp =
@@ -4944,12 +4993,60 @@
 
     function pollSolverRunStatus(statusUrl, onTerminal, onSettled) {
       const pollIntervalMs = 1500;
+      const LAB_STATUS_LONG_POLL_MS = 3000;
+      const runStartedAt = Date.now();
+      let lastLogTail = "";
+
       function settlePoll() {
         if (typeof onSettled === "function") {
           onSettled();
         }
       }
+
+      function elapsedSeconds() {
+        return Math.floor((Date.now() - runStartedAt) / 1000);
+      }
+
+      function renderRunningFeedback(extra) {
+        const base = {
+          running: true,
+          log_tail: lastLogTail,
+          elapsed_seconds: elapsedSeconds(),
+        };
+        const merged = extra && typeof extra === "object" ? Object.assign(base, extra) : base;
+        replayRunFeedback = merged;
+        renderReplayRunStatus(replayRunFeedback);
+      }
+
       function tick() {
+        let longPollTimer = null;
+        let elapsedTimer = null;
+
+        function clearTimers() {
+          if (longPollTimer !== null) {
+            window.clearTimeout(longPollTimer);
+            longPollTimer = null;
+          }
+          if (elapsedTimer !== null) {
+            window.clearInterval(elapsedTimer);
+            elapsedTimer = null;
+          }
+        }
+
+        renderRunningFeedback();
+
+        elapsedTimer = window.setInterval(function () {
+          if (replayRunFeedback && replayRunFeedback.running === true) {
+            renderRunningFeedback(
+              replayRunFeedback.pending_finalize ? { pending_finalize: true } : null
+            );
+          }
+        }, 1000);
+
+        longPollTimer = window.setTimeout(function () {
+          renderRunningFeedback({ pending_finalize: true });
+        }, LAB_STATUS_LONG_POLL_MS);
+
         fetch(statusUrl, {
           method: "GET",
           credentials: "same-origin",
@@ -4966,10 +5063,13 @@
               });
           })
           .then(function (bundle) {
+            clearTimers();
             const data = bundle.data || {};
+            if (typeof data.log_tail === "string" && data.log_tail) {
+              lastLogTail = data.log_tail;
+            }
             if (data.status === "running") {
-              replayRunFeedback = { running: true, log_tail: data.log_tail || "" };
-              renderReplayRunStatus(replayRunFeedback);
+              renderRunningFeedback();
               window.setTimeout(tick, pollIntervalMs);
               return;
             }
@@ -4980,6 +5080,7 @@
             }
           })
           .catch(function () {
+            clearTimers();
             replayRunFeedback = { error_code: "network_error" };
             renderReplayRunStatus(replayRunFeedback);
             settlePoll();

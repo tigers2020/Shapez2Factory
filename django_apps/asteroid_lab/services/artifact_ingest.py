@@ -47,6 +47,20 @@ class ArtifactIngestResult:
     solver_summary: dict[str, Any]
 
 
+@dataclass(frozen=True, slots=True)
+class ArtifactIngestOptions:
+    """Per-caller ingest behavior. Status reconcile uses the fast path."""
+
+    warm_replay_cache: bool = True
+    summarize_replay_frames: bool = True
+
+
+STATUS_RECONCILE_INGEST_OPTIONS = ArtifactIngestOptions(
+    warm_replay_cache=False,
+    summarize_replay_frames=False,
+)
+
+
 def _dict_json_file(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
@@ -76,11 +90,12 @@ def _lab_replay_manifest_summary(
     *,
     artifact_dir: Path,
     manifest: ArtifactManifestRecord,
+    summarize_replay_frames: bool = True,
 ) -> dict[str, Any]:
     replay_path = _manifest_path(artifact_dir, manifest, "replay_core")
     frame_count = 0
     preview_frame_index = 0
-    if replay_path is not None and replay_path.is_file():
+    if summarize_replay_frames and replay_path is not None and replay_path.is_file():
         for _frame in iter_replay_core_frames(replay_path):
             frame_count += 1
         if frame_count:
@@ -122,8 +137,11 @@ def ingest_artifact_for_project(
     project_id: int,
     artifact_dir: Path,
     replace_existing_run: bool = False,
+    ingest_options: ArtifactIngestOptions | None = None,
 ) -> ArtifactIngestResult:
     """Verify a finalized artifact and write index/cache fields only."""
+
+    options = ingest_options or ArtifactIngestOptions()
 
     try:
         manifest = read_verified_artifact_manifest(Path(artifact_dir))
@@ -171,6 +189,7 @@ def ingest_artifact_for_project(
         run.lab_replay_manifest_summary_json = _lab_replay_manifest_summary(
             artifact_dir=Path(artifact_dir),
             manifest=manifest,
+            summarize_replay_frames=options.summarize_replay_frames,
         )
         run.lab_replay_payload_json = {}
         run.solver_runtime_replay_frames_json = []
@@ -178,7 +197,7 @@ def ingest_artifact_for_project(
         run.save()
         run_id = int(run.pk)
 
-    if status == m.SolverRun.RunStatus.COMPLETED:
+    if status == m.SolverRun.RunStatus.COMPLETED and options.warm_replay_cache:
         _warm_lab_replay_cache_after_artifact_ingest(
             project_id=int(project_id),
             run_id=run_id,
@@ -193,6 +212,8 @@ def ingest_artifact_for_project(
 
 __all__ = [
     "ArtifactIngestError",
+    "ArtifactIngestOptions",
     "ArtifactIngestResult",
+    "STATUS_RECONCILE_INGEST_OPTIONS",
     "ingest_artifact_for_project",
 ]

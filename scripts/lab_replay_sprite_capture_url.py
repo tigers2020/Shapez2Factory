@@ -11,17 +11,6 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-import django
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-django.setup()
-
-from django.conf import settings
-from django.test import Client, override_settings
-from django.urls import reverse
 
 
 def _unique_valid_copy() -> str:
@@ -40,6 +29,18 @@ def _unique_valid_copy() -> str:
 
 
 def main() -> int:
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+
+    import django
+
+    django.setup()
+
+    from django.conf import settings
+    from django.test import Client, override_settings
+    from django.urls import reverse
+
     base_url = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
     settings.ASTEROID_LAB_REPLAY_PAYLOAD_MODE = "inline"
     client = Client()

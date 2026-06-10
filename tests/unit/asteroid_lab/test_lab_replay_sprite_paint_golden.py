@@ -15,7 +15,10 @@ from tests.support.lab_replay_sprite_wire import (
 )
 
 FIXTURE_PATH = (
-    Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "replay_sprite_paint_golden.json"
+    Path(__file__).resolve().parents[2]
+    / "fixtures"
+    / "asteroid_lab"
+    / ("replay_sprite_paint_golden.json")
 )
 
 
@@ -23,9 +26,7 @@ FIXTURE_PATH = (
 def replay_sprite_golden_fixture() -> dict[str, object]:
     frames = golden_transport_replay_frames()
     transport = next(
-        f
-        for f in frames
-        if str(f.get("event_type", "")).endswith("transport_routing_complete")
+        f for f in frames if str(f.get("event_type", "")).endswith("transport_routing_complete")
     )
     payload = {
         "transport_complete_frame": transport,

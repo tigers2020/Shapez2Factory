@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any
 
 from django_apps.shapez_core.lab_sprite_path import (
@@ -58,9 +58,9 @@ def normalize_replay_wire_cell(raw: Mapping[str, Any]) -> dict[str, Any]:
         "x": raw.get("x"),
         "y": raw.get("y"),
         "cell_kind": raw.get("kind") if raw.get("kind") is not None else raw.get("cell_kind"),
-        "transport_kind": raw.get("transport")
-        if raw.get("transport") is not None
-        else raw.get("transport_kind"),
+        "transport_kind": (
+            raw.get("transport") if raw.get("transport") is not None else raw.get("transport_kind")
+        ),
         "tile_type": tile_type,
         "sprite_identifier": str(raw.get("sprite_identifier") or tile_type),
         "rotation": raw.get("rotation"),
@@ -151,7 +151,9 @@ def _cells_from_map_view(map_view: Mapping[str, Any] | None) -> list[dict[str, A
 
 
 def full_map_cells_from_frame(frame: Mapping[str, Any]) -> list[dict[str, Any]]:
-    from_mv = _cells_from_map_view(frame.get("map_view") if isinstance(frame.get("map_view"), dict) else None)
+    map_view_raw = frame.get("map_view")
+    map_view = map_view_raw if isinstance(map_view_raw, dict) else None
+    from_mv = _cells_from_map_view(map_view)
     if from_mv:
         # ``fullMapCellsFromFrame`` prefers full_cells only when map_view has full_cells;
         # mirror that by taking full_cells first, else delta, else full_map list.

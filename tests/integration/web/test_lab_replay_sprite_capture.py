@@ -5,18 +5,14 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 from django.test import Client, override_settings
-from django.urls import reverse
 
 from tests.integration.web.test_lab_replay_sprite_canvas import (
-    PLAYWRIGHT_SCRIPT,
     REPO,
     _lab_page_url_after_solver,
     _playwright_chromium_ready,
-    _unique_valid_copy,
 )
 
 pytestmark = pytest.mark.django_db

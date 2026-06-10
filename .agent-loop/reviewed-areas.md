@@ -204,3 +204,22 @@ Notes:
 - `DESIGN.md` requires `npm run build:css` after template/`@source` changes; production loads committed `app.css` via `base.html`.
 - `tests/unit/asteroid_lab/test_asteroid_lab_ui_strings.py` checks a few lab overlay class substrings in `app.css` but is not a full rebuild drift gate.
 - Fresh `npm run build:css` on current tree matches committed `app.css` (md5 `450986bed220fc6a44cda342682a81af`); gap is missing CI enforcement, not current drift.
+
+## 2026-06-10 14:00
+
+Reviewed area:
+- path/module/feature: `django_apps/shapez_solver/services/pattern_lab_service.py` + Pattern Lab UI (`public_pages.pattern_lab`, `pattern_lab.html`) + `pattern_catalog_repository.py` stub; related tests `tests/unit/shapez_solver/test_pattern_lab_service.py`, `tests/integration/web/test_pattern_lab.py`
+
+Skipped:
+- `shapez_solver/` recipe graph validate_graph_document gaps (SHA-23, SHA-24 reviewed 2026-06-10 02:04)
+- Asteroid Lab / replay / subprocess areas (SHA-45–SHA-48 and prior)
+- CI / frontend bundle drift (SHA-35, SHA-40, SHA-44, SHA-42)
+- Issues labeled `reviewing` (SHA-16 autotest probe, archived)
+
+Findings:
+- SHA-49: Pattern Lab rejects multi-layer shape codes that recipe family validation accepts
+
+Notes:
+- `analyze_pattern_lab_shape('CuCuCuCu:CuCuCuCu')` errors with single-layer-only message; `explain_pattern_family_mismatch` accepts same code (multi-layer tests exist).
+- `PatternCatalogRepository.find_macro_candidates` is intentional no-op after migration `0009_drop_pattern_catalog_tables`; template already states catalog removed — not filed.
+- `documents/research/pattern_family_macro_taxonomy.md` still describes DB MacroRecipe lookup (stale doc); deferred — not a runtime bug card this run.

@@ -854,9 +854,7 @@ def _format_highlight_value(label: str, value: Any) -> str:
     if label in _ENUM_VALUE_LABELS:
         if isinstance(value, list):
             parts = [
-                _format_snake_case_label(str(item))
-                for item in value
-                if item not in (None, "")
+                _format_snake_case_label(str(item)) for item in value if item not in (None, "")
             ]
             return "; ".join(parts) if parts else _PLACEHOLDER
         return _format_snake_case_label(str(value))
@@ -911,9 +909,7 @@ def _layer02_transport_highlights(
         if isinstance(l2_plan, dict)
         else _PLACEHOLDER
     )
-    unmet = (
-        l2_plan.get("unmet_reason", _PLACEHOLDER) if isinstance(l2_plan, dict) else _PLACEHOLDER
-    )
+    unmet = l2_plan.get("unmet_reason", _PLACEHOLDER) if isinstance(l2_plan, dict) else _PLACEHOLDER
     candidate_slots = (
         l2_plan.get("candidate_slot_count", _PLACEHOLDER)
         if isinstance(l2_plan, dict)

@@ -139,7 +139,11 @@ shapez_2_data/
 .understand-anything/
 
 # --- graphify (local knowledge graph; regenerate: graphify update <path>) ---
+# Raw output is local-only; agents read tracked summaries under docs/agent-context/.
 graphify-out/
+graphify_out/
+!docs/agent-context/graphify-summary.md
+!docs/agent-context/graphify-index.md
 /raw/
 
 data/

@@ -95,6 +95,9 @@ msgstr "중간 · {code}"
 msgid "Intermediate — shape_code after dry-run"
 msgstr "중간 — 드라이런 뒤 shape_code 확정"
 
+msgid "Layer summaries appear after a solver run."
+msgstr "Layer summaries appear after a solver run."
+
 msgid ""
 "Leave empty for two-wire mode: fluid on upper in-1, target shape on lower in"
 " (same as painter)."
@@ -109,6 +112,9 @@ msgstr "여러 개 선택 중 — 속성 편집은 노드 하나만 고른 뒤(�
 
 msgid "No issues from the last dry-run/save."
 msgstr "직전 드라이런·저장에서는 문제가 없었습니다."
+
+msgid "No runs yet"
+msgstr "No runs yet"
 
 msgid "Node info"
 msgstr "노드 정보"
@@ -145,6 +151,9 @@ msgstr "출력"
 
 msgid "Output node"
 msgstr "출력 노드"
+
+msgid "Paste a blueprint and run the solver."
+msgstr "Paste a blueprint and run the solver."
 
 msgid "Run Dry-run or Save for server validation."
 msgstr "드라이런이나 저장으로 서버 검증을 돌리세요."
@@ -183,6 +192,9 @@ msgstr "소스 노드"
 
 msgid "Source · role {role}"
 msgstr "소스 · 역할 {role}"
+
+msgid "Stack status"
+msgstr "Stack status"
 
 msgid "Target"
 msgstr "목표"

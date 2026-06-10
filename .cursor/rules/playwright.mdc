@@ -1,0 +1,24 @@
+---
+description: "Playwright router: real browser browsing, testing, screenshots"
+alwaysApply: true
+---
+
+# Playwright Router
+
+Canon: `AGENTS.md` § Tool Routing. Skill: `/playwright`.
+
+## Trigger
+
+Use `/playwright` when task needs browsing, rendered UI verification, browser tests, screenshots, DOM snapshots, navigation, form interaction, or UI-flow debugging.
+
+Skip when task is docs-only, backend-only, or has no rendered/browser surface.
+
+## Rules
+
+- Prefer real browser evidence over static template/CSS guesses.
+- Snapshot before acting on element refs; re-snapshot after navigation or large UI changes.
+- Capture screenshots/traces when visual proof matters.
+- Store artifacts in `output/playwright/`; do not create new top-level artifact folders.
+- If browser launch is blocked, report exact error and use the next available verification path.
+
+References: `.cursor/rules/web-interface.mdc`, `documents/ai/manuals/frontend.md`.

@@ -1,0 +1,41 @@
+---
+description: "Fallow router: JS/TS code health before broad refactors"
+alwaysApply: false
+---
+
+# Fallow Code Health Router
+
+Scope: JavaScript and TypeScript only. Do not use Fallow as the primary analyzer for Python (`django_apps/`, `src/`, `tests/`); use ruff, vulture, and radon there.
+
+## Trigger
+
+Use Fallow when reviewing or refactoring JS/TS under:
+
+- `frontend/graph_layout/src/`
+- `frontend/recipe_graph_editor/src/`
+- `django_apps/web/static/web/js/` (hand-written only)
+
+Skip Fallow for generated bundles, vendor, and Python code. Respect `.fallowrc.json` ignore patterns.
+
+## Commands
+
+Run from repo root with machine-readable output:
+
+- `npx fallow audit --format json --quiet 2>$null` — PR-scoped risk
+- `npx fallow dead-code --format json --quiet 2>$null` — unused files/exports/deps
+- `npx fallow dupes --format json --quiet 2>$null` — duplicate logic
+- `npx fallow health --format json --quiet 2>$null` — complexity hotspots
+- `npx fallow fix --dry-run --format json --quiet 2>$null` — before any automatic cleanup
+
+Exit code 1 means issues found (normal). Exit code 2 is a config or parse error.
+
+## Rules
+
+- Never delete code based only on intuition.
+- Treat Fallow output as evidence, not absolute truth.
+- For generated files, tests, fixtures, migrations, and intentional duplication, prefer ignore config over code changes.
+- Always run `fallow fix --dry-run` and summarize expected changes before `fallow fix --yes`.
+- Never run `fallow watch` (interactive, non-exiting).
+- Do not enable telemetry on the user's behalf.
+
+Skill: `.cursor/skills/fallow` (`/fallow`).

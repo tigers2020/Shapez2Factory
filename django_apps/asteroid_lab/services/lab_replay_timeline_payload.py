@@ -7,6 +7,7 @@ from typing import Any, cast
 from django.db.models import Count, Prefetch, Q
 
 from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack, SolverRun
+from django_apps.asteroid_lab.observability.lab_perf_trace import perf_span
 from django_apps.asteroid_lab.replay import replay_limits
 from django_apps.asteroid_lab.replay.lab_timeline_adapter import (
     LabTimelineAdapterError,
@@ -271,7 +272,8 @@ def build_lab_replay_frames_for_project(
 
     lab_frames = _lab_timeline_frames_for_project(pid)
     if run is not None:
-        artifact_frames = compose_lab_replay_frames_from_artifact_run(run)
+        with perf_span("compose_artifact_frames_ms"):
+            artifact_frames = compose_lab_replay_frames_from_artifact_run(run)
         if artifact_frames is not None:
             runtime_frames = tuple(
                 replay_timeline_frame_from_json_dict(item) for item in artifact_frames
@@ -281,26 +283,30 @@ def build_lab_replay_frames_for_project(
     else:
         runtime_frames = _solver_runtime_timeline_frames_for_project(pid)
 
-    combined = compose_replay_timeline(
-        lab_frames=(*lab_frames, *runtime_frames),
-        max_frames=replay_limits.MAX_LAB_REPLAY_TIMELINE_FRAMES,
-    )
-    serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
-    serialized, frozen_rim_wire = enrich_lab_timeline_frames_with_terrain_rim(serialized)
-    serialized = enrich_lab_timeline_frames_with_pattern_bundle_highlights(serialized)
-    plan_wire = _exterior_connector_plan_wire_for_run(run)
-    l2_start = resolve_l2_complete_frame_index(serialized)
-    serialized, frozen_connector_wire = enrich_lab_timeline_frames_with_exterior_connector_plan(
-        serialized,
-        plan_wire=plan_wire,
-        l2_complete_frame_index=l2_start,
-    )
-    diagnostic = _lab_replay_diagnostic_reason(pid, composed_count=len(serialized))
-    metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
-    if frozen_rim_wire is not None:
-        metrics["frozen_terrain_rim_highlight"] = frozen_rim_wire
-    if frozen_connector_wire is not None:
-        metrics["frozen_exterior_connector_plan"] = frozen_connector_wire
+    frozen_rim_wire = None
+    frozen_connector_wire = None
+    with perf_span("replay_timeline_assembly_ms"):
+        combined = compose_replay_timeline(
+            lab_frames=(*lab_frames, *runtime_frames),
+            max_frames=replay_limits.MAX_LAB_REPLAY_TIMELINE_FRAMES,
+        )
+        serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
+        serialized, frozen_rim_wire = enrich_lab_timeline_frames_with_terrain_rim(serialized)
+        serialized = enrich_lab_timeline_frames_with_pattern_bundle_highlights(serialized)
+        plan_wire = _exterior_connector_plan_wire_for_run(run)
+        l2_start = resolve_l2_complete_frame_index(serialized)
+        serialized, frozen_connector_wire = enrich_lab_timeline_frames_with_exterior_connector_plan(
+            serialized,
+            plan_wire=plan_wire,
+            l2_complete_frame_index=l2_start,
+        )
+    with perf_span("replay_metrics_build_ms"):
+        diagnostic = _lab_replay_diagnostic_reason(pid, composed_count=len(serialized))
+        metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
+        if frozen_rim_wire is not None:
+            metrics["frozen_terrain_rim_highlight"] = frozen_rim_wire
+        if frozen_connector_wire is not None:
+            metrics["frozen_exterior_connector_plan"] = frozen_connector_wire
     return serialized, metrics
 
 

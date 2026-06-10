@@ -198,6 +198,18 @@ msgstr "목표 처리량"
 msgid "% of theoretical max"
 msgstr "이론 최대치 대비 %"
 
+msgid "Height layer (L)"
+msgstr "Height layer (L)"
+
+msgid "No runs yet"
+msgstr "No runs yet"
+
+msgid "Paste a blueprint and run the solver."
+msgstr "Paste a blueprint and run the solver."
+
+msgid "Map Z layers"
+msgstr "Map Z layers"
+
 msgid "Ops slug class"
 msgstr "Ops slug class"
 
@@ -536,6 +548,9 @@ msgid ""
 "Follow one target shape from recipe breakdown to inputs per minute, miner "
 "load, and bottleneck checks in a single planning surface."
 msgstr "목표 도형 하나를 잡고 분해·분당 입력·채굴 부하·병목까지 한 화면에서 따라가 봅니다."
+
+msgid "Layer summaries appear after a solver run."
+msgstr "Layer summaries appear after a solver run."
 
 msgid "Algorithm layer summaries"
 msgstr "Algorithm layer summaries"

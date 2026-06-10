@@ -19,6 +19,6 @@ Rules:
 - Preserve accessibility basics: labels, focus visibility, keyboard path, aria labels for icon buttons.
 - Avoid `transition: all`, unlabelled inputs, layout shift, and images without dimensions.
 - Use Tailwind utilities in templates unless reuse justifies component CSS.
-- Verify visible UI changes with browser/screenshot when practical.
+- Verify visible UI changes with `/playwright` browser/screenshot when practical.
 
-References: `documents/ai/manuals/frontend.md`, `.cursor/rules/django-apps.mdc`, `.cursor/rules/architecture.mdc`.
+References: `.cursor/rules/playwright.mdc`, `documents/ai/manuals/frontend.md`, `.cursor/rules/django-apps.mdc`, `.cursor/rules/architecture.mdc`.

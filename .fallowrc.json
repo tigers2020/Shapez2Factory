@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "frontend/graph_layout/src/**/*.ts",
+    "frontend/recipe_graph_editor/src/**/*.{ts,tsx}",
+    "django_apps/web/static/web/js/**/*.js"
+  ],
+  "ignorePatterns": [
+    "**/vendor/**",
+    "**/node_modules/**",
+    "django_apps/web/static/web/js/solver_graph_layout.js",
+    "django_apps/web/static/web/js/editor_graph_layout.js",
+    "django_apps/web/static/web/js/recipe_graph_editor/**"
+  ],
+  "duplicates": {
+    "minOccurrences": 3,
+    "ignore": [
+      "**/vendor/**",
+      "django_apps/web/static/web/js/solver_graph_layout.js",
+      "django_apps/web/static/web/js/editor_graph_layout.js",
+      "django_apps/web/static/web/js/recipe_graph_editor/**"
+    ]
+  },
+  "health": {
+    "ignore": [
+      "**/vendor/**",
+      "django_apps/web/static/web/js/solver_graph_layout.js",
+      "django_apps/web/static/web/js/editor_graph_layout.js",
+      "django_apps/web/static/web/js/recipe_graph_editor/**"
+    ]
+  },
+  "rules": {}
+}

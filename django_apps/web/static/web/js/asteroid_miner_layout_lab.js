@@ -15,7 +15,7 @@
 (function () {
   "use strict";
 
-  const LAB_COORD_FRAME_BUILD = "island_raw_v3";
+  const LAB_COORD_FRAME_BUILD = "island_raw_v4";
 
   const GRID_W = 23;
   const GRID_H = 15;
@@ -2069,7 +2069,23 @@
   }
 
   function frameHasRenderableMap(frame) {
-    return fullMapCellsFromFrame(frame).length > 0;
+    if (!frame || typeof frame !== "object") {
+      return false;
+    }
+    if (fullMapCellsFromFrame(frame).length > 0) {
+      return true;
+    }
+    const mapView = frame.map_view;
+    if (!mapView || typeof mapView !== "object") {
+      return false;
+    }
+    if (Array.isArray(mapView.overlay_cells) && mapView.overlay_cells.length > 0) {
+      return true;
+    }
+    if (Array.isArray(mapView.cell_delta) && mapView.cell_delta.length > 0) {
+      return true;
+    }
+    return false;
   }
 
   function formatOptimizationMilestoneHint(frame) {
@@ -4036,7 +4052,9 @@
         const preview =
           lazy.preview_frame && typeof lazy.preview_frame === "object" ? lazy.preview_frame : null;
         replayFrames = preview ? [preview] : [];
-        hasServerReplay = replayFrames.length > 0;
+        hasServerReplay =
+          replayFrames.length > 0 ||
+          (labReplayLoadState.frameCount > 0 && Boolean(labReplayLoadState.fetchUrl));
         if (!hasServerReplay) {
           window.location.assign(redirectTo || window.location.href);
           return;
@@ -4044,10 +4062,10 @@
         replayCleanup();
         replayCleanup = initializeServerReplaySurface(replayFrames);
         mountLabCanvasRenderer();
-        replayArrayIndex = 0;
+        replayArrayIndex = replaySlotForServerInitialFrame();
         setPlaying(false);
         renderLabReplayLoadStatus();
-        applyFrame();
+        bootstrapLabReplayTimeline();
         return;
       }
       labReplayLoadState.mode = "inline";
@@ -5242,12 +5260,16 @@
       return true;
     }
 
-    if (needsLazyReplayComposeFetch()) {
-      ensureLabReplayFramesLoaded("init");
-    } else {
+    function bootstrapLabReplayTimeline() {
+      if (needsLazyReplayComposeFetch()) {
+        return ensureLabReplayFramesLoaded("init");
+      }
       applyFrame();
       scheduleLazyReplayPrefetch();
+      return Promise.resolve();
     }
+
+    bootstrapLabReplayTimeline();
   }
 
   if (document.readyState === "loading") {

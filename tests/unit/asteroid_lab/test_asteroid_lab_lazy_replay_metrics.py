@@ -47,6 +47,28 @@ def test_lazy_replay_prefetches_full_frames_when_preview_is_renderable() -> None
     assert 'ensureLabReplayFramesLoaded("prefetch")' in js
 
 
+def test_lazy_replace_lab_replay_payload_bootstraps_timeline_after_solver_run() -> None:
+    js = (
+        REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
+    assert "function bootstrapLabReplayTimeline()" in js
+    idx = js.find('lazy.mode === "lazy"')
+    chunk = js[idx : idx + 1800]
+    assert "bootstrapLabReplayTimeline();" in chunk
+    assert "replaySlotForServerInitialFrame();" in chunk
+    assert "labReplayLoadState.frameCount > 0 && Boolean(labReplayLoadState.fetchUrl)" in chunk
+
+
+def test_frame_has_renderable_map_accepts_overlay_and_cell_delta() -> None:
+    js = (
+        REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
+    idx = js.find("function frameHasRenderableMap(frame)")
+    body = js[idx : idx + 520]
+    assert "overlay_cells" in body
+    assert "cell_delta" in body
+
+
 def test_lazy_replay_load_status_retry_click_resets_error() -> None:
     js = (
         REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"

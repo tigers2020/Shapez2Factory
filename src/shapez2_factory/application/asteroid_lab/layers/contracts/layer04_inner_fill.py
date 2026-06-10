@@ -24,6 +24,18 @@ class InnerPlacement:
 
 
 @dataclass(frozen=True, slots=True)
+class RouteableInnerGroupPlacement:
+    """L4 committed inner miner group consumable by L5 source adapter."""
+
+    placement_id: str
+    anchor: Coord
+    miner_cells: frozenset[Coord]
+    extension_cells: frozenset[Coord]
+    m_output_stub: Coord
+    throughput_factor: int
+
+
+@dataclass(frozen=True, slots=True)
 class Layer04FillMetrics:
     interior_occupied_cell_count: int
     coverage_ratio: float
@@ -36,6 +48,7 @@ class Layer04FillMetrics:
 class Layer04InnerFillResult:
     interior_occupied_cells: frozenset[Coord] = frozenset()
     placements: tuple[InnerPlacement, ...] = ()
+    routeable_inner_groups: tuple[RouteableInnerGroupPlacement, ...] = ()
     metrics: Layer04FillMetrics | None = None
     skip_reason: Layer04SkipReason | None = None
     corridor_shadow_cells: frozenset[Coord] = frozenset()
@@ -60,4 +73,5 @@ __all__ = [
     "Layer04FillMetrics",
     "Layer04InnerFillResult",
     "Layer04SkipReason",
+    "RouteableInnerGroupPlacement",
 ]

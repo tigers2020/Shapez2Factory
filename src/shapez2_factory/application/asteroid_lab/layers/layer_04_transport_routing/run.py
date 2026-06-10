@@ -15,6 +15,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_route imp
     Layer04Metrics,
     Layer04RoutePlan,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    Layer04InnerFillResult,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
 )
@@ -41,6 +44,7 @@ def run_layer_05_transport_routing(
     budget_ctx: LayerBudgetContext | None = None,
     transport_catalog: SpaceTransportTileCatalog | None = None,
     interior_occupied_cells: frozenset[tuple[int, int]] | None = None,
+    inner_fill: Layer04InnerFillResult | None = None,
 ) -> Layer04RoutePlan:
     """MVP routing when map + rim + exterior plan are present (canonical L5 slug)."""
     _ = budget_ctx
@@ -77,6 +81,7 @@ def run_layer_05_transport_routing(
         resource_kind=rk,
         transport_catalog=transport_catalog,
         interior_occupied_cells=interior,
+        inner_fill=inner_fill,
     )
 
 

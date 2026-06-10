@@ -145,7 +145,13 @@ def test_greedy_places_builtin_1x1_field_block() -> None:
     assert result.interior_occupied_cells <= golden_5x5_interior_complete_map().field_cells
     assert all(p.pattern_id == PATTERN_BUILTIN_1X1_FIELD_BLOCK for p in result.placements)
     assert result.interior_occupied_cells.isdisjoint(GOLDEN_5X5_L3_EQUIPMENT_FOOTPRINT)
-    assert frozenset(p.coord for p in result.placements) == result.interior_occupied_cells
+    block_cells = frozenset(p.coord for p in result.placements)
+    routeable_cells = frozenset(
+        cell
+        for group in result.routeable_inner_groups
+        for cell in (group.miner_cells | group.extension_cells)
+    )
+    assert block_cells | routeable_cells == result.interior_occupied_cells
 
 
 def test_greedy_lexicographic_scan_order() -> None:

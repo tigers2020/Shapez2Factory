@@ -223,3 +223,24 @@ Notes:
 - `analyze_pattern_lab_shape('CuCuCuCu:CuCuCuCu')` errors with single-layer-only message; `explain_pattern_family_mismatch` accepts same code (multi-layer tests exist).
 - `PatternCatalogRepository.find_macro_candidates` is intentional no-op after migration `0009_drop_pattern_catalog_tables`; template already states catalog removed — not filed.
 - `documents/research/pattern_family_macro_taxonomy.md` still describes DB MacroRecipe lookup (stale doc); deferred — not a runtime bug card this run.
+
+## 2026-06-10 16:00
+
+Reviewed area:
+- path/module/feature: `django_apps/web/static/web/js/solver_timeline/` (graph_mount, graph_markup, graph_viewport, graph_detail, throughput_summary, dom_utils) + template script wiring (`solver.html`, `home.html`) + pytest coverage (`test_solver_graph_markup.py`, `test_web_smoke.py`)
+
+Skipped:
+- `quick_solver_preview.js` GLTF teardown on ok:false — duplicate of SHA-52 (reviewed ~15:33 UTC)
+- `recipe_graph_editor/` React Flow bundle — SHA-40 (CI drift)
+- `frontend/graph_layout/` esbuild bundles — SHA-35 (CI drift)
+- Asteroid Lab replay/timeline JS — SHA-48, SHA-21, SHA-37, SHA-38
+- CI/css/locale/governance gaps — SHA-44, SHA-42, SHA-41, SHA-19, SHA-20
+- Issues labeled `reviewing` — SHA-16 autotest probe (archived)
+
+Findings:
+- SHA-53: solver_timeline graph modules are not mounted on any page; pytest still asserts production layout
+
+Notes:
+- `mountGraph()` / `updateThroughputSummary()` have zero production importers; only `TIMELINE_DEBOUNCE_MS` from `constants.js` is used (via `quick_solver_preview.js`)
+- No template defines `[data-solver-throughput-summary]`; `/solver/` loads preview-only module while page copy says graph UI is under construction
+- Staff graphs use committed `recipe-graph-editor.js`, not `solver_timeline/` Canvas stack

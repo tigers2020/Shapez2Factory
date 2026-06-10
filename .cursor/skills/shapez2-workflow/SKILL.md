@@ -59,6 +59,8 @@ Close: caveman six sections ([`shapez2-core.mdc`](../../rules/shapez2-core.mdc))
 
 | Phase | Skill |
 |-------|--------|
+| Root clean before plan-run | `clean-root` |
+| Linear plan queue (pick → run → ship) | `plan-run` |
 | Pre-spec · branching design | `grill-me-shapez2` (optional; read-only) |
 | PR-3 tests only | `write-tests` |
 | CLI touch | `cli-boundary` |

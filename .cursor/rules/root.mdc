@@ -26,6 +26,9 @@ Always route:
 - Hermes workflow: `.cursor/rules/00-hermes-skill-suggestion.mdc`
 - Hermes handoff: `.cursor/rules/01-hermes-handoff-format.mdc`
 - Graphify: `.cursor/rules/graphify.mdc`
+- Playwright/browser: `.cursor/rules/playwright.mdc`
+- Git/worktree hygiene: `.cursor/rules/git-worktree.mdc`
 - Agent workflow canon: `docs/agent-workflows/`
 
+Line-count WARN with exit 0 is pass; do not edit solely to clear WARN.
 Do not claim done without evidence. Do not commit/push/PR unless user asks.

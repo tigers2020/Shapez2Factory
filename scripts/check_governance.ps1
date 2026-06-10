@@ -16,7 +16,7 @@ function Test-LineLimit {
         Write-Host "FAIL line limit: $Path has $lines lines (max $Max)"
         $script:failed = $true
     } elseif ($Target -gt 0 -and $lines -gt $Target) {
-        Write-Host "WARN line target: $Path has $lines lines (target $Target, max $Max) — exit 0"
+        Write-Host "WARN line target: $Path has $lines lines (target $Target, max $Max) — exit 0, no action required"
         $script:warned = $true
     } else {
         Write-Host "OK   line limit: $Path ($lines)"
@@ -76,7 +76,7 @@ if ($failed) {
     exit 1
 }
 if ($warned) {
-    Write-Host "`nGovernance check PASSED (with warnings)"
+    Write-Host "`nGovernance check PASSED (with warnings; do not edit solely to clear WARN)"
 } else {
     Write-Host "`nGovernance check PASSED"
 }

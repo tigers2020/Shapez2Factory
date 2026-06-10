@@ -1,0 +1,37 @@
+---
+description: "Git router: clean branch/worktree required before agent edits"
+alwaysApply: true
+---
+
+# Git / Worktree Router
+
+Canon: `AGENTS.md`.
+
+## Hard rule
+
+Never start or continue implementation on a **dirty** branch or worktree.
+
+Dirty means any of:
+
+- Uncommitted changes (`git status --short` non-empty) unrelated to the current task
+- Mixed WIP from another session, agent, or PR
+- Staged + unstaged edits the user did not assign in this prompt
+- Worktree with divergent untracked build/cache artifacts that would pollute the diff
+
+## Before first edit
+
+1. `git status --short` (and `git worktree list` when using worktrees).
+2. If dirty and not explicitly in scope: **stop** — do not edit production files.
+3. Report what is dirty; propose one path: commit to the right branch, stash, discard, or spawn a clean worktree.
+
+## Allowed exceptions
+
+- User explicitly assigns work **including** named dirty files or says to proceed on dirty tree.
+- Read-only audit/plan on dirty tree — no file writes.
+- Pre-commit hook auto-fix only after a user-requested commit on that branch.
+
+## Clean worktree preference
+
+For non-trivial or risky work, prefer an isolated worktree or feature branch with a clean surface over piling edits onto unrelated local changes.
+
+Detail: `docs/agent-workflows/git-worktree-routine.md` (when present); else this router is authority.

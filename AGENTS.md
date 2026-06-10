@@ -1,17 +1,16 @@
 # AGENTS.md
 
 ## Mission
-
 shapez2 Factory Planner governance: short rules, strict contracts, small safe changes, fast verification, no stale-doc authority.
 
 ## Default Workflow
-
 1. Use `/using-superpowers` first: check relevant skills before analysis, planning, or edits.
 2. Use `/caveman` always: Korean, direct, compressed, blunt, no fluff, no cheerleading, no vague agreement.
-3. Read order when needed: `AGENTS.md` -> `structure.md` -> `documents/ai/START_HERE.md` -> current canon/spec -> code/tests. If `graphify-out/graph.json` exists, query it before broad exploration (see Graphify).
+3. Read order when needed: `AGENTS.md` -> `structure.md` -> `documents/ai/START_HERE.md` -> current canon/spec -> code/tests. If repo/codebase search is needed and `graphify-out/graph.json` exists, use `/graphify` before broad exploration (see Graphify).
 4. Plan before implementation. No production code change until intended contract is clear.
-5. Prefer one PR-sized purpose. Split mixed contract/refactor/UI/runtime work.
-6. Do not commit, push, open PRs, or mark external work closed unless user asks.
+5. Clean git surface before edits: no dirty branch/worktree unless user scoped those files (`.cursor/rules/git-worktree.mdc`).
+6. Prefer one PR-sized purpose. Split mixed contract/refactor/UI/runtime work.
+7. Do not commit, push, open PRs, or mark external work closed unless user asks.
 
 ## Agent Scope
 
@@ -21,9 +20,10 @@ Closed-world execution only — tasks explicitly listed in the approved plan or 
 
 Cursor implements; Hermes researches and suggests skills — not APPROVE/BLOCK. Canon: `docs/agent-workflows/hermes-skill-suggestion.md`, `skill-trust-boundary.md`, `hermes-handoff.md`. Routers: `00-hermes-skill-suggestion.mdc`, `01-hermes-handoff-format.mdc`.
 
-## Graphify
+## Tool Routing
 
-When architecture, coupling, cross-module paths, or unfamiliar subsystems matter: use `graphify-out/graph.json` via `.cursor/rules/graphify.mdc` and `docs/agent-workflows/graphify-routine.md` (`graphify query|path|explain`, or `/graphify <path>` to rebuild). After code-only edits in session: `graphify update <scope>`. Separate AST edges from INFERRED edges before refactor claims.
+- Graphify: when repo/codebase search, architecture, coupling, cross-module paths, or unfamiliar subsystems matter, use `/graphify` and `graphify-out/graph.json` via `.cursor/rules/graphify.mdc` and `docs/agent-workflows/graphify-routine.md`. After code-only edits: `graphify update <scope>`. Separate AST vs INFERRED edges.
+- Playwright: when browsing, browser testing, UI flow checks, screenshots, or rendered-page verification matter, use `/playwright` and `.cursor/rules/playwright.mdc`. Prefer real browser evidence; store artifacts under `output/playwright/`.
 
 ## Shapez2 Routing
 
@@ -61,6 +61,8 @@ When to run which gate: `docs/agent-workflows/validation-routine.md`. PR/full: `
 ## Governance Files
 
 **AGENTS.md size:** root target ~75 lines; review/split before 120. Nested/module `AGENTS.md` may reach ~150 for local commands, safety, tests, contracts; split past 150. Do not paste long specs — link focused docs and say when to read them.
+
+Line-count WARN is non-blocking. Do not edit `AGENTS.md` or rules solely to clear a WARN. Fix only hard failures: root `AGENTS.md` >120 lines, nested `AGENTS.md` >150 lines, or `.cursor/rules/*.mdc` >75 lines. Preserve behavior-changing rules over formatting, examples, or explanations.
 
 `.cursor/rules/**/*.mdc`: thin routers, stay <= 75; operational detail in `docs/agent-workflows/`. Check: `scripts/check_governance.ps1`.
 

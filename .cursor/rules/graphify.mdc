@@ -5,11 +5,11 @@ alwaysApply: true
 
 # Graphify Router
 
-Canon: `AGENTS.md` § Graphify. Detail: `docs/agent-workflows/graphify-routine.md`.
+Canon: `AGENTS.md` § Tool Routing. Detail: `docs/agent-workflows/graphify-routine.md`.
 
 ## Trigger
 
-Use graphify when the task needs architecture, coupling, boundaries, cross-package paths, god-node traces, or exploration across multiple modules — and `graphify-out/graph.json` exists.
+Use `/graphify` when the task needs repo/codebase search, architecture, coupling, boundaries, cross-package paths, god-node traces, or exploration across multiple modules — and `graphify-out/graph.json` exists.
 
 Skip when the user gave an exact file/symbol or the graph is absent and scope is a single known edit.
 

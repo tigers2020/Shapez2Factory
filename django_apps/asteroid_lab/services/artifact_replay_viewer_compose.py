@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from django_apps.asteroid_lab.models import SolverRun
+from django_apps.asteroid_lab.observability.lab_perf_trace import perf_span
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.replay.layer02_segment import map_view_from_complete_map
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
@@ -117,28 +118,38 @@ def compose_lab_replay_frames_from_artifact_run(run: SolverRun) -> list[dict[str
     if not artifact_root:
         return None
     root = Path(artifact_root)
-    try:
-        manifest = read_verified_artifact_manifest(root)
-    except ArtifactManifestReadError:
-        return None
-    complete_map_path = _manifest_path(root, manifest, "layer01_complete_map")
-    replay_core_path = _manifest_path(root, manifest, "replay_core")
-    if complete_map_path is None or replay_core_path is None:
-        return None
-    if not complete_map_path.is_file() or not replay_core_path.is_file():
-        return None
-    try:
-        complete_map = _load_complete_map(complete_map_path)
-        core_records = list(iter_replay_core_frames(replay_core_path))
-    except (OSError, json.JSONDecodeError, ValueError, ArtifactReplayLoadError):
-        complete_map = None
-        core_records = []
+    manifest = None
+    complete_map_path = None
+    replay_core_path = None
+    with perf_span("artifact_manifest_load_ms"):
+        try:
+            manifest = read_verified_artifact_manifest(root)
+        except ArtifactManifestReadError:
+            return None
+        complete_map_path = _manifest_path(root, manifest, "layer01_complete_map")
+        replay_core_path = _manifest_path(root, manifest, "replay_core")
+        if complete_map_path is None or replay_core_path is None:
+            return None
+        if not complete_map_path.is_file() or not replay_core_path.is_file():
+            return None
+
+    complete_map = None
+    core_records: list[dict[str, Any]] = []
+    with perf_span("replay_core_parse_ms"):
+        try:
+            assert complete_map_path is not None and replay_core_path is not None
+            complete_map = _load_complete_map(complete_map_path)
+            core_records = list(iter_replay_core_frames(replay_core_path))
+        except (OSError, json.JSONDecodeError, ValueError, ArtifactReplayLoadError):
+            complete_map = None
+            core_records = []
 
     from django_apps.asteroid_lab.services.artifact_runtime_replay_compose import (
         build_solver_runtime_replay_frames_from_artifact_run,
     )
 
-    runtime_frames = build_solver_runtime_replay_frames_from_artifact_run(run)
+    with perf_span("artifact_runtime_replay_compose_ms"):
+        runtime_frames = build_solver_runtime_replay_frames_from_artifact_run(run)
     if runtime_frames and lab_replay_frames_are_renderable(runtime_frames):
         for frame in runtime_frames:
             inspector = frame.get("inspector")

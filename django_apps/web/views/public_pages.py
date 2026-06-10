@@ -585,7 +585,7 @@ def asteroid_miner_layout_project_solver_run_lab_replay(
                 return JsonResponse({"ok": False, "error": "solver_run_not_found"}, status=404)
         run_pk = int(run.pk)
         project_pk = int(project.pk)
-        with perf_span("replay_cache_load_ms"):
+        with perf_span("replay_cache_lookup_ms"):
             decode_ms = 0.0
             t0 = time.monotonic()
             frames = load_composed_frames_for_run_id(run_pk)
@@ -594,6 +594,7 @@ def asteroid_miner_layout_project_solver_run_lab_replay(
             summary = load_manifest_summary_for_run_id(run_pk)
             decode_ms += (time.monotonic() - t0) * 1000.0
         record_perf_ms("replay_cache_json_decode_ms", decode_ms)
+        record_perf_ms("replay_cache_load_ms", decode_ms)
         record_perf_meta(
             lab_replay_cache_frames_bytes=serialized_json_utf8_bytes(frames),
             lab_replay_manifest_summary_bytes=serialized_json_utf8_bytes(summary),
@@ -607,11 +608,13 @@ def asteroid_miner_layout_project_solver_run_lab_replay(
             metrics = dict(summary.get("replay_track_metrics") or {})
         else:
             with perf_span("replay_cache_miss_compose_ms"):
-                frames, metrics = build_lab_replay_frames_for_project(
-                    project_pk,
-                    solver_run_id=int(run_pk),
-                )
-                persist_composed_replay_for_run_id(run_pk, frames=frames, metrics=metrics)
+                with perf_span("replay_compose_entry_ms"):
+                    frames, metrics = build_lab_replay_frames_for_project(
+                        project_pk,
+                        solver_run_id=int(run_pk),
+                    )
+                with perf_span("replay_cache_persist_ms"):
+                    persist_composed_replay_for_run_id(run_pk, frames=frames, metrics=metrics)
         payload: dict[str, Any] = {
             "schema_version": 1,
             "run_id": int(run.pk),
@@ -624,7 +627,7 @@ def asteroid_miner_layout_project_solver_run_lab_replay(
                 "semantic_equivalent_to_inline": True,
             },
         }
-        with perf_span("json_response_build_ms"):
+        with perf_span("replay_response_serialize_ms"):
             payload_bytes = len(
                 json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
             )

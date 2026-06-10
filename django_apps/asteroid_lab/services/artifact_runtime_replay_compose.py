@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from django_apps.asteroid_lab.models import SolverRun
+from django_apps.asteroid_lab.observability.lab_perf_trace import perf_span
 from django_apps.asteroid_lab.replay.layer02_segment import map_view_from_complete_map
 from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
     build_solver_runtime_replay_frames,
@@ -160,46 +161,50 @@ def build_solver_runtime_replay_frames_from_artifact_run(
 
     throughput_target_percent = int(solver_summary.get("throughput_target_percent") or 80)
     capacity_envelope = _capacity_envelope(complete_map=complete_map, rules=rules)
-    exterior_plan = execute_layer_02_exterior_transport_plan(
-        complete_map=complete_map,
-        capacity_envelope=capacity_envelope,
-        throughput_target_percent=throughput_target_percent,
-        rules=rules,
-    )
+    with perf_span("replay_compose_l2_reconstruction_ms"):
+        exterior_plan = execute_layer_02_exterior_transport_plan(
+            complete_map=complete_map,
+            capacity_envelope=capacity_envelope,
+            throughput_target_percent=throughput_target_percent,
+            rules=rules,
+        )
     plan_wire = exterior_connector_plan_to_metrics_dict(exterior_plan).get(
         "exterior_connector_plan"
     )
     if not isinstance(plan_wire, dict):
         return None
 
-    layer03 = run_layer_03_rim_greedy_placement(
-        complete_map=complete_map,
-        exterior_plan=exterior_plan,
-        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
-        genetic_sample_seeds=genetic_sample_seeds,
-    )
+    with perf_span("replay_compose_l3_rim_greedy_ms"):
+        layer03 = run_layer_03_rim_greedy_placement(
+            complete_map=complete_map,
+            exterior_plan=exterior_plan,
+            budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
+            genetic_sample_seeds=genetic_sample_seeds,
+        )
 
     provisional_overlay = (
         layer03.provisional_overlay
         if isinstance(layer03, IntegratedRimGreedyResult)
         else ProvisionalLayoutOverlay.empty()
     )
-    layer04_inner_fill = run_layer_04_inner_pattern_fill(
-        complete_map=complete_map,
-        exterior_plan=exterior_plan,
-        provisional_overlay=provisional_overlay,
-        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
-    )
+    with perf_span("replay_compose_l4_inner_fill_ms"):
+        layer04_inner_fill = run_layer_04_inner_pattern_fill(
+            complete_map=complete_map,
+            exterior_plan=exterior_plan,
+            provisional_overlay=provisional_overlay,
+            budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
+        )
 
-    layer05_route_plan = run_layer_05_transport_routing(
-        complete_map=complete_map,
-        exterior_plan=exterior_plan,
-        rim_result=layer03,
-        resource_kind=exterior_plan.transport_kind,
-        transport_catalog=try_load_default_space_transport_catalog(),
-        interior_occupied_cells=layer04_inner_fill.interior_occupied_cells,
-        inner_fill=layer04_inner_fill,
-    )
+    with perf_span("replay_compose_l5_transport_ms"):
+        layer05_route_plan = run_layer_05_transport_routing(
+            complete_map=complete_map,
+            exterior_plan=exterior_plan,
+            rim_result=layer03,
+            resource_kind=exterior_plan.transport_kind,
+            transport_catalog=try_load_default_space_transport_catalog(),
+            interior_occupied_cells=layer04_inner_fill.interior_occupied_cells,
+            inner_fill=layer04_inner_fill,
+        )
 
     lab_source = [
         {

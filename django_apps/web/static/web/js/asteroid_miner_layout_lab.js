@@ -714,18 +714,67 @@
     hudEl.classList.remove("hidden");
   }
 
+  const LAB_STATUS_LOG_TAIL_MAX_LINES = 20;
+  const LAB_STATUS_LOG_TAIL_MAX_CHARS = 4096;
+
+  function truncateLabStatusLogTail(raw) {
+    const text = typeof raw === "string" ? raw : "";
+    if (!text) {
+      return "";
+    }
+    let capped = text;
+    if (capped.length > LAB_STATUS_LOG_TAIL_MAX_CHARS) {
+      capped = capped.slice(-LAB_STATUS_LOG_TAIL_MAX_CHARS);
+    }
+    const lines = capped.split(/\r?\n/);
+    if (lines.length > LAB_STATUS_LOG_TAIL_MAX_LINES) {
+      return lines.slice(-LAB_STATUS_LOG_TAIL_MAX_LINES).join("\n");
+    }
+    return capped;
+  }
+
+  function renderReplayRunLogTail(tailText) {
+    const logEl = document.getElementById("lab-replay-run-log");
+    if (!logEl) {
+      return;
+    }
+    const display = truncateLabStatusLogTail(tailText);
+    if (!display) {
+      logEl.textContent = "";
+      logEl.classList.add("hidden");
+      return;
+    }
+    logEl.textContent = display;
+    logEl.classList.remove("hidden");
+  }
+
   function renderReplayRunStatus(feedback) {
     const runEl = document.getElementById("lab-replay-run-status");
     if (!runEl) return;
     const dash = "—";
     if (!feedback || typeof feedback !== "object") {
       runEl.textContent = dash;
+      renderReplayRunLogTail("");
       renderMacroCommitHud(null);
       return;
     }
     if (feedback.running === true) {
-      runEl.textContent = "run: running…";
-    } else if (typeof feedback.error_code === "string" && feedback.error_code) {
+      const pendingFinalize =
+        feedback.pending_finalize === true || feedback.phase_hint === "finalizing";
+      const elapsed =
+        typeof feedback.elapsed_seconds === "number" && feedback.elapsed_seconds >= 0
+          ? " (" + String(Math.floor(feedback.elapsed_seconds)) + "s)"
+          : "";
+      runEl.textContent = pendingFinalize
+        ? "run: finalizing artifacts…" + elapsed
+        : "run: running…" + elapsed;
+      if (typeof feedback.log_tail === "string" && feedback.log_tail) {
+        renderReplayRunLogTail(feedback.log_tail);
+      }
+      return;
+    }
+    renderReplayRunLogTail("");
+    if (typeof feedback.error_code === "string" && feedback.error_code) {
       runEl.textContent = "run: error " + feedback.error_code;
     } else if (feedback.solver_run_id != null) {
       const vp =

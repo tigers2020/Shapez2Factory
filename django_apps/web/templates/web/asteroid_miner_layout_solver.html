@@ -464,6 +464,11 @@
                     >—</p>
                     <p id="lab-replay-truncation-hud" class="mt-2 font-mono text-xs text-amber-300/90">—</p>
                     <p id="lab-replay-run-status" class="mt-1 font-mono text-xs text-cyan-300/90">—</p>
+                    <pre
+                      id="lab-replay-run-log"
+                      class="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap font-mono text-[10px] leading-snug text-slate-400/90 hidden"
+                      aria-live="polite"
+                    ></pre>
                     <p id="lab-macro-commit-hud" class="mt-1 hidden font-mono text-xs text-emerald-300/90">—</p>
                     <p id="lab-gene-catalog-hud" class="mt-1 font-mono text-xs text-slate-500">
                       {% if gene_template_catalog.needs_seed %}

@@ -9,6 +9,11 @@ TEMPLATE = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_
 JS = REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
 
 
+def _js_slice(start_marker: str, end_marker: str) -> str:
+    js = JS.read_text(encoding="utf-8")
+    return js[js.index(start_marker) : js.index(end_marker)]
+
+
 def test_lab_template_has_replay_run_log_panel() -> None:
     html = TEMPLATE.read_text(encoding="utf-8")
     assert 'id="lab-replay-run-log"' in html
@@ -16,11 +21,12 @@ def test_lab_template_has_replay_run_log_panel() -> None:
 
 def test_lab_js_renders_log_tail_with_text_content_only() -> None:
     js = JS.read_text(encoding="utf-8")
+    log_tail_block = _js_slice("function renderReplayRunLogTail", "function renderReplayRunStatus")
     assert "function truncateLabStatusLogTail" in js
     assert "function renderReplayRunLogTail" in js
     assert 'getElementById("lab-replay-run-log")' in js
-    assert ".textContent" in js[js.index("function renderReplayRunLogTail") : js.index("function renderReplayRunStatus")]
-    assert "innerHTML" not in js[js.index("function renderReplayRunLogTail") : js.index("function renderReplayRunStatus")]
+    assert ".textContent" in log_tail_block
+    assert "innerHTML" not in log_tail_block
 
 
 def test_render_replay_run_status_uses_log_tail_when_running() -> None:

@@ -40,6 +40,30 @@ Dump provenance: `manifest.json` (`game_version`: `unknown+1.0.3-rc3`, `dump_sch
 
 Full flat list (54 ids): all strings matching `^Space(Belt|Pipe)_[A-Za-z0-9_]+$` in `research_unlocks.json` → `…Mode.Islands.DefinitionsById.<id>`.
 
+### Space Lift topology (normative — Asteroid Lab / solver)
+
+Island space transport uses **two horizontal layers** on the same `(x, y)` grid:
+
+| Layer | `z` | Plane | Typical contents |
+| ----- | --- | ----- | ---------------- |
+| Field | `0` | Asteroid field | Miners, extensions, interior fill |
+| Void shell | `1` | Exterior void network | `SpaceBelt_*` / `SpacePipe_*` to connectors |
+
+**Space Lift** (`SpaceBelt_Lift*`, `SpacePipe_Lift*`) connects **exactly one input to one output** across `z` (field ↔ void). It is **not** a merge/split hub.
+
+| Rule | Space Lift | Forward / turn belts & pipes |
+| ---- | ---------- | ---------------------------- |
+| Input ports | **1** | 1 (per direction cell) |
+| Output ports | **1** | 1 (per direction cell) |
+| Merger / splitter / Y / triple | **Forbidden** | `*Merger`, `*Splitter`, `*YMerger`, `*YSplitter`, `*TripleMerger`, `*TripleSplitter` allowed |
+| Use when rim ring blocks `z=0` field route | **Required** for inner miners | Rim-adjacent sources |
+
+**Solver contract (PR-16+):** After L3 rim placement fills the outer field ring, L4 inner routeable sources **cannot** rely on `z=0` field-plane paths to exterior connectors. They must egress via **Space Lift to the `z=1` void network**, then route void-only to L2 connector goals. Lift tiles are **1:1** — do not model lift cells as merge/split attachment points.
+
+**Installation target:** Greedy inner routeable placement loops until total routeable groups reach `ceil(max_group_sets × 0.90)` (578-field golden → 144 × 0.9 → **130**), subject to geometry and full-route constraints.
+
+Simulation CLR (see `simulation_systems.json`): `BeltLift1LayerSimulation`, `BeltLift2LayerSimulation`, `Lift1LayerSimulationState`, `Lift2LayerSimulationState`.
+
 ---
 
 ## Groups and collections

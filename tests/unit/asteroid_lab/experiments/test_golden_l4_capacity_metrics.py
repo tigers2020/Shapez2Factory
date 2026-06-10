@@ -38,6 +38,10 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline 
     CANONICAL_SPEED_TIER,
     CANONICAL_THROUGHPUT_TARGET_PERCENT,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    TARGET_ROUTEABLE_FILL_RATIO,
+    target_routeable_group_count_for_field,
+)
 
 _FIXTURE_ROOT = golden_fixture_dir()
 
@@ -67,6 +71,10 @@ def test_pure_capacity_formulas() -> None:
     assert target_inner == 55
     assert 76 + target_inner == 131
     assert 76 / 144 < MIN_INNER_FILL_RATIO
+    assert target_routeable_group_count_for_field(578) == math.ceil(
+        144 * TARGET_ROUTEABLE_FILL_RATIO
+    )
+    assert target_routeable_group_count_for_field(578) == 130
 
 
 @pytest.mark.skipif(not _fixtures_ready(), reason="golden fixture files missing")
@@ -86,13 +94,17 @@ def test_golden_solver_l4_capacity_metrics_expose_target_gap() -> None:
     assert metrics.total_field_count == CANONICAL_GOLDEN_FIELD_COUNT
     assert metrics.max_group_sets == 144
     assert metrics.rim_group_count == RIM_BASELINE_GROUP_COUNT
-    assert metrics.routeable_group_count == RIM_BASELINE_GROUP_COUNT
-    assert metrics.inner_routeable_group_count == 0
+    target_routeable = target_routeable_group_count_for_field(CANONICAL_GOLDEN_FIELD_COUNT)
+    assert metrics.routeable_group_count >= target_routeable
+    assert metrics.inner_routeable_group_count >= (target_routeable - RIM_BASELINE_GROUP_COUNT)
     assert metrics.inner_max_group_sets == 68
     assert metrics.min_inner_group_sets_target == 55
     assert metrics.min_total_routeable_target == 131
     assert metrics.meets_l4_inner_target_b is False
-    assert metrics.routeable_gap_to_target_b == 55
+    assert metrics.routeable_gap_to_target_b == max(
+        0,
+        metrics.min_total_routeable_target - metrics.routeable_group_count,
+    )
     assert metrics.l4_interior_occupied_cell_count > 0
     assert metrics.l4_interior_group_set_equivalent == (
         metrics.l4_interior_occupied_cell_count // FIELD_CELLS_PER_GROUP_SET

@@ -8,6 +8,9 @@ from shapez2_factory.adapters.asteroid_lab.space_transport_catalog_snapshot impo
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    Layer04InnerFillResult,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_route import (
     LAYER04_ROUTE_PLAN_VERSION,
     CommittedRoute,
@@ -54,6 +57,11 @@ from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.source_adapter import (  # noqa: E501
     build_layer04_sources,
+    collect_inner_routeable_equipment,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.space_lift_routing import (  # noqa: E501
+    astar_inner_source_via_space_lift,
+    is_inner_lift_source,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.sprite_projector import (  # noqa: E501
     project_routes_to_tiles,
@@ -105,10 +113,11 @@ def route_layer04_sequential(
     resource_kind: str,
     transport_catalog: SpaceTransportTileCatalog | None = None,
     interior_occupied_cells: frozenset[tuple[int, int]] = frozenset(),
+    inner_fill: Layer04InnerFillResult | None = None,
 ) -> Layer04RoutePlan:
     transport_kind_slug = _transport_kind_for_resource(resource_kind)
     transport_enum = _transport_kind_enum(resource_kind)
-    sources = build_layer04_sources(rim_result)
+    sources = build_layer04_sources(rim_result, inner_fill=inner_fill)
     if not sources:
         return Layer04RoutePlan(
             version=LAYER04_ROUTE_PLAN_VERSION,
@@ -144,7 +153,10 @@ def route_layer04_sequential(
             metrics=Layer04Metrics(source_count=len(sources)),
         )
 
-    miner_cells, extension_cells = _collect_equipment(rim_result)
+    rim_miners, rim_extensions = _collect_equipment(rim_result)
+    inner_miners, inner_extensions = collect_inner_routeable_equipment(inner_fill)
+    miner_cells = rim_miners | inner_miners
+    extension_cells = rim_extensions | inner_extensions
     equipment_cells = miner_cells | extension_cells
     interior_block = frozenset(interior_occupied_cells)
     domain = build_l4_route_search_domain(
@@ -208,15 +220,25 @@ def route_layer04_sequential(
             start=source.m_output_stub,
             goals=goals,
         )
+        if result is None and is_inner_lift_source(source.placement_id):
+            result = astar_inner_source_via_space_lift(
+                source=source,
+                complete_map=complete_map,
+                connector_void_coords=connector_cells,
+                goals=goals,
+            )
         if result is None:
+            detail = _route_not_found_detail(
+                source_id=source.placement_id,
+                interior_occupied_cells=interior_block,
+                equipment_cells=equipment_cells,
+            )
+            if is_inner_lift_source(source.placement_id):
+                detail = f"{detail};space_lift_fallback_failed=true"
             _record_source_failure(
                 source,
                 reason=Layer04FailureReason.ROUTE_NOT_FOUND,
-                detail=_route_not_found_detail(
-                    source_id=source.placement_id,
-                    interior_occupied_cells=interior_block,
-                    equipment_cells=equipment_cells,
-                ),
+                detail=detail,
                 goals=goals,
             )
             continue

@@ -15,6 +15,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
     LAYER_01_RECONSTRUCTION,
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
+    LAYER_04_RIM_BUNDLE_PLACEMENT,
     LAYER_06_COMMIT_VALIDATE,
 )
 
@@ -125,11 +126,12 @@ def test_layer02_highlights_read_shortfall_metrics_from_cli_layer_summaries() ->
     layers = {layer["layer_slug"]: layer for layer in row["layer_summaries"]}
     l2 = layers[LAYER_02_EXTERIOR_TRANSPORT]
     labels = {item["label"]: item["value"] for item in l2["highlights"]}
-    assert labels["Required planned"] == "120"
     assert labels["Planned connectors"] == "120"
     assert labels["Candidate slots"] == "120"
     assert labels["Connector shortfall"] == "746"
-    assert labels["Unmet reason"] == "insufficient_connector_sites"
+    assert labels["Unmet reason"] == "Insufficient connector sites"
+    assert "Required planned" not in labels
+    assert "Terrain upper bound" not in labels
 
 
 def test_layer03_highlights_read_nested_cli_layer_summaries() -> None:
@@ -160,7 +162,9 @@ def test_layer03_highlights_read_nested_cli_layer_summaries() -> None:
     assert labels["Rim anchor slots"] == "81"
     assert labels["Committed placements"] == "0"
     assert labels["Rejected attempts"] == "12"
-    assert labels["Layer skip reason"] == "no_route_goals"
+    assert labels["Layer skip reason"] == "No route goals"
+    assert "Winning variant" not in labels
+    assert "Pass2 score" not in labels
 
 
 def test_lab_run_summary_from_orm_prefers_solver_summary_json() -> None:
@@ -176,6 +180,51 @@ def test_lab_run_summary_from_orm_prefers_solver_summary_json() -> None:
     row = lab_run_summary_from_orm(run)
 
     assert row["validation_passed"] is True
+
+
+def test_layer01_completed_when_only_reconstruction_throughput_present() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=500,
+        status="completed",
+        solver_summary={
+            "run_success": True,
+            "stack_run_status": "success",
+            "completed_layer_slugs": [LAYER_03_RIM_GREEDY_PLACEMENT],
+            "reconstruction_capacity": {
+                "primary_resource_kind": "shape",
+                "by_resource": {
+                    "shape": {"max_throughput_per_min": "13432320.0000"},
+                },
+            },
+        },
+    )
+    layers = {layer["layer_slug"]: layer for layer in row["layer_summaries"]}
+    l1 = layers[LAYER_01_RECONSTRUCTION]
+    assert l1["outcome"] == "completed"
+    labels = {item["label"]: item["value"] for item in l1["highlights"]}
+    assert labels["Max throughput / min"] == "13,432,320"
+
+
+def test_superseded_layer_card_shows_replacement_status() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=501,
+        status="completed",
+        solver_summary={
+            "stack_run_status": "success",
+            "layer_summaries": [
+                {
+                    "layer_slug": LAYER_04_RIM_BUNDLE_PLACEMENT,
+                    "outcome": "superseded",
+                    "metrics": {},
+                }
+            ],
+        },
+    )
+    layers = {layer["layer_slug"]: layer for layer in row["layer_summaries"]}
+    l4 = layers[LAYER_04_RIM_BUNDLE_PLACEMENT]
+    assert l4["outcome"] == "superseded"
+    labels = {item["label"]: item["value"] for item in l4["highlights"]}
+    assert labels["Status"] == "Replaced by rim greedy placement (L3)"
 
 
 def test_layer01_completed_from_cli_reconstruction_capacity_envelope() -> None:

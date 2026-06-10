@@ -25,6 +25,23 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
 
 _PLACEHOLDER = "—"
 _LAYER_SUMMARY_COMPLETED_OUTCOMES = frozenset({"completed", "superseded"})
+_LAB_ENUM_LABELS: dict[str, str] = {
+    "no_route_goals": "No route goals",
+    "no_feasible_connector_sites": "No feasible connector sites",
+    "insufficient_connector_sites": "Insufficient connector sites",
+    "capacity_overflow": "Capacity overflow",
+    "none": "—",
+}
+_ENUM_VALUE_LABELS = frozenset(
+    {
+        "Unmet reason",
+        "Layer skip reason",
+        "Failure reasons",
+        "Budget status",
+        "Transport kind",
+        "Top reject reasons",
+    }
+)
 
 
 def _field_cell_counts_from_capacity(capacity: dict[str, Any] | None) -> tuple[Any, Any]:
@@ -67,6 +84,17 @@ def _resolved_completed_layer_slugs(solver_summary: dict[str, Any]) -> frozenset
     )
     if shape_cells not in (None, 0, "") or fluid_cells not in (None, 0, ""):
         slugs.add(LAYER_01_RECONSTRUCTION)
+    capacity = solver_summary.get("reconstruction_capacity")
+    if isinstance(capacity, dict):
+        by_resource = capacity.get("by_resource")
+        if isinstance(by_resource, dict):
+            for resource_row in by_resource.values():
+                if not isinstance(resource_row, dict):
+                    continue
+                max_tp = resource_row.get("max_throughput_per_min")
+                if max_tp not in (None, "", _PLACEHOLDER, 0):
+                    slugs.add(LAYER_01_RECONSTRUCTION)
+                    break
     return frozenset(slugs)
 
 
@@ -123,6 +151,30 @@ def solver_summary_for_lab_display(solver_summary: dict[str, Any]) -> dict[str, 
         merged.setdefault("rim_greedy_winning_variant_id", l3.get("winning_variant_id"))
         merged.setdefault("rim_greedy_pass2_score", l3.get("pass2_score"))
         merged.setdefault("layer03_skip_reason", l3.get("layer_skip_reason"))
+        merged.setdefault(
+            "route_feasible_rim_anchor_count",
+            l3.get("route_feasible_rim_anchor_count"),
+        )
+        merged.setdefault("rim_anchor_fill_ratio", l3.get("rim_anchor_fill_ratio"))
+        merged.setdefault(
+            "rim_greedy_reserved_route_cells",
+            l3.get("reserved_route_cell_count"),
+        )
+        merged.setdefault("layer03_reject_reason_counts", l3.get("reject_reason_counts"))
+
+    l4_inner = by_slug.get(LAYER_04_INNER_PATTERN_FILL, {})
+    if l4_inner:
+        merged.setdefault(
+            "interior_occupied_cell_count",
+            l4_inner.get("interior_occupied_cell_count"),
+        )
+        merged.setdefault("interior_candidate_count", l4_inner.get("interior_candidate_count"))
+        merged.setdefault("coverage_ratio", l4_inner.get("coverage_ratio"))
+        merged.setdefault(
+            "layer04_skip_reason",
+            l4_inner.get("layer_skip_reason") or l4_inner.get("skip_reason"),
+        )
+        merged.setdefault("layer04_budget_interrupted", l4_inner.get("budget_interrupted"))
 
     if LAYER_05_TRANSPORT_ROUTING in by_slug:
         l5_transport = by_slug[LAYER_05_TRANSPORT_ROUTING]
@@ -505,6 +557,49 @@ def _rim_greedy_summary_active(solver_summary: dict[str, Any]) -> bool:
     return False
 
 
+def _is_absent_highlight_value(value: Any) -> bool:
+    if value in (None, "", _PLACEHOLDER):
+        return True
+    text = str(value).strip().lower()
+    if text in {"", "none", "false", "no"}:
+        return True
+    return False
+
+
+def _append_meaningful_highlight(
+    rows: list[dict[str, str]],
+    label: str,
+    value: Any,
+    *,
+    allow_zero: bool = False,
+) -> None:
+    if not allow_zero and _is_absent_highlight_value(value):
+        return
+    if not allow_zero:
+        try:
+            if Decimal(str(value)) == 0:
+                return
+        except (InvalidOperation, ValueError, TypeError):
+            pass
+    rows.append(_highlight(label, value))
+
+
+def _visible_highlights(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [row for row in rows if row.get("value") not in (None, "", _PLACEHOLDER)]
+
+
+def _format_coverage_ratio(value: Any) -> str:
+    if _is_absent_highlight_value(value):
+        return _PLACEHOLDER
+    try:
+        ratio = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if ratio <= 1.0:
+        return f"{ratio * 100:.1f}%"
+    return f"{ratio:.1f}%"
+
+
 def _layer04_failure_reasons_label(solver_summary: dict[str, Any]) -> str:
     raw = _obs_field_count(solver_summary, "layer04_failure_reasons", "failure_reasons")
     if isinstance(raw, list):
@@ -565,50 +660,62 @@ def _layer04_transport_highlights(solver_summary: dict[str, Any]) -> list[dict[s
 
 
 def _layer03_greedy_highlights(solver_summary: dict[str, Any]) -> list[dict[str, str]]:
-    return [
-        _highlight("Rim anchor slots", _obs_field_count(solver_summary, "rim_anchor_count")),
-        _highlight(
-            "Route-feasible rim slots",
-            _obs_field_count(solver_summary, "route_feasible_rim_anchor_count"),
+    rows: list[dict[str, str]] = []
+    _append_meaningful_highlight(
+        rows,
+        "Rim anchor slots",
+        _obs_field_count(solver_summary, "rim_anchor_count"),
+        allow_zero=True,
+    )
+    _append_meaningful_highlight(
+        rows,
+        "Route-feasible rim slots",
+        _obs_field_count(solver_summary, "route_feasible_rim_anchor_count"),
+    )
+    committed = _obs_field_count(
+        solver_summary,
+        "rim_greedy_committed_count",
+        "normal_candidate_count",
+    )
+    _append_meaningful_highlight(rows, "Committed placements", committed, allow_zero=True)
+    fill_ratio = _obs_field_count(solver_summary, "rim_anchor_fill_ratio")
+    if fill_ratio not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Rim fill ratio", _format_coverage_ratio(fill_ratio)))
+    skip_reason = _layer03_skip_reason_label(solver_summary)
+    if skip_reason not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Layer skip reason", skip_reason))
+    _append_meaningful_highlight(
+        rows,
+        "Rejected attempts",
+        _obs_field_count(
+            solver_summary,
+            "rim_greedy_rejected_count",
+            "route_probe_failed_count",
         ),
-        _highlight(
-            "Committed placements",
-            _obs_field_count(
-                solver_summary,
-                "rim_greedy_committed_count",
-                "normal_candidate_count",
-            ),
+    )
+    reject_summary = _format_layer03_reject_reason_counts(solver_summary)
+    if reject_summary not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Top reject reasons", reject_summary))
+    _append_meaningful_highlight(
+        rows,
+        "Winning variant",
+        _obs_field_count(solver_summary, "rim_greedy_winning_variant_id"),
+    )
+    _append_meaningful_highlight(
+        rows,
+        "Pass2 score",
+        _obs_field_count(solver_summary, "rim_greedy_pass2_score"),
+    )
+    _append_meaningful_highlight(
+        rows,
+        "Reserved route cells",
+        _obs_field_count(
+            solver_summary,
+            "rim_greedy_reserved_route_cells",
+            "field_route_cell_count_total",
         ),
-        _highlight(
-            "Rejected attempts",
-            _obs_field_count(
-                solver_summary,
-                "rim_greedy_rejected_count",
-                "route_probe_failed_count",
-            ),
-        ),
-        _highlight(
-            "Winning variant",
-            _obs_field_count(solver_summary, "rim_greedy_winning_variant_id"),
-        ),
-        _highlight(
-            "Pass2 score",
-            _obs_field_count(solver_summary, "rim_greedy_pass2_score"),
-        ),
-        _highlight(
-            "Reserved route cells",
-            _obs_field_count(solver_summary, "field_route_cell_count_total"),
-        ),
-        _highlight(
-            "Total route length",
-            _obs_field_count(solver_summary, "rim_greedy_total_route_length"),
-        ),
-        _highlight(
-            "Top reject reasons",
-            _format_layer03_reject_reason_counts(solver_summary),
-        ),
-        _highlight("Layer skip reason", _layer03_skip_reason_label(solver_summary)),
-    ]
+    )
+    return _visible_highlights(rows)
 
 
 def _layer03_legacy_highlights(
@@ -620,50 +727,76 @@ def _layer03_legacy_highlights(
     route_probe_succeeded: Any,
     capacity_deficit_count: Any,
 ) -> list[dict[str, str]]:
-    return [
-        _highlight("Target placements", target_placement),
-        _highlight("Rim anchor slots", rim_anchor_slots),
-        _highlight(
-            "Direction seed attempts",
-            _obs_field_count(solver_summary, "direction_seed_attempt_count"),
+    rows: list[dict[str, str]] = []
+    _append_meaningful_highlight(rows, "Target placements", target_placement, allow_zero=True)
+    _append_meaningful_highlight(rows, "Rim anchor slots", rim_anchor_slots, allow_zero=True)
+    probe_ratio = _ratio_display(left=route_probe_succeeded, right=route_probed_pool)
+    if probe_ratio not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Probe succeeded / pool", probe_ratio))
+    skip_reason = _layer03_skip_reason_label(solver_summary)
+    if skip_reason not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Layer skip reason", skip_reason))
+    _append_meaningful_highlight(rows, "Route probe succeeded", route_probe_succeeded)
+    _append_meaningful_highlight(
+        rows,
+        "Geometry rejected",
+        _obs_field_count(solver_summary, "local_geometry_rejected_count"),
+    )
+    reject_summary = _format_layer03_reject_reason_counts(solver_summary)
+    if reject_summary not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Top reject reasons", reject_summary))
+    _append_meaningful_highlight(rows, "Capacity deficit", capacity_deficit_count)
+    return _visible_highlights(rows)
+
+
+def _layer04_inner_fill_highlights(solver_summary: dict[str, Any]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    _append_meaningful_highlight(
+        rows,
+        "Interior occupied cells",
+        _obs_field_count(solver_summary, "interior_occupied_cell_count"),
+        allow_zero=True,
+    )
+    coverage = _obs_field_count(solver_summary, "coverage_ratio")
+    if coverage not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Coverage ratio", _format_coverage_ratio(coverage)))
+    _append_meaningful_highlight(
+        rows,
+        "Interior candidates",
+        _obs_field_count(solver_summary, "interior_candidate_count"),
+    )
+    skip_reason = solver_summary.get("layer04_skip_reason")
+    if skip_reason not in (None, "", _PLACEHOLDER, "none"):
+        rows.append(_highlight("Layer skip reason", skip_reason))
+    if solver_summary.get("layer04_budget_interrupted") is True:
+        rows.append(_highlight("Budget status", "Interrupted"))
+    return _visible_highlights(rows)
+
+
+def _layer04_rim_bundle_highlights(
+    solver_summary: dict[str, Any],
+    *,
+    provisional_placed: Any,
+    route_probe_succeeded: Any,
+) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    _append_meaningful_highlight(rows, "Provisional placed", provisional_placed, allow_zero=True)
+    placed_ratio = _ratio_display(left=provisional_placed, right=route_probe_succeeded)
+    if placed_ratio not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Placed / probe succeeded", placed_ratio))
+    _append_meaningful_highlight(
+        rows,
+        "Overlap rejected",
+        _obs_field_count(
+            solver_summary,
+            "layer04_rejected_overlap_count",
+            "rejected_overlap_count",
         ),
-        _highlight(
-            "Exterior dir candidates",
-            _obs_field_count(solver_summary, "exterior_direction_candidate_count"),
-        ),
-        _highlight("Route-probed pool", route_probed_pool),
-        _highlight(
-            "Route probe attempts",
-            _obs_field_count(solver_summary, "route_probe_attempt_count"),
-        ),
-        _highlight(
-            "Field route cells",
-            _obs_field_count(solver_summary, "field_route_cell_count_total"),
-        ),
-        _highlight(
-            "Weighted route cost",
-            _obs_field_count(solver_summary, "weighted_route_cost_total"),
-        ),
-        _highlight("Route probe succeeded", route_probe_succeeded),
-        _highlight(
-            "Probe succeeded / Pool",
-            _ratio_display(left=route_probe_succeeded, right=route_probed_pool),
-        ),
-        _highlight(
-            "Seed projection attempts",
-            _obs_field_count(solver_summary, "seed_projection_attempt_count"),
-        ),
-        _highlight(
-            "Geometry rejected",
-            _obs_field_count(solver_summary, "local_geometry_rejected_count"),
-        ),
-        _highlight(
-            "Top reject reasons",
-            _format_layer03_reject_reason_counts(solver_summary),
-        ),
-        _highlight("Layer skip reason", _layer03_skip_reason_label(solver_summary)),
-        _highlight("Capacity deficit", capacity_deficit_count),
-    ]
+    )
+    complete = _layer04_placement_complete_label(solver_summary)
+    if complete not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Placement complete", complete))
+    return _visible_highlights(rows)
 
 
 def _format_layer03_reject_reason_counts(solver_summary: dict[str, Any]) -> str:
@@ -674,7 +807,7 @@ def _format_layer03_reject_reason_counts(solver_summary: dict[str, Any]) -> str:
     for item in raw[:3]:
         if isinstance(item, (list, tuple)) and len(item) == 2:
             reason, count = item
-            parts.append(f"{reason}: {count}")
+            parts.append(f"{_format_snake_case_label(str(reason))}: {count}")
     return "; ".join(parts) if parts else _PLACEHOLDER
 
 
@@ -691,12 +824,121 @@ def _layer04_placement_complete_label(solver_summary: dict[str, Any]) -> str:
         return _PLACEHOLDER
 
 
-def _highlight(label: str, value: Any) -> dict[str, str]:
+def _format_compact_number(value: Any) -> str:
+    if value in (None, "", _PLACEHOLDER):
+        return _PLACEHOLDER
+    try:
+        number = Decimal(str(value))
+    except (InvalidOperation, ValueError, TypeError):
+        return str(value)
+    if number == number.to_integral_value():
+        return format(int(number), ",")
+    normalized = number.normalize()
+    text = format(normalized, "f").rstrip("0").rstrip(".")
+    return text or "0"
+
+
+def _format_snake_case_label(value: str) -> str:
+    key = value.strip().lower()
+    if not key or key == "none":
+        return _PLACEHOLDER
+    mapped = _LAB_ENUM_LABELS.get(key)
+    if mapped is not None:
+        return mapped
+    return value.replace("_", " ")
+
+
+def _format_highlight_value(label: str, value: Any) -> str:
     if value is None or value == "":
-        text = _PLACEHOLDER
-    else:
-        text = str(value)
-    return {"label": label, "value": text}
+        return _PLACEHOLDER
+    if label in _ENUM_VALUE_LABELS:
+        if isinstance(value, list):
+            parts = [
+                _format_snake_case_label(str(item))
+                for item in value
+                if item not in (None, "")
+            ]
+            return "; ".join(parts) if parts else _PLACEHOLDER
+        return _format_snake_case_label(str(value))
+    if label.endswith("throughput") or "throughput" in label.lower():
+        compact = _format_compact_number(value)
+        if compact != _PLACEHOLDER:
+            return compact
+    if isinstance(value, (int, float, Decimal)):
+        return _format_compact_number(value)
+    text = str(value)
+    if text.replace(".", "", 1).replace("-", "", 1).isdigit():
+        return _format_compact_number(text)
+    return text
+
+
+def _highlight(label: str, value: Any) -> dict[str, str]:
+    return {"label": label, "value": _format_highlight_value(label, value)}
+
+
+def _superseded_status_label(layer_slug: str) -> str:
+    if layer_slug == LAYER_04_RIM_BUNDLE_PLACEMENT:
+        return "Replaced by rim greedy placement (L3)"
+    if layer_slug in {LAYER_04_TRANSPORT_ROUTING, LAYER_05_INNER_PATTERN_FILL}:
+        return "Replaced by current stack numbering"
+    return "Superseded by active stack path"
+
+
+def _cli_layer_outcome(solver_summary: dict[str, Any], layer_slug: str) -> str | None:
+    for item in solver_summary.get("layer_summaries") or []:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("layer_slug") or "") != layer_slug:
+            continue
+        outcome = str(item.get("outcome") or "")
+        if outcome in {"superseded", "skipped_budget", "failed", "completed"}:
+            return outcome
+    return None
+
+
+def _layer02_transport_highlights(
+    *,
+    pct: Any,
+    target_tp: Any,
+    l2_required: Any,
+    l2_planned: Any,
+    l2_plan: dict[str, Any] | None,
+    capacity: dict[str, Any],
+    primary: str,
+) -> list[dict[str, str]]:
+    shortfall = (
+        l2_plan.get("connector_shortfall_count", _PLACEHOLDER)
+        if isinstance(l2_plan, dict)
+        else _PLACEHOLDER
+    )
+    unmet = (
+        l2_plan.get("unmet_reason", _PLACEHOLDER) if isinstance(l2_plan, dict) else _PLACEHOLDER
+    )
+    candidate_slots = (
+        l2_plan.get("candidate_slot_count", _PLACEHOLDER)
+        if isinstance(l2_plan, dict)
+        else _PLACEHOLDER
+    )
+    rows: list[dict[str, str]] = [
+        _highlight("Target percent", pct if pct == _PLACEHOLDER else f"{pct}%"),
+        _highlight("Planning target", target_tp),
+        _highlight("Required connectors", l2_required),
+        _highlight("Planned connectors", l2_planned),
+    ]
+    if shortfall not in (None, "", _PLACEHOLDER, "0"):
+        rows.append(_highlight("Connector shortfall", shortfall))
+    if unmet not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Unmet reason", unmet))
+    if candidate_slots not in (None, "", _PLACEHOLDER, "0"):
+        rows.append(_highlight("Candidate slots", candidate_slots))
+    platform = capacity.get("platform_upper_bound")
+    if platform not in (None, "", _PLACEHOLDER):
+        rows.append(_highlight("Platform upper bound", platform))
+    if primary == "shape":
+        external_lines = capacity.get("external_line_count")
+        if external_lines not in (None, "", _PLACEHOLDER):
+            rows.append(_highlight("Required normal lines", external_lines))
+    return rows
 
 
 def _layer_outcome(
@@ -719,6 +961,8 @@ def _layer_outcome(
     if stack_run_status == "timeout_fail_closed":
         return "skipped_budget"
     if stack_run_status is not None:
+        if legacy_outcome in {"completed", "failed", "superseded"}:
+            return legacy_outcome
         return "pending"
     return legacy_outcome
 
@@ -754,6 +998,9 @@ def _build_layer_summaries(
     )
 
     def outcome(slug: str, legacy: str) -> str:
+        cli_outcome = _cli_layer_outcome(solver_summary, slug)
+        if cli_outcome == "superseded":
+            return "superseded"
         return _layer_outcome(
             layer_slug=slug,
             stack_run_status=stack_run_status,
@@ -791,10 +1038,7 @@ def _build_layer_summaries(
             [
                 _highlight("Primary resource", reconstruction.get("primary_resource_kind")),
                 _highlight(field_cells_label, reconstruction.get("field_cell_count")),
-                _highlight(
-                    "Max throughput",
-                    headline,
-                ),
+                _highlight("Max throughput / min", headline),
             ],
         ),
         (
@@ -802,78 +1046,15 @@ def _build_layer_summaries(
             LAYER_02_EXTERIOR_TRANSPORT,
             "Exterior transport",
             outcome(LAYER_02_EXTERIOR_TRANSPORT, "pending"),
-            [
-                _highlight("Terrain upper bound", headline),
-                _highlight("Target percent", pct if pct == _PLACEHOLDER else f"{pct}%"),
-                _highlight("Planning target", target_tp),
-                _highlight("Required connectors", l2_required),
-                _highlight(
-                    "Required planned",
-                    (
-                        l2_plan.get("required_planned_count", _PLACEHOLDER)
-                        if isinstance(l2_plan, dict)
-                        else _PLACEHOLDER
-                    ),
-                ),
-                _highlight("Planned connectors", l2_planned),
-                _highlight(
-                    "Reference connectors",
-                    (
-                        l2_plan.get("reference_connector_count", _PLACEHOLDER)
-                        if isinstance(l2_plan, dict)
-                        else _PLACEHOLDER
-                    ),
-                ),
-                _highlight(
-                    "Spare connectors",
-                    (
-                        l2_plan.get("spare_connector_count", _PLACEHOLDER)
-                        if isinstance(l2_plan, dict)
-                        else _PLACEHOLDER
-                    ),
-                ),
-                _highlight(
-                    "Spare planned",
-                    (
-                        l2_plan.get("spare_planned_count", _PLACEHOLDER)
-                        if isinstance(l2_plan, dict)
-                        else _PLACEHOLDER
-                    ),
-                ),
-                _highlight(
-                    "Candidate slots",
-                    (
-                        l2_plan.get("candidate_slot_count", _PLACEHOLDER)
-                        if isinstance(l2_plan, dict)
-                        else _PLACEHOLDER
-                    ),
-                ),
-                _highlight(
-                    "Connector shortfall",
-                    (
-                        l2_plan.get("connector_shortfall_count", _PLACEHOLDER)
-                        if isinstance(l2_plan, dict)
-                        else _PLACEHOLDER
-                    ),
-                ),
-                _highlight(
-                    "Unmet reason",
-                    (
-                        l2_plan.get("unmet_reason", _PLACEHOLDER)
-                        if isinstance(l2_plan, dict)
-                        else _PLACEHOLDER
-                    ),
-                ),
-                _highlight(
-                    "Required normal lines",
-                    capacity.get("external_line_count") if primary == "shape" else _PLACEHOLDER,
-                ),
-                _highlight(
-                    "Reference belts @100% terrain",
-                    capacity.get("external_connector_count"),
-                ),
-                _highlight("Platform upper bound", capacity.get("platform_upper_bound")),
-            ],
+            _layer02_transport_highlights(
+                pct=pct,
+                target_tp=target_tp,
+                l2_required=l2_required,
+                l2_planned=l2_planned,
+                l2_plan=l2_plan if isinstance(l2_plan, dict) else None,
+                capacity=capacity,
+                primary=primary,
+            ),
         ),
         (
             3,
@@ -926,44 +1107,13 @@ def _build_layer_summaries(
                 else outcome(LAYER_04_RIM_BUNDLE_PLACEMENT, "pending")
             ),
             (
-                [
-                    _highlight("Macro-only mode", solver_summary.get("macro_only_mode")),
-                    _highlight(
-                        "Interior occupied cells",
-                        _obs_field_count(
-                            solver_summary,
-                            "interior_occupied_cell_count",
-                        ),
-                    ),
-                ]
+                _layer04_inner_fill_highlights(solver_summary)
                 if _rim_greedy_summary_active(solver_summary)
-                else [
-                    _highlight("Provisional placed", provisional_placed),
-                    _highlight(
-                        "Placed / Probe succeeded",
-                        _ratio_display(left=provisional_placed, right=route_probe_succeeded),
-                    ),
-                    _highlight(
-                        "Overlap rejected",
-                        _obs_field_count(
-                            solver_summary,
-                            "layer04_rejected_overlap_count",
-                            "rejected_overlap_count",
-                        ),
-                    ),
-                    _highlight(
-                        "Overlay occupied cells",
-                        _obs_field_count(
-                            solver_summary,
-                            "layer04_overlay_occupied_cell_count",
-                            "overlay_occupied_cell_count",
-                        ),
-                    ),
-                    _highlight(
-                        "Provisional placement complete",
-                        _layer04_placement_complete_label(solver_summary),
-                    ),
-                ]
+                else _layer04_rim_bundle_highlights(
+                    solver_summary,
+                    provisional_placed=provisional_placed,
+                    route_probe_succeeded=route_probe_succeeded,
+                )
             ),
         ),
         (
@@ -1039,16 +1189,23 @@ def _build_layer_summaries(
             ],
         ),
     ]
-    return [
-        {
-            "layer_index": index,
-            "layer_slug": slug,
-            "title": title,
-            "outcome": layer_outcome,
-            "highlights": highlights,
-        }
-        for index, slug, title, layer_outcome, highlights in layers
-    ]
+    cards: list[dict[str, Any]] = []
+    for index, slug, title, layer_outcome, highlights in layers:
+        card_highlights = list(highlights)
+        if layer_outcome == "superseded" and not any(
+            row.get("value") not in (None, "", _PLACEHOLDER) for row in card_highlights
+        ):
+            card_highlights = [_highlight("Status", _superseded_status_label(slug))]
+        cards.append(
+            {
+                "layer_index": index,
+                "layer_slug": slug,
+                "title": title,
+                "outcome": layer_outcome,
+                "highlights": card_highlights,
+            }
+        )
+    return cards
 
 
 def lab_run_summary_from_solver_summary(

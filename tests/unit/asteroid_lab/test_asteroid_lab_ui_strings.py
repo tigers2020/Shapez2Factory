@@ -56,6 +56,9 @@ def test_lab_selected_run_detail_uses_layer_summaries_partial() -> None:
     partial = LAYER_SUMMARIES_PARTIAL.read_text(encoding="utf-8")
     assert "lab_layer_summaries.html" in template
     assert 'id="lab-layer-summaries"' in partial
+    assert "Layer summaries appear after a solver run." in partial
+    assert "No runs yet" in template
+    assert "Paste a blueprint and run the solver." in template
     assert "lab_stat_cards.html" not in template
     assert "lab_run_detail_panels.html" not in template
     assert 'id="lab-card-theoretical-max"' not in template
@@ -66,6 +69,8 @@ def test_lab_js_renders_layer_summaries_from_run_payload() -> None:
         REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
     ).read_text(encoding="utf-8")
     assert "renderLabLayerSummaries" in js
+    assert "formatLabLayerHighlightValue" in js
+    assert "superseded" in js
     assert "run.layer_summaries" in js
     assert "updateLabStatCards" not in js
     assert "updateLabDetailPanels" not in js

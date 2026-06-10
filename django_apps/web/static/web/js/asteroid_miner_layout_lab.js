@@ -607,8 +607,7 @@
 
   function passCapableReferenceStatusText(run) {
     if (!shouldShowPassCapableBadge(run)) return null;
-    const msgid =
-      "T3 reference slug (pass-capable registry; throughput shortfall is a regression signal).";
+    const msgid = "Pass-capable reference slug (throughput shortfall = regression).";
     return typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
   }
 
@@ -626,8 +625,7 @@
 
   function diagnosticT2ShortfallStatusText(run) {
     if (!run || run.diagnostic_expected_shortfall !== true) return null;
-    const msgid =
-      "Expected diagnostic T2 shortfall (route-feasible vs reconstruction max); not a regression gate.";
+    const msgid = "Expected T2 diagnostic shortfall (not a regression gate).";
     return typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
   }
 
@@ -3478,6 +3476,9 @@
       if (outcome === "skipped_budget") {
         return "text-amber-400 border-amber-800/80";
       }
+      if (outcome === "superseded") {
+        return "text-slate-400 border-slate-600/80";
+      }
       return "text-slate-500 border-slate-700";
     }
 
@@ -3491,10 +3492,22 @@
         completed: "completed",
         failed: "failed",
         skipped_budget: "skipped (budget)",
+        superseded: "superseded",
         pending: "pending",
       };
       const msgid = msgidByOutcome[key] || key.replace(/_/g, " ");
       return typeof shapezUiT === "function" ? shapezUiT(msgid) : msgid;
+    }
+
+    function formatLabLayerHighlightValue(label, value, run) {
+      const dash = labUiDash();
+      if (value == null || value === "" || value === dash) {
+        return dash;
+      }
+      if (label === "First issue") {
+        return formatLabIssueCodeLabel(value, run);
+      }
+      return String(value);
     }
 
     function renderLabLayerSummaries(run) {
@@ -3507,7 +3520,10 @@
             ? String(run.stack_run_status)
             : "";
         if (stackStatus) {
-          stackEl.textContent = "stack: " + stackStatus;
+          stackEl.textContent =
+            typeof shapezUiT === "function"
+              ? shapezUiT("Stack status") + ": " + stackStatus
+              : "Stack status: " + stackStatus;
           stackEl.classList.remove("hidden");
         } else {
           stackEl.textContent = "";
@@ -3520,7 +3536,10 @@
         const empty = document.createElement("p");
         empty.id = "lab-layer-summaries-placeholder";
         empty.className = "text-sm text-slate-500";
-        empty.textContent = dash;
+        empty.textContent =
+          typeof shapezUiT === "function"
+            ? shapezUiT("Layer summaries appear after a solver run.")
+            : "Layer summaries appear after a solver run.";
         root.appendChild(empty);
         return;
       }
@@ -3567,10 +3586,11 @@
         dl.className = "mt-2 space-y-1 text-sm";
         highlights.forEach(function (row) {
           if (!row || typeof row !== "object") return;
-          let val = row.value != null ? String(row.value) : dash;
-          if (row.label === "First issue" && val !== dash) {
-            val = formatLabIssueCodeLabel(val, run);
-          }
+          let val = formatLabLayerHighlightValue(
+            row.label != null ? String(row.label) : "",
+            row.value,
+            run,
+          );
           if (val === dash) return;
           const line = document.createElement("div");
           line.className = "flex justify-between gap-3 text-slate-400";
@@ -3602,9 +3622,17 @@
       const dash = labUiDash();
       if (!run) {
         const title = document.getElementById("lab-detail-run-id");
-        if (title) title.textContent = "No solver runs yet";
+        if (title) {
+          title.textContent =
+            typeof shapezUiT === "function" ? shapezUiT("No runs yet") : "No runs yet";
+        }
         const statusEl = document.getElementById("lab-detail-status");
-        if (statusEl) statusEl.textContent = "Paste a blueprint, then run solver";
+        if (statusEl) {
+          statusEl.textContent =
+            typeof shapezUiT === "function"
+              ? shapezUiT("Paste a blueprint and run the solver.")
+              : "Paste a blueprint and run the solver.";
+        }
         updateOpsSlugBadge(null);
         renderLabLayerSummaries(null);
         return;
@@ -3648,7 +3676,8 @@
       if (!runs.length) {
         const empty = document.createElement("p");
         empty.className = "text-sm text-slate-500";
-        empty.textContent = "No solver runs yet";
+        empty.textContent =
+          typeof shapezUiT === "function" ? shapezUiT("No runs yet") : "No runs yet";
         list.appendChild(empty);
         return;
       }

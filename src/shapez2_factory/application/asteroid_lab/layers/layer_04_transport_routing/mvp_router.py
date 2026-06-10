@@ -57,7 +57,7 @@ def _sort_sources(
         sorted(
             sources,
             key=lambda s: (
-                _nearest_goal_estimate(s, goals),
+                -_nearest_goal_estimate(s, goals),
                 -s.source_load_m,
                 s.m_output_stub[0],
                 s.m_output_stub[1],

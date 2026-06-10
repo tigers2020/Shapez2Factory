@@ -93,6 +93,7 @@ env/
 
 # --- Local Hermes bridge / agent exchange (machine-specific) ---
 .agent-exchange/
+.hermes/
 scripts/hermes_skill_request.ps1
 docs/agent-workflows/hermes-bridge.md
 lab-layout-*.png
@@ -136,4 +137,9 @@ persona/
 shapez_2_data/
 
 .understand-anything/
+
+# --- graphify (local knowledge graph; regenerate: graphify update <path>) ---
+graphify-out/
+/raw/
+
 data/

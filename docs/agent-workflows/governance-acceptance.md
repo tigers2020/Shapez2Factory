@@ -8,8 +8,9 @@ powershell -File scripts/check_governance.ps1
 
 ## Checklist
 
-- [ ] `AGENTS.md` <= 75 lines
-- [ ] every `.cursor/rules/**/*.mdc` <= 75 lines
+- [ ] root `AGENTS.md` target ~75 lines, max 120 before split
+- [ ] nested `AGENTS.md` max 150 (module-local rules); split past 150
+- [ ] every `.cursor/rules/**/*.mdc` <= 75 lines (thin routers)
 - [ ] `agent_scope.mdc` has Hermes handoff exception
 - [ ] Shapez2 pipeline defined in `docs/agent-workflows/hermes-skill-suggestion.md`
 - [ ] grill/Hermes conflict → surface to user (same doc)

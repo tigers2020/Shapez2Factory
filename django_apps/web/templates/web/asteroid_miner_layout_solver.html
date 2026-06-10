@@ -523,7 +523,7 @@
           <div class="space-y-3 border-t border-slate-800 px-4 pb-4 pt-3">
             <div class="flex flex-wrap items-center gap-2">
               <div id="lab-detail-run-id" class="text-sm font-medium text-slate-100">
-                {% if initial_lab_run %}Run #{{ initial_lab_run.id }}{% else %}No solver runs yet{% endif %}
+                {% if initial_lab_run %}Run #{{ initial_lab_run.id }}{% else %}{% trans "No runs yet" %}{% endif %}
               </div>
               <span
                 id="lab-detail-ops-slug-badge"
@@ -533,7 +533,7 @@
               <span
                 id="lab-detail-status"
                 class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300"
-              >{% if initial_lab_run %}{{ initial_lab_run.status }}{% else %}Paste a blueprint, then run solver{% endif %}</span>
+              >{% if initial_lab_run %}{{ initial_lab_run.status }}{% else %}{% trans "Paste a blueprint and run the solver." %}{% endif %}</span>
             </div>
             <p id="lab-detail-stack-status" class="hidden font-mono text-xs text-cyan-300/90"></p>
             {% include "web/partials/lab_layer_summaries.html" %}
@@ -545,5 +545,5 @@
 
   <script src="{% static 'web/js/lab_replay_canvas_terrain.js' %}?v=island_raw_v2" defer></script>
   <script src="{% static 'web/js/lab_replay_canvas_renderer.js' %}" defer></script>
-  <script src="{% static 'web/js/asteroid_miner_layout_lab.js' %}?v=island_raw_v3" defer></script>
+  <script src="{% static 'web/js/asteroid_miner_layout_lab.js' %}?v=island_raw_v4" defer></script>
 {% endblock %}

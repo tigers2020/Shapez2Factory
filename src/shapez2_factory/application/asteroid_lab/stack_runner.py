@@ -211,6 +211,7 @@ def run_layers_02_to_06(
                 budget_ctx=budget_ctx,
                 transport_catalog=transport_catalog,
                 interior_occupied_cells=interior,
+                inner_fill=last_inner_fill,
             )
             if isinstance(last_layer05_plan, Layer05RoutePlan):
                 post_metrics = build_layer05_transport_post_summary_metrics(last_layer05_plan)

@@ -26,6 +26,9 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_
     GoldenSolverConfig,
     run_golden_solver,
 )
+from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline import (
+    assert_master_valid_eval_result,
+)
 from shapez2_factory.application.asteroid_lab.experiments.transport_kind_normalization import (
     format_transport_kind_mismatch_diagnostic,
     normalize_transport_family,
@@ -333,10 +336,4 @@ def test_golden_stack_smoke_valid_after_transport_kind_normalization() -> None:
         config=GoldenSolverConfig(budget_ms=60_000),
     )
     result = evaluate_against_golden(artifacts, oracle)
-    assert result.miner_count == 76
-    assert result.routed_throughput >= 30960.0
-    assert result.route_island_count == 0
-    assert result.orphan_count == 0
-    assert not any(d.startswith("transport_kind_mismatch") for d in result.diagnostics)
-    assert result.valid
-    assert result.score > 0.0
+    assert_master_valid_eval_result(result)

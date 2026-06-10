@@ -41,7 +41,9 @@ def test_greedy_layer03_shows_completed_with_greedy_highlights() -> None:
     assert l3["title"] == "Rim greedy placement"
     labels = {h["label"]: h["value"] for h in l3["highlights"]}
     assert labels["Committed placements"] == "12"
-    assert labels["Top reject reasons"] == "EQUIPMENT_COLLISION: 25; DPS_UNREACHABLE: 15"
+    assert labels["Top reject reasons"] == "EQUIPMENT COLLISION: 25; DPS UNREACHABLE: 15"
+    assert "Layer skip reason" not in labels
+    assert "Total route length" not in labels
 
     l4 = layers[LAYER_04_INNER_PATTERN_FILL]
     assert l4["outcome"] == "pending"
@@ -49,6 +51,43 @@ def test_greedy_layer03_shows_completed_with_greedy_highlights() -> None:
     l5 = layers[LAYER_05_TRANSPORT_ROUTING]
     assert l5["outcome"] == "pending"
     assert l5["title"] == "Transport routing"
+
+
+def test_greedy_layer04_inner_fill_highlights_read_nested_cli_layer_summaries() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=3,
+        status="completed",
+        solver_summary={
+            "stack_run_status": "success",
+            "completed_layer_slugs": [
+                LAYER_03_RIM_GREEDY_PLACEMENT,
+                LAYER_04_INNER_PATTERN_FILL,
+            ],
+            "rim_greedy_winning_variant_id": "CW_TL",
+            "layer_summaries": [
+                {
+                    "layer_slug": LAYER_04_INNER_PATTERN_FILL,
+                    "outcome": "completed",
+                    "metrics": {
+                        "interior_occupied_cell_count": 9,
+                        "coverage_ratio": 0.692,
+                        "interior_candidate_count": 13,
+                        "layer_skip_reason": "none",
+                    },
+                }
+            ],
+        },
+    )
+    l4 = {layer["layer_slug"]: layer for layer in row["layer_summaries"]}[
+        LAYER_04_INNER_PATTERN_FILL
+    ]
+    assert l4["outcome"] == "completed"
+    labels = {h["label"]: h["value"] for h in l4["highlights"]}
+    assert labels["Interior occupied cells"] == "9"
+    assert labels["Coverage ratio"] == "69.2%"
+    assert labels["Interior candidates"] == "13"
+    assert "Macro-only mode" not in labels
+    assert "Layer skip reason" not in labels
 
 
 def test_greedy_layer04_transport_completed_highlights() -> None:
@@ -87,7 +126,7 @@ def test_greedy_layer04_transport_completed_highlights() -> None:
     ]
     assert l5["outcome"] == "completed"
     labels = {h["label"]: h["value"] for h in l5["highlights"]}
-    assert labels["Transport kind"] == "space_belt"
+    assert labels["Transport kind"] == "space belt"
     assert labels["Sources routed"] == "11 / 12"
     assert labels["Transport tiles"] == "84"
-    assert labels["Failure reasons"] == "capacity_overflow"
+    assert labels["Failure reasons"] == "Capacity overflow"

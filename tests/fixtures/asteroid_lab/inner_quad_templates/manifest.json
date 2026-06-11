@@ -1,0 +1,90 @@
+{
+  "schema_version": "inner_quad_template_v1",
+  "description": "Frozen junction (T) and quad fill (Q) island blueprints for Asteroid Lab inner placement canon. Decode regression locks entry counts; not solver input.",
+  "families": {
+    "T": "rim junction primitive — miners + space belt merger/lift at void egress",
+    "Q": "inner quad tile — miners at corners/edges with extensions filling the field (scale examples)"
+  },
+  "templates": {
+    "T1": {
+      "family": "T",
+      "role": "solo_miner_lift_corner",
+      "copy_file": "T1.shapez.txt",
+      "miner_count": 1,
+      "extension_count": 0,
+      "transport_count": 1,
+      "entry_count": 2,
+      "transport_types": ["SpaceBelt_Lift1UpForward"]
+    },
+    "T2": {
+      "family": "T",
+      "role": "triple_miner_triple_merger",
+      "copy_file": "T2.shapez.txt",
+      "miner_count": 3,
+      "extension_count": 0,
+      "transport_count": 2,
+      "entry_count": 5,
+      "transport_types": ["SpaceBelt_Lift1UpForward", "SpaceBelt_TripleMerger"]
+    },
+    "T3": {
+      "family": "T",
+      "role": "dual_miner_left_merger",
+      "copy_file": "T3.shapez.txt",
+      "miner_count": 2,
+      "extension_count": 0,
+      "transport_count": 2,
+      "entry_count": 4,
+      "transport_types": ["SpaceBelt_LeftFwdMerger", "SpaceBelt_Lift1UpForward"]
+    },
+    "T4": {
+      "family": "T",
+      "role": "dual_miner_y_merger",
+      "copy_file": "T4.shapez.txt",
+      "miner_count": 2,
+      "extension_count": 0,
+      "transport_count": 2,
+      "entry_count": 4,
+      "transport_types": ["SpaceBelt_Lift1UpForward", "SpaceBelt_YMerger"]
+    },
+    "Q1": {
+      "family": "Q",
+      "role": "minimal_quad_tile",
+      "copy_file": "Q1.shapez.txt",
+      "miner_count": 2,
+      "extension_count": 6,
+      "transport_count": 2,
+      "entry_count": 10,
+      "transport_types": ["SpaceBelt_Lift1UpForward"]
+    },
+    "Q2": {
+      "family": "Q",
+      "role": "small_quad_tile",
+      "copy_file": "Q2.shapez.txt",
+      "miner_count": 4,
+      "extension_count": 12,
+      "transport_count": 4,
+      "entry_count": 20,
+      "transport_types": ["SpaceBelt_Lift1UpForward", "SpaceBelt_TripleMerger"]
+    },
+    "Q3": {
+      "family": "Q",
+      "role": "medium_quad_tile",
+      "copy_file": "Q3.shapez.txt",
+      "miner_count": 6,
+      "extension_count": 18,
+      "transport_count": 4,
+      "entry_count": 28,
+      "transport_types": ["SpaceBelt_Lift1UpForward", "SpaceBelt_TripleMerger"]
+    },
+    "Q4": {
+      "family": "Q",
+      "role": "large_quad_tile",
+      "copy_file": "Q4.shapez.txt",
+      "miner_count": 14,
+      "extension_count": 42,
+      "transport_count": 14,
+      "entry_count": 70,
+      "transport_types": ["SpaceBelt_Lift1UpForward"]
+    }
+  }
+}

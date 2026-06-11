@@ -117,6 +117,8 @@ Code: `src/shapez2_factory/domain/asteroid_lab/cell_classifier.py`
 
 Extensions are removed in reconstruction and replaced with synthetic asteroid field cells (`complete_map_merge.py`).
 
+**Connectivity (topology):** Miners may share a belt segment in series; horizontal belts/pipes allow merger/splitter hubs; **Rift / Space Lift** is 1 input / 1 output only — see [`shapez2_space_transport_connectivity.md`](../../game_rules/shapez2_space_transport_connectivity.md).
+
 ---
 
 ## Shape algebra (factory solver)

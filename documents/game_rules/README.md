@@ -19,6 +19,7 @@ Reference documents on **shape algebra and solver perspective** rules for the sh
 | [shapez2_pin_support.md](shapez2_pin_support.md) | Pin, floating shapes, support validation |
 | [shapez2_crystal.md](shapez2_crystal.md) | Crystal Generator summary and implementation links |
 | [shapez2_asteroid_space_transport_throughput.md](shapez2_asteroid_space_transport_throughput.md) | Asteroid Miner/Pump and Space Belt/Pipe absolute throughput (30/m, 300 L/m, ×16, 12·72 saturation) |
+| [shapez2_space_transport_connectivity.md](shapez2_space_transport_connectivity.md) | Island belt/pipe topology: miner belt sharing, merger/splitter, Rift (Space Lift) 1:1 and `z`/`R` egress |
 | [crystal_mechanics.md](crystal_mechanics.md) | Crystal generation, clusters, shatter, per-operation notes (canonical) |
 | [solver_domain_model.md](solver_domain_model.md) | Actual `shapez_core` types (`ShapePart`, `ShapeLayer`, `Shape`) |
 | [solver_operation_interface.md](solver_operation_interface.md) | Operation interface and required operation list |

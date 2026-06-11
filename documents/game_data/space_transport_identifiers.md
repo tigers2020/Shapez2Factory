@@ -40,7 +40,9 @@ Dump provenance: `manifest.json` (`game_version`: `unknown+1.0.3-rc3`, `dump_sch
 
 Full flat list (54 ids): all strings matching `^Space(Belt|Pipe)_[A-Za-z0-9_]+$` in `research_unlocks.json` → `…Mode.Islands.DefinitionsById.<id>`.
 
-### Space Lift topology (normative — Asteroid Lab / solver)
+### Space Lift / Rift topology (normative — Asteroid Lab / solver)
+
+Full connectivity rules (miner belt sharing, merger/splitter ratios, Rift 1:1): [`documents/game_rules/shapez2_space_transport_connectivity.md`](../game_rules/shapez2_space_transport_connectivity.md).
 
 Island space transport uses **two horizontal layers** on the same `(x, y)` grid:
 
@@ -49,7 +51,7 @@ Island space transport uses **two horizontal layers** on the same `(x, y)` grid:
 | Field | `0` | Asteroid field | Miners, extensions, interior fill |
 | Void shell | `1` | Exterior void network | `SpaceBelt_*` / `SpacePipe_*` to connectors |
 
-**Space Lift** (`SpaceBelt_Lift*`, `SpacePipe_Lift*`) connects **exactly one input to one output** across `z` (field ↔ void). It is **not** a merge/split hub.
+**Space Lift / Rift** (`SpaceBelt_Lift*`, `SpacePipe_Lift*`) connects **exactly one input to one output** across `z` (field ↔ void). It is **not** a merge/split hub. On the rifted void layer (`z=1`), only **one** output flow leaves along the tile's **`R`** facing.
 
 | Rule | Space Lift | Forward / turn belts & pipes |
 | ---- | ---------- | ---------------------------- |

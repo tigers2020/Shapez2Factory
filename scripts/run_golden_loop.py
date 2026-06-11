@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -55,12 +56,48 @@ def _eval_record_dict(result: Any) -> dict[str, Any]:
     return payload
 
 
+def _load_genetic_sample_seeds_for_loop(
+    gene_seeds_source: str,
+    *,
+    gene_seeds_db_scope: str = "admin",
+) -> tuple[Any, dict[str, object] | None]:
+    if gene_seeds_source == "fixture":
+        from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures import (
+            load_genetic_sample_seeds,
+        )
+
+        return load_genetic_sample_seeds(), None
+
+    if gene_seeds_source != "db":
+        msg = f"unsupported gene_seeds_source={gene_seeds_source!r} (fixture|db)"
+        raise ValueError(msg)
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+    import django
+
+    django.setup()
+
+    from django_apps.asteroid_lab.services.gene_seed_l3_catalog import (
+        GeneSeedCatalogScope,
+        build_genetic_sample_seed_snapshot_from_db,
+    )
+    from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
+        GeneticSampleSeedSnapshot,
+    )
+
+    scope: GeneSeedCatalogScope = "all" if gene_seeds_db_scope == "all" else "admin"
+    payload = build_genetic_sample_seed_snapshot_from_db(scope=scope)
+    return GeneticSampleSeedSnapshot.from_payload(payload), payload
+
+
 def run_golden_loop(
     *,
     out_dir: Path | str = DEFAULT_OUT,
     configs: tuple[GoldenLoopRunConfig, ...] | None = None,
     write_snapshots: bool = False,
     write_best_copy: bool = False,
+    gene_seeds_source: str = "fixture",
+    gene_seeds_db_scope: str = "admin",
     now_fn: Callable[[], datetime] | None = None,
 ) -> dict[str, Any]:
     """Run the golden fixture loop and write JSON artifacts under ``out_dir``."""
@@ -73,7 +110,6 @@ def run_golden_loop(
     from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures import (
         load_empty_copy,
         load_game_data_rules,
-        load_genetic_sample_seeds,
         load_golden_copy,
     )
     from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_loader import (
@@ -94,8 +130,17 @@ def run_golden_loop(
     empty_copy = load_empty_copy()
     golden_copy = load_golden_copy()
     rules = load_game_data_rules()
-    seeds = load_genetic_sample_seeds()
+    seeds, seed_payload = _load_genetic_sample_seeds_for_loop(
+        gene_seeds_source,
+        gene_seeds_db_scope=gene_seeds_db_scope,
+    )
     golden_oracle = build_golden_oracle(decode_copy_string(golden_copy).root)
+
+    if seed_payload is not None:
+        (out / "genetic_sample_seeds.json").write_text(
+            json.dumps(seed_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
 
     if write_snapshots:
         write_decoded_snapshots(
@@ -160,6 +205,9 @@ def run_golden_loop(
         "best_score": best_valid_score if best_valid_record is not None else None,
         "best_valid": best_valid_record is not None,
         "best_any_score": best_any_score if best_any_record is not None else None,
+        "gene_seeds_source": gene_seeds_source,
+        "gene_seeds_db_scope": gene_seeds_db_scope if gene_seeds_source == "db" else None,
+        "gene_seeds_entry_count": len(seeds.entries),
     }
     diagnostics_path.write_text(
         json.dumps(diagnostics_payload, indent=2, sort_keys=True) + "\n",
@@ -215,6 +263,18 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="Write best_result.shapez.txt from best valid solver artifacts",
     )
+    parser.add_argument(
+        "--gene-seeds",
+        choices=("fixture", "db"),
+        default="fixture",
+        help="genetic_sample_seeds source: frozen fixture (CI) or live GeneSeed DB",
+    )
+    parser.add_argument(
+        "--gene-seeds-db-scope",
+        choices=("admin", "all"),
+        default="admin",
+        help="When --gene-seeds=db: admin=GeneSeed admin catalog; all=GeneSeed.objects.all()",
+    )
     return parser.parse_args(argv)
 
 
@@ -231,6 +291,8 @@ def main(argv: list[str] | None = None) -> int:
         ),
         write_snapshots=args.write_snapshots,
         write_best_copy=args.write_best_copy,
+        gene_seeds_source=args.gene_seeds,
+        gene_seeds_db_scope=args.gene_seeds_db_scope,
     )
     print(f"wrote {summary['out_dir']}")
     return 0

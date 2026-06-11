@@ -29,19 +29,19 @@ def main() -> int:
 
     from django.core.management import call_command
 
-    from django_apps.asteroid_lab.genetic_sample.miner_seed_constants import MINER_SEED_SCHEMA_V2
-    from django_apps.asteroid_lab.models import GeneSeed
-    from django_apps.asteroid_lab.services.genetic_sample_catalog_snapshot import (
-        build_genetic_sample_seed_snapshot,
+    from django_apps.asteroid_lab.services.gene_seed_l3_catalog import (
+        build_genetic_sample_seed_snapshot_from_db,
+        gene_seed_l3_catalog_queryset,
     )
 
     call_command("seed_miner_patterns", verbosity=0)
-    payload = build_genetic_sample_seed_snapshot(
-        GeneSeed.objects.filter(metadata_json__schema=MINER_SEED_SCHEMA_V2),
-    )
+    payload = build_genetic_sample_seed_snapshot_from_db(scope="admin")
+    row_count = gene_seed_l3_catalog_queryset(scope="admin").count()
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     _OUT.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"wrote {_OUT} ({len(payload.get('entries', []))} entries)")
+    print(
+        f"wrote {_OUT} ({len(payload.get('entries', []))} entries from {row_count} GeneSeed rows)",
+    )
     return 0
 
 

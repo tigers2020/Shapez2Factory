@@ -40,5 +40,38 @@
     </fieldset>
   </form>
 </div>
+
+{% if gene_seed_l3_catalog %}
+<div class="module" style="margin-bottom: 16px;">
+  <h2>L3 genetic_sample_seeds catalog (live DB)</h2>
+  <p class="help">
+    Admin 목록과 동일한 queryset → <code>genetic_sample_seed_v1</code> snapshot
+    (shape + fluid clone expansion).
+  </p>
+  <table style="margin-bottom: 12px;">
+    <tr><th>GeneSeed rows (admin)</th><td>{{ gene_seed_l3_catalog.db_row_count }}</td></tr>
+    <tr><th>Snapshot entries (L3)</th><td>{{ gene_seed_l3_catalog.snapshot_entry_count }}</td></tr>
+    <tr><th>provenance_hash</th><td><code>{{ gene_seed_l3_catalog.provenance_hash|truncatechars:16 }}</code></td></tr>
+  </table>
+  <form method="post" action="{% url 'admin:asteroid_lab_geneseed_export_golden_fixture' %}">
+    {% csrf_token %}
+    <p class="help">
+      Frozen fixture 동기화: <code>{{ gene_seed_l3_catalog.golden_fixture_path }}</code>
+      (CI / <code>--gene-seeds fixture</code> 기본값)
+    </p>
+    <div class="submit-row">
+      <input type="submit" value="Export DB catalog → golden fixture JSON" />
+    </div>
+  </form>
+  <p class="help" style="margin-top: 12px;">
+    로컬 Golden loop (DB 직결):
+    <code>python scripts/run_golden_loop.py --gene-seeds db --throughput-targets 80 --write-best-copy</code>
+    — 스냅샷은 <code>var/experiments/golden_loop/genetic_sample_seeds.json</code>에 기록됩니다.
+    Web solver subprocess와 동일하게 전체 DB를 쓰려면
+    <code>--gene-seeds db --gene-seeds-db-scope all</code>.
+  </p>
+</div>
+{% endif %}
+
 {{ block.super }}
 {% endblock %}

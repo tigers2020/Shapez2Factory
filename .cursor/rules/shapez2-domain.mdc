@@ -9,7 +9,7 @@ Canon: `AGENTS.md` § Shapez2 Routing.
 
 Trigger `/grill-me-shapez2` when task touches Shapez2, Asteroid Lab, solver layers, mining, placement, routing, replay, UI, reconstruction, transport, belt/pipe, L2/L3/L4, rim placement, DTO/replay contracts, or related code.
 
-Architecture or boundary questions in this domain: graphify first if `graphify-out/graph.json` exists (`graphify.mdc`).
+Architecture or boundary questions: **mandatory** `/graphify` query/path/explain when `graphify-out/graph.json` exists — before repo search or wide reads (`graphify.mdc`).
 
 ## Canonical pipeline
 

@@ -25,7 +25,7 @@ Always route:
 - Core constraints: `.cursor/rules/shapez2-core.mdc`
 - Hermes workflow: `.cursor/rules/00-hermes-skill-suggestion.mdc`
 - Hermes handoff: `.cursor/rules/01-hermes-handoff-format.mdc`
-- Graphify: `.cursor/rules/graphify.mdc`
+- Graphify (repo/codebase search when `graphify-out/graph.json` exists): `.cursor/rules/graphify.mdc`
 - Playwright/browser: `.cursor/rules/playwright.mdc`
 - Git/worktree hygiene: `.cursor/rules/git-worktree.mdc`
 - Agent workflow canon: `docs/agent-workflows/`

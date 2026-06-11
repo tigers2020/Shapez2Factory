@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from django_apps.asteroid_lab.replay.overlay_wire_contract import overlay_cell_to_wire_dict
 from django_apps.asteroid_lab.replay.overlay_composition import compose_replay_overlay_cells
+from django_apps.asteroid_lab.replay.overlay_wire_contract import overlay_cell_to_wire_dict
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
 from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayMapView,

@@ -1,14 +1,14 @@
 {
   "main": {
-    "id": "875418bfd9c325c6",
+    "id": "7586993054f4e0da",
     "type": "split",
     "children": [
       {
-        "id": "314cbf5a70b2016e",
+        "id": "98658a7a7316780f",
         "type": "tabs",
         "children": [
           {
-            "id": "704c4bca08ba54aa",
+            "id": "a54b65edb29161ea",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -23,15 +23,15 @@
     "direction": "vertical"
   },
   "left": {
-    "id": "bb16eb5f0f57f1d2",
+    "id": "049ea1b09fe73482",
     "type": "split",
     "children": [
       {
-        "id": "48f62df5b3ef7de5",
+        "id": "707f629e8e2737a0",
         "type": "tabs",
         "children": [
           {
-            "id": "9d2c7f02ac1edd12",
+            "id": "ae6140767ce50125",
             "type": "leaf",
             "state": {
               "type": "file-explorer",
@@ -44,7 +44,7 @@
             }
           },
           {
-            "id": "d8cf11aaae3a2266",
+            "id": "532a7a5694464614",
             "type": "leaf",
             "state": {
               "type": "search",
@@ -61,7 +61,7 @@
             }
           },
           {
-            "id": "5824be508c015dc3",
+            "id": "656cc78f1b60b2b4",
             "type": "leaf",
             "state": {
               "type": "bookmarks",
@@ -77,15 +77,15 @@
     "width": 300
   },
   "right": {
-    "id": "e958ba127a8ca68c",
+    "id": "0afe4f636bba1b06",
     "type": "split",
     "children": [
       {
-        "id": "33b28dc08a01815a",
+        "id": "f15a588e8cf2d1fb",
         "type": "tabs",
         "children": [
           {
-            "id": "2df2eed0b31accec",
+            "id": "006541da0dba7ac5",
             "type": "leaf",
             "state": {
               "type": "backlink",
@@ -103,7 +103,7 @@
             }
           },
           {
-            "id": "36e6ca80579ab55d",
+            "id": "bf0065d2c66ea6c6",
             "type": "leaf",
             "state": {
               "type": "outgoing-link",
@@ -116,7 +116,7 @@
             }
           },
           {
-            "id": "8f83252d885818a4",
+            "id": "3ed6a565d76c46c6",
             "type": "leaf",
             "state": {
               "type": "tag",
@@ -131,7 +131,7 @@
             }
           },
           {
-            "id": "048fc8138fdd2370",
+            "id": "a499a1774d5a6f7e",
             "type": "leaf",
             "state": {
               "type": "all-properties",
@@ -145,7 +145,7 @@
             }
           },
           {
-            "id": "5e888d0378d9854e",
+            "id": "f734160688cb199a",
             "type": "leaf",
             "state": {
               "type": "outline",
@@ -176,8 +176,34 @@
       "bases:새 베이스 생성하기": false
     }
   },
-  "active": "704c4bca08ba54aa",
+  "active": "a54b65edb29161ea",
   "lastOpenFiles": [
-    "_COMMUNITY_jt().md"
+    "yd().md",
+    "yb().md",
+    "y_().md",
+    "yS().md",
+    "yN().md",
+    "yE().md",
+    "yC().md",
+    "y2().md",
+    "xy().md",
+    "xw().md",
+    "xv().md",
+    "xt().md",
+    "xr().md",
+    "xm().md",
+    "xd().md",
+    "validate_before_legacy_drop().md",
+    "v_().md",
+    "vS().md",
+    "vN().md",
+    "vE().md",
+    "vC().md",
+    "v2().md",
+    "uy().md",
+    "uw().md",
+    "uv.md",
+    "ut().md",
+    "graph.canvas"
   ]
 }

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 _UI_JS_ROOT = _REPO_ROOT / "django_apps" / "web" / "static" / "web" / "js"
@@ -18,9 +16,7 @@ _ALLOWED_UI_FILES = frozenset(
     }
 )
 
-_REPLAY_WIRE_ROOTS = (
-    _REPO_ROOT / "tests" / "fixtures" / "asteroid_lab",
-)
+_REPLAY_WIRE_ROOTS = (_REPO_ROOT / "tests" / "fixtures" / "asteroid_lab",)
 
 _L3_PRODUCER_PY_ROOTS = (
     _REPO_ROOT / "src" / "shapez2_factory" / "application" / "asteroid_lab" / "layers",

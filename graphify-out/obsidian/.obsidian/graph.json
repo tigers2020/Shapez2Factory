@@ -8,3122 +8,2422 @@
   "collapse-color-groups": true,
   "colorGroups": [
     {
-      "query": "tag:#community/recipe-graph-editor.js",
+      "query": "tag:#community/lab_timeline_adapter.py_/_map_height_lay",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/admin.py",
+      "query": "tag:#community/island.py_/_build_reconstructed_blueprin",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/solver_graph_layout.js",
+      "query": "tag:#community/CommitDomainState_/_layer03_observabilit",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/flowbite.min.js",
+      "query": "tag:#community/Layer05FailedSourceDiagnostic_/_aggregat",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/OrbitControls",
+      "query": "tag:#community/pipeline.py_/_evidence.py",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/Any",
+      "query": "tag:#community/solver_run_lab_summary.py_/__append_mean",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/ReconstructionCompleteMap",
+      "query": "tag:#community/effective_cell_view.py_/_layer03_overlay",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/jt()",
+      "query": "tag:#community/defaultdict_/_recipe_graph_recompute.py",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/_IvvdReadOnlyAdminMixin",
+      "query": "tag:#community/AggregateRootSpec_/_Sub-table_reached_vi",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/exhaustive_generator.py",
+      "query": "tag:#community/wire.py_/_console_logging_enabled()",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/recipe_graph_recompute.py",
+      "query": "tag:#community/identifiers.py_/_GameDataReference",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/record_existing_layout_inspection_frames",
+      "query": "tag:#community/.capacity_m()_/_map_io_channel_to_transp",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/asteroid_miner_layout_lab.js",
+      "query": "tag:#community/StackRunResult_/_layer_budget.py",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/identifiers.py",
+      "query": "tag:#community/Asteroid_Miner_Layout_Solver_Template_/_",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/lab_page_context()",
+      "query": "tag:#community/.__str__()_/_simulation.py",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/RouteProbedBundleCandidate",
+      "query": "tag:#community/fill.py_/_cell_hull_outline.py",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/Kf()",
+      "query": "tag:#community/Command_/_.handle()",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/GLTFLoader.js",
+      "query": "tag:#community/enums.py_/_cardinal_edge.py",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/getMaterialExtension()",
+      "query": "tag:#community/CandidateRejectReason_/_BundlePlacement",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/simulation.py",
+      "query": "tag:#community/ExteriorConnectorRole_/_empty()",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/DecodedCellDTO",
+      "query": "tag:#community/CommittedRoute_/_Layer05Failure",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/reconstruct_after_cleanup()",
+      "query": "tag:#community/admin.py_/__aggregate_spec()",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/ExteriorConnectionPlan",
+      "query": "tag:#community/acceptance_topology.py_/_confidence.py",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/evaluate_against_golden()",
+      "query": "tag:#community/run.py_/_IntegratedRimGreedyResult",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/route_layer04_sequential()",
+      "query": "tag:#community/.__post_init__()_/_candidates.py",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/ReconstructionResult",
+      "query": "tag:#community/_as_int()_/__coords_look_like_game_expor",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/Coord",
+      "query": "tag:#community/macro_recipe_graph_visual.py_/_view_grap",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/mt()",
+      "query": "tag:#community/public_pages.py_/_Attach_scalar_metadata",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/bb()",
+      "query": "tag:#community/engine_operation_helpers.py_/_operation_",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/editor_graph_layout.js",
+      "query": "tag:#community/slots.py_/_detect_primary_resource_kind(",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/generate_candidates()",
+      "query": "tag:#community/_spec()_/_event_types.py",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/entry_result_to_json_dict()",
+      "query": "tag:#community/layout_t.py_/_placement.py",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/oN()",
+      "query": "tag:#community/run.py_/_BeamSelectionResult",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/GLTFParser",
+      "query": "tag:#community/.__str__()_/_Meta",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/Decimal",
+      "query": "tag:#community/canonical_decoded_json_hash()_/_Reconstr",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/HttpRequest",
+      "query": "tag:#community/Decimal_/_exterior_transport_capacity.py",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/build_solver_runtime_replay_frames()",
+      "query": "tag:#community/AsteroidMapInput_/_AsteroidProject",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/SolverRun",
+      "query": "tag:#community/solver_run_reconcile.py_/_lab_run_summar",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/blueprint_canonical_export.py",
+      "query": "tag:#community/lab_replay_persisted_cache.py_/_Compose_",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/macro_recipe_graph_visual.py",
+      "query": "tag:#community/basedata_import_service.py_/__has_blocki",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/Shape",
+      "query": "tag:#community/AdminSite_/_admin_inline_class_names()",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/public_pages.py",
+      "query": "tag:#community/equivalence_key.py_/_route_probe.py",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/timeline_serialization.py",
+      "query": "tag:#community/AppendCellKind_/_AppendedPlacementCell",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/Protocol",
+      "query": "tag:#community/runtime_frame_finalize.py_/_solver_runti",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/registry.py",
+      "query": "tag:#community/.__str__()_/_exterior_transport_capacity",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/run_solver_subprocess()",
+      "query": "tag:#community/GameDataImporter_/_._import_asset_meta()",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/shape_part_sprites.py",
+      "query": "tag:#community/run.py_/_solver_layer_stack_log.py",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/build_layer02_timeline_frame_wire_dict()",
+      "query": "tag:#community/rim_greedy_append.py_/_rim_greedy.py",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/Path",
+      "query": "tag:#community/AsteroidGameDataSnapshot_/_BuildingAssem",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/import_toolbar_tree()",
+      "query": "tag:#community/trace_logging.py_/_AsteroidLabTraceLogge",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/GameDataImporter",
+      "query": "tag:#community/.cache_key()_/_.render()",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/_run_solver_post_traced()",
+      "query": "tag:#community/DecodedBlueprintSnapshotDTO_/_reconstruc",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/lab_timeline_adapter.py",
+      "query": "tag:#community/miner_seed_equivalence.py_/_miner_seed_p",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/exterior_transport_capacity.py",
+      "query": "tag:#community/layer_behavior_catalog.py_/_layer_post_s",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/GeneTemplate",
+      "query": "tag:#community/AstarPathResult_/_neighbors4()",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/ValueError",
+      "query": "tag:#community/layer04_segment.py_/_Layer04PackingObser",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/space_transport_catalog_snapshot.py",
+      "query": "tag:#community/genetic_sample_catalog_snapshot.py_/_gen",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/renderFullMapCells()",
+      "query": "tag:#community/ArtifactManifestRecord_/_artifact_ingest",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/StrEnum",
+      "query": "tag:#community/.__str__()_/_buildings.py",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/ReplayEventType",
+      "query": "tag:#community/operation_semantics.py_/__apply_color_mi",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/layer03_rim_greedy_segment.py",
+      "query": "tag:#community/capacity.py_/_run.py",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/build_asteroid_game_data_snapshot_with_p",
+      "query": "tag:#community/Carrier_/_recipe_graph_input_carrier.py",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/AsteroidLabTraceLogger",
+      "query": "tag:#community/Gallery_Viewer_Dialog_/_graph_document_S",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/build_terrain_rim_highlight_from_rendera",
+      "query": "tag:#community/views.py_/_context_processors.py",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/Enum",
+      "query": "tag:#community/admin.py_/__IvvdReadOnlyAdminMixin",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/ReplayOverlayCell",
+      "query": "tag:#community/pattern_lab_service.py_/_PatternCatalogR",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/buildings.py",
+      "query": "tag:#community/grid.py_/_perimeter_closing.py",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/_run_artifact()",
+      "query": "tag:#community/GameDataSnapshotProvenance_/_.reproducib",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/graph_preview.py",
+      "query": "tag:#community/experiment_service.py_/_solver_run_fast_",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/replay_service.py",
+      "query": "tag:#community/ArtifactManifest_/_ArtifactExistsError",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/simulation_speed_extract.py",
+      "query": "tag:#community/.__str__()_/_ivvd_lookups.py",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/OperationType",
+      "query": "tag:#community/shape_part_sprite_generation.py_/__check",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/ShapePart",
+      "query": "tag:#community/.__post_init__()_/_.is_empty()",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/build_lab_replay_frames_for_project()",
+      "query": "tag:#community/color_mix_semantics.py_/_fluid_semantics",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/Exception",
+      "query": "tag:#community/layer02_segment.py_/_persistent_exterior",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/game_data_snapshot_provenance.py",
+      "query": "tag:#community/AsteroidCellSnapshotAdmin_/_AsteroidMapI",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/deconstruct_snapshot()",
+      "query": "tag:#community/reconstruction_source.py_/_lab_timeline_",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/json_snapshot_rules.py",
+      "query": "tag:#community/solver_run_registry.py_/_solver_runtime_",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/create_solver_run()",
+      "query": "tag:#community/replay_service.py_/_PlaybackPatchDTO",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/admin.py",
+      "query": "tag:#community/.__str__()_/_research.py",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/sync_admin_list_thumbnail()",
+      "query": "tag:#community/rim_topology.py_/_rim_highlight.py",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/import_simulation_systems()",
+      "query": "tag:#community/AsteroidGameDataSnapshot_/_build_snapsho",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/import_meta.py",
+      "query": "tag:#community/solver_subprocess_runner.py_/_build_solv",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/ivvd_lookups.py",
+      "query": "tag:#community/Allauth_Base_Layout_/_Auth_Split_Panel_L",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/AtomicArtifactWriter",
+      "query": "tag:#community/lab_map_reset_service.py_/_replay_pipeli",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/build_solver_runtime_replay_frames_from_",
+      "query": "tag:#community/_catalog_sprite_keys()_/_All_``sprite_ke",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/ingest_artifact_for_project()",
+      "query": "tag:#community/crystal_geometry.py_/_connected_crystal_",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/stamp_islands_uniform()",
+      "query": "tag:#community/classify_blueprint_entry()_/_Top-level_`",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/GameDataRulesPort",
+      "query": "tag:#community/ColorKind_/_shape_code_parser.py",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/analyze_pattern_lab_shape()",
+      "query": "tag:#community/lab_replay_lazy_handle.py_/_LabReplayPay",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/enrich_lab_timeline_frames_with_terrain_",
+      "query": "tag:#community/lab_replay_timeline_payload.py_/_build_l",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/research.py",
+      "query": "tag:#community/miner_seed_intrinsic_difficulty.py_/_ass",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/Uu()",
+      "query": "tag:#community/run.py_/_stack_runner.py",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/yT()",
+      "query": "tag:#community/Cell_/_enumerate_d4()",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/build_golden_oracle()",
+      "query": "tag:#community/diagnostic.py_/_layer_slugs.py",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/write_lab_solver_layer_stack_logs()",
+      "query": "tag:#community/.__str__()_/_shapes.py",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/game_data_snapshot.py",
+      "query": "tag:#community/simulation_systems.py_/_connectable_sign",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/BaseCommand",
+      "query": "tag:#community/asteroid_lab_page_context.py_/_ReplayFra",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/parse_shape()",
+      "query": "tag:#community/GeneSeed_/_.clean()",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/rim_greedy.py",
+      "query": "tag:#community/as_entry_int()_/_entries_have_explicit_r",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/shape_part_sprite_generation.py",
+      "query": "tag:#community/ArtifactManifest_/_.from_json()",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/ShapeCodeParseError",
+      "query": "tag:#community/.__post_init__()_/_rim_placement.py",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/miner_seed_intrinsic_difficulty.py",
+      "query": "tag:#community/BBox_/_bbox_from_coords()",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/footprint_transform.py",
+      "query": "tag:#community/RawCoord_/_infer_topology_coord_frame()",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/shapes.py",
+      "query": "tag:#community/.mini_map_preview()_/_.mini_map_list()",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/resolve_sprite_static_relpath()",
+      "query": "tag:#community/simulation_parameter_classify.py_/_simul",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/placement.py",
+      "query": "tag:#community/.__init__()_/_topology_contract.py",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/crystal_geometry.py",
+      "query": "tag:#community/artifact_manifest_reader.py_/_ArtifactMa",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/constants.js",
+      "query": "tag:#community/Account_Login_Page_/_Account_Logout_Page",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/SafeString",
+      "query": "tag:#community/_entry_to_dict()_/__parse_bool_mask()",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/lab_sprite_resolve()",
+      "query": "tag:#community/ShapeRenderScene_/_shape_render_scene.py",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/bbox_from_coords()",
+      "query": "tag:#community/CopyDecodePort_/_.decode()",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/close_diagonal_leaks()",
+      "query": "tag:#community/gene_template_loader.py_/_shape_fluid_ge",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/_import_connectable_attachment()",
+      "query": "tag:#community/.__init__()_/_.mining_extraction_rule()",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/AsteroidMapInput",
+      "query": "tag:#community/lab_perf_trace.py_/__Collector",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/rim_placement.py",
+      "query": "tag:#community/artifact_replay_viewer_compose.py_/_lab_",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/run_layers_02_to_06()",
+      "query": "tag:#community/replay_recorder.py_/_ReplayRecordingPoli",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/build_normalized_reconstruction_topology",
+      "query": "tag:#community/space_transport_layouts.py_/_build_space",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/pure_fluid_color()",
+      "query": "tag:#community/base.py_/_toolbar_identity.py",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/graph_mount.js",
+      "query": "tag:#community/recipe_graph_react_flow_adapter.py_/_RfN",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/run_greedy_inner_fill()",
+      "query": "tag:#community/Command_/_.handle()",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/applyLabOverlayHighlights()",
+      "query": "tag:#community/existing_layout_service.py_/_ExistingLay",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/build_failed_source_diagnostic()",
+      "query": "tag:#community/space_transport_catalog_loader.py_/__cac",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/timeline_dtos.py",
+      "query": "tag:#community/Command_/_.add_arguments()",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/read_verified_artifact_manifest()",
+      "query": "tag:#community/shapez_copy_decode.py_/_decode_shapez2_c",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/build_reconstruction_complete_map()",
+      "query": "tag:#community/route_goal.py_/_build_layer03_route_goal",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/build_shape_render_scene()",
+      "query": "tag:#community/pattern_classifier.py_/_recipe_graph_rec",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/replay_frame_cell_lookup.py",
+      "query": "tag:#community/_canonical_payload()_/_catalog_slice_has",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/materials.js",
+      "query": "tag:#community/.get_queryset()_/_GeneSeedAdmin",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/graph_detail.js",
+      "query": "tag:#community/building_assembly_audit.py_/_simulation_",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/ReconstructedAsteroidMapAdmin",
+      "query": "tag:#community/simulation_speed_extract.py_/_classify_s",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/entry_island_raw_coord()",
+      "query": "tag:#community/.cache_key()_/_.render()",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/wire_explicit_height_layer()",
+      "query": "tag:#community/.__str__()_/_models.py",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/ReplayRecorder",
+      "query": "tag:#community/iter_four_neighbors_map()_/_left_of()",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/ShapePartSpriteAdmin",
+      "query": "tag:#community/AsteroidLabCopyDecodeError_/_decode_copy",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/recipe_graph_react_flow_adapter.py",
+      "query": "tag:#community/space_transport_layout_catalog.py_/__loa",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/GeneSeed",
+      "query": "tag:#community/.__str__()_/_toolbar.py",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/import_guards.py",
+      "query": "tag:#community/import_guards.py_/_validators.py",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/build_initial_replay_for_map_input()",
+      "query": "tag:#community/cell_kind_for_reconstruction_import()_/_",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/shapez_copy_decode.py",
+      "query": "tag:#community/build_terrain_capacity_summary_row()_/_d",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/.write_layer_post_summary()",
+      "query": "tag:#community/shape_operations.py_/_cut_vertical_halve",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/building_catalog_slice_hash.py",
+      "query": "tag:#community/Command_/_.add_arguments()",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/build_reconstructed_map_persist_payload(",
+      "query": "tag:#community/toolbar_node_kind.py_/_build_children_by",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/pattern_signature()",
+      "query": "tag:#community/compute_interior_candidates()_/_l3_autho",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/GraphPreviewRenderer",
+      "query": "tag:#community/CoordFrame_/_island_to_tuple()",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/models.py",
+      "query": "tag:#community/runtime_wire_compose.py_/_LayerOutcome",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/asteroid_map_coords.py",
+      "query": "tag:#community/golden_fixture_dir()_/_load_empty_copy()",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/toolbar.py",
+      "query": "tag:#community/boundary_jsonl.py_/_boundary_jsonl_dir()",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/renderFullMapReplayFrame()",
+      "query": "tag:#community/apps.py_/_AppConfig",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/BufferGeometryUtils.js",
+      "query": "tag:#community/.lookups()_/_.queryset()",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/build_decoded_blueprint_snapshot()",
+      "query": "tag:#community/build_sample_quadrant_work_queue()_/_bui",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/rebuild_game_data_taxonomy()",
+      "query": "tag:#community/source_loader.py_/_import_verify.py",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/collectFrameSpatialTargets()",
+      "query": "tag:#community/classify_exterior_goal_unreachable()_/_l",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/normalize_decoded_blueprint()",
+      "query": "tag:#community/layer04_inner_pattern_fill_segment.py_/_",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/.handle()",
+      "query": "tag:#community/pattern_bundle_highlight.py_/__pattern_h",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/coord_frames.py",
+      "query": "tag:#community/lab_sprite_relpath_for_cell()_/_lab_spri",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/layer04_inner_fill.py",
+      "query": "tag:#community/Catalog_row_shown_beside_modal_content._",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/layer05_route.py",
+      "query": "tag:#community/subprocess_stream_tee.py_/_DetachedSubpr",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/build_layer03_runtime_segment_specs()",
+      "query": "tag:#community/CommittedRoute_/_EswmMask",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/build_game_data_snapshot_payload()",
+      "query": "tag:#community/job_cache_key()_/_ShapePartSprite",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/_build_work_queue()",
+      "query": "tag:#community/_coord()_/_GeneticSampleSeedEntry",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/assert_recipe_graph_edge_topology()",
+      "query": "tag:#community/.__str__()_/_identifiers.py",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/shape_operations.py",
+      "query": "tag:#community/.__str__()_/_l10n.py",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/shape_gltf_viewer.js",
+      "query": "tag:#community/buildings.py_/_transport_registry.py",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/pattern_bundle_highlight.py",
+      "query": "tag:#community/shape_codec.py_/_NormalizedShapeCell",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/AppConfig",
+      "query": "tag:#community/trace.py_/_Output-only_reconstruction_tr",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/applyLabCellSprite()",
+      "query": "tag:#community/_cell_from_dict()_/__cell_to_dict()",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/init()",
+      "query": "tag:#community/.emit()_/_BoundaryTraceSink",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/decode_copy_string()",
+      "query": "tag:#community/recipe_graph_topology.py_/_assert_delive",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/emit_boundary_jsonl()",
+      "query": "tag:#community/DecodedBlueprintSnapshotDTO_/_Normalized",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/GLTFLoader",
+      "query": "tag:#community/request_id.py_/_HttpResponse",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/genetic_sample_seed_snapshot.py",
+      "query": "tag:#community/run.py_/_parse_inner_fill_strategy()",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/is_asteroid_evidence()",
+      "query": "tag:#community/complete_map.py_/__count_by_resource()",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/execute_layer_02_exterior_transport_plan",
+      "query": "tag:#community/pattern_catalog_repository.py_/_PatternC",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/Command",
+      "query": "tag:#community/Command_/_.add_arguments()",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/get_topology_modal_payload()",
+      "query": "tag:#community/mining.py_/_Meta",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/complete_map_serializer.py",
+      "query": "tag:#community/mining_extraction_rules.py_/_MiningExtra",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/ImportContext",
+      "query": "tag:#community/#lab-replay-overlay-canvas_/_#lab-replay",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/verify_game_data_source()",
+      "query": "tag:#community/projection_context.py_/_lab_xy_from_repl",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/exterior_transport_capacity.py",
+      "query": "tag:#community/_frame_index()_/_Core_replay_JSONL_emitt",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/0002_ivvd_lookups_and_fks.py",
+      "query": "tag:#community/miner_seed_constants.py_/_gene_key_for_p",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/asteroid_miner_layout_create_project()",
+      "query": "tag:#community/Layer_03_rim_anchor_scan_??deterministic",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/ShapezGameIdentifier",
+      "query": "tag:#community/.__str__()_/_assets.py",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/l10n.py",
+      "query": "tag:#community/preview_service.py_/_build_demo_parse_ro",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/buildings.py",
+      "query": "tag:#community/lab_layer02_timeline.py_/_build_layer02_",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/ReconstructionTraceCollector",
+      "query": "tag:#community/mini_map_grid_coord()_/_mini_map_linear_",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/run_full_from_cleanup_recon()",
+      "query": "tag:#community/lab_sprite_identifier_service.py_/_build",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/layer_post_summary_log.py",
+      "query": "tag:#community/.__str__()_/_models.py",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/shape_codec.py",
+      "query": "tag:#community/ArtifactPathError_/_.__init__()",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/service_dtos.py",
+      "query": "tag:#community/admin_identifier_sprite.py_/_identifier_",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/quick_solver_preview.js",
+      "query": "tag:#community/DefaultSocialAccountAdapter_/_social_ada",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/transitions.js",
+      "query": "tag:#community/documents.py_/_Kind",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/build_layer03_observability()",
+      "query": "tag:#community/shape_layer_physics.py_/_apply_column_gr",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/build_pool_probe_window_plans()",
+      "query": "tag:#community/BuildingGroupAdmin_/_BuildingVariantAdmi",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/lab_replay_canvas_renderer.js",
+      "query": "tag:#community/miner_seed_topology.py_/_count_extension",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/lab_replay_canvas_terrain.js",
+      "query": "tag:#community/shape_recipes.py_/_import_shape_rows()",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/SkeletonUtils.js",
+      "query": "tag:#community/lazy_localized_text.py_/__extract_messag",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/0006_seed_pattern_catalog.py",
+      "query": "tag:#community/provisional_overlay.py_/_ProvisionalLayo",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/runtime_gene_template_source.py",
+      "query": "tag:#community/GeneSeed_Admin_Change_List_/_GeneSeed_Mo",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/golden_fixture_fixtures.py",
+      "query": "tag:#community/release.py_/_IntegrityStatus",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/mining_extraction_rules.py",
+      "query": "tag:#community/.__str__()_/_taxonomy.py",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/pattern_catalog_repository.py",
+      "query": "tag:#community/shape_pattern.py_/_NormalizedShapeCell",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/lab_screen_grid.py",
+      "query": "tag:#community/timeline_composer.py_/_compose_replay_ti",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/gene_template_from_miner_gene_seed()",
+      "query": "tag:#community/BuildingCatalogSlice_/_catalog_slice_fro",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/scan_rim_anchors()",
+      "query": "tag:#community/gene_template.py_/_extension_attachments",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/import_shape_rows()",
+      "query": "tag:#community/compute_list_thumbnail_window()_/__fill_",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/Wt()",
+      "query": "tag:#community/__init__.py_/___getattr__()",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/miner_seed_constants.py",
+      "query": "tag:#community/Command_/_.add_arguments()",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/assets.py",
+      "query": "tag:#community/__init__.py_/_Asteroid_Lab_domain_layer_",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/mining.py",
+      "query": "tag:#community/integrity.py_/_Meta",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/write_replay_core_jsonl()",
+      "query": "tag:#community/validation.py_/_Meta",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/build_demo_parse_row()",
+      "query": "tag:#community/weighted_transport_route_domain.py_/_Bou",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/SolverRun",
+      "query": "tag:#community/Layer04FailureReason_/_L4CommitValidator",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/gene_template.py",
+      "query": "tag:#community/classifiers.py_/_Map_dump_source_type_na",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/provisional_overlay.py",
+      "query": "tag:#community/AllauthSocialSignupForm_/_socialaccount_",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/parse_lazy_localized_text()",
+      "query": "tag:#community/lab_unified_replay_append.py_/__algorith",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/documents.py",
+      "query": "tag:#community/assert_master_valid_diagnostics_payload(",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/resetDomCellAtIndex()",
+      "query": "tag:#community/exterior_transport_domain.py_/_ExteriorT",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/topology_signature_from_decoded_root()",
+      "query": "tag:#community/layer04_disabled.py_/_Layer04DisabledRes",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/.__call__()",
+      "query": "tag:#community/result.py_/_CleanupResult",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/SocialAccountAdapter",
+      "query": "tag:#community/Meta_/_Phase_1_persistence_for_Asteroid_",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/release.py",
+      "query": "tag:#community/result.py_/_Reconstruction_pipeline_resu",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/taxonomy.py",
+      "query": "tag:#community/cell_snapshot_service.py_/__overlay_cell",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/rim_greedy_append.py",
+      "query": "tag:#community/space_transport_catalog_import.py_/_impo",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/transport_kind.py",
+      "query": "tag:#community/solver_graph.py_/_SolverGraph",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/solver_runtime_types.py",
+      "query": "tag:#community/admin.py_/_AsteroidDecodedLayoutDocument",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/catalog_slice_from_snapshot()",
+      "query": "tag:#community/ExteriorFluidTransportCapacityAdmin_/_.h",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/Web-layer_services_(may_import_game_data",
+      "query": "tag:#community/ExteriorShapeTransportCapacityAdmin_/_.h",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/Command",
+      "query": "tag:#community/MiningExtractionRuleAdmin_/_.has_add_per",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/shape_pattern.py",
+      "query": "tag:#community/enums.py_/_GameDataRefKind",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/golden_valid_baseline.py",
+      "query": "tag:#community/artifacts.py_/_Meta",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/post_stack_physics()",
+      "query": "tag:#community/references.py_/_GameDataReference",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/expand_gene_templates_with_fluid_clones(",
+      "query": "tag:#community/reflection.py_/_ClrTypeRegistryEntry",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/Asteroid_Lab_domain_layer_(pure_value_ob",
+      "query": "tag:#community/__init__.py_/_Pure_core_observability_se",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/WeightedTransportRouteDomain",
+      "query": "tag:#community/simulation_definition_snapshot_audit.py_",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/build_layer03_transport_profiles()",
+      "query": "tag:#community/simulation_clr_parser.py_/_parse_simulat",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/.validate_route_cell()",
+      "query": "tag:#community/Command_/_.add_arguments()",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/LayerBudgetContext",
+      "query": "tag:#community/DecodedCellDTO_/_``DecodedCellDTO``_—_on",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/GeneSeed",
+      "query": "tag:#community/.exterior_connector_capacity()_/_Exterio",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/google_social_login_enabled()",
+      "query": "tag:#community/ceildiv.py_/_ceildiv_decimal()",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/ToolbarTreeNodeAdmin",
+      "query": "tag:#community/Bounded_Context_Navigation_/_Game_Data_B",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/GLTFLightsExtension",
+      "query": "tag:#community/__init__.py_/___getattr__()",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/GLTFMaterialsUnlitExtension",
+      "query": "tag:#community/__init__.py_/_Layer_stack_contracts_(Str",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/0003_shape_part_sprite_assets.py",
+      "query": "tag:#community/replay_track_keys.py_/_is_rttp_optimizat",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/integrity.py",
+      "query": "tag:#community/basedata_seal.py_/_canonical_seal_payloa",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/ShapezValidationRun",
+      "query": "tag:#community/operation.py_/_Operation",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/projection_context.py",
+      "query": "tag:#community/__init__.py_/_Port_abstractions_??Protoc",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/exterior_connection.py",
+      "query": "tag:#community/graph_document_primitive_chain.py_/_grap",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/compose_replay_timeline()",
+      "query": "tag:#community/recipe_graph_cost_hints.py_/_graph_cost_",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/build_layer05_transport_post_summary_met",
+      "query": "tag:#community/__init__.py_/___getattr__()",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/classifiers.py",
+      "query": "tag:#community/site_i18n.py_/_Template_tags_for_languag",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/0015_backfill_solverrun_fast_cache_field",
+      "query": "tag:#community/Shape_Part_Sprite_Render_Jobs_/_ShapePar",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/lab_unified_replay_append.py",
+      "query": "tag:#community/ExteriorCapacityRow_/_Frozen_EVTC_per-co",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/SocialSignupForm",
+      "query": "tag:#community/MiningExtractionRow_/_Mining_extraction_",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/exterior_transport_domain.py",
+      "query": "tag:#community/rotation.py_/_R0_E_CW_rotation_and_field",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/layer04_disabled.py",
+      "query": "tag:#community/__init__.py_/_Layer_4_??rim_bundle_provi",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/result.py",
+      "query": "tag:#community/__init__.py_/_Layer_5_??inner_pattern_fi",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/diagnostic.py",
+      "query": "tag:#community/AsteroidMapInput_/_.__str__()",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/models.py",
+      "query": "tag:#community/CandidateBundle_/_.__str__()",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/enums.py",
+      "query": "tag:#community/IslandExtractorBlueprint_/_.__str__()",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/parse_simulation_clr()",
+      "query": "tag:#community/PatternTemplate_/_.__str__()",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/artifacts.py",
+      "query": "tag:#community/PatternVariant_/_.__str__()",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/solver_graph.py",
+      "query": "tag:#community/AsteroidProject_/_.__str__()",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/labMapZLayerVisible()",
+      "query": "tag:#community/UI_replay_timeline_container_(orthogonal",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/RoomEnvironment",
+      "query": "tag:#community/AsteroidCellSnapshot_/_.__str__()",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/renderTrigger()",
+      "query": "tag:#community/Reconstruction-complete_full_map:_origin",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/references.py",
+      "query": "tag:#community/Single_UI_playback_step_(play_/_pause_/_",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/reflection.py",
+      "query": "tag:#community/Fast_feasibility_routing_probe_result_fo",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/Pure_core_observability_seams_for_the_as",
+      "query": "tag:#community/Per-frame_fitness_/_score_components_for",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/result.py",
+      "query": "tag:#community/One_GA_/_hybrid_solver_execution_for_a_l",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/enums.py",
+      "query": "tag:#community/Catalog_row_for_topology_/_routing_rules",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/layer_post_summary.py",
+      "query": "tag:#community/Rich_modal_body_linked_to_a_topology_rul",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/Command",
+      "query": "tag:#community/Client-_or_server-side_persisted_transpo",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/decoded_cell.py",
+      "query": "tag:#community/__init__.py_/_ORM_models_for_shapez_core",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/Layer_stack_contracts_(StrEnum_+_frozen_",
+      "query": "tag:#community/admin.py_/_SolverProjectAdmin",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/__init__.py",
+      "query": "tag:#community/__init__.py_/_Domain_layer_—_pure_busine",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/is_rttp_optimization_track_key()",
+      "query": "tag:#community/shape_catalog.py_/_ColorKind",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/0007_simulation_c_lite_validate.py",
+      "query": "tag:#community/ImportBatchFilter_/_.lookups()",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/0004_patternfamily_graph_draft.py",
+      "query": "tag:#community/Game_Data_Admin_Index_Override_/_Game_Da",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/0005_remove_cutter_full_operation.py",
+      "query": "tag:#community/__init__.py_/_Game-data_dump_extractors_",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/ResearchSideQuestAdmin",
+      "query": "tag:#community/__init__.py_/_Genetic_sample_domain_enum",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/_related_for()",
+      "query": "tag:#community/canonical_dtos.py_/_Lightweight_DTOs_for",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/ToolbarElementAdmin",
+      "query": "tag:#community/__init__.py_/_Layer_1_??reconstruction_c",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/ToolbarIslandPlacementAdmin",
+      "query": "tag:#community/__init__.py_/_Layer_2_??exterior_transpo",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/GLTFCubicSplineInterpolant",
+      "query": "tag:#community/__init__.py_/_Layer_3_??rim_greedy_place",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/__init__.py_/_Layer_04_—_merge-aware_tra",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/0003_toolbar_element_identity.py",
+      "query": "tag:#community/__init__.py_/_Layer_6_??commit_and_valid",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/drop_toolbar_elements_without_tree_node(",
+      "query": "tag:#community/__init__.py_/_Pure_reconstruction_domain",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/Port_abstractions_??Protocol/ABC_definit",
+      "query": "tag:#community/segment_frame_spec.py_/_Transient-only_r",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/placement_state.py",
+      "query": "tag:#community/simulation_profile_detect.py_/_detect_si",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/cardinal_edge.py",
+      "query": "tag:#community/__init__.py_/___getattr__()",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/run.py",
+      "query": "tag:#community/__init__.py_/_Shared_helpers_for_layer_s",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/run_layer_06_commit_validate()",
+      "query": "tag:#community/__init__.py_/_Adapters_layer_—_port_impl",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/try_load_default_space_transport_catalog",
+      "query": "tag:#community/Shim_—_relocated_to_``shapez2_factory.do",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/layout_t.py",
+      "query": "tag:#community/Shim_—_relocated_to_``shapez2_factory.do",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/shape_part_sprite_storage()",
+      "query": "tag:#community/Application_layer_??use_cases,_DTOs,_por",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/graph_cost_hint_from_document()",
+      "query": "tag:#community/Bootstrap_layer_??dependency_wiring,_DI_",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/Asteroid_Lab_layer-stack_application_pac",
+      "query": "tag:#community/Enable_``python_-m_shapez2_factory.inter",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/try_linear_operation_sequence()",
+      "query": "tag:#community/Shim:_relocated_to_``shapez2_factory.dom",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/url_for_language()",
+      "query": "tag:#community/Shim:_relocated_to_core_``building_catal",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/mix_color_pair()",
+      "query": "tag:#community/Shim:_relocated_to_``shapez2_factory.dom",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/stack_result.py",
+      "query": "tag:#community/Shim:_relocated_to_core_``game_data_snap",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/Adapters_layer_—_port_implementations,_e",
+      "query": "tag:#community/output.py_/_Shim:_relocated_to_core_laye",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/Layer_1_??reconstruction_complete-map_fa",
+      "query": "tag:#community/Management_commands_for_asteroid_lab._/_",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/Layer_2_??exterior_transport_(PR-2).",
+      "query": "tag:#community/__init__.py_/_Django_management_package_",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/R0_E_CW_rotation_and_fieldward-facing_ma",
+      "query": "tag:#community/replay_limits.py_/_Replay_payload_limits",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/Layer_04_—_merge-aware_transport_routing",
+      "query": "tag:#community/dto.py_/_Shim:_relocated_to_shapez2_fact",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/Layer_5_??inner_pattern_fill_(PR-3c_sign",
+      "query": "tag:#community/Bounded-context_browse_UX_for_imported_g",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/Shared_helpers_for_layer_stack_modules.",
+      "query": "tag:#community/Canonical_coordinate_semantics_for_repla",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/0017_solverrun_artifact_root_lifecycle_s",
+      "query": "tag:#community/__init__.py_/_Core_Django_app_for_shape_",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/AsteroidCellSnapshot",
+      "query": "tag:#community/recipe_graph_constants.py_/_Recipe_graph",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/AsteroidMapInput",
+      "query": "tag:#community/constants.py_/_웹_레이어_전용_상수(페이지_기본값·JSON_",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/AsteroidProject",
+      "query": "tag:#community/__init__.py_/_Django_views_for_``web``_(",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/CandidateBundle",
+      "query": "tag:#community/Golden_fixture_experiments_package_(PR-1",
       "color": {
         "a": 1,
         "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/IslandExtractorBlueprint",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/PatternTemplate",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/PatternVariant",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/ReplayTrack",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/ReconstructedAsteroidMap",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
-      }
-    },
-    {
-      "query": "tag:#community/ReplayFrame",
-      "color": {
-        "a": 1,
-        "rgb": 12234924
-      }
-    },
-    {
-      "query": "tag:#community/RoutingProbe",
-      "color": {
-        "a": 1,
-        "rgb": 5142951
-      }
-    },
-    {
-      "query": "tag:#community/SolverMetricSnapshot",
-      "color": {
-        "a": 1,
-        "rgb": 15896107
-      }
-    },
-    {
-      "query": "tag:#community/SolverRun",
-      "color": {
-        "a": 1,
-        "rgb": 14767961
-      }
-    },
-    {
-      "query": "tag:#community/TopologyRule",
-      "color": {
-        "a": 1,
-        "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/TopologyRuleModalContent",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/UIPlaybackSession",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/segment_frame_spec.py",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/canonical_dtos.py",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/0004_toolbar_tree_node_hierarchy.py",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
-      }
-    },
-    {
-      "query": "tag:#community/0005_simulation_c_lite_create.py",
-      "color": {
-        "a": 1,
-        "rgb": 12234924
-      }
-    },
-    {
-      "query": "tag:#community/0006_simulation_c_lite_data.py",
-      "color": {
-        "a": 1,
-        "rgb": 5142951
-      }
-    },
-    {
-      "query": "tag:#community/0011_rename_import_audit_to_simulation_c",
-      "color": {
-        "a": 1,
-        "rgb": 15896107
-      }
-    },
-    {
-      "query": "tag:#community/0016_admin_taxonomy.py",
-      "color": {
-        "a": 1,
-        "rgb": 14767961
-      }
-    },
-    {
-      "query": "tag:#community/0018_simulation_audit_issues.py",
-      "color": {
-        "a": 1,
-        "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/0019_simulation_runtime_audit_issue_uniq",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/0020_prune_subtable_taxonomy_sections.py",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/0021_shape_recipe_source_appearance.py",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/0023_prune_shape_recipe_appearance_secti",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/Domain_layer_—_pure_business_rules,_valu",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
-      }
-    },
-    {
-      "query": "tag:#community/admin.py",
-      "color": {
-        "a": 1,
-        "rgb": 12234924
-      }
-    },
-    {
-      "query": "tag:#community/shape_catalog.py",
-      "color": {
-        "a": 1,
-        "rgb": 5142951
-      }
-    },
-    {
-      "query": "tag:#community/Genetic_sample_domain_enums_(core,_Djang",
-      "color": {
-        "a": 1,
-        "rgb": 15896107
-      }
-    },
-    {
-      "query": "tag:#community/ExportWarningAdmin",
-      "color": {
-        "a": 1,
-        "rgb": 14767961
-      }
-    },
-    {
-      "query": "tag:#community/LocalizedMessageAdmin",
-      "color": {
-        "a": 1,
-        "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/GameContentAssetAdmin",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/Layer_3_??rim_greedy_placement_(supersed",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/Layer_4_??rim_bundle_provisional_placeme",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/Layer_6_??commit_and_validate_(PR-3c_ren",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/GLTFTextureAVIFExtension",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
-      }
-    },
-    {
-      "query": "tag:#community/0028_exterior_shape_lines_per_belt.py",
-      "color": {
-        "a": 1,
-        "rgb": 12234924
-      }
-    },
-    {
-      "query": "tag:#community/ORM_models_for_shapez_core_(IVVD_basedat",
-      "color": {
-        "a": 1,
-        "rgb": 5142951
-      }
-    },
-    {
-      "query": "tag:#community/Pure_reconstruction_domain_modules_(core",
-      "color": {
-        "a": 1,
-        "rgb": 15896107
-      }
-    },
-    {
-      "query": "tag:#community/layer_slugs.py",
-      "color": {
-        "a": 1,
-        "rgb": 14767961
-      }
-    },
-    {
-      "query": "tag:#community/0029_evtc_tier1_shapez2_miner_belt_rates",
-      "color": {
-        "a": 1,
-        "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/exterior_capacity_row.py",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/__getattr__()",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/decode_adapter.py",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/normalization.py",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 12234924
-      }
-    },
-    {
-      "query": "tag:#community/__main__.py",
-      "color": {
-        "a": 1,
-        "rgb": 5142951
-      }
-    },
-    {
-      "query": "tag:#community/game_data_snapshot_provenance.py",
-      "color": {
-        "a": 1,
-        "rgb": 15896107
-      }
-    },
-    {
-      "query": "tag:#community/layer04_route.py",
-      "color": {
-        "a": 1,
-        "rgb": 14767961
-      }
-    },
-    {
-      "query": "tag:#community/building_catalog_slice_hash.py",
-      "color": {
-        "a": 1,
-        "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/building_catalog_slice.py",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/game_data_snapshot.py",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/Django_management_package_for_asteroid_l",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 12234924
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 5142951
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 15896107
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 14767961
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/Replay_payload_limits_by_track_(Phase_9_",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/Stable_``SolverRun.config_json``_keys_(w",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/Normalized_game_data_import_domain.",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 12234924
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 5142951
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 15896107
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 14767961
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 12234924
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 5142951
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 15896107
-      }
-    },
-    {
-      "query": "tag:#community/Solver_Django_app_for_planner_services_a",
-      "color": {
-        "a": 1,
-        "rgb": 14767961
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/Recipe_graph_editor:_schema_version_and_",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/웹_레이어_전용_상수(페이지_기본값·JSON_API_메시지·프리뷰_타임아",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/Django_views_for_``web``_(public_pages_a",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
       }
     },
     {
       "query": "tag:#community/LazyLocalizedPlaceholderReplacementInlin",
       "color": {
         "a": 1,
-        "rgb": 10253663
-      }
-    },
-    {
-      "query": "tag:#community/Import_file_registry_and_canonical_order",
-      "color": {
-        "a": 1,
-        "rgb": 12234924
-      }
-    },
-    {
-      "query": "tag:#community/locale()",
-      "color": {
-        "a": 1,
-        "rgb": 5142951
-      }
-    },
-    {
-      "query": "tag:#community/output.py",
-      "color": {
-        "a": 1,
-        "rgb": 15896107
-      }
-    },
-    {
-      "query": "tag:#community/Shim:_relocated_to_core_layers.layer_01_",
-      "color": {
-        "a": 1,
-        "rgb": 14767961
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
-        "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/Migration",
-      "color": {
-        "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/registry.py_/_Import_file_registry_and_c",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/importer.py_/_Deterministic_game_data_JS",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/IVVD_Admin_Dropdown_Filter_UI_/_IVVD_Adm",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/Layer01ReconstructionOutput_/_output.py",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/replay_render_modes.py_/_Lab_replay_fram",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/__init__.py_/_Read-only_ORM_selectors_fo",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/solver_run_config_keys.py_/_Stable_``Sol",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/EquipmentAttachmentDTO_/_4-neighbor_atta",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/ExistingLayoutInspectionDTO_/_Full_exist",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/ExistingTransportComponentDTO_/_One_conn",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/InitialReplayPipelineResultDTO_/_Result_",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/PlaybackPatchDTO_/_Partial_update_for_``",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/Validated_root_JSON_from_:func:`decode_c",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/CreateProjectFromCopyCodeResultDTO_/_Res",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/ExistingEquipmentDTO_/_Miner_or_extensio",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/Migration",
+      "query": "tag:#community/One_persisted_lab_solver_run_row_(for_UI",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/Lab_replay_frame_render_mode_constants.",
+      "query": "tag:#community/Incoming_frame_to_append_to_a_replay_tra",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/Read-only_ORM_selectors_for_game_data_sn",
+      "query": "tag:#community/Ordered_replay_timeline_for_UI_(inspecti",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/Shim:_relocated_to_shapez2_factory.domai",
+      "query": "tag:#community/Lightweight_replay_track_handle_after_or",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/EquipmentAttachmentDTO",
+      "query": "tag:#community/One_stored_replay_frame_row_for_UI_paylo",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/ExistingLayoutInspectionDTO",
+      "query": "tag:#community/Optional_thinning_/_caps_for_replay_volu",
       "color": {
         "a": 1,
         "rgb": 15583560
       }
     },
     {
-      "query": "tag:#community/ExistingTransportComponentDTO",
+      "query": "tag:#community/One_logical_solver/UI_step_emitted_for_r",
       "color": {
         "a": 1,
         "rgb": 11565729
       }
     },
     {
-      "query": "tag:#community/InitialReplayPipelineResultDTO",
+      "query": "tag:#community/Structured_lookup_result_(HTTP_layer_may",
       "color": {
         "a": 1,
         "rgb": 16752039
       }
     },
     {
-      "query": "tag:#community/PlaybackPatchDTO",
+      "query": "tag:#community/__init__.py_/_Solver_Django_app_for_plan",
       "color": {
         "a": 1,
         "rgb": 10253663
       }
     },
     {
-      "query": "tag:#community/RawDecodedBlueprintDTO",
+      "query": "tag:#community/Solver_runtime_wire_serde_(replay_projec",
       "color": {
         "a": 1,
         "rgb": 12234924
       }
     },
     {
-      "query": "tag:#community/CreateProjectFromCopyCodeResultDTO",
+      "query": "tag:#community/Deprecated_import_path;_canonical_transp",
       "color": {
         "a": 1,
         "rgb": 5142951
       }
     },
     {
-      "query": "tag:#community/ExistingEquipmentDTO",
+      "query": "tag:#community/shapez2_Factory_Planner_??root_package_(",
       "color": {
         "a": 1,
         "rgb": 15896107
       }
     },
     {
-      "query": "tag:#community/SolverRunDTO",
+      "query": "tag:#community/Pure-core_CLI_entry_points_(BA-1:_stdlib",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/ReplayFrameAppendDTO",
+      "query": "tag:#community/Interfaces_layer_??UI_screens,_user_stat",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/ReplayTrackPayloadDTO",
+      "query": "tag:#community/Social_Account_Signup_Template_/_sociala",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/ReplayTrackRefDTO",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/ReplayFrameRowDTO",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/ReplayRecordingPolicyDTO",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/SnapshotEventDTO",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
-      }
-    },
-    {
-      "query": "tag:#community/TopologyModalResultDTO",
-      "color": {
-        "a": 1,
-        "rgb": 12234924
-      }
-    },
-    {
-      "query": "tag:#community/Core_Django_app_for_shape_parsing,_norma",
-      "color": {
-        "a": 1,
-        "rgb": 5142951
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 15896107
-      }
-    },
-    {
-      "query": "tag:#community/Use_cases_??orchestrate_domain_calls_via",
-      "color": {
-        "a": 1,
-        "rgb": 14767961
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
+      "query": "tag:#community/__init__.py_/_Use_cases_??orchestrate_do",
       "color": {
         "a": 1,
         "rgb": 15583560
@@ -3134,26 +2434,26 @@
       "color": {
         "a": 1,
         "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
       }
     },
     {
       "query": "tag:#community/urls.py",
       "color": {
         "a": 1,
+        "rgb": 16752039
+      }
+    },
+    {
+      "query": "tag:#community/__init__.py",
+      "color": {
+        "a": 1,
+        "rgb": 10253663
+      }
+    },
+    {
+      "query": "tag:#community/__init__.py",
+      "color": {
+        "a": 1,
         "rgb": 12234924
       }
     },
@@ -3165,7 +2465,7 @@
       }
     },
     {
-      "query": "tag:#community/__init__.py",
+      "query": "tag:#community/urls.py",
       "color": {
         "a": 1,
         "rgb": 15896107
@@ -3183,40 +2483,40 @@
       "color": {
         "a": 1,
         "rgb": 7780274
-      }
-    },
-    {
-      "query": "tag:#community/urls.py",
-      "color": {
-        "a": 1,
-        "rgb": 5873999
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
       }
     },
     {
       "query": "tag:#community/operation_catalog.py",
       "color": {
         "a": 1,
+        "rgb": 5873999
+      }
+    },
+    {
+      "query": "tag:#community/__init__.py",
+      "color": {
+        "a": 1,
+        "rgb": 15583560
+      }
+    },
+    {
+      "query": "tag:#community/__init__.py",
+      "color": {
+        "a": 1,
+        "rgb": 11565729
+      }
+    },
+    {
+      "query": "tag:#community/urls.py",
+      "color": {
+        "a": 1,
+        "rgb": 16752039
+      }
+    },
+    {
+      "query": "tag:#community/__init__.py",
+      "color": {
+        "a": 1,
         "rgb": 10253663
       }
     },
@@ -3242,52 +2542,31 @@
       }
     },
     {
-      "query": "tag:#community/urls.py",
+      "query": "tag:#community/__init__.py",
       "color": {
         "a": 1,
         "rgb": 14767961
       }
     },
     {
-      "query": "tag:#community/__init__.py",
+      "query": "tag:#community/Allauth_H2_Element",
       "color": {
         "a": 1,
         "rgb": 7780274
       }
     },
     {
-      "query": "tag:#community/__init__.py",
+      "query": "tag:#community/Auth_Page_Background_Partial",
       "color": {
         "a": 1,
         "rgb": 5873999
       }
     },
     {
-      "query": "tag:#community/__init__.py",
+      "query": "tag:#community/Auth_Page_Hero_Strip_Partial",
       "color": {
         "a": 1,
         "rgb": 15583560
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 11565729
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 16752039
-      }
-    },
-    {
-      "query": "tag:#community/__init__.py",
-      "color": {
-        "a": 1,
-        "rgb": 10253663
       }
     }
   ],
@@ -3301,6 +2580,6 @@
   "repelStrength": 10,
   "linkStrength": 1,
   "linkDistance": 250,
-  "scale": 0.015355906606692752,
+  "scale": 0.0831742783592754,
   "close": false
 }

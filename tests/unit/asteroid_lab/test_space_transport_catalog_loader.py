@@ -44,7 +44,9 @@ def test_loader_uses_db_when_registry_populated() -> None:
 
     json_loader.assert_not_called()
     assert catalog.lookup_tile_id("SpaceBelt_Forward").transport_kind == "space_belt"
-    assert get_last_space_transport_catalog_load_source() == SpaceTransportCatalogLoadSource.DB.value
+    assert (
+        get_last_space_transport_catalog_load_source() == SpaceTransportCatalogLoadSource.DB.value
+    )
 
 
 @pytest.mark.django_db

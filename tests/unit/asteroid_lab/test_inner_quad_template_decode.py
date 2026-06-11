@@ -10,9 +10,8 @@ import pytest
 
 from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string
 
-_FIXTURE_ROOT = (
-    Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "inner_quad_templates"
-)
+_TESTS_ROOT = Path(__file__).resolve().parents[2]
+_FIXTURE_ROOT = _TESTS_ROOT / "fixtures" / "asteroid_lab" / "inner_quad_templates"
 _MANIFEST_PATH = _FIXTURE_ROOT / "manifest.json"
 
 

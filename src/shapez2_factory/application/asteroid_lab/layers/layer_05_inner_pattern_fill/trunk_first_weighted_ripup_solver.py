@@ -129,9 +129,7 @@ def _trunk_goal_cells(
 def _belt_walkable_cells(state: _SolverState) -> frozenset[Coord]:
     occupied = state.all_occupied()
     belt = state.committed_belt_cells
-    return frozenset(
-        c for c in state.complete_map.field_cells if c in belt or c not in occupied
-    )
+    return frozenset(c for c in state.complete_map.field_cells if c in belt or c not in occupied)
 
 
 def _bfs_trunk_path(

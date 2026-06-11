@@ -13,6 +13,10 @@ from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.inner_fill_strategy import (
+    InnerFillStrategy,
+    parse_inner_fill_strategy,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
     Layer04InnerFillResult,
 )
@@ -76,6 +80,7 @@ class GoldenSolverConfig:
     throughput_target_percent: int = 80
     budget_ms: int = LAYER_STACK_BUDGET_MS
     speed_tier: int = 1
+    inner_fill_strategy: InnerFillStrategy | str = InnerFillStrategy.GREEDY
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,7 +148,10 @@ def _build_runners(
         _LayerStackRunner(
             LAYER_04_INNER_PATTERN_FILL,
             _capture_layer_run(
-                run_layer_04_inner_pattern_fill,
+                partial(
+                    run_layer_04_inner_pattern_fill,
+                    inner_fill_strategy=parse_inner_fill_strategy(cfg.inner_fill_strategy),
+                ),
                 capture,
                 "inner_fill",
             ),

@@ -135,13 +135,17 @@ def build_layer04_inner_fill_post_summary_metrics(
     if not isinstance(result, Layer04InnerFillResult):
         return {"stub": True, "interior_occupied_cell_count": 0}
     metrics = result.metrics
-    return {
+    payload: dict[str, object] = {
         "stub": False,
         "interior_occupied_cell_count": len(result.interior_occupied_cells),
         "coverage_ratio": metrics.coverage_ratio if metrics is not None else 0.0,
         "budget_interrupted": metrics.budget_interrupted if metrics is not None else False,
         "layer_skip_reason": result.skip_reason.value if result.skip_reason else None,
+        "corridor_shadow_cell_count": len(result.corridor_shadow_cells),
     }
+    if result.trunk_diagnostics is not None:
+        payload.update(result.trunk_diagnostics.as_metrics_dict())
+    return payload
 
 
 def build_layer05_post_summary_metrics(

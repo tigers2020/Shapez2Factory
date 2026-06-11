@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from django_apps.asteroid_lab.models import SolverRun
+from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
+    CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION,
+)
 from django_apps.asteroid_lab.services.lab_replay_lazy_handle import LAB_REPLAY_PAYLOAD_VERSION
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY,
@@ -13,8 +16,7 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
 
-# Keep in sync with ``lab_replay_persisted_cache.CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION``.
-_CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION = 2
+# Uses ``lab_replay_persisted_cache.CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION`` via import.
 
 _FAST_CACHE_UPDATE_FIELDS = (
     "lab_replay_manifest_summary_json",
@@ -27,7 +29,7 @@ _FAST_CACHE_UPDATE_FIELDS = (
 def empty_lab_replay_manifest_summary() -> dict[str, Any]:
     return {
         "replay_payload_version": LAB_REPLAY_PAYLOAD_VERSION,
-        "lab_replay_cache_schema_version": _CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION,
+        "lab_replay_cache_schema_version": CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION,
         "frame_count": 0,
         "preview_frame_index": 0,
         "preview_frame": None,

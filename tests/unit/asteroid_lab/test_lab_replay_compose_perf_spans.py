@@ -12,9 +12,6 @@ TIMELINE_PAYLOAD = (
 VIEWER_COMPOSE = (
     REPO / "django_apps" / "asteroid_lab" / "services" / "artifact_replay_viewer_compose.py"
 )
-RUNTIME_COMPOSE = (
-    REPO / "django_apps" / "asteroid_lab" / "services" / "artifact_runtime_replay_compose.py"
-)
 
 _LAB_REPLAY_GET_SPANS = (
     "replay_cache_lookup_ms",
@@ -30,11 +27,6 @@ _COMPOSE_CHAIN_SPANS = (
     "replay_metrics_build_ms",
     "artifact_manifest_load_ms",
     "replay_core_parse_ms",
-    "artifact_runtime_replay_compose_ms",
-    "replay_compose_l2_reconstruction_ms",
-    "replay_compose_l3_rim_greedy_ms",
-    "replay_compose_l4_inner_fill_ms",
-    "replay_compose_l5_transport_ms",
 )
 
 
@@ -51,7 +43,6 @@ def test_compose_chain_declares_nested_perf_spans() -> None:
     sources = (
         TIMELINE_PAYLOAD.read_text(encoding="utf-8"),
         VIEWER_COMPOSE.read_text(encoding="utf-8"),
-        RUNTIME_COMPOSE.read_text(encoding="utf-8"),
     )
     joined = "\n".join(sources)
     for span in _COMPOSE_CHAIN_SPANS:

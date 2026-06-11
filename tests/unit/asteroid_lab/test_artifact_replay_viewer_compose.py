@@ -150,27 +150,7 @@ def test_compose_lab_replay_frames_from_artifact_run_adds_map_view(tmp_path: Pat
     assert composed[0]["map_view"]["full_cells"]
 
 
-_MIN_GENETIC_SAMPLE_SEEDS: dict[str, object] = {
-    "schema_version": "genetic_sample_seed_v1",
-    "deterministic_sort_key": "by_gene_id_then_throughput_desc",
-    "entries": [
-        {
-            "gene_id": "m0e",
-            "resource_kind": "shape",
-            "canonical_output_dir": "E",
-            "occupied_offsets": [[0, 0]],
-            "extractor_offset": [0, 0],
-            "extension_offsets": [],
-            "output_stub_offset": [1, 0],
-            "route_probe_start_offset": [2, 0],
-            "throughput_factor": 4,
-            "topology_signature_base": "m0e_base",
-        }
-    ],
-}
-
-
-def test_compose_artifact_run_runtime_recompose_includes_l3_overlays(
+def test_compose_artifact_run_maps_replay_core_without_solver_reexecution(
     tmp_path: Path,
 ) -> None:
     project = m.AsteroidProject.objects.create(name="L3", slug="artifact-l3-append")
@@ -199,8 +179,6 @@ def test_compose_artifact_run_runtime_recompose_includes_l3_overlays(
         run_key=run_key,
         core_lines=core_lines,
         complete_map=complete_map,
-        include_game_data_snapshot=True,
-        genetic_sample_seeds=_MIN_GENETIC_SAMPLE_SEEDS,
         solver_summary={
             "throughput_target_percent": 80,
             "completed_layer_slugs": [LAYER_03_RIM_GREEDY_PLACEMENT],
@@ -223,15 +201,14 @@ def test_compose_artifact_run_runtime_recompose_includes_l3_overlays(
     composed = compose_lab_replay_frames_from_artifact_run(run)
 
     assert composed is not None
+    assert len(composed) == 2
     assert lab_replay_frames_are_renderable(composed)
     event_types = [str(fr.get("event_type") or "") for fr in composed]
     assert EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE in event_types
     complete = next(
         fr for fr in composed if fr.get("event_type") == EVENT_TYPE_LAYER03_RIM_GREEDY_COMPLETE
     )
-    assert complete["inspector"]["replay_source"] == "artifact_runtime_recompose"
-    overlay_cells = (complete.get("map_view") or {}).get("overlay_cells") or []
-    assert overlay_cells, "L3 complete frame must carry committed miner overlays"
+    assert complete["inspector"]["replay_source"] == "artifact_replay_core"
 
 
 def test_load_composed_frames_does_not_return_raw_replay_core(tmp_path: Path) -> None:

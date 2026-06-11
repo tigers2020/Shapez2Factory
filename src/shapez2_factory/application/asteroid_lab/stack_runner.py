@@ -104,6 +104,10 @@ class CoreStackRunResult:
 
     stack_result: StackRunResult
     layer_summaries: tuple[LayerPostSummaryRecord, ...]
+    exterior_plan: ExteriorConnectionPlan | None = None
+    rim_greedy: IntegratedRimGreedyResult | None = None
+    inner_fill: Layer04InnerFillResult | None = None
+    route_plan: Layer05RoutePlan | None = None
 
 
 def _diagnostic_for_slug(slug: str) -> DiagnosticLayerSnapshot:
@@ -159,6 +163,10 @@ def run_layers_02_to_06(
                     diagnostic_snapshot=last_diagnostic,
                 ),
                 layer_summaries=tuple(summaries),
+                exterior_plan=last_exterior_plan,
+                rim_greedy=last_rim_greedy,
+                inner_fill=last_inner_fill,
+                route_plan=last_layer05_plan,
             )
         started = budget_ctx.now_fn()
         post_metrics: dict[str, object] = {"stub": True}
@@ -242,6 +250,10 @@ def run_layers_02_to_06(
             diagnostic_snapshot=None,
         ),
         layer_summaries=tuple(summaries),
+        exterior_plan=last_exterior_plan,
+        rim_greedy=last_rim_greedy,
+        inner_fill=last_inner_fill,
+        route_plan=last_layer05_plan,
     )
 
 

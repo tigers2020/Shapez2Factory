@@ -17,6 +17,10 @@ from django_apps.game_data.models.exterior_transport_capacity import (
     ExteriorShapeTransportCapacity,
 )
 from django_apps.game_data.models.mining import MiningExtractionRule
+from django_apps.game_data.services.space_transport_layout_catalog import (
+    EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT,
+    space_transport_layout_snapshot_rows,
+)
 from django_apps.game_data.services.exterior_transport_capacity import (
     get_active_exterior_fluid_transport_capacity,
     get_active_exterior_shape_transport_capacity,
@@ -33,6 +37,7 @@ class GameDataSnapshotExportErrorCode(StrEnum):
     MISSING_FLUID_EVTC = "missing_fluid_evtc_row"
     MISSING_SHAPE_MINING = "missing_shape_mining_rule"
     MISSING_FLUID_MINING = "missing_fluid_mining_rule"
+    MISSING_SPACE_TRANSPORT_LAYOUTS = "missing_space_transport_layouts"
 
 
 class GameDataSnapshotExportError(Exception):
@@ -67,6 +72,15 @@ def _assert_required_snapshot_rows() -> None:
         get_active_rule("fluid")
     except LookupError as exc:
         _raise_export_error(GameDataSnapshotExportErrorCode.MISSING_FLUID_MINING, exc)
+    layout_rows = space_transport_layout_snapshot_rows()
+    if len(layout_rows) != EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT:
+        raise GameDataSnapshotExportError(
+            GameDataSnapshotExportErrorCode.MISSING_SPACE_TRANSPORT_LAYOUTS,
+            (
+                f"expected {EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT} "
+                f"SpaceTransportLayoutRegistry rows, got {len(layout_rows)}"
+            ),
+        )
 
 
 def _exterior_transport_capacity_rows() -> list[dict[str, Any]]:
@@ -111,11 +125,17 @@ def _mining_extraction_rule_rows() -> list[dict[str, Any]]:
     return rows
 
 
-def _dump_hash(*, exterior_rows: list[dict[str, Any]], mining_rows: list[dict[str, Any]]) -> str:
+def _dump_hash(
+    *,
+    exterior_rows: list[dict[str, Any]],
+    mining_rows: list[dict[str, Any]],
+    layout_rows: list[dict[str, Any]],
+) -> str:
     blob = json.dumps(
         {
             "exterior_transport_capacity": exterior_rows,
             "mining_extraction_rules": mining_rows,
+            "space_transport_layouts": layout_rows,
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -130,14 +150,17 @@ def build_game_data_snapshot_payload() -> dict[str, Any]:
     _assert_required_snapshot_rows()
     exterior_rows = _exterior_transport_capacity_rows()
     mining_rows = _mining_extraction_rule_rows()
+    layout_rows = space_transport_layout_snapshot_rows()
     return {
         "schema_version": SNAPSHOT_SCHEMA_VERSION,
         "game_data_dump_hash": _dump_hash(
             exterior_rows=exterior_rows,
             mining_rows=mining_rows,
+            layout_rows=layout_rows,
         ),
         "exterior_transport_capacity": exterior_rows,
         "mining_extraction_rules": mining_rows,
+        "space_transport_layouts": layout_rows,
     }
 
 

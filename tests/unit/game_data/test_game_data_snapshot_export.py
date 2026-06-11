@@ -17,6 +17,10 @@ from django_apps.game_data.models.exterior_transport_capacity import (
     ExteriorShapeTransportCapacity,
 )
 from django_apps.game_data.models.mining import MiningExtractionRule
+from django_apps.game_data.models.space_transport_layout import SpaceTransportLayoutRegistry
+from django_apps.game_data.services.space_transport_layout_catalog import (
+    EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT,
+)
 from django_apps.game_data.services.game_data_snapshot_export import (
     GameDataSnapshotExportError,
     GameDataSnapshotExportErrorCode,
@@ -27,10 +31,15 @@ from tests.integration.web.test_asteroid_miner_layout_solver import _unique_vali
 
 @pytest.mark.django_db
 def test_build_game_data_snapshot_payload_succeeds_with_canon_rows() -> None:
+    if SpaceTransportLayoutRegistry.objects.count() < EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT:
+        pytest.skip("SpaceTransportLayoutRegistry not imported")
+
     payload = build_game_data_snapshot_payload()
     assert payload["schema_version"] == "game_data_snapshot_v1"
     assert payload["exterior_transport_capacity"]
     assert payload["mining_extraction_rules"]
+    assert len(payload["space_transport_layouts"]) == EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT
+    assert payload["space_transport_layouts"][0]["tile_id"].startswith("Space")
 
 
 @pytest.mark.django_db
@@ -60,6 +69,10 @@ def test_build_game_data_snapshot_payload_succeeds_with_canon_rows() -> None:
                 resource_kind="fluid", is_active=True
             ).update(is_active=False),
             GameDataSnapshotExportErrorCode.MISSING_FLUID_MINING,
+        ),
+        (
+            lambda: SpaceTransportLayoutRegistry.objects.all().delete(),
+            GameDataSnapshotExportErrorCode.MISSING_SPACE_TRANSPORT_LAYOUTS,
         ),
     ],
 )

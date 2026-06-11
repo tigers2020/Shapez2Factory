@@ -193,7 +193,10 @@ def test_greedy_strategy_default_unchanged() -> None:
 
 def test_golden_fixture_solver_run_does_not_load_golden_as_input() -> None:
     source = (
-        __import__("pathlib").Path("src/shapez2_factory/application/asteroid_lab/experiments/golden_fixture_solver_run.py")
+        __import__("pathlib")
+        .Path(
+            "src/shapez2_factory/application/asteroid_lab/experiments/golden_fixture_solver_run.py"
+        )
         .read_text(encoding="utf-8")
     )
     assert "golden.shapez" not in source

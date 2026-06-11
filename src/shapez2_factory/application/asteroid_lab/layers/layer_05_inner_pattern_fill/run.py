@@ -39,16 +39,21 @@ def run_layer_04_inner_pattern_fill(
     inner_fill_strategy: InnerFillStrategy | str = InnerFillStrategy.GREEDY,
 ) -> Layer04InnerFillResult:
     strategy = parse_inner_fill_strategy(inner_fill_strategy)
-    kwargs = {
-        "complete_map": complete_map,
-        "exterior_plan": exterior_plan,
-        "provisional_overlay": provisional_overlay,
-        "budget_ctx": budget_ctx,
-        "target_routeable_group_count": target_routeable_group_count,
-    }
     if strategy is InnerFillStrategy.TRUNK_FIRST_WEIGHTED_RIPUP:
-        return run_trunk_first_weighted_ripup_inner_fill(**kwargs)
-    return run_greedy_inner_fill(**kwargs)
+        return run_trunk_first_weighted_ripup_inner_fill(
+            complete_map=complete_map,
+            exterior_plan=exterior_plan,
+            provisional_overlay=provisional_overlay,
+            budget_ctx=budget_ctx,
+            target_routeable_group_count=target_routeable_group_count,
+        )
+    return run_greedy_inner_fill(
+        complete_map=complete_map,
+        exterior_plan=exterior_plan,
+        provisional_overlay=provisional_overlay,
+        budget_ctx=budget_ctx,
+        target_routeable_group_count=target_routeable_group_count,
+    )
 
 
 run_layer_05_inner_pattern_fill = run_layer_04_inner_pattern_fill

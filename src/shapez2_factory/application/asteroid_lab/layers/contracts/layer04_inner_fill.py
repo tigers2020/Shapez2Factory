@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 from enum import StrEnum
 
-from shapez2_factory.application.asteroid_lab.layers.contracts.trunk_first_inner_fill_diagnostics import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.trunk_first_inner_fill_diagnostics import (  # noqa: E501
     TrunkFirstInnerFillDiagnostics,
 )
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord

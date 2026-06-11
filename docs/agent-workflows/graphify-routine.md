@@ -13,32 +13,66 @@ Use the project knowledge graph before expensive codebase exploration.
 
 Current scope built: `django_apps` + `src`. Freshness: `built_at_commit` in `graph.json` vs `git rev-parse --short HEAD`.
 
-## Mandatory for agents
+## Code Search Routing — Graphify First
 
-When `graph.json` exists, agents must run `/graphify` query/path/explain before wide grep or reading >2 unfamiliar modules. Router: `.cursor/rules/graphify.mdc`, `AGENTS.md` § Tool Routing.
+When `graphify-out/graph.json` exists, repository exploration **must** start from Graphify documentation and Graphify commands before using SemanticSearch, Grep, or direct file reads.
 
-## When to use graphify first
+### Required order
 
-- Architecture, coupling, boundary, or SoT questions
-- Cross-package paths (domain ↔ django_apps ↔ replay ↔ layers)
-- Unfamiliar subsystem onboarding
-- Trace reports (e.g. hub DTOs, god nodes)
-- Before broad `grep` / multi-file read on >3 modules
+1. Read the local Graphify guidance first:
+   - `AGENTS.md` § Tool Routing
+   - `.cursor/rules/graphify.mdc`
+   - `docs/agent-workflows/graphify-routine.md` (this file)
 
-## When graphify is optional
+2. Run broad graph navigation:
 
-- User named exact file/function
-- Single-file bug with stack trace
-- Graph missing and task is one-line fix
+   ```bash
+   graphify query "<question>"
+   ```
 
-## Agent commands (in order)
+3. For module coupling or dependency questions:
 
-1. `graphify query "<question>"` — neighborhood / BFS context
-2. `graphify path "A" "B"` — shortest coupling path
-3. `graphify explain "Concept"` — one node + neighbors
-4. Read `GRAPH_REPORT.md` sections only if 1–3 are insufficient
+   ```bash
+   graphify path "<source/module>" "<target/module>"
+   ```
+
+4. For concept ownership or neighboring modules:
+
+   ```bash
+   graphify explain "<concept>"
+   ```
+
+5. If steps 2–4 are insufficient, inspect `graphify-out/GRAPH_REPORT.md` (god nodes, surprises — not full dump).
+
+6. Use Grep, SemanticSearch, or direct file reads only after Graphify has identified candidate files/modules, or when an explicit exception applies.
 
 Chat: attach `/graphify` skill or ask agent to run the skill pipeline on a path.
+
+### Grep / SemanticSearch exceptions
+
+Grep, SemanticSearch, or direct reads are allowed first only when:
+
+- The user provides an exact file, function, class, symbol, or stack trace.
+- Graphify data is missing, stale, or does not contain the needed area.
+- The task is a single-file bug fix with a known location.
+- Graphify result is `EXTRACTED` and grep is only used to confirm imports, calls, or exact symbol usage.
+
+### Staleness rule
+
+If code changed after the graph was built, update the graph before relying on it:
+
+```bash
+graphify update src
+graphify update django_apps
+```
+
+Do not treat `graphify-out/graph.json` as current if its build commit (see `GRAPH_REPORT.md` § Graph Freshness) is older than the code under investigation. Compare with `git rev-parse HEAD`.
+
+### Anti-pattern
+
+Do not start broad repository exploration with SemanticSearch, Grep, or opening random likely files when a valid `graphify-out/graph.json` exists.
+
+**Graphify is the map. Grep is the microscope.**
 
 ## Rebuild / update
 

@@ -22,7 +22,7 @@ Cursor implements; Hermes researches and suggests skills — not APPROVE/BLOCK. 
 
 ## Tool Routing
 
-- **Graphify (mandatory when graph exists):** architecture, coupling, boundaries, cross-module paths, unfamiliar subsystems — `/graphify` on `graphify-out/graph.json` before wide grep (`graphify.mdc`, `docs/agent-workflows/graphify-routine.md`). Human viz: `graphify-out/graph.html`, Obsidian `graphify-out/obsidian/` (not repo root). After code-only edits: `graphify update django_apps` / `src`. Separate EXTRACTED vs INFERRED edges.
+- **Graphify (code search gate, mandatory when graph exists):** run `graphify query` / `path` / `explain` before SemanticSearch, Grep, or broad file reads. Architecture, coupling, boundaries, cross-module paths — `graphify.mdc`, `docs/agent-workflows/graphify-routine.md` § Code Search Routing. Human viz: `graphify-out/graph.html`, Obsidian `graphify-out/obsidian/` (not repo root). After code-only edits: `graphify update django_apps` / `src`. Separate EXTRACTED vs INFERRED edges.
 - Playwright: when browsing, browser testing, UI flow checks, screenshots, or rendered-page verification matter, use `/playwright` and `.cursor/rules/playwright.mdc`. Prefer real browser evidence; store artifacts under `output/playwright/`.
 
 ## Shapez2 Routing

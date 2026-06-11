@@ -5,13 +5,13 @@ alwaysApply: true
 
 # Graphify Router
 
-Canon: `AGENTS.md` § Tool Routing. Detail: `docs/agent-workflows/graphify-routine.md`.
+Canon: `AGENTS.md` § Tool Routing. Detail: `docs/agent-workflows/graphify-routine.md` § Code Search Routing.
 
 ## Mandatory gate
 
 When `graphify-out/graph.json` exists:
 
-- **Before** wide `grep`, semantic codebase search, or reading >2 unfamiliar modules — run `/graphify query`, `path`, or `explain` (skill pipeline).
+- **Before** SemanticSearch, wide Grep, or reading >2 unfamiliar modules — run `graphify query`, `path`, or `explain` (skill pipeline).
 - Cite **EXTRACTED** vs **INFERRED** edges; never refactor on INFERRED alone.
 - Architecture answers must note graph evidence (path/nodes) or that graph was stale and updated.
 
@@ -19,11 +19,13 @@ When `graphify-out/graph.json` exists:
 
 Graph missing but architecture needed: `BLOCKED:` or run `/graphify django_apps src`.
 
+Anti-pattern: SemanticSearch or Grep first when graph is valid. Graphify is the map; Grep is the microscope.
+
 ## Read order
 
-1. `/graphify query "<question>"` or `path` / `explain`
+1. `graphify query "<question>"` or `path` / `explain`
 2. `graphify-out/GRAPH_REPORT.md` (god nodes, surprises — sections only)
-3. Wide grep / multi-file read only if 1–2 fail
+3. Grep / SemanticSearch / multi-file read only on Graphify-identified candidates or if 1–2 fail
 
 ## Artifacts (scope: `django_apps` + `src`)
 

@@ -1,0 +1,61 @@
+---
+description: "Ops/recovery router: git, PR, CI, plan-run state — no product edits by default"
+alwaysApply: true
+---
+
+# Ops / Recovery Router
+
+Canon: `AGENTS.md` § Task routing (Ops / recovery). Detail: `docs/agent-workflows/ops-recovery-routine.md`.
+
+## Task class
+
+Route here when work is **operational**, not product implementation:
+
+- dirty root / stash / worktree cleanup
+- `/clean-root`, `/plan-run recover`, plan-run state restore
+- open PR babysit, CI red triage, branch hygiene
+- Linear stale claim / handoff recovery
+
+**Not** implementation or regression — do not touch product code unless recovery contract names paths.
+
+## Dirty worktree
+
+| Mode | Dirty inventory | Edits |
+|------|-----------------|-------|
+| Implementation / docs / regression | BLOCKED unless user scoped paths | production paths forbidden |
+| Ops / recovery | allowed for diagnosis | whitelist only (below) |
+
+## Edit whitelist (recovery only)
+
+- `var/plan-run/**`, `plans/**` — plan-run metadata restore only
+- `.worktrees/**` — list/remove stale worktrees when user or skill requests
+- governance/skills/docs — when task is explicitly recovery or safety fix
+- stash apply/pop, branch switch, worktree add/remove — git state only
+
+Forbidden without explicit user request: product `django_apps/**`, `src/**`, `tests/**`.
+
+## Protected paths — never auto-delete
+
+```text
+var/plan-run/**
+.worktrees/**
+plans/**
+```
+
+Also never `git clean` target: `.env`, `.env.*` local secrets.
+
+## Ignored cleanup
+
+- **Never** auto-run `git clean -fdX` or `git clean -fd`.
+- Preview only: `/clean-root clear-ignored` with protected excludes (`clean-root` skill).
+- `/clean-root auto` must not delete ignored workflow state.
+
+## Pipeline
+
+```text
+inventory → classify risk → safe recovery action → verify state → STOP
+```
+
+No commit/push/PR unless user asks. No opening PRs from dirty-root auto chains.
+
+Skills: `/clean-root`, `/plan-run recover`, `babysit` (PR/CI). Do not stack with `/bug-fix` or implementation skills on same turn.

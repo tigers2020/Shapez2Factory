@@ -5,9 +5,21 @@ alwaysApply: true
 
 # Workflow Router
 
-Canon: `AGENTS.md`.
+Canon: `AGENTS.md` § Workflow strictness. Detail: `docs/agent-workflows/workflow-strictness.md`.
 
-Pipeline:
+## Strictness
+
+Classify risk before pipeline. **Full pipeline = Normal + High-risk only.**
+
+| Mode | Contract |
+|------|----------|
+| Read-only | none — no production edits |
+| Tiny | Problem / Change / Validation (3-line) |
+| Normal / High-risk | full contract + ICE when implementation |
+
+Auto-upgrade to **High-risk** for: solver, routing, replay, validation, DTO/schema, migrations, artifact contracts, golden loop, plan-run automation.
+
+Pipeline (Normal / High-risk):
 
 ```text
 problem -> authority -> contract -> plan -> acceptance tests -> small change -> gate
@@ -15,11 +27,14 @@ problem -> authority -> contract -> plan -> acceptance tests -> small change -> 
 
 Authority for architecture/coupling: if `graphify-out/graph.json` exists, **mandatory** `/graphify` query/path/explain before wide grep or multi-module reads (`graphify.mdc`).
 
-For Shapez2 domain or Hermes skill-suggestion workflows, route to `shapez2-domain.mdc` and `docs/agent-workflows/`.
+For Shapez2 domain work, route to `shapez2-domain.mdc`.
 
 Rules:
 
-- No production edit until problem, goal, non-goals, contract, and acceptance are clear.
+- Normal/High-risk: no production edit until problem, goal, non-goals, contract, and acceptance are clear.
+- Full contract must name: source of truth, affected layer, forbidden inputs/outputs, validation command, rollback/stop condition.
+- Tiny: 3-line contract only; touched-file validation.
+- Ops/recovery tasks: route `ops-recovery.mdc` — no product contract required; recovery scope must be explicit.
 - Contract change: spec/brief -> acceptance -> tests -> production.
 - Regression: failing repro -> fix -> regression gate.
 - Refactor: preserve behavior; update tests only when contract shifts.

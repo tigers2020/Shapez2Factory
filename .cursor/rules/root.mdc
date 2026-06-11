@@ -7,28 +7,17 @@ alwaysApply: true
 
 Canon: `AGENTS.md`.
 
-Conflict order:
+**AGENTS.md controls HOW. Spec/ADR controls WHAT.** See `AGENTS.md` § Authority split.
 
-1. User explicit current instruction
-2. `AGENTS.md`
-3. Matching `.cursor/rules/*.mdc`
-4. Current docs/specs/ADRs
-5. Agent assumptions
+Route when relevant:
 
-Always route:
+- Scope: `agent_scope.mdc`
+- Strictness / SDD: `workflow.mdc` (`workflow-strictness.md`)
+- Ops/recovery: `ops-recovery.mdc`
+- Shapez2: `shapez2-domain.mdc`, `shapez2-core.mdc`
+- Code search (graph exists): `graphify.mdc`
+- UI/browser verification: `playwright.mdc`
+- Git hygiene: `git-worktree.mdc`
+- Style: `caveman.mdc`
 
-- Plan execution scope: `.cursor/rules/agent_scope.mdc`
-- Base processing: `.cursor/rules/superpowers.mdc`
-- Caveman style: `.cursor/rules/caveman.mdc`
-- Shapez2 domain: `.cursor/rules/shapez2-domain.mdc`
-- SDD/testing: `.cursor/rules/workflow.mdc`
-- Core constraints: `.cursor/rules/shapez2-core.mdc`
-- Hermes workflow: `.cursor/rules/00-hermes-skill-suggestion.mdc`
-- Hermes handoff: `.cursor/rules/01-hermes-handoff-format.mdc`
-- Graphify (repo/codebase search when `graphify-out/graph.json` exists): `.cursor/rules/graphify.mdc`
-- Playwright/browser: `.cursor/rules/playwright.mdc`
-- Git/worktree hygiene: `.cursor/rules/git-worktree.mdc`
-- Agent workflow canon: `docs/agent-workflows/`
-
-Line-count WARN with exit 0 is pass; do not edit solely to clear WARN.
 Do not claim done without evidence. Do not commit/push/PR unless user asks.

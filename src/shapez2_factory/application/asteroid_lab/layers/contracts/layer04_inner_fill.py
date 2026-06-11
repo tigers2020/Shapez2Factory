@@ -15,6 +15,8 @@ PATTERN_BUILTIN_1X1_FIELD_BLOCK = "builtin_1x1_field_block"
 
 # Routeable installation target: share of max group sets (field_cells // 4).
 TARGET_ROUTEABLE_FILL_RATIO = 0.90
+# Golden Criterion B inner fill ratio (see golden_l4_capacity_metrics).
+CRITERION_B_INNER_FILL_RATIO = 0.80
 FIELD_CELLS_PER_ROUTEABLE_GROUP = 4
 
 
@@ -27,6 +29,14 @@ def target_routeable_group_count_for_field(field_count: int) -> int:
 
     max_sets = max_routeable_group_sets_for_field_count(field_count)
     return math.ceil(max_sets * TARGET_ROUTEABLE_FILL_RATIO)
+
+
+def min_total_routeable_target_for_field(field_count: int, rim_group_count: int) -> int:
+    """Criterion B: rim + ceil(inner_max_group_sets * CRITERION_B_INNER_FILL_RATIO)."""
+
+    max_sets = max_routeable_group_sets_for_field_count(field_count)
+    inner_max = max(0, max_sets - rim_group_count)
+    return rim_group_count + math.ceil(inner_max * CRITERION_B_INNER_FILL_RATIO)
 
 
 class Layer04SkipReason(StrEnum):
@@ -92,6 +102,8 @@ __all__ = [
     "PATTERN_BUILTIN_1X1_FIELD_BLOCK",
     "TARGET_ROUTEABLE_FILL_RATIO",
     "max_routeable_group_sets_for_field_count",
+    "CRITERION_B_INNER_FILL_RATIO",
+    "min_total_routeable_target_for_field",
     "target_routeable_group_count_for_field",
     "InnerPlacement",
     "Layer04FillMetrics",

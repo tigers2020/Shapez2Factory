@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Agent Scope Guard
 
-Canon: `AGENTS.md` § Agent Scope.
+Canon: `AGENTS.md` § Default workflow (scope).
 
 ## Hard rule: No implicit next work
 
@@ -22,19 +22,18 @@ Forbidden without explicit user approval:
 - Cleanup, refactor, optimization, or docs outside the approved task list
 - File changes outside approved scope
 
-## Hermes handoff exception (non-trivial)
+## Allowed closure (after final approved task)
 
-Per `00-hermes-skill-suggestion.mdc`, these are **preparatory handoff steps**, not extra implementation scope:
+- Run approved validation tier
+- Lint/format **only touched files** if validation requires it
+- Final report / PR summary text
+- Restore accidental generated junk **only** when explicitly safe and in scope
 
-- `PLAN_TO_SKILL_REQUEST`
-- waiting for Hermes `SKILL_SUGGESTION`
-- `SKILL_APPLICATION_SUMMARY`
-
-Not D-1 subtasks. User may explicitly skip Hermes.
+Still forbidden: nearby cleanup, opportunistic refactor, deferred TODO implementation, extra docs, test expansion beyond contract.
 
 ## After final listed task
 
-1. Run validation from plan/prompt or `AGENTS.md` § Validation
+1. Run validation from plan/prompt or `AGENTS.md` § Validation (evidence format: `validation-routine.md`)
 2. Final report (below) with `STOPPED_AT_APPROVED_SCOPE`
 3. Deferred work as text only — do not implement
 

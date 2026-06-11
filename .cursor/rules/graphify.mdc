@@ -9,13 +9,22 @@ Canon: `AGENTS.md` § Tool Routing. Detail: `docs/agent-workflows/graphify-routi
 
 ## Mandatory gate
 
-When `graphify-out/graph.json` exists:
+**Normal / High-risk** architectural or unknown-location work — when `graphify-out/graph.json` exists:
 
 - **Before** SemanticSearch, wide Grep, or reading >2 unfamiliar modules — run `graphify query`, `path`, or `explain` (skill pipeline).
 - Cite **EXTRACTED** vs **INFERRED** edges; never refactor on INFERRED alone.
 - Architecture answers must note graph evidence (path/nodes) or that graph was stale and updated.
 
-**Skip only:** user named exact file/symbol; single-file fix with stack trace; graph file absent.
+**Skip only:** user named exact file/symbol; single-file fix with stack trace; graph file absent; `GRAPH_STALE` (hint only — confirm with read/grep).
+
+## GRAPH_STALE
+
+Before trusting graph results:
+
+1. Confirm `graphify-out/graph.json` exists.
+2. Compare `built_at_commit` in `graph.json` to `git rev-parse --short HEAD`.
+3. If commit mismatch, target module missing from graph, or graph predates known refactor → mark `GRAPH_STALE`.
+4. `GRAPH_STALE`: graph is hint only; grep/read target files before architecture claims or refactors.
 
 Graph missing but architecture needed: `BLOCKED:` or run `/graphify django_apps src`.
 

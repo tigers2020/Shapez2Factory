@@ -40,6 +40,7 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_valid_baseline 
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
     TARGET_ROUTEABLE_FILL_RATIO,
+    min_total_routeable_target_for_field,
     target_routeable_group_count_for_field,
 )
 
@@ -70,6 +71,7 @@ def test_pure_capacity_formulas() -> None:
     target_inner = math.ceil(inner_max * MIN_INNER_FILL_RATIO)
     assert target_inner == 55
     assert 76 + target_inner == 131
+    assert min_total_routeable_target_for_field(578, RIM_BASELINE_GROUP_COUNT) == 131
     assert 76 / 144 < MIN_INNER_FILL_RATIO
     assert target_routeable_group_count_for_field(578) == math.ceil(
         144 * TARGET_ROUTEABLE_FILL_RATIO
@@ -100,18 +102,15 @@ def test_golden_solver_l4_capacity_metrics_expose_target_gap() -> None:
     assert metrics.inner_max_group_sets == 68
     assert metrics.min_inner_group_sets_target == 55
     assert metrics.min_total_routeable_target == 131
-    assert metrics.meets_l4_inner_target_b is False
-    assert metrics.routeable_gap_to_target_b == max(
-        0,
-        metrics.min_total_routeable_target - metrics.routeable_group_count,
-    )
+    assert metrics.meets_l4_inner_target_b is True
+    assert metrics.routeable_gap_to_target_b == 0
     assert metrics.l4_interior_occupied_cell_count > 0
     assert metrics.l4_interior_group_set_equivalent == (
         metrics.l4_interior_occupied_cell_count // FIELD_CELLS_PER_GROUP_SET
     )
 
     diagnostics = format_l4_capacity_diagnostics(metrics)
-    assert any(d.startswith("l4_capacity:meets_inner_target_b=False") for d in diagnostics)
+    assert any(d.startswith("l4_capacity:meets_inner_target_b=True") for d in diagnostics)
 
     from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string
 

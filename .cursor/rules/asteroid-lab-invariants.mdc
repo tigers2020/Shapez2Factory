@@ -13,8 +13,6 @@ alwaysApply: false
 
 Canon: `AGENTS.md`, current `documents/Algorithm/asteroid_lab*.md`, then current tests.
 
-Use `/grill-me-shapez2` before design or implementation in this area.
-
 Preserve these contracts unless current canon explicitly changes them:
 
 - Coordinates: keep copy JSON island-local `X`/`Y`; no dense server bridge as algorithm input.

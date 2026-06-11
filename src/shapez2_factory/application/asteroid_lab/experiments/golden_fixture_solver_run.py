@@ -48,6 +48,9 @@ from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placeme
 from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.run import (
     run_layer_05_transport_routing,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    min_total_routeable_target_for_field,
+)
 from shapez2_factory.application.asteroid_lab.layers.layer_05_inner_pattern_fill.run import (
     run_layer_04_inner_pattern_fill,
 )
@@ -81,6 +84,9 @@ class GoldenSolverConfig:
     budget_ms: int = LAYER_STACK_BUDGET_MS
     speed_tier: int = 1
     inner_fill_strategy: InnerFillStrategy | str = InnerFillStrategy.GREEDY
+    # Align L4 inner routeable cap with Criterion B (131 on canonical golden), not 90% default (130).
+    use_l4_criterion_b_target: bool = True
+    target_routeable_group_count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +119,42 @@ def _capture_layer_run(
         return result
 
     return wrapped
+
+
+def _resolve_l4_target_routeable_group_count(
+    *,
+    cfg: GoldenSolverConfig,
+    field_count: int,
+    rim_group_count: int,
+) -> int | None:
+    if cfg.target_routeable_group_count is not None:
+        return cfg.target_routeable_group_count
+    if not cfg.use_l4_criterion_b_target:
+        return None
+    return min_total_routeable_target_for_field(field_count, rim_group_count)
+
+
+def _run_golden_inner_pattern_fill(
+    *,
+    capture: _LayerArtifactCapture,
+    cfg: GoldenSolverConfig,
+    complete_map: ReconstructionCompleteMap,
+    **kwargs: Any,
+) -> Layer04InnerFillResult:
+    rim_group_count = (
+        len(capture.rim_result.committed_placements) if capture.rim_result is not None else 0
+    )
+    target = _resolve_l4_target_routeable_group_count(
+        cfg=cfg,
+        field_count=len(complete_map.field_cells),
+        rim_group_count=rim_group_count,
+    )
+    return run_layer_04_inner_pattern_fill(
+        complete_map=complete_map,
+        target_routeable_group_count=target,
+        inner_fill_strategy=parse_inner_fill_strategy(cfg.inner_fill_strategy),
+        **kwargs,
+    )
 
 
 def _build_runners(
@@ -149,8 +191,9 @@ def _build_runners(
             LAYER_04_INNER_PATTERN_FILL,
             _capture_layer_run(
                 partial(
-                    run_layer_04_inner_pattern_fill,
-                    inner_fill_strategy=parse_inner_fill_strategy(cfg.inner_fill_strategy),
+                    _run_golden_inner_pattern_fill,
+                    capture=capture,
+                    cfg=cfg,
                 ),
                 capture,
                 "inner_fill",

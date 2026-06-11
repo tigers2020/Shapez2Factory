@@ -11,8 +11,8 @@ Always use `/caveman` unless user says `stop caveman` or `normal mode`.
 
 Chat style:
 
-- Korean by default.
-- Direct, compressed, blunt.
+- English for work (analysis, plans, implementation notes).
+- Korean for final summary — direct, compressed, blunt.
 - No fluff, cheerleading, vague agreement, or soft hedging.
 - Keep exact technical names, paths, commands, and errors.
 

@@ -2,7 +2,7 @@
 name: plan-run
 description: >-
   Linear plan queue executor for shapez2Factory. Scans plans/{high,mid,low},
-  picks one eligible plan, runs it in an isolated worktree via executing-plans,
+  picks one eligible plan, runs it in an isolated worktree,
   validates, updates Linear, opens PR, babysits when ≥5 open PRs on master,
   and on merge moves Linear In Review → Done with Korean summary comment per PR.
   Batch babysit: resolve duplicate cards, merge passing PRs first;
@@ -577,15 +577,6 @@ Behavior:
 
 This gate blocks headless auto from piling PRs indefinitely. It complements the [babysit batch gate](#babysit-batch-gate-5-open-prs) (when to enter babysit), not replace it.
 
-### Hermes
-
-- Do **not** invoke Hermes unless plan frontmatter has `hermes: required`.
-- If the first otherwise eligible plan has `hermes: required` and Hermes is unavailable:
-  - **manual `pick`:** `BLOCKED:` — report the plan; do **not** silently choose a lower-priority plan
-  - **auto:** `BLOCKED:` at pick; do not continue
-  - **exception:** user explicitly says to skip Hermes-blocked plans → skip that plan only and continue scan
-- If `hermes: required` mid-run and Hermes unavailable: `BLOCKED:` and ask user.
-
 ### Linear unavailable
 
 When Linear MCP is not connected or query fails:
@@ -718,7 +709,6 @@ priority: High | Mid | Low
 labels: [...]
 status: planned | in_progress | done | skipped
 created_by: todo-plan-automation
-hermes: required   # optional; only when Hermes handoff mandatory
 depends_on:      # optional; source of truth for prerequisites
   - SHA-10
   - SHA-11
@@ -759,7 +749,6 @@ Read-only. Propose **one** plan; wait for user confirm before `run`.
    - same `linear_issue` has [runtime claim](#runtime-claim-resolution) (open PR, active worktree, or `active.md`) and not stale-linear-claim
    - [duplicate-card](#duplicate-card-detection) — report; suggest [duplicate resolution](#duplicate-card-resolution) or canonical `/plan-run run SHA-XX`
 5. First **eligible** (Todo/Backlog + not skipped, not duplicate) plan wins.
-6. If that plan has `hermes: required` and Hermes is unavailable → **`BLOCKED:`** (do not fall through to lower-priority plans unless user said to skip Hermes-blocked plans).
 
 ### Pick output (caveman)
 
@@ -937,9 +926,8 @@ If `active.md` already records `worktree_mode: dedicated` with path `.worktrees/
 
 1. Read the single plan file end-to-end.
 2. Paste [`execution-scope-contract.md`](../../../documents/ai/templates/execution-scope-contract.md) short block; fill tasks from **Implementation Plan**.
-3. Follow superpowers **`executing-plans`**: implement listed tasks only.
-4. Domain ambiguous → **`grill-me-shapez2`** (read-only) before edits.
-5. CLI touch → **`cli-boundary`**.
+3. Implement listed tasks only (`agent_scope.mdc`).
+4. CLI touch → **`cli-boundary`**.
 
 ### 5. Validate
 
@@ -960,7 +948,7 @@ On failure: one in-scope fix loop; then `phase: failed`, record `failure_phase` 
 - Update `phase: implemented`, `last_successful_phase: implemented`.
 - Suggest `/plan-run ship` — do **not** push or open PR.
 
-Optional: commit when user explicitly requests (`git-workflow`).
+Optional: commit when user explicitly requests (stage scoped paths only).
 
 ---
 
@@ -990,7 +978,7 @@ Push branch and open PR. Requires `active.md` phase `implemented` (or user names
 
 On push failure: set `failure_phase: pr-open`, record actual `remote_pushed` value, report recovery via `auto resume` or manual push.
 
-Follow superpowers **`finishing-a-development-branch`** Option 2 only.
+Open PR; do not merge unless user asked (`--merge` / babysit gate).
 
 ### After ship — prepare batch worktree for next plan
 
@@ -1303,8 +1291,6 @@ Do **not** auto-attach when:
 - batch worktree or legacy dedicated worktree for that issue is dirty
 - Linear state is not In Progress
 - plan has `Human Review Required: yes`
-- plan has `hermes: required` and Hermes is unavailable
-
 Failure output:
 
 ```text
@@ -1333,7 +1319,7 @@ When auto-attach is blocked:
 ```text
 BLOCKED: stale-linear-claim
 Issue: SHA-XX
-Reason: <dirty root | open PR exists | batch gate >= 5 | active run exists | hermes required>
+Reason: <dirty root | open PR exists | batch gate >= 5 | active run exists>
 
 Next
 - /plan-run recover
@@ -1351,14 +1337,13 @@ Next
 6. **Babysit batch gate** — do not start `ci-green` / babysit until **≥ 5** open PRs on `master`; stop at `pr-open` with defer report (not `failed`).
 7. **Batch PR gate** — headless `/plan-run` and `/plan-run auto` **BLOCKED** when open plan-run PRs **≥ 5**; explicit `auto SHA-XX` allowed with warning.
 8. **Babysit rounds** — max **10** rounds once babysit batch gate passes; then `BLOCKED: babysit round limit`.
-9. **Hermes** — first eligible plan `hermes: required` without Hermes → `BLOCKED:` (unless user skipped Hermes-blocked plans).
-10. **Linear** — without MCP, `BLOCKED:` unless `--allow-linear-offline`; offline auto stops at `pr-open` or deferred `ci-green` (no merge).
-11. **Flag conflict** — `--allow-linear-offline` + `--merge` → `BLOCKED:` before start.
-12. **Merge** — never without `--merge` and [merge gate](#merge-gate---merge-only); each merged PR → [Linear merge completion](#linear-merge-completion).
-13. **Linear on batch merge** — babysit with ≥5 PRs must Done + **Korean** summary every merged issue, not only `active.md`.
-14. **Passing-first** — duplicates resolved, then green PRs merge; infra-blocked/deferred must not block passing merges.
-15. **Duplicate cards** — [duplicate-card detection](#duplicate-card-detection) + [resolution](#duplicate-card-resolution); never pick/run duplicate when canonical exists.
-16. **Long plans** — stop at `failed` or complete validation; continue via `auto resume` after `/goal`.
+9. **Linear** — without MCP, `BLOCKED:` unless `--allow-linear-offline`; offline auto stops at `pr-open` or deferred `ci-green` (no merge).
+10. **Flag conflict** — `--allow-linear-offline` + `--merge` → `BLOCKED:` before start.
+11. **Merge** — never without `--merge` and [merge gate](#merge-gate---merge-only); each merged PR → [Linear merge completion](#linear-merge-completion).
+12. **Linear on batch merge** — babysit with ≥5 PRs must Done + **Korean** summary every merged issue, not only `active.md`.
+13. **Passing-first** — duplicates resolved, then green PRs merge; infra-blocked/deferred must not block passing merges.
+14. **Duplicate cards** — [duplicate-card detection](#duplicate-card-detection) + [resolution](#duplicate-card-resolution); never pick/run duplicate when canonical exists.
+15. **Long plans** — stop at `failed` or complete validation; continue via `auto resume` after `/goal`.
 
 ### Merge gate (`--merge` only)
 
@@ -1420,16 +1405,30 @@ Manual: `/plan-run run SHA-6` → `/goal` → `/plan-run ship` → (repeat until
 | Chained execution | **`plan-run auto`** |
 | Stale lock inspection | **`plan-run recover`** |
 | Batch worktree hygiene | **`plan-run batch-status`**, **`plan-run clean-batch`** |
-| Harness checklist | `shapez2-workflow` |
-| Worktree | superpowers `using-git-worktrees` |
-| Implement | superpowers `executing-plans` |
-| Domain grill | `grill-me-shapez2` |
-| Commit/push | `git-workflow` |
-| PR completion | superpowers `finishing-a-development-branch` |
+| Canon workflow | `AGENTS.md` |
+| Worktree | `git-worktree.mdc` |
+| Implement | `agent_scope.mdc` |
+| PR completion | open PR only unless merge gate |
 | PR batch triage (≥5 open PRs) | `babysit` |
 | Linear In Review → Done + 한국어 summary on merge | [Linear merge completion](#linear-merge-completion) · [comment language](#linear-comment-language) |
 | Duplicate / passing-first batch | [Batch babysit partition](#batch-babysit-partition) |
 | Pre-merge | `quality-check` |
+
+---
+
+## Todo plan automation
+
+Linear **Todo → plan file → In Progress** for Cursor Automations.
+
+**Authority:** `documents/prompt/03 Linear Todo Plan Writing Automation.md` — follow in full.
+
+Reminders:
+
+- One trigger = one issue; no Todo queue loop.
+- Mutex: `auto:todo-plan-running` + `reviewing`; remove in `finally`.
+- Idempotent: existing `plans/**/<KEY>-*.md` or prior automation comment → skip.
+- Dirty root → `BLOCKED` (no auto PR, no `/clean-root auto` from automation).
+- Execution after plan exists → this skill (`/plan-run`).
 
 ---
 

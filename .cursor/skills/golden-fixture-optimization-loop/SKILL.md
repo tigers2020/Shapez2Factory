@@ -332,7 +332,7 @@ Map to Superpowers-style steps:
 Spec (hypothesis) → Plan (one change) → Execute → Review → Verification → Finish Branch (PR / merge if gates pass)
 ```
 
-Shapez2 harness: [`shapez2-workflow/SKILL.md`](../shapez2-workflow/SKILL.md) for contract brief / PR scope when cycle touches public contracts.
+Contract/PR scope when cycle touches public contracts: [`AGENTS.md`](../../../AGENTS.md) · [`workflow.mdc`](../../rules/workflow.mdc).
 
 ---
 

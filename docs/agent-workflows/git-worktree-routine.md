@@ -28,6 +28,8 @@ Do not edit until the surface is clean or the user scoped the dirty files.
 | Another agent/session mix | Stop; list files; ask user which branch owns them |
 | Large/risky change | `git worktree add` + new branch; work there |
 | User named files in prompt | Proceed only on those paths; do not touch other dirty paths |
+| Ops / recovery (plan-run, clean-root, PR/CI) | Route `ops-recovery.mdc`; dirty inventory OK; whitelist edits only |
+| Dirty root blocks automation | `/clean-root status` — never plain `git clean -fdX` on protected paths |
 
 ## Clean enough
 

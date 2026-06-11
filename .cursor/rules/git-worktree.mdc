@@ -29,6 +29,26 @@ Dirty means any of:
 - User explicitly assigns work **including** named dirty files or says to proceed on dirty tree.
 - Read-only audit/plan on dirty tree — no file writes.
 - Pre-commit hook auto-fix only after a user-requested commit on that branch.
+- **Ops / recovery** (`ops-recovery.mdc`): dirty inventory allowed; edits only on recovery whitelist — not product paths.
+
+## Strictness vs dirty tree
+
+| Mode | Dirty tree |
+|------|------------|
+| Read-only | OK — no edits |
+| Tiny | OK if user explicit **and** edit paths disjoint from dirty — log `DIRTY_ALLOWED_REASON` |
+| Normal / High-risk | BLOCKED — stop or clean first |
+| Ops / recovery | inventory OK; whitelist edits only |
+
+`DIRTY_ALLOWED_REASON` (required when editing on dirty tree):
+
+```text
+- user explicitly requested
+- touched files do not overlap dirty paths
+- recovery-mode whitelist only
+```
+
+Recovery deadlock example: dirty root blocks plan-run → route ops/recovery, not implementation. Use `/clean-root` — never plain `git clean -fdX` on protected paths (`var/plan-run/**`, `.worktrees/**`, `plans/**`).
 
 ## Clean worktree preference
 

@@ -1,58 +1,65 @@
 ---
 name: bug-fix
-description: 실패 로그나 재현 절차가 주어졌을 때 최소 수정으로 원인을 제거하고 회귀 테스트를 추가한다.
+description: >-
+  Bug fix or contract tests: repro from failure log, minimal fix, regression/acceptance
+  tests, validation gate. Use for /bug-fix, failing tests, or test-only PR scope.
 paths:
+  - "django_apps/**"
   - "src/**"
   - "tests/**"
-  - "docs/**"
 disable-model-invocation: false
 metadata:
-  owner: "project"
-  risk: "medium"
+  owner: project
+  risk: medium
   requires_validation: true
 ---
 
-# Bug Fix
+# Bug Fix & Tests
 
 ## Intent
 
-재현 가능한 버그를 최소 diff로 수정하고, 동일 유형 회귀를 막는 테스트를 추가한다.
+재현 가능한 버그는 최소 diff로 고치고, 스펙/불변식은 테스트로 고정한다.
 
-## Inputs
+## Modes
 
-- 실패 로그 또는 재현 절차
-- 기대 동작 설명
-- 관련 테스트 파일 (있는 경우)
+| Mode | When | Production edits |
+|------|------|------------------|
+| **Fix** | Failure log or repro steps | Yes — smallest safe diff |
+| **Tests only** | Spec/acceptance exists; tests missing | No — tests only unless user expands |
 
-## Procedure
+## Procedure (fix)
 
-1. 로그/재현 절차를 읽고 root cause 가설을 1~2개로 줄인다.
-2. 관련 소스(`src/`)와 테스트(`tests/`)를 찾는다.
-3. 수정 전 spec-linked 재현(acceptance) 테스트가 없으면 최소 재현 테스트를 먼저 작성한다.
-4. 수정은 smallest diff 원칙으로 수행한다.
-5. 동일 종류 회귀를 막는 테스트 한 개 이상을 추가한다.
-6. 검증 체인을 실행한다: narrow `python -m pytest <path>` → `ruff check .` → `mypy django_apps config src` → `black --check .` (`-q` / `--quiet` / `--tb=no` 금지 — [`testing.md`](../../../documents/ai/manuals/testing.md)).
-7. 변경 원인과 검증 결과를 Output 형식으로 요약한다.
+1. Root cause 가설 1~2개로 줄인다.
+2. 관련 소스·테스트를 찾는다.
+3. 재현 테스트 없으면 먼저 작성(RED).
+4. 최소 수정(GREEN).
+5. 동일 유형 회귀 테스트 1개 이상 추가.
+6. 검증: narrow `pytest <path>` → `ruff check .` → `mypy django_apps config src` → `black --check .` (no `-q`/`--quiet`/`--tb=no` — [`testing.md`](../../../documents/ai/manuals/testing.md)).
+
+## Procedure (tests only)
+
+1. 기대 입출력 또는 invariant를 명문화한다.
+2. Acceptance test 먼저 — 구현 전 실패 확인.
+3. Mock은 외부 경계(DB/FS/API)만.
+4. 레이어 선택: `tests/unit/` · port-fake unit · `tests/integration/` · `tests/golden/` (가장 저렴한 것).
+5. narrow `pytest` → 필요 시 `scripts/test_fast.ps1`.
 
 ## Output
 
-```
+```text
 Summary:
 Files changed:
 Commands run:
 Validation:
 Risks / follow-up:
-Docs updated:
 ```
 
 ## Failure handling
 
-- 재현 불가면 `BLOCKED: missing context`
-- 검증 명령 미발견 시 `docs/runbooks/bugfix-runbook.md` 참조
-- 리스크가 높으면 사용자 승인 전 구현 중단
+- 재현/스펙 불명 → `BLOCKED: missing context`
+- 리스크 높음 → 사용자 승인 전 중단
 
 ## References
 
-- `@docs/runbooks/bugfix-runbook.md`
-- `@docs/domain/README.md`
-- `@AGENTS.md`
+- [`AGENTS.md`](../../../AGENTS.md) § Validation
+- [`tests/golden/README.md`](../../../tests/golden/README.md)

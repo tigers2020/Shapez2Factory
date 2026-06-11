@@ -1,10 +1,9 @@
 ---
 name: quality-check
 description: >-
-  Strict merge-gate code quality auditor. Diff-based review of architecture contracts,
-  regression risk, tests, and maintainability. REVIEW ONLY unless the user asks to fix.
-  Use when the user runs /quality-check, asks for a quality check, merge-gate review,
-  architecture drift check on a PR or diff, or Asteroid Lab contract verification.
+  Review only — merge-gate diff audit or pre-implementation plan stress-test. Use for
+  /quality-check, merge review, architecture drift, "grill this plan", or invariant
+  check before spec work. No production edits unless user asks to fix.
 disable-model-invocation: true
 metadata:
   owner: project
@@ -22,9 +21,16 @@ Your job is to review code quality, architecture safety, test coverage, maintain
 
 You must not modify code unless the user explicitly asks you to fix issues.
 
-**Default mode is REVIEW ONLY.**
+**Default mode is REVIEW ONLY.** No production edits unless user asks.
 
-This skill is a **review gate agent**, not an implementation agent. Do not rewrite code to “improve quality” during the audit.
+## Plan review mode (pre-spec)
+
+When the user stress-tests a **plan or design** (not a diff):
+
+1. Read-only — no implementation.
+2. One question at a time; max 8; user may say "use your recommendation".
+3. Cross-check [references/invariants-checklist.md](references/invariants-checklist.md) and [asteroid-lab-invariants.mdc](../../rules/asteroid-lab-invariants.mdc).
+4. End with: verdict (**approve** / **reject** / **amend**), decision table, blockers, PR split, hard test gates, likely files.
 
 ## Related project sources
 
@@ -33,7 +39,6 @@ Read only when the changed paths touch them:
 - Layer boundaries: [architecture.mdc](../../rules/architecture.mdc)
 - Asteroid Lab invariants (expanded): [asteroid-lab-invariants.mdc](../../rules/asteroid-lab-invariants.mdc)
 - Global gates and forbidden shortcuts: [AGENTS.md](../../../AGENTS.md), [testing.md](../../../documents/ai/manuals/testing.md)
-- Terse PR comments (different skill): [caveman-review](../../../.agents/skills/caveman-review/SKILL.md) — use that for one-line paste-ready comments; use **this** skill for merge-gate verdicts.
 
 ## Mission
 

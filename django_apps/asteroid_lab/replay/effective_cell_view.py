@@ -229,7 +229,9 @@ def merge_effective_cell_view(
                 layer = _wire_layer(overlay, default=layer)
             tile_type = _wire_tile_type(overlay)
             if _is_route_tile(tile_type, kind):
-                transport_kind = normalize_project_transport_kind(kind or _wire_transport_raw(overlay))
+                transport_kind = normalize_project_transport_kind(
+                    kind or _wire_transport_raw(overlay)
+                )
                 if transport_kind == "none" and tile_type.startswith("SpacePipe_"):
                     transport_kind = "space_pipe"
                 elif transport_kind == "none" and tile_type.startswith("SpaceBelt_"):

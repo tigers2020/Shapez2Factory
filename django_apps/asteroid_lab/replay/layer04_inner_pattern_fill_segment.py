@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.replay.event_types import assert_registered_event_type
+from django_apps.asteroid_lab.replay.overlay_wire_contract import build_output_hint_overlay_cell
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
-from django_apps.asteroid_lab.replay.overlay_wire_contract import build_output_hint_overlay_cell
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
     Layer04InnerFillResult,

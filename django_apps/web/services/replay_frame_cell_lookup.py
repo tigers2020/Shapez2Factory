@@ -169,7 +169,9 @@ def lookup_effective_cell_in_serialized_frame(
         overlay_matches = [dict(m) for m in _cells_at_xy(overlay_cells, x, y)]
         if overlay_matches:
             sources["overlay_cells_matched"] = len(overlay_matches)
-            sources["overlay_cells"] = overlay_matches if len(overlay_matches) > 1 else overlay_matches[0]
+            sources["overlay_cells"] = (
+                overlay_matches if len(overlay_matches) > 1 else overlay_matches[0]
+            )
 
     full_map_raw = ser.get("full_map")
     if isinstance(full_map_raw, list) and len(full_map_raw) > 0:

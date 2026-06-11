@@ -34,6 +34,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.rim_throughput import (  # noqa: E501
     mini_unit_output_per_min_for_resource,
 )
+from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.source_adapter import (  # noqa: E501
+    build_layer04_sources,
+)
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 
 _REQUIRED_STACK_LAYERS = (
@@ -237,7 +240,7 @@ def _stack_l2_l5_complete(
 
 
 def _routed_throughput_per_min(artifacts: GoldenSolverArtifacts) -> float:
-    """L5-confirmed throughput: only placements with committed routes count."""
+    """L5-confirmed throughput for all routed sources (rim + L4 inner routeable)."""
 
     route_plan = artifacts.route_plan
     rim = artifacts.rim_result
@@ -247,10 +250,10 @@ def _routed_throughput_per_min(artifacts: GoldenSolverArtifacts) -> float:
     resource_kind = route_plan.resource_kind
     unit_rate = mini_unit_output_per_min_for_resource(resource_kind)
     total = 0.0
-    for placement in rim.committed_placements:
-        if placement.placement_id not in routed_ids:
+    for source in build_layer04_sources(rim, inner_fill=artifacts.inner_fill):
+        if source.placement_id not in routed_ids:
             continue
-        total += float(int(unit_rate) * placement.throughput_factor)
+        total += float(int(unit_rate) * source.throughput_factor)
     return total
 
 

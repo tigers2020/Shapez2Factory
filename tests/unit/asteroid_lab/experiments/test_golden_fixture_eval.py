@@ -10,6 +10,7 @@ import pytest
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_eval import (
     GoldenEvalResult,
     _connectivity_roots,
+    _routed_throughput_per_min,
     evaluate_against_golden,
 )
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures import (
@@ -38,6 +39,10 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connecti
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connector_role import (
     ExteriorConnectorRole,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    Layer04InnerFillResult,
+    RouteableInnerGroupPlacement,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route import (
     CommittedRoute,
@@ -270,6 +275,51 @@ def test_eval_result_fields() -> None:
     assert isinstance(result, GoldenEvalResult)
     assert isinstance(result.diagnostics, tuple)
     assert result.routed_throughput == 16 * 30
+
+
+def test_routed_throughput_includes_inner_routeable_sources() -> None:
+    inner_group = RouteableInnerGroupPlacement(
+        placement_id="l4-inner-0001",
+        anchor=(5, 5),
+        miner_cells=frozenset({(5, 5)}),
+        extension_cells=frozenset({(4, 5), (3, 5), (2, 5)}),
+        m_output_stub=(6, 5),
+        throughput_factor=4,
+    )
+    inner_fill = Layer04InnerFillResult(routeable_inner_groups=(inner_group,))
+    route_plan = Layer05RoutePlan(
+        version="layer05_route_plan_v1",
+        resource_kind="shape",
+        transport_kind="shape",
+        routes=(
+            CommittedRoute(
+                route_id="route_p0",
+                placement_id="p0",
+                path_coords=((1, 1), (2, 1)),
+                group_id="g0",
+                route_cost=2,
+            ),
+            CommittedRoute(
+                route_id="route_inner",
+                placement_id="l4-inner-0001",
+                path_coords=((5, 5), (6, 5)),
+                group_id="g1",
+                route_cost=2,
+            ),
+        ),
+        groups=(),
+        transport_tiles=(),
+        failures=(),
+        metrics=Layer05Metrics(
+            source_count=2,
+            routed_source_count=2,
+            failed_source_count=0,
+            total_route_cells=4,
+        ),
+    )
+    artifacts = _artifacts(route_plan=route_plan)
+    artifacts = replace(artifacts, inner_fill=inner_fill)
+    assert _routed_throughput_per_min(artifacts) == (16 + 4) * 30
 
 
 def test_route_island_roots_ignore_exterior_void_cells() -> None:

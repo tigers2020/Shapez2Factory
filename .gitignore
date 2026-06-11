@@ -144,8 +144,6 @@ shapez_2_data/
 
 # --- graphify (local knowledge graph; regenerate: graphify update <path>) ---
 # Raw output is local-only; tracked summaries live under docs/agent-context/ (exceptions below).
-graphify-out/
-graphify_out/
 docs/agent-context/
 !docs/agent-context/graphify-summary.md
 !docs/agent-context/graphify-index.md

@@ -33,6 +33,13 @@ class GoldenLoopRunConfig:
     speed_tier: int = 1
 
 
+def _gene_seeds_entry_count(seeds: Any) -> int:
+    entries = getattr(seeds, "entries", None)
+    if isinstance(entries, (list, tuple)):
+        return len(entries)
+    return 0
+
+
 def build_config_grid(
     *,
     throughput_targets: tuple[int, ...] = (70, 80, 90),
@@ -207,7 +214,7 @@ def run_golden_loop(
         "best_any_score": best_any_score if best_any_record is not None else None,
         "gene_seeds_source": gene_seeds_source,
         "gene_seeds_db_scope": gene_seeds_db_scope if gene_seeds_source == "db" else None,
-        "gene_seeds_entry_count": len(seeds.entries),
+        "gene_seeds_entry_count": _gene_seeds_entry_count(seeds),
     }
     diagnostics_path.write_text(
         json.dumps(diagnostics_payload, indent=2, sort_keys=True) + "\n",

@@ -6,6 +6,9 @@ import math
 from dataclasses import dataclass
 from enum import StrEnum
 
+from shapez2_factory.application.asteroid_lab.layers.contracts.trunk_first_inner_fill_diagnostics import (
+    TrunkFirstInnerFillDiagnostics,
+)
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 
 PATTERN_BUILTIN_1X1_FIELD_BLOCK = "builtin_1x1_field_block"
@@ -68,6 +71,7 @@ class Layer04InnerFillResult:
     metrics: Layer04FillMetrics | None = None
     skip_reason: Layer04SkipReason | None = None
     corridor_shadow_cells: frozenset[Coord] = frozenset()
+    trunk_diagnostics: TrunkFirstInnerFillDiagnostics | None = None
 
     @classmethod
     def empty(cls) -> Layer04InnerFillResult:
@@ -94,4 +98,5 @@ __all__ = [
     "Layer04InnerFillResult",
     "Layer04SkipReason",
     "RouteableInnerGroupPlacement",
+    "TrunkFirstInnerFillDiagnostics",
 ]

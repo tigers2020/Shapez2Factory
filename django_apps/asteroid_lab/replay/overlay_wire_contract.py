@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from django_apps.asteroid_lab.replay.effective_cell_view import simulation_for_tile_id
 from django_apps.asteroid_lab.replay.map_height_layer import enrich_replay_wire_row_with_layer
+from django_apps.asteroid_lab.replay.replay_overlay_wire import ReplayOverlayCellWire
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
 
 OCCUPANCY_TRANSPORT_NONE = "none"
@@ -98,10 +99,10 @@ def build_routed_transport_overlay_cell(
     )
 
 
-def overlay_cell_to_wire_dict(cell: ReplayOverlayCell) -> dict[str, object]:
+def overlay_cell_to_wire_dict(cell: ReplayOverlayCell) -> ReplayOverlayCellWire:
     occupancy = str(cell.transport or OCCUPANCY_TRANSPORT_NONE)
     output = str(cell.output_transport_kind or OUTPUT_TRANSPORT_NONE)
-    row: dict[str, object] = {
+    row: ReplayOverlayCellWire = {
         "x": int(cell.x),
         "y": int(cell.y),
         "kind": str(cell.kind),
@@ -117,7 +118,10 @@ def overlay_cell_to_wire_dict(cell: ReplayOverlayCell) -> dict[str, object]:
         simulation = simulation_for_tile_id(cell.tile_type)
         if simulation:
             row["simulation"] = simulation
-    return enrich_replay_wire_row_with_layer(row)
+    return cast(
+        ReplayOverlayCellWire,
+        enrich_replay_wire_row_with_layer(row),
+    )
 
 
 def assert_candidate_overlay_wire_contract(row: Mapping[str, Any]) -> None:

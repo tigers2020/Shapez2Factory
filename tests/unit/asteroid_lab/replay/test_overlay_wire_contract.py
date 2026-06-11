@@ -12,6 +12,7 @@ from django_apps.asteroid_lab.replay.overlay_wire_contract import (
     overlay_cell_to_wire_dict,
     profile_to_output_transport_kind,
 )
+from django_apps.asteroid_lab.replay.replay_overlay_wire import ReplayOverlayCellWire
 from django_apps.asteroid_lab.replay.runtime_frame_finalize import transient_overlay_cells_to_wire
 from tests.unit.asteroid_lab.layers.fixtures.layer_04_placement_helpers import succeeded_probe_at
 
@@ -35,6 +36,26 @@ def test_candidate_miner_overlay_wire_allows_output_transport_kind_space_belt() 
     assert miner_rows
     for row in miner_rows:
         assert row["output_transport_kind"] == "space_belt"
+
+
+def test_overlay_cell_wire_typed_dict_exports() -> None:
+    """Wire type module is importable for converter return typing."""
+    assert ReplayOverlayCellWire.__name__ == "ReplayOverlayCellWire"
+
+
+def test_overlay_cell_to_wire_dict_returns_dual_transport_keys() -> None:
+    cell = build_routed_transport_overlay_cell(
+        x=1,
+        y=2,
+        transport_kind="space_pipe",
+        tile_id="SpacePipe_Straight",
+        rotation=0,
+    )
+    row = overlay_cell_to_wire_dict(cell)
+    assert row["transport"] == "space_pipe"
+    assert row["transport_kind"] == "space_pipe"
+    assert row["transport"] == row["transport_kind"]
+    assert "z" not in row
 
 
 def test_routed_space_belt_tile_keeps_transport_kind_and_tile_id() -> None:

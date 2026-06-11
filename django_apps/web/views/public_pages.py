@@ -100,7 +100,9 @@ from django_apps.web.services.graph_preview import (
     PlaywrightPngGraphPreviewRenderer,
     png_bytes_are_valid,
 )
-from django_apps.web.services.replay_frame_cell_lookup import lookup_cell_in_serialized_frame
+from django_apps.web.services.replay_frame_cell_lookup import (
+    lookup_effective_cell_in_serialized_frame,
+)
 
 
 @lru_cache(maxsize=8)
@@ -762,12 +764,12 @@ def asteroid_miner_layout_replay_frame_cell(request: HttpRequest) -> JsonRespons
         return _bad("project_slug_mismatch", 403)
 
     ser = serialize_replay_frame(frame)
-    cell, sources = lookup_cell_in_serialized_frame(ser, x, y)
-    message = "" if cell is not None else "no_cell_at_xy"
+    effective_cell, sources = lookup_effective_cell_in_serialized_frame(ser, x, y)
+    message = "" if effective_cell is not None else "no_cell_at_xy"
     return JsonResponse(
         {
             "ok": True,
-            "cell": cell,
+            "effective_cell": effective_cell,
             "sources": sources,
             "message": message,
             "frame_index": ser.get("frame_index"),

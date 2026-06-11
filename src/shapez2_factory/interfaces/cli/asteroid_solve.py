@@ -270,7 +270,7 @@ def _run_artifact(
     complete_map_bytes = _json_bytes(result.complete_map_json)
     complete_map_hash = hashlib.sha256(complete_map_bytes).hexdigest()
     transport_kind = (
-        result.exterior_plan.transport_kind if result.exterior_plan is not None else "shape_belt"
+        result.exterior_plan.transport_kind if result.exterior_plan is not None else "space_belt"
     )
     manifest_paths = {
         "copy": "input/copy.txt",

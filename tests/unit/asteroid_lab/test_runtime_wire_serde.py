@@ -104,8 +104,8 @@ def _minimal_l4_result() -> Layer04InnerFillResult:
 def _minimal_l5_plan() -> Layer05RoutePlan:
     tile = ProjectedTransportTile(
         coord=(6, 4),
-        transport_kind="shape_belt",
-        tile_id="ShapeBelt_Forward",
+        transport_kind="space_belt",
+        tile_id="SpaceBelt_Forward",
         rotation=0,
         input_dirs=("W",),
         output_dirs=("E",),
@@ -115,7 +115,7 @@ def _minimal_l5_plan() -> Layer05RoutePlan:
     return Layer05RoutePlan(
         version=LAYER05_ROUTE_PLAN_VERSION,
         resource_kind="shape",
-        transport_kind="shape_belt",
+        transport_kind="space_belt",
         routes=(),
         groups=(),
         transport_tiles=(tile,),

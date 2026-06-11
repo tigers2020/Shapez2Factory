@@ -5,6 +5,10 @@ from __future__ import annotations
 from django_apps.asteroid_lab.replay.event_types import assert_registered_event_type
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
+from django_apps.asteroid_lab.replay.overlay_wire_contract import (
+    build_output_hint_overlay_cell,
+    build_routed_transport_overlay_cell,
+)
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route import (
     CommittedRoute,
@@ -36,11 +40,11 @@ def _union_route_path_coords(routes: tuple[CommittedRoute, ...]) -> tuple[Coord,
 
 def _overlay_from_route_path_fallback(plan: Layer05RoutePlan) -> tuple[ReplayOverlayCell, ...]:
     return tuple(
-        ReplayOverlayCell(
+        build_output_hint_overlay_cell(
             x=x,
             y=y,
             kind=OVERLAY_KIND_ROUTE_PROBE_PATH,
-            transport=plan.transport_kind,
+            profile_transport_kind=plan.transport_kind,
         )
         for x, y in _union_route_path_coords(plan.routes)
     )
@@ -56,12 +60,11 @@ def _overlays_for_plan(plan: Layer05RoutePlan) -> tuple[ReplayOverlayCell, ...]:
 
 def _overlay_from_tile(tile: ProjectedTransportTile) -> ReplayOverlayCell:
     x, y = tile.coord
-    return ReplayOverlayCell(
+    return build_routed_transport_overlay_cell(
         x=x,
         y=y,
-        kind=tile.transport_kind,
-        transport=tile.transport_kind,
-        tile_type=tile.tile_id,
+        transport_kind=tile.transport_kind,
+        tile_id=tile.tile_id,
         rotation=tile.rotation,
     )
 

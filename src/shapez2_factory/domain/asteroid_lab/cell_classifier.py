@@ -11,17 +11,17 @@ def classify_blueprint_entry(tile_type: str | None) -> tuple[str, str]:
 
     t = "" if tile_type is None else str(tile_type)
     if t.startswith("SpacePipe"):
-        return ("space_pipe", "fluid_pipe")
+        return ("space_pipe", "space_pipe")
     if t.startswith("SpaceBelt"):
-        return ("space_belt", "shape_belt")
+        return ("space_belt", "space_belt")
     if t == "Layout_FluidMiner":
-        return ("fluid_miner", "fluid_pipe")
+        return ("fluid_miner", "space_pipe")
     if t == "Layout_FluidMinerExtension":
-        return ("fluid_miner_extension", "fluid_pipe")
+        return ("fluid_miner_extension", "space_pipe")
     if t in ("Layout_ShapeMiner", "Layout_ProMiner"):
-        return ("shape_miner", "shape_belt")
+        return ("shape_miner", "space_belt")
     if t == "Layout_ShapeMinerExtension":
-        return ("shape_miner_extension", "shape_belt")
+        return ("shape_miner_extension", "space_belt")
     return ("unknown", "none")
 
 

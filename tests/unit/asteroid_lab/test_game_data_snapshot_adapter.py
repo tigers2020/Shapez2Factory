@@ -13,10 +13,10 @@ from django_apps.asteroid_lab.snapshots.transport_kind import TransportKind
 _KNOWN_IO_CHANNEL_CASES: tuple[tuple[str, TransportKind], ...] = (
     ("", TransportKind.NONE),
     ("Building", TransportKind.NONE),
-    ("ElevatedBorder", TransportKind.SHAPE_BELT),
+    ("ElevatedBorder", TransportKind.SPACE_BELT),
     ("None", TransportKind.NONE),
-    ("Pipe", TransportKind.FLUID_PIPE),
-    ("Regular", TransportKind.SHAPE_BELT),
+    ("Pipe", TransportKind.SPACE_PIPE),
+    ("Regular", TransportKind.SPACE_BELT),
     ("Wire", TransportKind.NONE),
 )
 

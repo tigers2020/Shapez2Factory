@@ -110,6 +110,7 @@ def _overlay_from_row(row: Mapping[str, Any]) -> ReplayOverlayCell:
         y=int(row["y"]),
         kind=str(row.get("cell_kind") or row.get("kind") or ""),
         transport=str(row.get("transport_kind") or row.get("transport") or ""),
+        output_transport_kind=str(row.get("output_transport_kind") or ""),
         tile_type=str(row.get("tile_type") or row.get("sprite_identifier") or ""),
         rotation=int(row.get("rotation") or 0),
         layer=wire_explicit_height_layer(row),

@@ -70,7 +70,7 @@ def succeeded_probe_at(
             goal_coord=goal,
             path_coords=path,
             steps_expanded=len(path),
-            transport_kind=TransportKind.SHAPE_BELT,
+            transport_kind=TransportKind.SPACE_BELT,
             route_cost=route_cost,
         ),
         route_goal_id="ext_conn_00",

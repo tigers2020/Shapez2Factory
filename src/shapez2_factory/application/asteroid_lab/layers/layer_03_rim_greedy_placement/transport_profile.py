@@ -1,4 +1,4 @@
-"""Layer 03 transport profiles — shape_belt / fluid_pipe expansion within one orchestrator."""
+"""Layer 03 transport profiles — space_belt / space_pipe expansion within one orchestrator."""
 
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.resource_kinds import (
 )
 
 ANCHOR_FIELD_KIND_BY_TRANSPORT: dict[TransportKind, str] = {
-    TransportKind.SHAPE_BELT: ResourceKind.SHAPE.value,
-    TransportKind.FLUID_PIPE: ResourceKind.FLUID.value,
+    TransportKind.SPACE_BELT: ResourceKind.SHAPE.value,
+    TransportKind.SPACE_PIPE: ResourceKind.FLUID.value,
 }
 
 

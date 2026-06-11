@@ -36,7 +36,7 @@ def test_astar_prefers_void_over_field() -> None:
         goal_id="g0",
         kind=RouteGoalKind.EXTERIOR_CONNECTOR_VOID,
         coord=(3, 0),
-        transport_kind=TransportKind.SHAPE_BELT,
+        transport_kind=TransportKind.SPACE_BELT,
         priority=0,
         connector_role=ExteriorConnectorRole.REQUIRED,
     )
@@ -59,7 +59,7 @@ def test_astar_reaches_connector_on_larger_map() -> None:
         goal_id="ext",
         kind=RouteGoalKind.EXTERIOR_CONNECTOR_VOID,
         coord=goal_coord,
-        transport_kind=TransportKind.SHAPE_BELT,
+        transport_kind=TransportKind.SPACE_BELT,
         priority=0,
         connector_role=ExteriorConnectorRole.REQUIRED,
     )

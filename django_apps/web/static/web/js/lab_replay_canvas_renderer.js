@@ -195,6 +195,16 @@
       return Promise.all(jobs);
     }
 
+    function redrawSpriteLayer(sprites, generation) {
+      if (!spriteCtx || !spriteCanvas || generation !== spriteDrawGeneration) {
+        return;
+      }
+      spriteCtx.clearRect(0, 0, dims.w, dims.h);
+      for (let j = 0; j < sprites.length; j++) {
+        drawSpriteCell(sprites[j], generation);
+      }
+    }
+
     function drawFrame(paintPlan) {
       const plan = paintPlan || {};
       syncSize();
@@ -206,8 +216,22 @@
       for (let i = 0; i < overlays.length; i++) {
         drawOverlayCell(overlays[i]);
       }
+      let pendingSpriteLoads = false;
       for (let j = 0; j < sprites.length; j++) {
-        drawSpriteCell(sprites[j], generation);
+        const entry = sprites[j];
+        const img = entry && entry.rel ? loadSprite(entry.rel) : null;
+        if (img && !img.complete) {
+          pendingSpriteLoads = true;
+        }
+        drawSpriteCell(entry, generation);
+      }
+      if (pendingSpriteLoads && sprites.length) {
+        const rels = sprites.map(function (entry) {
+          return entry && entry.rel ? entry.rel : "";
+        });
+        preloadSprites(rels).then(function () {
+          redrawSpriteLayer(sprites, generation);
+        });
       }
     }
 

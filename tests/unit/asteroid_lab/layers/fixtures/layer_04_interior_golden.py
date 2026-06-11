@@ -71,7 +71,7 @@ def _placed_cell(coord: Coord, *, role: BundleCellRole) -> ProvisionalPlacedCell
         candidate_id="golden_l3_fixture",
         placement_id="golden_l3_fixture",
         role=role,
-        transport_kind=TransportKind.SHAPE_BELT,
+        transport_kind=TransportKind.SPACE_BELT,
         placement_state=PlacementCommitState.PROVISIONAL_PLACED,
     )
 

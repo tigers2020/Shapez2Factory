@@ -75,7 +75,7 @@ def _barrier_l3_overlay_miner_only() -> ProvisionalLayoutOverlay:
         candidate_id="l5_l4_p0",
         placement_id="l5_l4_p0",
         role=BundleCellRole.MINER,
-        transport_kind=TransportKind.SHAPE_BELT,
+        transport_kind=TransportKind.SPACE_BELT,
         placement_state=PlacementCommitState.PROVISIONAL_PLACED,
     )
     return ProvisionalLayoutOverlay(

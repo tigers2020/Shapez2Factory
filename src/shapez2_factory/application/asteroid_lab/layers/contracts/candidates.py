@@ -295,7 +295,7 @@ def make_bundle_candidate_for_test(
     output_dir: Direction = Direction.E,
     rotation: int = 0,
     resource_kind: ResourceKind = ResourceKind.SHAPE,
-    transport_kind: TransportKind = TransportKind.SHAPE_BELT,
+    transport_kind: TransportKind = TransportKind.SPACE_BELT,
     equivalence_key: str = "equiv_test_key",
     mining_occupied_cells: frozenset[Coord] | None = None,
     transport_stub_cells: frozenset[Coord] | None = None,

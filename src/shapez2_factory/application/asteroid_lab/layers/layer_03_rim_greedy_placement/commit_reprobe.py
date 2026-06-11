@@ -51,8 +51,8 @@ class CommitReprobeContext:
 
 def _build_route_goals(exterior_plan: ExteriorConnectionPlan) -> tuple[RouteGoal, ...]:
     return build_layer03_route_goals(
-        exterior_plan, transport_kind=TransportKind.SHAPE_BELT
-    ) + build_layer03_route_goals(exterior_plan, transport_kind=TransportKind.FLUID_PIPE)
+        exterior_plan, transport_kind=TransportKind.SPACE_BELT
+    ) + build_layer03_route_goals(exterior_plan, transport_kind=TransportKind.SPACE_PIPE)
 
 
 def build_commit_reprobe_context(

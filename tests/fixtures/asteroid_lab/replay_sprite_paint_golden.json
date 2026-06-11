@@ -314,9 +314,12 @@
         {
           "kind": "space_belt",
           "layer": 2,
+          "output_transport_kind": "none",
           "rotation": 0,
+          "simulation": "SpaceConveyorSimulation",
           "tile_type": "SpaceBelt_Forward",
           "transport": "space_belt",
+          "transport_kind": "space_belt",
           "x": 6,
           "y": 4
         }

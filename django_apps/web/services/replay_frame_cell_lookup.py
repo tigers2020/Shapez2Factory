@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from django_apps.asteroid_lab.replay.effective_cell_view import merge_effective_cell_view
+
 
 def _xy_match(row: Any, x: int, y: int) -> bool:
     if not isinstance(row, dict):
@@ -148,55 +150,123 @@ def _try_synthetic_lab_empty(
     )
 
 
-def lookup_cell_in_serialized_frame(
+def lookup_effective_cell_in_serialized_frame(
     ser: dict[str, Any], x: int, y: int
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    """Paint order: full_map + diff; else overlay; else bbox-empty synthetic cell."""
+    """Merge full_map / diff / overlay into one EffectiveCellView wire payload."""
 
     sources: dict[str, Any] = {}
-    base_layers: list[dict[str, Any]] = []
-
+    full_cells: list[dict[str, Any]] = []
+    delta_cell: dict[str, Any] | None = None
     overlay_matches: list[dict[str, Any]] = []
+
     ov2 = ser.get("cell_overlay_json")
     if isinstance(ov2, dict):
         overlay_cells = _collect_overlay_cells(ov2)
         overlay_matches = [dict(m) for m in _cells_at_xy(overlay_cells, x, y)]
         if overlay_matches:
             sources["overlay_cells_matched"] = len(overlay_matches)
+            sources["overlay_cells"] = overlay_matches if len(overlay_matches) > 1 else overlay_matches[0]
 
     full_map_raw = ser.get("full_map")
     if isinstance(full_map_raw, list) and len(full_map_raw) > 0:
         for row in full_map_raw:
             if isinstance(row, dict) and _xy_match(row, x, y):
                 sources["full_map"] = row
-                base_layers.append(dict(row))
+                full_cells.append(dict(row))
 
         diff = ser.get("diff")
         if isinstance(diff, dict):
-            for c in diff.get("removed") or []:
-                if isinstance(c, dict) and _xy_match(c, x, y):
-                    sources["diff_removed"] = c
-                    base_layers.append(dict(c))
             for c in diff.get("added") or []:
                 if isinstance(c, dict) and _xy_match(c, x, y):
                     sources["diff_added"] = c
-                    base_layers.append(dict(c))
+                    delta_cell = dict(c)
             for item in diff.get("changed") or []:
                 if isinstance(item, dict):
                     after = item.get("after")
                     if isinstance(after, dict) and _xy_match(after, x, y):
                         sources["diff_changed_after"] = after
-                        base_layers.append(dict(after))
+                        delta_cell = dict(after)
+            for c in diff.get("removed") or []:
+                if isinstance(c, dict) and _xy_match(c, x, y):
+                    sources["diff_removed"] = c
+                    if delta_cell is None:
+                        delta_cell = dict(c)
 
-    if base_layers:
-        return _merge_layers(base_layers), sources
+    frame_index_raw = ser.get("frame_index")
+    frame_index: int | None
+    try:
+        frame_index = int(frame_index_raw) if frame_index_raw is not None else None
+    except (TypeError, ValueError):
+        frame_index = None
 
-    if overlay_matches:
-        return _merge_layers(overlay_matches), sources
+    view = None
+    for full_cell in full_cells:
+        view = merge_effective_cell_view(
+            x=x,
+            y=y,
+            frame_index=frame_index,
+            full_cell=full_cell,
+            delta_cell=delta_cell,
+            overlay_cells=overlay_matches or None,
+        )
+    if view is None and (delta_cell is not None or overlay_matches):
+        view = merge_effective_cell_view(
+            x=x,
+            y=y,
+            frame_index=frame_index,
+            full_cell=None,
+            delta_cell=delta_cell,
+            overlay_cells=overlay_matches or None,
+        )
+    if view is not None:
+        return view.to_wire(), sources
 
     synthetic, syn_src = _try_synthetic_lab_empty(ser, x, y)
     if synthetic is not None:
         sources.update(syn_src)
-        return synthetic, sources
+        synthetic_view = merge_effective_cell_view(
+            x=x,
+            y=y,
+            frame_index=frame_index,
+            full_cell=synthetic,
+        )
+        if synthetic_view is not None:
+            return synthetic_view.to_wire(), sources
 
     return None, sources
+
+
+def lookup_cell_in_serialized_frame(
+    ser: dict[str, Any], x: int, y: int
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Deprecated flat merge; prefer ``lookup_effective_cell_in_serialized_frame``."""
+
+    effective, sources = lookup_effective_cell_in_serialized_frame(ser, x, y)
+    if effective is None:
+        return None, sources
+    occupant_kind = effective["occupant"]["kind"]
+    if occupant_kind == "none" and effective["transport"]["kind"] != "none":
+        occupant_kind = effective["transport"]["kind"]
+    raw_kind: str | None = None
+    raw_tile_type = ""
+    for key in ("diff_removed", "diff_added", "diff_changed_after", "full_map"):
+        block = sources.get(key)
+        if isinstance(block, dict):
+            raw_kind = str(block.get("cell_kind") or block.get("kind") or "") or raw_kind
+            tile = block.get("tile_type") or block.get("sprite_identifier")
+            if tile:
+                raw_tile_type = str(tile)
+    flat: dict[str, Any] = {
+        "x": effective["coord"]["x"],
+        "y": effective["coord"]["y"],
+        "layer": effective["coord"]["layer"],
+        "cell_kind": raw_kind or occupant_kind,
+        "transport_kind": effective["transport"]["kind"],
+        "tile_type": raw_tile_type or effective["transport"]["tile_id"] or "",
+        "rotation": effective["occupant"]["rotation"] or 0,
+    }
+    if sources.get("lab_synthetic") == "empty_island_cell":
+        flat["_lab_synthetic"] = True
+        flat["cell_kind"] = "lab_empty"
+    return flat, sources

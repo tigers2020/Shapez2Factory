@@ -126,11 +126,26 @@ def resolve_replay_height_layer(
     return 0
 
 
+def wire_transport_kind_for_layer_resolution(row: Mapping[str, Any]) -> str:
+    kind = str(row.get("kind") or row.get("cell_kind") or "")
+    if kind in {
+        "candidate_miner",
+        "candidate_transport_stub",
+        "candidate_route_path",
+        "route_probe_path",
+        "inner_field_block",
+    }:
+        output_transport = row.get("output_transport_kind")
+        if output_transport is not None and str(output_transport).strip():
+            return str(output_transport)
+    return str(row.get("transport_kind") or row.get("transport") or "")
+
+
 def enrich_replay_wire_row_with_layer(row: Mapping[str, Any]) -> dict[str, Any]:
     out = dict(row)
     explicit = wire_explicit_height_layer(out)
     kind = str(out.get("kind") or out.get("cell_kind") or "")
-    transport = str(out.get("transport") or out.get("transport_kind") or "")
+    transport = wire_transport_kind_for_layer_resolution(out)
     tile = str(out.get("tile_type") or out.get("sprite_identifier") or "")
     out["layer"] = resolve_replay_height_layer(
         cell_kind=kind,
@@ -146,4 +161,5 @@ __all__ = [
     "enrich_replay_wire_row_with_layer",
     "resolve_replay_height_layer",
     "wire_explicit_height_layer",
+    "wire_transport_kind_for_layer_resolution",
 ]

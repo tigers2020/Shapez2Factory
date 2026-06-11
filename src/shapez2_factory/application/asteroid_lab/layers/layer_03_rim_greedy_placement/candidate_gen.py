@@ -303,7 +303,7 @@ def _build_candidate(
         "Layout_ShapeMiner" if resource_kind is ResourceKind.SHAPE else "Layout_FluidMiner"
     )
     stub_layout = (
-        "SpaceBelt_Forward" if transport_kind is TransportKind.SHAPE_BELT else "SpacePipe_Forward"
+        "SpaceBelt_Forward" if transport_kind is TransportKind.SPACE_BELT else "SpacePipe_Forward"
     )
     # §T/T4: each placement stores the transformed building R (canonical-East base R=0),
     # NOT the NESW D1 ordering rank. The miner R follows the output edge; each extension R
@@ -573,7 +573,7 @@ def generate_candidates(
         _merge_profile_part(
             generate_candidates_for_profile(
                 profile=Layer03TransportProfile(
-                    transport_kind=TransportKind.SHAPE_BELT,
+                    transport_kind=TransportKind.SPACE_BELT,
                     resource_kind=ResourceKind.SHAPE,
                     route_goals=(),
                 ),

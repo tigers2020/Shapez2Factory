@@ -97,6 +97,7 @@ def _overlay_from_dict(data: dict[str, Any]) -> ReplayOverlayCell:
         y=_require_int(data.get("y"), field="overlay.y"),
         kind=_wire_kind(data),
         transport=_wire_transport(data),
+        output_transport_kind=str(data.get("output_transport_kind") or ""),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
         layer=wire_explicit_height_layer(data),

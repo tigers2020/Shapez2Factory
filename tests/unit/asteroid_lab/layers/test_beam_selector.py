@@ -48,7 +48,7 @@ def _probed(
         goal_coord=path[-1],
         path_coords=path,
         steps_expanded=len(path),
-        transport_kind=TransportKind.SHAPE_BELT,
+        transport_kind=TransportKind.SPACE_BELT,
         route_cost=route_cost,
     )
     return RouteProbedBundleCandidate(

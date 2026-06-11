@@ -35,8 +35,8 @@ class RouteGoal:
 
 def transport_kind_for_connector(connector: ExteriorConnector) -> TransportKind:
     if connector.layout_t.startswith("SpacePipe"):
-        return TransportKind.FLUID_PIPE
-    return TransportKind.SHAPE_BELT
+        return TransportKind.SPACE_PIPE
+    return TransportKind.SPACE_BELT
 
 
 def build_layer03_route_goals(

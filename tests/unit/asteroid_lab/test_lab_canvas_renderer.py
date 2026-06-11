@@ -17,6 +17,7 @@ def test_canvas_renderer_module_contract() -> None:
     assert "hitTest" in src
     assert "preloadSprites" in src
     assert "spriteDrawGeneration" in src
+    assert "redrawSpriteLayer" in src
     assert "overlayFillForKind" in src
     assert "let layout = opts.layout" in src
     assert "const layout = opts.layout" not in src

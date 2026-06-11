@@ -25,11 +25,11 @@ def test_space_pipe_fluid_pipe_components_separate_from_belt() -> None:
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
     kinds = {c.transport_kind for c in ins.transport_components}
-    assert kinds == {"fluid_pipe", "shape_belt"}
-    fluid_pipe = [c for c in ins.transport_components if c.transport_kind == "fluid_pipe"]
-    assert all(c.cell_kind == "space_pipe" for c in fluid_pipe)
-    shape_belt = [c for c in ins.transport_components if c.transport_kind == "shape_belt"]
-    assert all(c.cell_kind == "space_belt" for c in shape_belt)
+    assert kinds == {"space_pipe", "space_belt"}
+    space_pipe = [c for c in ins.transport_components if c.transport_kind == "space_pipe"]
+    assert all(c.cell_kind == "space_pipe" for c in space_pipe)
+    space_belt = [c for c in ins.transport_components if c.transport_kind == "space_belt"]
+    assert all(c.cell_kind == "space_belt" for c in space_belt)
 
 
 def test_four_neighbor_grouping_diagonal_does_not_connect() -> None:
@@ -45,7 +45,7 @@ def test_four_neighbor_grouping_diagonal_does_not_connect() -> None:
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
-    fluid = [c for c in ins.transport_components if c.transport_kind == "fluid_pipe"]
+    fluid = [c for c in ins.transport_components if c.transport_kind == "space_pipe"]
     assert len(fluid) == 2
     assert sorted(c.cell_count for c in fluid) == [1, 1]
 
@@ -66,9 +66,9 @@ def test_main_component_largest_cell_count_wins() -> None:
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
-    fluid = [c for c in ins.transport_components if c.transport_kind == "fluid_pipe"]
+    fluid = [c for c in ins.transport_components if c.transport_kind == "space_pipe"]
     assert len(fluid) == 2
-    main = ins.hints_json["main_component_candidate"]["fluid_pipe"]
+    main = ins.hints_json["main_component_candidate"]["space_pipe"]
     assert main["cell_count"] == 3
     assert main["component_id"] == max(c.component_id for c in fluid if c.cell_count == 3)
 
@@ -86,10 +86,10 @@ def test_main_component_tie_breaks_on_lower_component_id() -> None:
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
-    fluid = [c for c in ins.transport_components if c.transport_kind == "fluid_pipe"]
+    fluid = [c for c in ins.transport_components if c.transport_kind == "space_pipe"]
     assert len(fluid) == 2
     assert all(c.cell_count == 1 for c in fluid)
-    main_id = ins.hints_json["main_component_candidate"]["fluid_pipe"]["component_id"]
+    main_id = ins.hints_json["main_component_candidate"]["space_pipe"]["component_id"]
     assert main_id == min(c.component_id for c in fluid)
 
 
@@ -107,9 +107,9 @@ def test_two_clusters_orphan_and_transport_disconnected() -> None:
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
-    fluid = [c for c in ins.transport_components if c.transport_kind == "fluid_pipe"]
+    fluid = [c for c in ins.transport_components if c.transport_kind == "space_pipe"]
     assert len(fluid) == 2
-    main_id = ins.hints_json["main_component_candidate"]["fluid_pipe"]["component_id"]
+    main_id = ins.hints_json["main_component_candidate"]["space_pipe"]["component_id"]
     main_comp = next(c for c in fluid if c.component_id == main_id)
     assert main_comp.cell_count == 2
     orphan = next(c for c in fluid if c.component_id != main_id)
@@ -276,6 +276,6 @@ def test_hints_contain_main_component_candidate_and_cleanup_candidates() -> None
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
     assert "main_component_candidate" in ins.hints_json
-    assert "fluid_pipe" in ins.hints_json["main_component_candidate"]
+    assert "space_pipe" in ins.hints_json["main_component_candidate"]
     assert "cleanup_candidate_cells" in ins.hints_json
     assert len(ins.hints_json["cleanup_candidate_cells"]) >= 1

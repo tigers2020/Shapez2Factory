@@ -217,7 +217,7 @@ def _add_cells(
             candidate_id=placement.placement_id,
             placement_id=placement.placement_id,
             role=role,
-            transport_kind=TransportKind.SHAPE_BELT,
+            transport_kind=TransportKind.SPACE_BELT,
             placement_state=PlacementCommitState.PROVISIONAL_PLACED,
         )
 

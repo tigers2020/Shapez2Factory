@@ -98,7 +98,7 @@ def _index_transport_components(
     dtos: list[ExistingTransportComponentDTO] = []
     pos_to_id: dict[tuple[int, int, int | None], int] = {}
 
-    for tk in ("fluid_pipe", "shape_belt"):
+    for tk in ("space_pipe", "space_belt"):
         seeds = [c for c in cells if is_transport_tile(c) and c.transport_kind == tk]
         seeds.sort(key=sort_key_xy_layer)
         visited_local: set[tuple[int, int, int | None]] = set()
@@ -125,7 +125,7 @@ def _index_transport_components(
             next_id += 1
             for cc in comp_cells:
                 pos_to_id[cell_position_key(cc)] = cid
-            ck = "space_pipe" if tk == "fluid_pipe" else "space_belt"
+            ck = "space_pipe" if tk == "space_pipe" else "space_belt"
             touches = any(_touches_snapshot_bbox(c, snapshot_bbox) for c in comp_cells)
             dtos.append(
                 ExistingTransportComponentDTO(
@@ -171,8 +171,8 @@ def inspect_existing_layout(
 
     transport_dtos, pos_to_component = _index_transport_components(cells, bbox)
     main_by_kind: dict[str, int | None] = {
-        "fluid_pipe": _pick_main_component_id("fluid_pipe", transport_dtos),
-        "shape_belt": _pick_main_component_id("shape_belt", transport_dtos),
+        "space_pipe": _pick_main_component_id("space_pipe", transport_dtos),
+        "space_belt": _pick_main_component_id("space_belt", transport_dtos),
     }
 
     role_by_cid: dict[int, str] = {}
@@ -263,7 +263,7 @@ def inspect_existing_layout(
             cleanup_cells.extend(comp.cells_json)
 
     hints_main: dict[str, Any] = {}
-    for tk in ("fluid_pipe", "shape_belt"):
+    for tk in ("space_pipe", "space_belt"):
         mid = main_by_kind.get(tk)
         if mid is None:
             continue
@@ -288,8 +288,8 @@ def inspect_existing_layout(
         "map_input_id": snapshot.map_input_id,
         "transport_component_count": len(transport_dtos_final),
         "transport_components_by_kind": {
-            "fluid_pipe": sum(1 for c in transport_dtos_final if c.transport_kind == "fluid_pipe"),
-            "shape_belt": sum(1 for c in transport_dtos_final if c.transport_kind == "shape_belt"),
+            "space_pipe": sum(1 for c in transport_dtos_final if c.transport_kind == "space_pipe"),
+            "space_belt": sum(1 for c in transport_dtos_final if c.transport_kind == "space_belt"),
         },
         "equipment_count": len(equipment),
         "nested_blueprint_note": (

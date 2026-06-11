@@ -43,7 +43,7 @@ _L4_INSPECTOR = {
 
 def _overlay_kind_for_role(*, role: str, transport: str) -> str:
     """Map L4 observation role to domain cell_kind for Lab sprite resolution."""
-    is_fluid = transport == "fluid_pipe"
+    is_fluid = transport == "space_pipe"
     if role == "miner":
         return "fluid_miner" if is_fluid else "shape_miner"
     if role == "extension":

@@ -58,6 +58,18 @@ def test_transport_complete_frame_emits_space_belt_sprite(
         assert (root / str(row["rel"])).is_file(), row["rel"]
 
 
+def test_transport_complete_frame_emits_asteroid_field_sprites(
+    replay_sprite_golden_fixture: dict[str, object],
+) -> None:
+    frame = replay_sprite_golden_fixture["transport_complete_frame"]
+    assert isinstance(frame, dict)
+    sprites = sprite_paint_entries_for_frame(frame)
+    shape_rows = [s for s in sprites if s["rel"] == "AsteroidField_Shape.svg"]
+    assert shape_rows, f"expected asteroid field sprites, got {sprites!r}"
+    root = default_lab_sprites_root()
+    assert (root / "AsteroidField_Shape.svg").is_file()
+
+
 def test_overlay_fallback_frame_includes_pipe_sprite_from_cell_overlay_json(
     replay_sprite_golden_fixture: dict[str, object],
 ) -> None:

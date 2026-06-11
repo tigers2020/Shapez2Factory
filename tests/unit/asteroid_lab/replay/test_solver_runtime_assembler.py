@@ -37,7 +37,7 @@ def test_decoded_cell_row_round_trip_preserves_kind_and_transport() -> None:
         rotation=0,
         tile_type="",
         cell_kind="asteroid_shape_field",
-        transport_kind="shape_belt",
+        transport_kind="space_belt",
         has_nested_blueprint=False,
         nested_entry_count=0,
         nested_type_counts_json={},
@@ -55,7 +55,7 @@ def test_decoded_cell_row_round_trip_preserves_kind_and_transport() -> None:
     )
     cell = map_view.full_cells[0]
     assert cell.kind == "asteroid_shape_field"
-    assert cell.transport == "shape_belt"
+    assert cell.transport == "space_belt"
 
 
 def test_cell_from_dict_accepts_cell_kind_aliases() -> None:

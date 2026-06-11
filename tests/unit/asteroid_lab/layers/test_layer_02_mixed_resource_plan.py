@@ -93,7 +93,7 @@ def test_shape_primary_mixed_map_still_provides_pipe_goals() -> None:
         speed_tier=1,
         rules=snapshot_rules_for_test(),
     )
-    pipe_goals = build_layer03_route_goals(plan, transport_kind=TransportKind.FLUID_PIPE)
+    pipe_goals = build_layer03_route_goals(plan, transport_kind=TransportKind.SPACE_PIPE)
     assert pipe_goals
 
 

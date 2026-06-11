@@ -32,7 +32,7 @@ def _transport_kind_for_resource(resource_kind: str) -> str:
 
 
 def _transport_kind_enum(resource_kind: str) -> TransportKind:
-    return TransportKind.FLUID_PIPE if resource_kind == "fluid" else TransportKind.SHAPE_BELT
+    return TransportKind.SPACE_PIPE if resource_kind == "fluid" else TransportKind.SPACE_BELT
 
 
 def _unit_capacity_m(resource_kind: str) -> int:

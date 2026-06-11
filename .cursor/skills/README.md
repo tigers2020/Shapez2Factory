@@ -13,6 +13,7 @@ Cursor project skills — open when task matches; not read every turn.
 | cli-boundary | `cli-boundary/SKILL.md` | Thin CLI adapter — import/serialization/exit/determinism |
 | grill-me-shapez2 | `grill-me-shapez2/SKILL.md` | Pre-spec adversarial plan review — invariants, ≤8 Q, decision table |
 | fallow | `fallow/SKILL.md` | JS/TS code health — dead code, dupes, complexity, PR audit (`/fallow`) |
+| golden-fixture-optimization-loop | `golden-fixture-optimization-loop/SKILL.md` | One cycle: baseline → diagnose → patch → report → PR → merge if gates pass |
 
 ## Workflow alignment
 
@@ -20,6 +21,7 @@ Cursor project skills — open when task matches; not read every turn.
 - **PR-3 (tests only):** `write-tests` · no production edits unless user expands scope
 - **Pre-merge review:** `quality-check` · `cli-boundary` when CLI touched
 - **Post-contract-change:** `doc-update`
+- **Golden fixture optimization:** `golden-fixture-optimization-loop` · one hypothesis per cycle · oracle never solver input
 
 Templates: [`documents/ai/templates/`](../documents/ai/templates/) · Workflow: [`AGENTS.md`](../../AGENTS.md)
 

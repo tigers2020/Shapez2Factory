@@ -10,7 +10,9 @@ from django_apps.asteroid_lab.replay.map_height_layer import (
     resolve_replay_height_layer,
     wire_explicit_height_layer,
 )
+from django_apps.asteroid_lab.replay.overlay_wire_contract import overlay_cell_to_wire_dict
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.replay_timeline_wire import ReplayBBoxWire
 from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayAnnotation,
     ReplayBBox,
@@ -38,13 +40,19 @@ def _mapping(value: object) -> dict[str, Any]:
     return dict(value)
 
 
-def replay_bbox_to_json_dict(bbox: ReplayBBox) -> dict[str, int]:
+def replay_bbox_to_wire(bbox: ReplayBBox) -> ReplayBBoxWire:
     return {
         "min_x": int(bbox.min_x),
         "min_y": int(bbox.min_y),
         "max_x": int(bbox.max_x),
         "max_y": int(bbox.max_y),
     }
+
+
+def replay_bbox_to_json_dict(bbox: ReplayBBox) -> ReplayBBoxWire:
+    """Deprecated alias for :func:`replay_bbox_to_wire`."""
+
+    return replay_bbox_to_wire(bbox)
 
 
 def replay_bbox_from_json_dict(data: object) -> ReplayBBox:
@@ -58,11 +66,11 @@ def replay_bbox_from_json_dict(data: object) -> ReplayBBox:
     )
 
 
-def _wire_kind(data: dict[str, Any]) -> str:
+def _wire_kind(data: Mapping[str, object]) -> str:
     return str(data.get("kind") or data.get("cell_kind") or "")
 
 
-def _wire_transport(data: dict[str, Any]) -> str:
+def _wire_transport(data: Mapping[str, object]) -> str:
     return str(data.get("transport") or data.get("transport_kind") or "")
 
 
@@ -91,7 +99,7 @@ def _cell_delta_from_dict(data: dict[str, Any]) -> ReplayCellDelta:
     )
 
 
-def _overlay_from_dict(data: dict[str, Any]) -> ReplayOverlayCell:
+def _overlay_from_dict(data: Mapping[str, object]) -> ReplayOverlayCell:
     return ReplayOverlayCell(
         x=_require_int(data.get("x"), field="overlay.x"),
         y=_require_int(data.get("y"), field="overlay.y"),
@@ -100,8 +108,16 @@ def _overlay_from_dict(data: dict[str, Any]) -> ReplayOverlayCell:
         output_transport_kind=str(data.get("output_transport_kind") or ""),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
-        layer=wire_explicit_height_layer(data),
+        layer=wire_explicit_height_layer(dict(data)),
     )
+
+
+def replay_overlay_cell_from_wire(raw: Mapping[str, object]) -> ReplayOverlayCell:
+    """Deserialize one overlay cell wire row into a semantic DTO."""
+
+    if not isinstance(raw, dict):
+        raise ReplayTimelineDeserializationError("overlay wire must be object")
+    return _overlay_from_dict(raw)
 
 
 def _resolved_layer_for_cell(
@@ -178,26 +194,9 @@ def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, Any]:
             }
             for c in map_view.cell_delta
         ],
-        "overlay_cells": [
-            {
-                "x": c.x,
-                "y": c.y,
-                "kind": c.kind,
-                "transport": c.transport,
-                "tile_type": c.tile_type,
-                "sprite_identifier": c.tile_type,
-                "rotation": c.rotation,
-                "layer": _resolved_layer_for_cell(
-                    kind=c.kind,
-                    transport=c.transport,
-                    tile_type=c.tile_type,
-                    layer=c.layer,
-                ),
-            }
-            for c in map_view.overlay_cells
-        ],
+        "overlay_cells": [overlay_cell_to_wire_dict(c) for c in map_view.overlay_cells],
         "annotations": [{"x": a.x, "y": a.y, "label": a.label} for a in map_view.annotations],
-        "bbox": replay_bbox_to_json_dict(map_view.bbox),
+        "bbox": replay_bbox_to_wire(map_view.bbox),
     }
 
 

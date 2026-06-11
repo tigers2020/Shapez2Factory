@@ -46,6 +46,8 @@ JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 RawJsonObject: TypeAlias = dict[str, Any]
 ```
 
+Implementation may use Python 3.12 `type` alias syntax where ruff UP040 prefers it over `TypeAlias`.
+
 | Alias | Meaning |
 |-------|---------|
 | `RawJsonObject` | Unvalidated input immediately after `json.loads` or game-data import |

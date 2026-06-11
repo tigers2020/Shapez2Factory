@@ -52,15 +52,25 @@ _SLOW_MODULE_SUFFIXES = (
 )
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _pytest_seed_space_transport_layout_registry(
-    django_db_setup: None,
+@pytest.fixture(autouse=True)
+def _ensure_space_transport_layout_registry(
+    request: pytest.FixtureRequest,
     django_db_blocker,
+    db: None,
 ) -> None:
-    """Seed layout registry for tests that call snapshot export without Tier B loaddata."""
+    """Re-seed layouts after module fixtures flush game_data (macro-smoke / xdist safe)."""
 
+    if request.node.get_closest_marker("django_db") is None:
+        return
+
+    from django_apps.game_data.models import SpaceTransportLayoutRegistry
+    from django_apps.game_data.services.space_transport_layout_catalog import (
+        EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT,
+    )
     from tests.support.game_data_layout_seed import ensure_space_transport_layout_registry
 
+    if SpaceTransportLayoutRegistry.objects.count() >= EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT:
+        return
     with django_db_blocker.unblock():
         ensure_space_transport_layout_registry(strict=bool(os.environ.get("CI")))
 

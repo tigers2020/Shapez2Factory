@@ -13,7 +13,7 @@ Pipeline:
 problem -> authority -> contract -> plan -> acceptance tests -> small change -> gate
 ```
 
-Authority for architecture/coupling: if `graphify-out/graph.json` exists, graphify query/path before wide grep (`graphify.mdc`).
+Authority for architecture/coupling: if `graphify-out/graph.json` exists, **mandatory** `/graphify` query/path/explain before wide grep or multi-module reads (`graphify.mdc`).
 
 For Shapez2 domain or Hermes skill-suggestion workflows, route to `shapez2-domain.mdc` and `docs/agent-workflows/`.
 

@@ -1,0 +1,20 @@
+---
+source_file: "django_apps/shapez_core/domain/shape_pattern.py"
+type: "code"
+community: "shape_pattern.py"
+location: "L7"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/shape_patternpy
+---
+
+# QuadrantPosition
+
+## Connections
+- [[Compass labels for each slot in a layer.      Matches ``ShapeLayer.quadrants`` i]] - `rationale_for` [EXTRACTED]
+- [[Enum]] - `inherits` [EXTRACTED]
+- [[quadrant_at_index()]] - `references` [EXTRACTED]
+- [[shape_pattern.py]] - `contains` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/shape_patternpy

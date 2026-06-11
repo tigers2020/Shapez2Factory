@@ -1,0 +1,19 @@
+---
+source_file: "django_apps/asteroid_lab/replay/reconstruction_frames.py"
+type: "code"
+community: "record_existing_layout_inspection_frames"
+location: "L50"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/record_existing_layout_inspection_frames
+---
+
+# _trace_marker_row()
+
+## Connections
+- [[Any]] - `references` [EXTRACTED]
+- [[build_reconstruction_replay_events()]] - `calls` [EXTRACTED]
+- [[reconstruction_frames.py]] - `contains` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/record_existing_layout_inspection_frames

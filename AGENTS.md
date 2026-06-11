@@ -6,7 +6,7 @@ shapez2 Factory Planner governance: short rules, strict contracts, small safe ch
 ## Default Workflow
 1. Use `/using-superpowers` first: check relevant skills before analysis, planning, or edits.
 2. Use `/caveman` always: Korean, direct, compressed, blunt, no fluff, no cheerleading, no vague agreement.
-3. Read order when needed: `AGENTS.md` -> `structure.md` -> `documents/ai/START_HERE.md` -> current canon/spec -> code/tests. If repo/codebase search is needed and `graphify-out/graph.json` exists, use `/graphify` before broad exploration (see Graphify).
+3. Read order when needed: `AGENTS.md` -> `structure.md` -> `documents/ai/START_HERE.md` -> current canon/spec -> code/tests. **When `graphify-out/graph.json` exists**, run `/graphify` query/path/explain before wide repo search or multi-module reads (`.cursor/rules/graphify.mdc`).
 4. Plan before implementation. No production code change until intended contract is clear.
 5. Clean git surface before edits: no dirty branch/worktree unless user scoped those files (`.cursor/rules/git-worktree.mdc`).
 6. Prefer one PR-sized purpose. Split mixed contract/refactor/UI/runtime work.
@@ -22,7 +22,7 @@ Cursor implements; Hermes researches and suggests skills — not APPROVE/BLOCK. 
 
 ## Tool Routing
 
-- Graphify: when repo/codebase search, architecture, coupling, cross-module paths, or unfamiliar subsystems matter, use `/graphify` and `graphify-out/graph.json` via `.cursor/rules/graphify.mdc` and `docs/agent-workflows/graphify-routine.md`. After code-only edits: `graphify update <scope>`. Separate AST vs INFERRED edges.
+- **Graphify (mandatory when graph exists):** architecture, coupling, boundaries, cross-module paths, unfamiliar subsystems — `/graphify` on `graphify-out/graph.json` before wide grep (`graphify.mdc`, `docs/agent-workflows/graphify-routine.md`). Human viz: `graphify-out/graph.html`, Obsidian `graphify-out/obsidian/` (not repo root). After code-only edits: `graphify update django_apps` / `src`. Separate EXTRACTED vs INFERRED edges.
 - Playwright: when browsing, browser testing, UI flow checks, screenshots, or rendered-page verification matter, use `/playwright` and `.cursor/rules/playwright.mdc`. Prefer real browser evidence; store artifacts under `output/playwright/`.
 
 ## Shapez2 Routing

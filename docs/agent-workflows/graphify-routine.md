@@ -8,9 +8,14 @@ Use the project knowledge graph before expensive codebase exploration.
 |------|-----|
 | `graphify-out/graph.json` | Query, path, explain (preferred) |
 | `graphify-out/GRAPH_REPORT.md` | God nodes, communities, inferred-edge audit |
-| `graphify-out/graph.html` | Browser viz (skip if >5k nodes) |
+| `graphify-out/graph.html` | Browser viz (community meta if >5k nodes) |
+| `graphify-out/obsidian/` | Human Obsidian vault + `graph.canvas` — open **this** folder, not `graphify-out/` root |
 
-Current scope built: `django_apps` + `src` (see `graphify-out/cost.json` runs).
+Current scope built: `django_apps` + `src`. Freshness: `built_at_commit` in `graph.json` vs `git rev-parse --short HEAD`.
+
+## Mandatory for agents
+
+When `graph.json` exists, agents must run `/graphify` query/path/explain before wide grep or reading >2 unfamiliar modules. Router: `.cursor/rules/graphify.mdc`, `AGENTS.md` § Tool Routing.
 
 ## When to use graphify first
 

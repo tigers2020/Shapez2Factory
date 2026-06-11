@@ -5,6 +5,11 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from django_apps.asteroid_lab.replay.effective_cell_wire import (
+    EffectiveCellWire,
+    effective_cell_to_wire,
+)
+
 _LEGACY_SHAPE_OUTPUT_TOKENS = frozenset({"shape_belt", "belt", "shape"})
 _LEGACY_FLUID_OUTPUT_TOKENS = frozenset({"fluid_pipe", "pipe", "fluid"})
 
@@ -51,28 +56,10 @@ class EffectiveCellView:
     output_transport_kind: str
     sources: dict[str, Any] = field(default_factory=dict)
 
-    def to_wire(self) -> dict[str, Any]:
-        return {
-            "frame_index": self.frame_index,
-            "coord": {"x": self.x, "y": self.y, "layer": self.layer},
-            "terrain": {
-                "kind": self.terrain_kind,
-                "tile_type": self.terrain_tile_type,
-            },
-            "occupant": {
-                "kind": self.occupant_kind,
-                "rotation": self.occupant_rotation,
-            },
-            "transport": {
-                "kind": self.transport_kind,
-                "tile_id": self.transport_tile_id,
-                "simulation": self.simulation,
-            },
-            "output": {
-                "transport_kind": self.output_transport_kind,
-            },
-            "sources": self.sources,
-        }
+    def to_wire(self) -> EffectiveCellWire:
+        """Deprecated shim; prefer :func:`effective_cell_to_wire`."""
+
+        return effective_cell_to_wire(self)
 
 
 def normalize_project_transport_kind(raw: object) -> str:
@@ -277,6 +264,8 @@ def effective_cell_view_as_dict(view: EffectiveCellView) -> dict[str, Any]:
 
 __all__ = [
     "EffectiveCellView",
+    "EffectiveCellWire",
+    "effective_cell_to_wire",
     "effective_cell_view_as_dict",
     "merge_effective_cell_view",
     "normalize_project_transport_kind",

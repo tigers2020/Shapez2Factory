@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from django_apps.asteroid_lab.replay.effective_cell_view import merge_effective_cell_view
+from django_apps.asteroid_lab.replay.effective_cell_view import (
+    effective_cell_to_wire,
+    merge_effective_cell_view,
+)
 
 
 def _xy_match(row: Any, x: int, y: int) -> bool:
@@ -220,7 +223,7 @@ def lookup_effective_cell_in_serialized_frame(
             overlay_cells=overlay_matches or None,
         )
     if view is not None:
-        return view.to_wire(), sources
+        return effective_cell_to_wire(view), sources
 
     synthetic, syn_src = _try_synthetic_lab_empty(ser, x, y)
     if synthetic is not None:
@@ -232,7 +235,7 @@ def lookup_effective_cell_in_serialized_frame(
             full_cell=synthetic,
         )
         if synthetic_view is not None:
-            return synthetic_view.to_wire(), sources
+            return effective_cell_to_wire(synthetic_view), sources
 
     return None, sources
 

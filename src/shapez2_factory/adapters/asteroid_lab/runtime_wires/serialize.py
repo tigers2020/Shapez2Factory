@@ -8,8 +8,8 @@ from shapez2_factory.adapters.asteroid_lab.runtime_wires.envelope import (
     COMPLETE_MAP_MANIFEST_PATH_KEY,
     L3_WIRE_VERSION,
     L4_WIRE_VERSION,
-    RUNTIME_WIRES_SCHEMA_VERSION,
     RUNTIME_WIRE_KIND,
+    RUNTIME_WIRES_SCHEMA_VERSION,
     LayerOutcome,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
@@ -285,8 +285,7 @@ def serialize_layer04_wire(
             "placements": [_serialize_inner_placement(p) for p in result.placements],
             "interior_occupied_cells": _coords_to_list(occupied),
             "routeable_inner_groups": [
-                _serialize_routeable_inner_group(group)
-                for group in result.routeable_inner_groups
+                _serialize_routeable_inner_group(group) for group in result.routeable_inner_groups
             ],
             "metrics": _serialize_layer04_metrics(result),
         },

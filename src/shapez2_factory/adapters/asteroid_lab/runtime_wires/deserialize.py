@@ -128,7 +128,9 @@ def _validate_l3_commit_index_order(wire: dict[str, Any]) -> None:
 
 def deserialize_l3_wire(wire: dict[str, Any]) -> IntegratedRimGreedyResult:
     _validate_l3_commit_index_order(wire)
-    metrics = _deserialize_rim_greedy_metrics(_require_dict(wire.get("metrics", {}), field="metrics"))
+    metrics = _deserialize_rim_greedy_metrics(
+        _require_dict(wire.get("metrics", {}), field="metrics")
+    )
     placements = tuple(
         _deserialize_committed_placement(_require_dict(item, field="committed_placement"))
         for item in wire.get("committed_placements", [])
@@ -144,9 +146,7 @@ def deserialize_l3_wire(wire: dict[str, Any]) -> IntegratedRimGreedyResult:
         for coord in (*placement.miner_cells, *placement.extension_cells)
     )
     reserved_route = frozenset(
-        coord
-        for placement in placements
-        for coord in placement.route_probe_path
+        coord for placement in placements for coord in placement.route_probe_path
     )
     base = build_empty_integrated_rim_greedy_result()
     return replace(
@@ -238,7 +238,9 @@ def deserialize_l4_wire(wire: dict[str, Any]) -> Layer04InnerFillResult:
             _deserialize_routeable_inner_group(_require_dict(item, field="routeable_inner_group"))
             for item in wire.get("routeable_inner_groups", [])
         ),
-        metrics=_deserialize_layer04_metrics(_require_dict(wire.get("metrics", {}), field="metrics")),
+        metrics=_deserialize_layer04_metrics(
+            _require_dict(wire.get("metrics", {}), field="metrics")
+        ),
         skip_reason=skip_reason,
     )
 

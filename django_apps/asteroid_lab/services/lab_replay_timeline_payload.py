@@ -30,18 +30,6 @@ from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
 )
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO
 from django_apps.asteroid_lab.services.lab_layer02_timeline import resolve_l2_complete_frame_index
-from django_apps.asteroid_lab.services.lab_timeline_exterior_connector_enrichment import (
-    enrich_lab_timeline_frames_with_exterior_connector_plan,
-)
-from django_apps.asteroid_lab.services.lab_timeline_pattern_bundle_enrichment import (
-    enrich_lab_timeline_frames_with_pattern_bundle_highlights,
-)
-from django_apps.asteroid_lab.services.lab_timeline_rim_enrichment import (
-    enrich_lab_timeline_frames_with_terrain_rim,
-)
-from django_apps.asteroid_lab.services.solver_run_config_keys import (
-    SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
-)
 from django_apps.asteroid_lab.services.lab_replay_diagnostics import (
     DIAGNOSTIC_MISSING_RUNTIME_WIRES,
     DIAGNOSTIC_RUNTIME_WIRE_COMPLETE_MAP_MISMATCH,
@@ -53,6 +41,18 @@ from django_apps.asteroid_lab.services.lab_replay_diagnostics import (
     DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN,
     DIAGNOSTIC_SEVERITY_BY_REASON,
     diagnostic_severity_for_reason,
+)
+from django_apps.asteroid_lab.services.lab_timeline_exterior_connector_enrichment import (
+    enrich_lab_timeline_frames_with_exterior_connector_plan,
+)
+from django_apps.asteroid_lab.services.lab_timeline_pattern_bundle_enrichment import (
+    enrich_lab_timeline_frames_with_pattern_bundle_highlights,
+)
+from django_apps.asteroid_lab.services.lab_timeline_rim_enrichment import (
+    enrich_lab_timeline_frames_with_terrain_rim,
+)
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
 )
 from django_apps.asteroid_lab.services.solver_run_lab_summary import solver_summary_payload_for_run
 

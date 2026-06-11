@@ -232,7 +232,9 @@ def test_compose_unknown_wire_schema_degrades(
     wires_bytes = json.dumps(bad_doc, sort_keys=True, separators=(",", ":")).encode("utf-8")
     wires_path.write_bytes(wires_bytes)
     manifest["paths"][MANIFEST_PATH_KEY] = RUNTIME_WIRES_ARTIFACT_REL_PATH
-    manifest["content_hashes"][RUNTIME_WIRES_ARTIFACT_REL_PATH] = hashlib.sha256(wires_bytes).hexdigest()
+    manifest["content_hashes"][RUNTIME_WIRES_ARTIFACT_REL_PATH] = hashlib.sha256(
+        wires_bytes
+    ).hexdigest()
     (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     project = m.AsteroidProject.objects.create(name="Wire", slug="wire-bad-schema")
     run = m.SolverRun.objects.create(

@@ -15,9 +15,9 @@ from shapez2_factory.adapters.asteroid_lab.runtime_wires.envelope import (
     L3_WIRE_VERSION,
     L4_WIRE_VERSION,
     MANIFEST_PATH_KEY,
+    RUNTIME_WIRE_KIND,
     RUNTIME_WIRES_ARTIFACT_REL_PATH,
     RUNTIME_WIRES_SCHEMA_VERSION,
-    RUNTIME_WIRE_KIND,
     LayerOutcome,
     RuntimeWireValidationError,
 )

@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from django_apps.asteroid_lab.models import SolverRun
+from django_apps.asteroid_lab.services.lab_replay_lazy_handle import LAB_REPLAY_PAYLOAD_VERSION
 from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
     CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION,
 )
-from django_apps.asteroid_lab.services.lab_replay_lazy_handle import LAB_REPLAY_PAYLOAD_VERSION
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY,
     SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY,

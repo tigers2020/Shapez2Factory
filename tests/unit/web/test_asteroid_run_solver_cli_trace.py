@@ -30,6 +30,11 @@ def test_http_run_solver_emits_cli_trace(
     )
     monkeypatch.setattr(
         public_pages,
+        "build_game_data_snapshot_payload",
+        lambda: {"schema_version": 1},
+    )
+    monkeypatch.setattr(
+        public_pages,
         "run_solver_runtime_for_project",
         lambda *_args, **_kwargs: SolverRuntimeEntryResult(
             ok=True,

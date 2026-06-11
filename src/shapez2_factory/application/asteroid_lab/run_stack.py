@@ -23,15 +23,15 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route imp
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
 )
-from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
-    IntegratedRimGreedyResult,
-)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
     LAYER_04_INNER_PATTERN_FILL,
     LAYER_05_TRANSPORT_ROUTING,
     LAYER_06_COMMIT_VALIDATE,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
+    IntegratedRimGreedyResult,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.run import (
     run_layer_02_exterior_transport,

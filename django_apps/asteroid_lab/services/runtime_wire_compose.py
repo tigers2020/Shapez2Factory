@@ -15,11 +15,11 @@ from django_apps.asteroid_lab.services.artifact_manifest_reader import ArtifactM
 from django_apps.asteroid_lab.services.lab_replay_diagnostics import (
     DIAGNOSTIC_MISSING_RUNTIME_WIRES,
     DIAGNOSTIC_RUNTIME_WIRE_COMPLETE_MAP_MISMATCH,
+    DIAGNOSTIC_RUNTIME_WIRE_L3_ORDER_INVALID,
+    DIAGNOSTIC_RUNTIME_WIRE_L4_PLACEMENT_MISMATCH,
     DIAGNOSTIC_RUNTIME_WIRE_LAYER_FAILED,
     DIAGNOSTIC_RUNTIME_WIRE_LAYER_PARTIAL_BUDGET,
     DIAGNOSTIC_RUNTIME_WIRE_LAYER_SKIPPED,
-    DIAGNOSTIC_RUNTIME_WIRE_L3_ORDER_INVALID,
-    DIAGNOSTIC_RUNTIME_WIRE_L4_PLACEMENT_MISMATCH,
     DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN,
     diagnostic_severity_for_reason,
 )
@@ -205,7 +205,9 @@ def load_and_validate_runtime_wires(
         return RuntimeWireLoadResult(
             ok=False,
             degraded_reason=DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN,
-            diagnostic_severity=diagnostic_severity_for_reason(DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN),
+            diagnostic_severity=diagnostic_severity_for_reason(
+                DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN
+            ),
             document=None,
             bundle=None,
         )
@@ -232,7 +234,9 @@ def load_and_validate_runtime_wires(
     try:
         bundle = _deserialize_truncated_bundle(truncated_doc)
     except RuntimeWireValidationError as exc:
-        degraded = _VALIDATION_CODE_TO_DIAGNOSTIC.get(exc.code, DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN)
+        degraded = _VALIDATION_CODE_TO_DIAGNOSTIC.get(
+            exc.code, DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN
+        )
         return RuntimeWireLoadResult(
             ok=False,
             degraded_reason=degraded,

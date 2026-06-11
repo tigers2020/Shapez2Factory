@@ -11,6 +11,10 @@ from django.db import transaction
 from django.db.models.fields.json import KeyTransform
 
 from django_apps.asteroid_lab.models import SolverRun
+from django_apps.asteroid_lab.services.artifact_manifest_reader import (
+    ArtifactManifestReadError,
+    read_verified_artifact_manifest,
+)
 from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
     lab_replay_frames_are_renderable,
 )
@@ -21,11 +25,6 @@ from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY,
     SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY,
-)
-
-from django_apps.asteroid_lab.services.artifact_manifest_reader import (
-    ArtifactManifestReadError,
-    read_verified_artifact_manifest,
 )
 from shapez2_factory.adapters.asteroid_lab.runtime_wires.envelope import (
     MANIFEST_PATH_KEY,

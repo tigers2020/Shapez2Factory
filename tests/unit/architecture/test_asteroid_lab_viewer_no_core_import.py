@@ -42,9 +42,7 @@ LAYER_SHIM_FREE_DIRS = [
 
 ARTIFACT_COMPOSE_GLOB = "artifact_*compose*.py"
 
-FORBIDDEN_COMPOSE_RUN_PREFIXES = (
-    "shapez2_factory.application.asteroid_lab.layers.layer_",
-)
+FORBIDDEN_COMPOSE_RUN_PREFIXES = ("shapez2_factory.application.asteroid_lab.layers.layer_",)
 
 
 def _imported_modules(tree: ast.AST) -> list[str]:

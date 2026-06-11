@@ -11,6 +11,15 @@ from shapez2_factory.adapters.asteroid_lab.complete_map_serializer import serial
 from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
     GeneticSampleSeedSnapshot,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
+    ExteriorConnectionPlan,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer04_inner_fill import (
+    Layer04InnerFillResult,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route import (
+    Layer05RoutePlan,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
 )
@@ -20,6 +29,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
     LAYER_04_INNER_PATTERN_FILL,
     LAYER_05_TRANSPORT_ROUTING,
     LAYER_06_COMMIT_VALIDATE,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
+    IntegratedRimGreedyResult,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.run import (
     run_layer_02_exterior_transport,
@@ -70,6 +82,10 @@ class StackRunResult:
     solver_summary: dict[str, Any] = field(default_factory=dict)
     complete_map_json: dict[str, Any] = field(default_factory=dict)
     stack_result_json: dict[str, Any] = field(default_factory=dict)
+    exterior_plan: ExteriorConnectionPlan | None = None
+    rim_greedy: IntegratedRimGreedyResult | None = None
+    inner_fill: Layer04InnerFillResult | None = None
+    route_plan: Layer05RoutePlan | None = None
 
 
 def _decimal_str(value: Decimal) -> str:
@@ -236,6 +252,10 @@ class RunStackUseCase:
             solver_summary=solver_summary,
             complete_map_json=serialize_complete_map(complete_map),
             stack_result_json=stack_result_json,
+            exterior_plan=core_result.exterior_plan,
+            rim_greedy=core_result.rim_greedy,
+            inner_fill=core_result.inner_fill,
+            route_plan=core_result.route_plan,
         )
 
 

@@ -40,6 +40,11 @@ from shapez2_factory.adapters.asteroid_lab.run_key_safety import (
     resolve_artifact_dir,
 )
 from shapez2_factory.adapters.asteroid_lab.run_status import RunLifecycleStatus
+from shapez2_factory.adapters.asteroid_lab.runtime_wires import (
+    MANIFEST_PATH_KEY,
+    RUNTIME_WIRES_ARTIFACT_REL_PATH,
+    build_runtime_wires_document,
+)
 from shapez2_factory.application.asteroid_lab.replay_core import write_replay_core_jsonl
 from shapez2_factory.application.asteroid_lab.run_stack import RunStackUseCase
 
@@ -262,6 +267,11 @@ def _run_artifact(
     writer.write_output("output/stack_result.json", _json_bytes(result.stack_result_json))
     writer.write_output("output/solver_summary.json", _json_bytes(result.solver_summary))
     writer.write_output("output/replay_core.jsonl", replay_stream.getvalue().encode("utf-8"))
+    complete_map_bytes = _json_bytes(result.complete_map_json)
+    complete_map_hash = hashlib.sha256(complete_map_bytes).hexdigest()
+    transport_kind = (
+        result.exterior_plan.transport_kind if result.exterior_plan is not None else "shape_belt"
+    )
     manifest_paths = {
         "copy": "input/copy.txt",
         "game_data_snapshot": "input/game_data_snapshot.json",
@@ -272,6 +282,23 @@ def _run_artifact(
     }
     if genetic_sample_seeds_text is not None:
         manifest_paths["genetic_sample_seeds"] = "input/genetic_sample_seeds.json"
+    if result.ok and result.exterior_plan is not None:
+        wires_doc = build_runtime_wires_document(
+            run_key=run_key,
+            core_build_id="local",
+            written_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            complete_map_hash=complete_map_hash,
+            transport_summary={
+                "requested_resource_kind": "shape",
+                "effective_transport_kind": transport_kind,
+            },
+            exterior_plan=result.exterior_plan,
+            rim_greedy=result.rim_greedy,
+            inner_fill=result.inner_fill,
+            route_plan=result.route_plan,
+        )
+        writer.write_output(RUNTIME_WIRES_ARTIFACT_REL_PATH, _json_bytes(wires_doc))
+        manifest_paths[MANIFEST_PATH_KEY] = RUNTIME_WIRES_ARTIFACT_REL_PATH
     manifest = ArtifactManifest(
         schema_version=MANIFEST_SCHEMA_VERSION,
         run_key=run_key,

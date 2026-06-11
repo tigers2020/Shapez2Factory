@@ -11,6 +11,11 @@ from shapez2_factory.adapters.asteroid_lab.artifact_manifest import (
     MANIFEST_FILENAME,
     ArtifactManifest,
 )
+from shapez2_factory.adapters.asteroid_lab.runtime_wires import (
+    MANIFEST_PATH_KEY,
+    RUNTIME_WIRES_ARTIFACT_REL_PATH,
+    RUNTIME_WIRES_SCHEMA_VERSION,
+)
 from shapez2_factory.interfaces.cli.asteroid_solve import ExitCode, main
 
 _REPO = Path(__file__).resolve().parents[3]
@@ -47,7 +52,14 @@ def test_cli_run_writes_full_artifact_and_validates(tmp_path: Path) -> None:
         "stack_result",
         "solver_summary",
         "replay_core",
+        MANIFEST_PATH_KEY,
     }
+    wires_path = final / RUNTIME_WIRES_ARTIFACT_REL_PATH
+    assert wires_path.is_file()
+    wires_doc = json.loads(wires_path.read_text(encoding="utf-8"))
+    assert wires_doc["schema_version"] == RUNTIME_WIRES_SCHEMA_VERSION
+    assert manifest.paths[MANIFEST_PATH_KEY] == RUNTIME_WIRES_ARTIFACT_REL_PATH
+    assert RUNTIME_WIRES_ARTIFACT_REL_PATH in manifest.content_hashes
     assert set(manifest.content_hashes) >= set(manifest.paths.values())
     assert (
         json.loads((final / "output" / "stack_result.json").read_text(encoding="utf-8"))["status"]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from pathlib import Path
 from typing import Any
 
 from django.conf import settings
@@ -10,6 +11,10 @@ from django.db import transaction
 from django.db.models.fields.json import KeyTransform
 
 from django_apps.asteroid_lab.models import SolverRun
+from django_apps.asteroid_lab.services.artifact_manifest_reader import (
+    ArtifactManifestReadError,
+    read_verified_artifact_manifest,
+)
 from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
     lab_replay_frames_are_renderable,
 )
@@ -21,8 +26,12 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY,
     SOLVER_RUN_CONFIG_LAB_REPLAY_MANIFEST_SUMMARY_KEY,
 )
+from shapez2_factory.adapters.asteroid_lab.runtime_wires.envelope import (
+    MANIFEST_PATH_KEY,
+    RUNTIME_WIRES_SCHEMA_VERSION,
+)
 
-CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION = 2
+CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION = 3
 
 
 def replay_compose_cache_enabled() -> bool:
@@ -53,6 +62,56 @@ def _is_stale_thin_artifact_l3_cache(frames: list[dict[str, Any]]) -> bool:
     return False
 
 
+def _artifact_has_runtime_wires(artifact_root: str) -> bool:
+    root = Path(artifact_root)
+    if not root.is_dir():
+        return False
+    try:
+        manifest = read_verified_artifact_manifest(root)
+    except ArtifactManifestReadError:
+        return False
+    relpath = manifest.paths.get(MANIFEST_PATH_KEY)
+    if not isinstance(relpath, str) or not relpath:
+        return False
+    return (root / relpath).is_file()
+
+
+def _cached_replay_source(frames: list[dict[str, Any]]) -> str | None:
+    for frame in frames:
+        inspector = frame.get("inspector")
+        if isinstance(inspector, dict):
+            source = inspector.get("replay_source")
+            if isinstance(source, str) and source:
+                return source
+    return None
+
+
+def _is_stale_composed_replay_cache(
+    frames: list[dict[str, Any]],
+    *,
+    summary: dict[str, Any] | None,
+    artifact_root: str | None,
+) -> bool:
+    if _is_stale_thin_artifact_l3_cache(frames):
+        return True
+
+    cached_source = _cached_replay_source(frames)
+    if artifact_root and _artifact_has_runtime_wires(artifact_root):
+        if cached_source != "artifact_runtime_wire_projection":
+            return True
+
+    if summary and isinstance(summary, dict):
+        cached_wire_schema = summary.get("wire_schema_version")
+        if (
+            isinstance(cached_wire_schema, str)
+            and cached_wire_schema
+            and cached_wire_schema != RUNTIME_WIRES_SCHEMA_VERSION
+        ):
+            return True
+
+    return False
+
+
 def build_manifest_summary_from_compose(
     *,
     frames: list[dict[str, Any]],
@@ -61,7 +120,7 @@ def build_manifest_summary_from_compose(
     count = len(frames)
     preview_index = preview_frame_index_for_lab_replay(frames)
     preview = dict(frames[preview_index]) if count else None
-    return {
+    summary: dict[str, Any] = {
         "replay_payload_version": LAB_REPLAY_PAYLOAD_VERSION,
         "lab_replay_cache_schema_version": CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION,
         "frame_count": count,
@@ -69,6 +128,10 @@ def build_manifest_summary_from_compose(
         "preview_frame": preview,
         "replay_track_metrics": dict(metrics),
     }
+    for key in ("replay_projection_mode", "wire_schema_version", "wire_content_hash"):
+        if key in metrics:
+            summary[key] = metrics[key]
+    return summary
 
 
 def is_artifact_replay_source_summary(summary: dict[str, Any] | None) -> bool:
@@ -142,6 +205,7 @@ def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
         .values(
             "lab_replay_manifest_summary_json",
             "lab_replay_payload_json",
+            "artifact_root",
         )
         .first()
     )
@@ -152,8 +216,14 @@ def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
             if isinstance(composed, list) and composed:
                 frames = [dict(item) for item in composed if isinstance(item, dict)]
                 renderable = lab_replay_frames_are_renderable(frames)
-                stale_thin_l3 = _is_stale_thin_artifact_l3_cache(frames)
-                if renderable and not stale_thin_l3:
+                summary = _dict_or_none(row.get("lab_replay_manifest_summary_json"))
+                artifact_root = row.get("artifact_root")
+                stale = _is_stale_composed_replay_cache(
+                    frames,
+                    summary=summary,
+                    artifact_root=str(artifact_root) if artifact_root else None,
+                )
+                if renderable and not stale:
                     return frames
 
     key = SOLVER_RUN_CONFIG_LAB_REPLAY_COMPOSED_FRAMES_KEY
@@ -172,7 +242,16 @@ def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
         .values_list("lab_replay_manifest_summary_json", flat=True)
         .first()
     )
-    if not lab_replay_frames_are_renderable(frames) or _is_stale_thin_artifact_l3_cache(frames):
+    artifact_root = (
+        SolverRun.objects.filter(pk=int(run_id)).values_list("artifact_root", flat=True).first()
+    )
+    if not lab_replay_frames_are_renderable(frames):
+        return None
+    if _is_stale_composed_replay_cache(
+        frames,
+        summary=summary,
+        artifact_root=str(artifact_root) if artifact_root else None,
+    ):
         return None
     if is_cache_summary_valid(summary):
         return frames
@@ -226,6 +305,7 @@ def persist_composed_replay_for_run_id(
 
 __all__ = [
     "CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION",
+    "_is_stale_composed_replay_cache",
     "_is_stale_thin_artifact_l3_cache",
     "build_manifest_summary_from_compose",
     "is_artifact_replay_source_summary",

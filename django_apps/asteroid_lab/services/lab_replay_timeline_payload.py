@@ -26,9 +26,22 @@ from django_apps.asteroid_lab.replay.timeline_serialization import (
 )
 from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
     compose_lab_replay_frames_from_artifact_run,
+    extract_replay_compose_meta,
 )
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO
 from django_apps.asteroid_lab.services.lab_layer02_timeline import resolve_l2_complete_frame_index
+from django_apps.asteroid_lab.services.lab_replay_diagnostics import (
+    DIAGNOSTIC_MISSING_RUNTIME_WIRES,
+    DIAGNOSTIC_RUNTIME_WIRE_COMPLETE_MAP_MISMATCH,
+    DIAGNOSTIC_RUNTIME_WIRE_L3_ORDER_INVALID,
+    DIAGNOSTIC_RUNTIME_WIRE_L4_PLACEMENT_MISMATCH,
+    DIAGNOSTIC_RUNTIME_WIRE_LAYER_FAILED,
+    DIAGNOSTIC_RUNTIME_WIRE_LAYER_PARTIAL_BUDGET,
+    DIAGNOSTIC_RUNTIME_WIRE_LAYER_SKIPPED,
+    DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN,
+    DIAGNOSTIC_SEVERITY_BY_REASON,
+    diagnostic_severity_for_reason,
+)
 from django_apps.asteroid_lab.services.lab_timeline_exterior_connector_enrichment import (
     enrich_lab_timeline_frames_with_exterior_connector_plan,
 )
@@ -48,6 +61,27 @@ DIAGNOSTIC_RTTP_TRACK_BLOCKED_LAB_TIMELINE = "rttp_track_blocked_lab_timeline"
 DIAGNOSTIC_NO_REPLAY_FRAMES = "no_replay_frames"
 DIAGNOSTIC_LAB_TIMELINE_ADAPTER_FILTERED_ALL = "lab_timeline_adapter_filtered_all"
 INSPECTION_TRACK_KEY_PREFIX = "inspection-"
+
+
+def _merge_artifact_compose_metrics(
+    metrics: dict[str, Any],
+    *,
+    compose_meta: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not compose_meta:
+        return metrics
+    out = dict(metrics)
+    for key in (
+        "diagnostic_reason",
+        "diagnostic_severity",
+        "replay_projection_mode",
+        "algorithm_rerun_count",
+        "wire_schema_version",
+        "wire_content_hash",
+    ):
+        if key in compose_meta:
+            out[key] = compose_meta[key]
+    return out
 
 
 def _empty_track_metrics() -> dict[str, Any]:
@@ -271,10 +305,12 @@ def build_lab_replay_frames_for_project(
             )
 
     lab_frames = _lab_timeline_frames_for_project(pid)
+    compose_meta: dict[str, Any] | None = None
     if run is not None:
         with perf_span("compose_artifact_frames_ms"):
             artifact_frames = compose_lab_replay_frames_from_artifact_run(run)
         if artifact_frames is not None:
+            compose_meta = extract_replay_compose_meta(artifact_frames)
             runtime_frames = tuple(
                 replay_timeline_frame_from_json_dict(item) for item in artifact_frames
             )
@@ -303,6 +339,13 @@ def build_lab_replay_frames_for_project(
     with perf_span("replay_metrics_build_ms"):
         diagnostic = _lab_replay_diagnostic_reason(pid, composed_count=len(serialized))
         metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
+        metrics = _merge_artifact_compose_metrics(metrics, compose_meta=compose_meta)
+        if compose_meta and compose_meta.get("diagnostic_reason") is not None:
+            metrics["diagnostic_reason"] = compose_meta["diagnostic_reason"]
+            metrics["diagnostic_severity"] = compose_meta.get(
+                "diagnostic_severity",
+                diagnostic_severity_for_reason(str(compose_meta["diagnostic_reason"])),
+            )
         if frozen_rim_wire is not None:
             metrics["frozen_terrain_rim_highlight"] = frozen_rim_wire
         if frozen_connector_wire is not None:
@@ -311,9 +354,20 @@ def build_lab_replay_frames_for_project(
 
 
 __all__ = [
+    "DIAGNOSTIC_LAB_TIMELINE_ADAPTER_FILTERED_ALL",
+    "DIAGNOSTIC_MISSING_RUNTIME_WIRES",
     "DIAGNOSTIC_NO_REPLAY_FRAMES",
     "DIAGNOSTIC_RTTP_TRACK_BLOCKED_LAB_TIMELINE",
+    "DIAGNOSTIC_RUNTIME_WIRE_COMPLETE_MAP_MISMATCH",
+    "DIAGNOSTIC_RUNTIME_WIRE_L3_ORDER_INVALID",
+    "DIAGNOSTIC_RUNTIME_WIRE_L4_PLACEMENT_MISMATCH",
+    "DIAGNOSTIC_RUNTIME_WIRE_LAYER_FAILED",
+    "DIAGNOSTIC_RUNTIME_WIRE_LAYER_PARTIAL_BUDGET",
+    "DIAGNOSTIC_RUNTIME_WIRE_LAYER_SKIPPED",
+    "DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN",
+    "DIAGNOSTIC_SEVERITY_BY_REASON",
     "REPLAY_DIAGNOSTIC_REASON_KEY",
+    "diagnostic_severity_for_reason",
     "_exterior_connector_plan_wire_for_run",
     "build_lab_replay_frames_for_project",
     "get_latest_lab_replay_track_for_project",

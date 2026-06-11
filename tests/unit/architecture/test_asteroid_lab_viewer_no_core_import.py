@@ -40,6 +40,10 @@ LAYER_SHIM_FREE_DIRS = [
     "django_apps/asteroid_lab/services",
 ]
 
+ARTIFACT_COMPOSE_GLOB = "artifact_*compose*.py"
+
+FORBIDDEN_COMPOSE_RUN_PREFIXES = ("shapez2_factory.application.asteroid_lab.layers.layer_",)
+
 
 def _imported_modules(tree: ast.AST) -> list[str]:
     modules: list[str] = []
@@ -105,6 +109,18 @@ def test_replay_modules_do_not_import_solver_execution_core() -> None:
             if module.startswith(REPLAY_ALLOWED_CORE_PREFIXES):
                 continue
             if module.startswith(FORBIDDEN_REPLAY_CORE_PREFIXES):
+                offenders.append(f"{path.relative_to(root)}: import {module}")
+    assert offenders == []
+
+
+def test_artifact_compose_services_do_not_import_solver_execution_run_modules() -> None:
+    root = Path(__file__).resolve().parents[3]
+    services_dir = root / "django_apps" / "asteroid_lab" / "services"
+    offenders: list[str] = []
+    for path in sorted(services_dir.glob(ARTIFACT_COMPOSE_GLOB)):
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+        for module in _imported_modules(tree):
+            if module.startswith(FORBIDDEN_COMPOSE_RUN_PREFIXES) and module.endswith(".run"):
                 offenders.append(f"{path.relative_to(root)}: import {module}")
     assert offenders == []
 

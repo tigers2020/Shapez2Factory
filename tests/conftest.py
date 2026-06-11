@@ -44,6 +44,10 @@ _SLOW_MODULE_SUFFIXES = (
     "test_solver_runtime_replay_recorder.py",
     "test_simulation_systems_import.py",
     "test_simulation_speed_import.py",
+    "test_runtime_wire_serde.py",
+    "test_runtime_wire_projection_compose.py",
+    "test_golden_fixture_eval.py",
+    "test_golden_transport_kind_validity.py",
 )
 
 

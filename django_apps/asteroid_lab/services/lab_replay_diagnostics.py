@@ -1,0 +1,43 @@
+"""Lab replay diagnostic reason codes and severity mapping."""
+
+from __future__ import annotations
+
+DIAGNOSTIC_MISSING_RUNTIME_WIRES = "missing_runtime_wires"
+DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN = "runtime_wire_schema_unknown"
+DIAGNOSTIC_RUNTIME_WIRE_COMPLETE_MAP_MISMATCH = "runtime_wire_complete_map_mismatch"
+DIAGNOSTIC_RUNTIME_WIRE_L3_ORDER_INVALID = "runtime_wire_l3_order_invalid"
+DIAGNOSTIC_RUNTIME_WIRE_L4_PLACEMENT_MISMATCH = "runtime_wire_l4_placement_mismatch"
+DIAGNOSTIC_RUNTIME_WIRE_LAYER_FAILED = "runtime_wire_layer_failed"
+DIAGNOSTIC_RUNTIME_WIRE_LAYER_SKIPPED = "runtime_wire_layer_skipped"
+DIAGNOSTIC_RUNTIME_WIRE_LAYER_PARTIAL_BUDGET = "runtime_wire_layer_partial_budget"
+
+DIAGNOSTIC_SEVERITY_BY_REASON: dict[str, str] = {
+    DIAGNOSTIC_MISSING_RUNTIME_WIRES: "warning",
+    DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN: "error",
+    DIAGNOSTIC_RUNTIME_WIRE_COMPLETE_MAP_MISMATCH: "error",
+    DIAGNOSTIC_RUNTIME_WIRE_L3_ORDER_INVALID: "error",
+    DIAGNOSTIC_RUNTIME_WIRE_L4_PLACEMENT_MISMATCH: "error",
+    DIAGNOSTIC_RUNTIME_WIRE_LAYER_FAILED: "error",
+    DIAGNOSTIC_RUNTIME_WIRE_LAYER_SKIPPED: "warning",
+    DIAGNOSTIC_RUNTIME_WIRE_LAYER_PARTIAL_BUDGET: "warning",
+}
+
+
+def diagnostic_severity_for_reason(reason: str | None) -> str:
+    if reason is None:
+        return "none"
+    return DIAGNOSTIC_SEVERITY_BY_REASON.get(reason, "error")
+
+
+__all__ = [
+    "DIAGNOSTIC_MISSING_RUNTIME_WIRES",
+    "DIAGNOSTIC_RUNTIME_WIRE_COMPLETE_MAP_MISMATCH",
+    "DIAGNOSTIC_RUNTIME_WIRE_L3_ORDER_INVALID",
+    "DIAGNOSTIC_RUNTIME_WIRE_L4_PLACEMENT_MISMATCH",
+    "DIAGNOSTIC_RUNTIME_WIRE_LAYER_FAILED",
+    "DIAGNOSTIC_RUNTIME_WIRE_LAYER_PARTIAL_BUDGET",
+    "DIAGNOSTIC_RUNTIME_WIRE_LAYER_SKIPPED",
+    "DIAGNOSTIC_RUNTIME_WIRE_SCHEMA_UNKNOWN",
+    "DIAGNOSTIC_SEVERITY_BY_REASON",
+    "diagnostic_severity_for_reason",
+]

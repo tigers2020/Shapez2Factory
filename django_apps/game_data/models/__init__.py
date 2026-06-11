@@ -33,7 +33,6 @@ from django_apps.game_data.models.l10n import (
     LocalizedMessage,
 )
 from django_apps.game_data.models.mining import MiningExtractionRule
-from django_apps.game_data.models.space_transport_layout import SpaceTransportLayoutRegistry
 from django_apps.game_data.models.references import GameDataReference
 from django_apps.game_data.models.reflection import ClrTypeRegistryEntry
 from django_apps.game_data.models.research import (
@@ -74,6 +73,7 @@ from django_apps.game_data.models.simulation import (
     SimulationTileBounds,
     SimulationType,
 )
+from django_apps.game_data.models.space_transport_layout import SpaceTransportLayoutRegistry
 from django_apps.game_data.models.taxonomy import GameDataNamespace, GameDataSection
 from django_apps.game_data.models.toolbar import (
     ToolbarBuildingPlacement,

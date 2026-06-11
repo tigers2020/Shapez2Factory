@@ -8,7 +8,7 @@ from django_apps.game_data.models.import_meta import ImportBatch
 
 
 class SpaceTransportLayoutRegistry(models.Model):
-    """Queryable mirror of island transport layout ids from research_unlocks + simulation_systems."""
+    """Island transport layout ids from research_unlocks and simulation_systems."""
 
     class TransportKind(models.TextChoices):
         SPACE_BELT = "space_belt", "Space belt"

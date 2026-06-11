@@ -9,12 +9,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 # Canon per runbook; legacy checkout keeps dump under documents/knowledge/raw/.
 _GAME_DATA_DUMP_CANDIDATES: tuple[Path, ...] = (
     _REPO_ROOT / "game_data_backup" / "game_data_dump.json",
-    _REPO_ROOT
-    / "documents"
-    / "knowledge"
-    / "raw"
-    / "game_data_backup"
-    / "game_data_dump.json",
+    _REPO_ROOT / "documents" / "knowledge" / "raw" / "game_data_backup" / "game_data_dump.json",
 )
 
 _GAME_DATA_SOURCE_CANDIDATES: tuple[Path, ...] = (

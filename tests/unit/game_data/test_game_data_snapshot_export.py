@@ -18,13 +18,13 @@ from django_apps.game_data.models.exterior_transport_capacity import (
 )
 from django_apps.game_data.models.mining import MiningExtractionRule
 from django_apps.game_data.models.space_transport_layout import SpaceTransportLayoutRegistry
-from django_apps.game_data.services.space_transport_layout_catalog import (
-    EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT,
-)
 from django_apps.game_data.services.game_data_snapshot_export import (
     GameDataSnapshotExportError,
     GameDataSnapshotExportErrorCode,
     build_game_data_snapshot_payload,
+)
+from django_apps.game_data.services.space_transport_layout_catalog import (
+    EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT,
 )
 from tests.integration.web.test_asteroid_miner_layout_solver import _unique_valid_copy
 

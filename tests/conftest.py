@@ -14,6 +14,7 @@ Examples:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,19 @@ _SLOW_MODULE_SUFFIXES = (
     "test_golden_fixture_eval.py",
     "test_golden_transport_kind_validity.py",
 )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _pytest_seed_space_transport_layout_registry(
+    django_db_setup: None,
+    django_db_blocker,
+) -> None:
+    """Seed layout registry for tests that call snapshot export without Tier B loaddata."""
+
+    from tests.support.game_data_layout_seed import ensure_space_transport_layout_registry
+
+    with django_db_blocker.unblock():
+        ensure_space_transport_layout_registry(strict=bool(os.environ.get("CI")))
 
 
 def pytest_configure(config: pytest.Config) -> None:

@@ -17,10 +17,6 @@ from django_apps.game_data.models.exterior_transport_capacity import (
     ExteriorShapeTransportCapacity,
 )
 from django_apps.game_data.models.mining import MiningExtractionRule
-from django_apps.game_data.services.space_transport_layout_catalog import (
-    EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT,
-    space_transport_layout_snapshot_rows,
-)
 from django_apps.game_data.services.exterior_transport_capacity import (
     get_active_exterior_fluid_transport_capacity,
     get_active_exterior_shape_transport_capacity,
@@ -28,6 +24,10 @@ from django_apps.game_data.services.exterior_transport_capacity import (
     space_pipe_max_per_min_from_row,
 )
 from django_apps.game_data.services.mining_extraction_rules import get_active_rule
+from django_apps.game_data.services.space_transport_layout_catalog import (
+    EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT,
+    space_transport_layout_snapshot_rows,
+)
 
 SNAPSHOT_SCHEMA_VERSION = "game_data_snapshot_v1"
 

@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.asteroid_lab.replay.replay_render_modes import RENDER_MODE_INHERITED_SNAPSHOT
 
 INSPECTOR_KIND_OPTIMIZATION_MILESTONE = "optimization_milestone"
 
-_EMPTY_MAP_VIEW: dict[str, Any] = {
+_EMPTY_MAP_VIEW: dict[str, object] = {
     "base_ref": None,
     "full_cells": [],
     "cell_delta": [],
@@ -18,7 +16,7 @@ _EMPTY_MAP_VIEW: dict[str, Any] = {
 }
 
 
-def _frame_has_renderable_map_cells(frame: dict[str, Any]) -> bool:
+def _frame_has_renderable_map_cells(frame: dict[str, object]) -> bool:
     mv = frame.get("map_view")
     if not isinstance(mv, dict):
         return False
@@ -32,7 +30,7 @@ def _frame_has_renderable_map_cells(frame: dict[str, Any]) -> bool:
     return isinstance(overlay, list) and len(overlay) > 0
 
 
-def last_renderable_map_frame_index(map_frames: list[dict[str, Any]]) -> int:
+def last_renderable_map_frame_index(map_frames: list[dict[str, object]]) -> int:
     for idx in range(len(map_frames) - 1, -1, -1):
         if _frame_has_renderable_map_cells(map_frames[idx]):
             return idx
@@ -40,10 +38,10 @@ def last_renderable_map_frame_index(map_frames: list[dict[str, Any]]) -> int:
 
 
 def _algorithm_frame_from_milestone(
-    milestone: dict[str, Any],
+    milestone: dict[str, object],
     *,
     base_frame_index: int,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     inspector = dict(milestone.get("inspector") or {})
     inspector.setdefault("kind", INSPECTOR_KIND_OPTIMIZATION_MILESTONE)
     return {
@@ -61,10 +59,10 @@ def _algorithm_frame_from_milestone(
 
 
 def append_algorithm_frames_to_unified_lab_replay(
-    map_frames: list[dict[str, Any]],
-    algorithm_milestones: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    unified: list[dict[str, Any]] = [dict(fr) for fr in map_frames]
+    map_frames: list[dict[str, object]],
+    algorithm_milestones: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    unified: list[dict[str, object]] = [dict(fr) for fr in map_frames]
     if not algorithm_milestones:
         for i, fr in enumerate(unified):
             fr["frame_index"] = i

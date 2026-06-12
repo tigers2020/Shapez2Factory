@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import cast
 
 from django.db.models import Count, Prefetch, Q
 
@@ -64,10 +64,10 @@ INSPECTION_TRACK_KEY_PREFIX = "inspection-"
 
 
 def _merge_artifact_compose_metrics(
-    metrics: dict[str, Any],
+    metrics: dict[str, object],
     *,
-    compose_meta: dict[str, Any] | None,
-) -> dict[str, Any]:
+    compose_meta: dict[str, object] | None,
+) -> dict[str, object]:
     if not compose_meta:
         return metrics
     out = dict(metrics)
@@ -84,7 +84,7 @@ def _merge_artifact_compose_metrics(
     return out
 
 
-def _empty_track_metrics() -> dict[str, Any]:
+def _empty_track_metrics() -> dict[str, object]:
     return {
         "frame_count": 0,
         "replay_truncated": False,
@@ -242,10 +242,10 @@ def _lab_timeline_frames_for_project(project_id: int) -> tuple[ReplayTimelineFra
 
 
 def _track_metrics_from_serialized_frames(
-    frames: list[dict[str, Any]],
+    frames: list[dict[str, object]],
     *,
     diagnostic_reason: str | None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     if not frames:
         out = _empty_track_metrics()
         if diagnostic_reason:
@@ -270,7 +270,7 @@ def _track_metrics_from_serialized_frames(
     }
 
 
-def _exterior_connector_plan_wire_for_run(run: SolverRun | None) -> dict[str, Any] | None:
+def _exterior_connector_plan_wire_for_run(run: SolverRun | None) -> dict[str, object] | None:
     if run is None:
         return None
 
@@ -291,7 +291,7 @@ def build_lab_replay_frames_for_project(
     project_id: int,
     *,
     solver_run_id: int | None = None,
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+) -> tuple[list[dict[str, object]], dict[str, object]]:
     """Compose Lab + solver runtime replay into product timeline JSON (never mutates sources)."""
 
     pid = int(project_id)
@@ -305,7 +305,7 @@ def build_lab_replay_frames_for_project(
             )
 
     lab_frames = _lab_timeline_frames_for_project(pid)
-    compose_meta: dict[str, Any] | None = None
+    compose_meta: dict[str, object] | None = None
     if run is not None:
         with perf_span("compose_artifact_frames_ms"):
             artifact_frames = compose_lab_replay_frames_from_artifact_run(run)

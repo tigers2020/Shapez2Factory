@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 from functools import partial
-from typing import Any
 
 from shapez2_factory.adapters.asteroid_lab.complete_map_serializer import serialize_complete_map
 from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
@@ -78,10 +77,10 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.topology_contract import
 class StackRunResult:
     ok: bool = False
     error_code: str | None = None
-    replay_core_lines: tuple[dict[str, Any], ...] = ()
-    solver_summary: dict[str, Any] = field(default_factory=dict)
-    complete_map_json: dict[str, Any] = field(default_factory=dict)
-    stack_result_json: dict[str, Any] = field(default_factory=dict)
+    replay_core_lines: tuple[dict[str, object], ...] = ()
+    solver_summary: dict[str, object] = field(default_factory=dict)
+    complete_map_json: dict[str, object] = field(default_factory=dict)
+    stack_result_json: dict[str, object] = field(default_factory=dict)
     exterior_plan: ExteriorConnectionPlan | None = None
     rim_greedy: IntegratedRimGreedyResult | None = None
     inner_fill: Layer04InnerFillResult | None = None
@@ -97,7 +96,7 @@ def _capacity_summary(
     resource_kind: str,
     platform_count: int,
     rules: GameDataRulesPort,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     rule = rules.mining_extraction_rule(resource_kind=resource_kind)
     return build_terrain_capacity_summary_row(
         resource_kind=resource_kind,
@@ -114,7 +113,7 @@ def _capacity_envelope(
     *,
     complete_map: ReconstructionCompleteMap,
     rules: GameDataRulesPort,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     shape_field_cell_count = complete_map.shape_field_cell_count
     fluid_field_cell_count = complete_map.fluid_field_cell_count
     primary = detect_primary_resource_kind(complete_map)
@@ -142,7 +141,7 @@ def _capacity_envelope(
     }
 
 
-def _stack_result_to_json(stack_result: Any) -> dict[str, Any]:
+def _stack_result_to_json(stack_result: object) -> dict[str, object]:
     diagnostic = stack_result.diagnostic_snapshot
     return {
         "status": stack_result.status.value,
@@ -160,7 +159,7 @@ def _stack_result_to_json(stack_result: Any) -> dict[str, Any]:
     }
 
 
-def _layer_summary_to_json(record: Any) -> dict[str, Any]:
+def _layer_summary_to_json(record: object) -> dict[str, object]:
     return {
         "layer_slug": record.layer_slug,
         "layer_index": record.layer_index,

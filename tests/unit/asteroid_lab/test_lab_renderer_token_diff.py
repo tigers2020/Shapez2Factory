@@ -22,7 +22,11 @@ def test_render_full_map_cells_skips_unchanged_token() -> None:
     assert "labPaintTokenForCell(" in body
     assert "renderedTokenByKey.get(" in body
     assert "continue" in body
-    assert "domPlan.toneClasses" in body or "toneForFullMapCell(cell, frame)" in body or "applyDomPlanToCell" in body
+    assert (
+        "domPlan.toneClasses" in body
+        or "toneForFullMapCell(cell, frame)" in body
+        or "applyDomPlanToCell" in body
+    )
     assert "el.className = tone ?" in body or "applyDomPlanToCell(" in body
 
 
@@ -58,7 +62,6 @@ def test_v2_dom_plan_included_in_render_token_when_enabled() -> None:
         "function frameCellIndexMap(", 1
     )[0]
     assert "domPlan" in token_body or "resolveDomPlan" in token_body
-    replay_branch = token_body.split("if (resolveDomPlan)", 1)[1]
     assert "cellRenderToken" in token_body
     assert "|v2" in token_body
 

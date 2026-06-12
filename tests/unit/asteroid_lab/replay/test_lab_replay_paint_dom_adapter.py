@@ -9,8 +9,8 @@ from django_apps.asteroid_lab.replay.replay_wire_read_sanitize import (
 )
 from tests.support.lab_replay_paint_fixtures import frame_38_candidate_miner_fixture
 from tests.support.lab_replay_paint_plan import (
-    dom_plan_from_paint_layers,
     build_dom_plan_for_wire,
+    dom_plan_from_paint_layers,
     lab_paint_layers_from_view,
 )
 

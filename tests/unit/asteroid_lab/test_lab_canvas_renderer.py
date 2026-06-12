@@ -278,9 +278,6 @@ def test_js_paint_plan_uses_merged_overlay_role_not_raw_sources() -> None:
         "function coordFromWireOrKey(", 1
     )[0]
     assert "buildDomPlanForCell(wire)" in resolver_body
-    build_body = src.split("function buildDomPlanForCell(", 1)[1].split(
-        "function resolveDomPlanForWire(", 1
-    )[0]
     attrs_body = src.split("function wireDataAttrsFromEffectiveWire(", 1)[1].split(
         "function resolveHudRoleFromWire(", 1
     )[0]

@@ -77,10 +77,13 @@ def test_lab_map_z_layer_picker_contract() -> None:
     assert "labMapZSelectedLayer" in src
 
 
-def test_collect_frame_spatial_targets_includes_cell_overlay_json() -> None:
+def test_collect_replay_spatial_coords_includes_cell_overlay_json() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
-    idx = src.find("function collectFrameSpatialTargets(frame)")
-    body = src[idx : idx + 900]
+    idx = src.find("function collectReplaySpatialCoordsForLayout(frame)")
+    assert idx >= 0
+    body = src[idx : idx + 950]
+    assert "fullMapCellsFromFrame(frame)" in body
+    assert "labCellsFromMapView(mapView)" in body
     assert "cellOverlayJsonFromFrame(frame)" in body
     assert "collectOverlayPaintTargets(overlayJson)" in body
 
@@ -199,7 +202,7 @@ def test_lab_js_lab_paint_v2_enabled_helper() -> None:
 
 
 def test_lab_js_paint_d_prime_flag_contract_step_6_1() -> None:
-    """Step 6.1: D′ default v2; legacy opt-in only; no harvest/DOM delete."""
+    """Step 6.1: D′ default v2; legacy opt-in retained for flag helper only post-6.4."""
     src = LAB_JS.read_text(encoding="utf-8")
     legacy_body = src.split("function labPaintLegacyOptIn(", 1)[1].split(
         "function labPaintV2Enabled(", 1
@@ -212,7 +215,8 @@ def test_lab_js_paint_d_prime_flag_contract_step_6_1() -> None:
     render_body = src.split("function renderFullMapCells(", 1)[1].split(
         "function renderDiffOverlays(", 1
     )[0]
-    assert "let tone = toneForFullMapCell" in render_body
+    assert "createDomPlanResolverForFrame" in render_body
+    assert "candidateObservationToneClasses" not in render_body
     canvas_fn = src.split("function buildCanvasPaintPlan(", 1)[1].split(
         "function refreshLabCanvasAfterLayoutChange(", 1
     )[0]
@@ -261,26 +265,12 @@ def test_lab_js_detail_lookup_untouched() -> None:
     assert "mergeEffectiveCellView" in detail_body
 
 
-def test_lab_js_legacy_dom_path_preserves_non_sprite_on_legacy_opt_in() -> None:
-    """Legacy DOM branch retained for labPaintLegacyOptIn rollback until Task 6.4."""
-    src = LAB_JS.read_text(encoding="utf-8")
-    rel_body = src.split("function labSpriteRelpathForCell(", 1)[1].split(
-        "function attachLabSpriteImgNoDrag(", 1
-    )[0]
-    assert "isNonSpriteOverlayCell(cell, frame)" in rel_body
-    render_body = src.split("function renderFullMapCells(", 1)[1].split(
-        "function renderDiffOverlays(", 1
-    )[0]
-    assert "candidateObs" in render_body
-    assert "lab-overlay-candidate-miner" in src
-    non_sprite = src.split("var NON_SPRITE_OVERLAY_CELL_KINDS = {", 1)[1].split("};", 1)[0]
-    assert "candidate_miner: true" in non_sprite
-
-
-def test_lab_js_v2_dom_branch_gated_by_flag() -> None:
+def test_lab_js_replay_dom_resolver_flag_independent_step_6_4() -> None:
+    """Step 6.4: replay DOM resolver always built; legacy opt-in no longer gates resolver."""
     src = LAB_JS.read_text(encoding="utf-8")
     resolver_body = src.split("function createDomPlanResolverForFrame(", 1)[1][:450]
-    assert "labPaintV2Enabled()" in resolver_body
+    assert "labPaintV2Enabled()" not in resolver_body
+    assert "LabReplayPaintPlan.buildDomPlanResolverForFrame" in resolver_body
     render_body = src.split("function renderFullMapCells(", 1)[1].split(
         "function renderDiffOverlays(", 1
     )[0]
@@ -294,3 +284,15 @@ def test_warmup_sprite_collect_uses_paint_plan() -> None:
     assert "collectSpriteRelsFromPaintPlanFrames" in body
     assert "labPaintV2Enabled()" not in body
     assert "collectFrameSpatialTargets" not in body
+    assert "collectReplaySpatialCoordsForLayout" not in body
+
+
+def test_lab_js_non_sprite_policy_retained_until_step_6_6() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    rel_body = src.split("function labSpriteRelpathForCell(", 1)[1].split(
+        "function attachLabSpriteImgNoDrag(", 1
+    )[0]
+    assert "isNonSpriteOverlayCell(cell, frame)" in rel_body
+    assert "lab-overlay-candidate-miner" in src
+    non_sprite = src.split("var NON_SPRITE_OVERLAY_CELL_KINDS = {", 1)[1].split("};", 1)[0]
+    assert "candidate_miner: true" in non_sprite

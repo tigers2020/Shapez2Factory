@@ -282,7 +282,6 @@
 
   function createDomPlanResolverForFrame(frame) {
     if (
-      !labPaintV2Enabled() ||
       typeof LabReplayPaintPlan === "undefined" ||
       typeof LabReplayPaintPlan.buildDomPlanResolverForFrame !== "function"
     ) {
@@ -1201,12 +1200,13 @@
     return out;
   }
 
-  /** @deprecated HARVEST_PAINT — Slice 5 quarantine. Must not decide occupant/transport/candidate paint semantics. */
-  function collectFrameSpatialTargets(frame) {
+  /** Layout/bbox coordinate universe — not paint authority. */
+  function collectReplaySpatialCoordsForLayout(frame) {
     const out = [];
     pushCellList(out, fullMapCellsFromFrame(frame), "");
     const mapView = frame && frame.map_view;
     if (mapView && typeof mapView === "object") {
+      pushCellList(out, labCellsFromMapView(mapView), "");
       pushCellList(out, overlayCellsFromMapView(mapView), "");
       pushCellList(out, cellDeltaCellsFromMapView(mapView), "");
     }
@@ -1221,7 +1221,7 @@
   }
 
   function collectReplayFrameCellIndices(frame, resolveCellIndex) {
-    const targets = collectFrameSpatialTargets(frame);
+    const targets = collectReplaySpatialCoordsForLayout(frame);
     if (!targets.length) {
       return [];
     }
@@ -1339,7 +1339,7 @@
     for (let fi = 0; fi < replayFrames.length; fi++) {
       const fr = replayFrames[fi];
       if (!fr || typeof fr !== "object") continue;
-      const targets = collectFrameSpatialTargets(fr);
+      const targets = collectReplaySpatialCoordsForLayout(fr);
       for (let ti = 0; ti < targets.length; ti++) {
         const cell = targets[ti].cell;
         if (!cell || typeof cell !== "object") continue;
@@ -1862,6 +1862,17 @@
         const domCand = domPlan.candidateObservation ? "1" : "0";
         return ck + "|" + role + "|" + rot + "|" + domSprite + "|" + domTone + "|" + domCand + "|v2";
       }
+      const candidateObs = isNonSpriteOverlayCell(cell, frame);
+      if (candidateObs && shouldSkipCandidateObservationOnSpriteCell(frame, ck, el)) {
+        return null;
+      }
+      if (candidateObs && isL3PoolProbeWindowFrame(frame)) {
+        const obsTone = candidateObservationToneClasses(ck, el);
+        if (!obsTone) {
+          return null;
+        }
+      }
+      return null;
     }
     const candidateObs = isNonSpriteOverlayCell(cell, frame);
     if (candidateObs && shouldSkipCandidateObservationOnSpriteCell(frame, ck, el)) {
@@ -1879,10 +1890,8 @@
     return cellRenderToken(cell, frame, ck, tone, candidateObs);
   }
 
-  /** @deprecated HARVEST_PAINT — Slice 5 quarantine. Must not decide occupant/transport/candidate paint semantics. */
   function frameCellIndexMap(frame, resolveCellIndex) {
     if (
-      labPaintV2Enabled() &&
       typeof LabReplayPaintPlan !== "undefined" &&
       typeof LabReplayPaintPlan.buildCellByGridIndexFromFrame === "function"
     ) {
@@ -1892,17 +1901,7 @@
         labDomPaintOptionsFromContext(frame),
       );
     }
-    const map = new Map();
-    const targets = collectFrameSpatialTargets(frame);
-    for (let i = 0; i < targets.length; i++) {
-      const cell = targets[i].cell;
-      const idx = resolveCellIndex(cell);
-      if (idx == null || idx < 0) {
-        continue;
-      }
-      map.set(idx, cell);
-    }
-    return map;
+    return new Map();
   }
 
   function resetDomCellsAtIndicesForFrame(domCells, baseClasses, indices, frame, resolveCellIndex) {
@@ -1941,7 +1940,6 @@
       const base = baseClasses[idx] || "";
       const ck = overlayCellKind(cell);
       const el = domCells[idx];
-      const candidateObs = isNonSpriteOverlayCell(cell, frame);
       const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan);
       if (token == null) {
         continue;
@@ -1958,68 +1956,37 @@
         continue;
       }
       const domPlan = resolveDomPlan ? resolveDomPlan(cell) : null;
-      if (domPlan) {
-        const tone = domPlan.toneClasses || toneForFullMapCell(cell, frame);
-        el.className = tone ? base + " " + tone : base;
-        const hudRole =
-          cell.overlay_role != null
-            ? String(cell.overlay_role)
-            : isRouteOverlayCellKind(ck)
-              ? ck
-              : domPlan.candidateObservation
-                ? ck
-                : "";
-        applyLabCellHudAttributes(el, cell, hudRole);
-        if (domPlan.candidateObservation) {
-          el.setAttribute("title", CANDIDATE_OBSERVATION_TITLE);
-          el.setAttribute("data-lab-candidate-overlay", "1");
-        } else {
-          el.removeAttribute("title");
-          el.removeAttribute("data-lab-candidate-overlay");
-        }
-        if (domPlan.spriteRel) {
-          applyLabCellSprite(
-            el,
-            {
-              sprite_identifier: domPlan.spriteRel,
-              rotation: domPlan.spriteRotation,
-            },
-            frame,
-          );
-        } else if (!domPlan.candidateObservation) {
-          applyLabCellSprite(el, cell, frame);
-        }
-        renderedTokenByKey.set(idx, token);
-        if (labPerfDebugEnabled()) {
-          labPerfTouchedCells += 1;
-        }
+      if (!domPlan) {
         continue;
       }
-      let tone = toneForFullMapCell(cell, frame);
-      if (candidateObs) {
-        const obsTone = candidateObservationToneClasses(ck, el);
-        if (obsTone) {
-          tone = obsTone;
-        }
-      }
+      const tone = domPlan.toneClasses || toneForFullMapCell(cell, frame);
       el.className = tone ? base + " " + tone : base;
       const hudRole =
         cell.overlay_role != null
           ? String(cell.overlay_role)
           : isRouteOverlayCellKind(ck)
             ? ck
-            : candidateObs
+            : domPlan.candidateObservation
               ? ck
               : "";
       applyLabCellHudAttributes(el, cell, hudRole);
-      if (candidateObs) {
+      if (domPlan.candidateObservation) {
         el.setAttribute("title", CANDIDATE_OBSERVATION_TITLE);
         el.setAttribute("data-lab-candidate-overlay", "1");
       } else {
         el.removeAttribute("title");
         el.removeAttribute("data-lab-candidate-overlay");
       }
-      if (!candidateObs) {
+      if (domPlan.spriteRel) {
+        applyLabCellSprite(
+          el,
+          {
+            sprite_identifier: domPlan.spriteRel,
+            rotation: domPlan.spriteRotation,
+          },
+          frame,
+        );
+      } else if (!domPlan.candidateObservation) {
         applyLabCellSprite(el, cell, frame);
       }
       renderedTokenByKey.set(idx, token);

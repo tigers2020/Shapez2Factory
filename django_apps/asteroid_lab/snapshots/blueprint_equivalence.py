@@ -9,6 +9,7 @@ from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.copy_json_coords import raw_x_to_export_column
 from django_apps.asteroid_lab.snapshots.layout_fingerprint import layout_fingerprint_payload
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_int
 
 # Re-export for ``snapshots.__init__`` (historical name).
 layout_map_payload = layout_fingerprint_payload
@@ -17,16 +18,7 @@ _LAB_ENTRY_KEYS = frozenset({"X", "Y", "R", "T", "L", "Layer"})
 
 
 def _as_int(val: object) -> int:
-    if val is None:
-        return 0
-    if isinstance(val, bool):
-        return int(val)
-    if isinstance(val, int):
-        return val
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return 0
+    return wire_int(val)
 
 
 def _strip_entry_for_compare(row: dict[str, object]) -> dict[str, object]:

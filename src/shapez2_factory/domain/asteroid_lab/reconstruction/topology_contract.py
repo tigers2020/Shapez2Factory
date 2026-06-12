@@ -181,9 +181,10 @@ def topology_diff_is_empty(diff: dict[str, object]) -> bool:
         "wrong_external_void_cells",
         "wrong_interior_patch_cells",
     ):
-        items = diff.get(key, [])
-        if not items:
+        items_obj = diff.get(key, [])
+        if not isinstance(items_obj, list):
             continue
+        items: list[object] = items_obj
         if len(items) == 1 and items[0] == ["...0 more"]:
             continue
         return False

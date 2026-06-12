@@ -8,13 +8,17 @@ are sorted so the payload is byte-stable; ``cells`` preserves the terrain SoT or
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from shapez2_factory.domain.asteroid_lab.coord_frames import CoordFrame
 from shapez2_factory.domain.asteroid_lab.decoded_cell import DecodedCellDTO
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
+)
+from shapez2_factory.domain.asteroid_lab.wire_coerce import (
+    wire_dict,
+    wire_int,
+    wire_list,
+    wire_str,
 )
 
 COMPLETE_MAP_SCHEMA_VERSION = "complete_map_v1"
@@ -37,18 +41,22 @@ def _cell_to_dict(cell: DecodedCellDTO) -> dict[str, object]:
 
 
 def _cell_from_dict(data: dict[str, object]) -> DecodedCellDTO:
+    layer_raw = data.get("layer")
+    layer: int | None = None if layer_raw is None else wire_int(layer_raw)
+    nested_type_counts = wire_dict(data.get("nested_type_counts_json", {}))
+    raw_entry = wire_dict(data.get("raw_entry_json", {}))
     return DecodedCellDTO(
-        x=int(data["x"]),
-        y=int(data["y"]),
-        layer=data["layer"],
-        rotation=int(data["rotation"]),
-        tile_type=str(data["tile_type"]),
-        cell_kind=str(data["cell_kind"]),
-        transport_kind=str(data["transport_kind"]),
+        x=wire_int(data["x"]),
+        y=wire_int(data["y"]),
+        layer=layer,
+        rotation=wire_int(data["rotation"]),
+        tile_type=wire_str(data["tile_type"]),
+        cell_kind=wire_str(data["cell_kind"]),
+        transport_kind=wire_str(data["transport_kind"]),
         has_nested_blueprint=bool(data["has_nested_blueprint"]),
-        nested_entry_count=int(data["nested_entry_count"]),
-        nested_type_counts_json=dict(data["nested_type_counts_json"]),
-        raw_entry_json=dict(data["raw_entry_json"]),
+        nested_entry_count=wire_int(data["nested_entry_count"]),
+        nested_type_counts_json={wire_str(k): wire_int(v) for k, v in nested_type_counts.items()},
+        raw_entry_json=raw_entry,
     )
 
 
@@ -56,8 +64,14 @@ def _sorted_coords(coords: frozenset[Coord]) -> list[list[int]]:
     return [[x, y] for (x, y) in sorted(coords)]
 
 
-def _coords_from_payload(items: Sequence[Sequence[int]]) -> frozenset[Coord]:
-    return frozenset((int(pair[0]), int(pair[1])) for pair in items)
+def _coords_from_payload(items: object) -> frozenset[Coord]:
+    rows = wire_list(items, field="coords")
+    out: list[Coord] = []
+    for pair in rows:
+        if not isinstance(pair, (list, tuple)) or len(pair) < 2:
+            continue
+        out.append((wire_int(pair[0]), wire_int(pair[1])))
+    return frozenset(out)
 
 
 def serialize_complete_map(complete_map: ReconstructionCompleteMap) -> dict[str, object]:
@@ -81,13 +95,14 @@ def parse_complete_map(payload: dict[str, object]) -> ReconstructionCompleteMap:
     if schema != COMPLETE_MAP_SCHEMA_VERSION:
         msg = f"unexpected complete_map schema_version: {schema!r}"
         raise ValueError(msg)
+    cells_raw = wire_list(payload["cells"], field="cells")
     return ReconstructionCompleteMap(
-        cells=tuple(_cell_from_dict(cell) for cell in payload["cells"]),
+        cells=tuple(_cell_from_dict(wire_dict(cell, field="cell")) for cell in cells_raw),
         field_cells=_coords_from_payload(payload["field_cells"]),
-        shape_field_cell_count=int(payload["shape_field_cell_count"]),
-        fluid_field_cell_count=int(payload["fluid_field_cell_count"]),
+        shape_field_cell_count=wire_int(payload["shape_field_cell_count"]),
+        fluid_field_cell_count=wire_int(payload["fluid_field_cell_count"]),
         external_void_cells=_coords_from_payload(payload["external_void_cells"]),
-        coord_frame=CoordFrame(payload["coord_frame"]),
+        coord_frame=CoordFrame(wire_str(payload["coord_frame"])),
     )
 
 

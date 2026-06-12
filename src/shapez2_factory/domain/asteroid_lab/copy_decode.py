@@ -15,6 +15,7 @@ import gzip
 import json
 
 from shapez2_factory.domain.asteroid_lab.service_dtos import RawDecodedBlueprintDTO
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_dict, wire_list
 
 SHAPEZ2_COPY_PREFIX_V4 = "SHAPEZ2-4-"
 _GZIP_MAGIC = b"\x1f\x8b"
@@ -82,14 +83,15 @@ def _validate_blueprint_shape(data: dict[str, object]) -> None:
         raise AsteroidLabCopyDecodeError("missing top-level key 'V'")
     if not isinstance(data.get("BP"), dict):
         raise AsteroidLabCopyDecodeError("missing or invalid 'BP' object")
-    bp = data["BP"]
+    bp = wire_dict(data.get("BP"), field="BP")
     if "$type" not in bp:
         raise AsteroidLabCopyDecodeError("missing BP['$type']")
-    if not isinstance(bp["$type"], str):
+    if not isinstance(bp.get("$type"), str):
         raise AsteroidLabCopyDecodeError("BP['$type'] must be a string")
     entries = bp.get("Entries")
     if not isinstance(entries, list):
         raise AsteroidLabCopyDecodeError("missing or invalid BP['Entries'] list")
+    _ = wire_list(entries, field="BP.Entries")
 
 
 def _trim_trailing_non_base64(payload: str) -> str:

@@ -8,7 +8,10 @@ settings/file-I/O ``emit_boundary_jsonl`` writer when ``ASTEROID_LAB_BOUNDARY_JS
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol
+
+from shapez2_factory.domain.asteroid_lab.decoded_cell import DecodedCellDTO
 
 
 class BoundaryTraceSink(Protocol):
@@ -42,8 +45,8 @@ NO_OP_BOUNDARY_SINK: BoundaryTraceSink = NullBoundaryTraceSink()
 
 
 def summarize_cell_kind_transitions(
-    before: tuple[object, ...],
-    after: tuple[object, ...],
+    before: Sequence[DecodedCellDTO],
+    after: Sequence[DecodedCellDTO],
     *,
     max_items: int = 8000,
 ) -> list[dict[str, object]]:
@@ -54,11 +57,11 @@ def summarize_cell_kind_transitions(
 
     before_map: dict[tuple[int, int, int | None], str] = {}
     for c in before:
-        before_map[(int(c.x), int(c.y), c.layer)] = str(c.cell_kind)
+        before_map[(c.x, c.y, c.layer)] = str(c.cell_kind)
 
     out: list[dict[str, object]] = []
     for c in after:
-        key = (int(c.x), int(c.y), c.layer)
+        key = (c.x, c.y, c.layer)
         prev = before_map.get(key)
         cur = str(c.cell_kind)
         if prev != cur:

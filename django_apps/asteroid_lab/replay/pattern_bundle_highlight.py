@@ -13,7 +13,6 @@ from django_apps.asteroid_lab.reconstruction.cell_hull_outline import (
 )
 from django_apps.asteroid_lab.replay.pattern_bundle_highlight_wire import (
     PatternBundleHighlightEntryWire,
-    PatternBundleHighlightsWire,
 )
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
@@ -96,7 +95,7 @@ def assign_bundle_color_indices(
 
 def build_pattern_bundle_highlights_wire(
     entries: Sequence[tuple[str, frozenset[Coord], str | None]],
-) -> PatternBundleHighlightsWire | dict[str, object]:
+) -> dict[str, object]:
     """Build ``pattern_bundle_highlights`` metrics payload or ``{}`` when empty."""
 
     sorted_entries = sorted(entries, key=lambda row: row[0])

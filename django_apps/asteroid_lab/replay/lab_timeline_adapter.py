@@ -32,7 +32,10 @@ from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayTimelineFrame,
     replay_map_view_is_renderable,
 )
-from django_apps.asteroid_lab.replay.timeline_serialization import replay_overlay_cell_from_wire
+from django_apps.asteroid_lab.replay.timeline_serialization import (
+    _mapping,
+    replay_overlay_cell_from_wire,
+)
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO, SnapshotEventDTO
 from django_apps.asteroid_lab.snapshots.equipment_bundles import (
     cell_overlay_json_for_bundle_highlight,
@@ -263,8 +266,8 @@ def _cell_overlay_json_for_timeline_lab_frame(
         full_map=map_rows or None,
     )
     if overlay.get("equipment_bundles"):
-        return overlay
-    rows: list[JsonObject] = []
+        return _mapping(overlay)
+    rows: list[dict[str, object]] = []
     seen: set[tuple[int, int]] = set()
 
     def _append_map_cell(cell: ReplayCell | ReplayOverlayCell) -> None:
@@ -287,7 +290,7 @@ def _cell_overlay_json_for_timeline_lab_frame(
         _append_map_cell(full_cell)
     for overlay_cell in map_view.overlay_cells:
         _append_map_cell(overlay_cell)
-    return equipment_bundle_overlay_from_rows(rows) or overlay
+    return _mapping(equipment_bundle_overlay_from_rows(rows) or overlay)
 
 
 def _inspector_from_lab(
@@ -319,10 +322,9 @@ def lab_snapshot_event_to_timeline_frame(
     diff_norm = _normalize_lab_diff(event.diff)
     map_view = _build_map_view(
         full_map=list(event.full_map),
-        cell_overlay_json=dict(event.cell_overlay_json or {}),
+        cell_overlay_json=_mapping(event.cell_overlay_json or {}),
         diff=diff_norm,
     )
-    overlay_json = dict(event.cell_overlay_json or {})
     return ReplayTimelineFrame(
         frame_index=int(frame_index),
         phase=_lab_phase_to_timeline(phase),
@@ -336,9 +338,9 @@ def lab_snapshot_event_to_timeline_frame(
             lab_phase_step=str(event.phase_step),
             lab_event_type=event_type,
         ),
-        metrics=dict(event.metrics_json or {}),
+        metrics=_mapping(event.metrics_json or {}),
         cell_overlay_json=_cell_overlay_json_for_timeline_lab_frame(
-            overlay_json,
+            _mapping(event.cell_overlay_json or {}),
             full_map=list(event.full_map),
             map_view=map_view,
         ),
@@ -372,9 +374,10 @@ def lab_replay_row_to_timeline_frame(row: ReplayFrameRowDTO) -> ReplayTimelineFr
     phase, event_type, event_key, phase_step, full_map = _snapshot_fields_from_payload(payload)
     _lab_phase_to_timeline(phase)
     timeline_event = _lab_event_type_to_timeline(event_type)
-    overlay_json = row.cell_overlay_json if isinstance(row.cell_overlay_json, dict) else {}
-    if not overlay_json and isinstance(payload.get("cell_overlay_json"), dict):
-        overlay_json = dict(payload["cell_overlay_json"])
+    overlay_json = _mapping(row.cell_overlay_json)
+    payload_overlay = payload.get("cell_overlay_json")
+    if not overlay_json and isinstance(payload_overlay, dict):
+        overlay_json = _mapping(payload_overlay)
     raw_diff = payload.get("diff")
     diff_norm = _normalize_lab_diff(raw_diff if isinstance(raw_diff, dict) else None)
     map_view = _build_map_view(
@@ -382,12 +385,10 @@ def lab_replay_row_to_timeline_frame(row: ReplayFrameRowDTO) -> ReplayTimelineFr
         cell_overlay_json=overlay_json,
         diff=diff_norm,
     )
-    metrics: dict[str, JsonValue] = {}
-    if isinstance(row.metric_snapshot_json, dict):
-        metrics.update(row.metric_snapshot_json)
+    metrics = _mapping(row.metric_snapshot_json)
     payload_metrics = payload.get("metrics_json")
     if isinstance(payload_metrics, dict):
-        metrics.update(payload_metrics)
+        metrics.update(_mapping(payload_metrics))
     inspector = _inspector_from_lab(
         event_key=event_key,
         lab_phase=phase,

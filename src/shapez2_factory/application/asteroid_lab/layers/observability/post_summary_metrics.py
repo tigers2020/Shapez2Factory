@@ -24,6 +24,7 @@ from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placeme
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
     ALGORITHM_STUB_ID,
 )
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_list, wire_str
 
 
 def build_layer01_post_summary_metrics(
@@ -35,8 +36,8 @@ def build_layer01_post_summary_metrics(
         "complete_map_cell_count": len(complete.cells),
         "shape_field_cell_count": int(complete.shape_field_cell_count),
         "fluid_field_cell_count": int(complete.fluid_field_cell_count),
-        "primary_resource_kind": str(envelope.get("primary_resource_kind") or "shape"),
-        "present_resource_kinds": list(envelope.get("present_resource_kinds") or ()),
+        "primary_resource_kind": wire_str(envelope.get("primary_resource_kind"), default="shape"),
+        "present_resource_kinds": wire_list(envelope.get("present_resource_kinds", ())),
         "external_void_cell_count": len(complete.external_void_cells),
         "coord_frame": str(complete.coord_frame.value),
     }

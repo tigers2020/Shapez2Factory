@@ -22,6 +22,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route imp
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_post_summary import (
+    LayerPostSummaryRecord,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
@@ -31,6 +34,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
     IntegratedRimGreedyResult,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.stack_result import (
+    StackRunResult as CoreStackRunResult,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.run import (
     run_layer_02_exterior_transport,
@@ -141,7 +147,7 @@ def _capacity_envelope(
     }
 
 
-def _stack_result_to_json(stack_result: object) -> dict[str, object]:
+def _stack_result_to_json(stack_result: CoreStackRunResult) -> dict[str, object]:
     diagnostic = stack_result.diagnostic_snapshot
     return {
         "status": stack_result.status.value,
@@ -159,7 +165,7 @@ def _stack_result_to_json(stack_result: object) -> dict[str, object]:
     }
 
 
-def _layer_summary_to_json(record: object) -> dict[str, object]:
+def _layer_summary_to_json(record: LayerPostSummaryRecord) -> dict[str, object]:
     return {
         "layer_slug": record.layer_slug,
         "layer_index": record.layer_index,
@@ -224,7 +230,7 @@ class RunStackUseCase:
         stack_result_json = _stack_result_to_json(core_result.stack_result)
         layer_summaries = [_layer_summary_to_json(record) for record in core_result.layer_summaries]
         run_ok = core_result.stack_result.failed_layer_slug is None
-        solver_summary = {
+        solver_summary: dict[str, object] = {
             "run_success": run_ok,
             "validation_passed": run_ok,
             "stack_run_status": core_result.stack_result.status.value,

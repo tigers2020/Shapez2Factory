@@ -7,6 +7,7 @@ import json
 
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_int
 
 COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM = "island_bbox_left_bottom_raw_xy_v1"
 _SCHEMA_LAYOUT = "asteroid-miner-layout-map.v2"
@@ -15,16 +16,7 @@ COORD_ABSOLUTE_ISLAND = "island_raw_xy_v1"
 
 
 def _as_int(val: object) -> int:
-    if val is None:
-        return 0
-    if isinstance(val, bool):
-        return int(val)
-    if isinstance(val, int):
-        return val
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return 0
+    return wire_int(val)
 
 
 def _fingerprint_kind(cell_kind: str) -> str | None:

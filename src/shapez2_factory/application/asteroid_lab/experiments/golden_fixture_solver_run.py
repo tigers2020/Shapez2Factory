@@ -36,6 +36,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
     LAYER_05_TRANSPORT_ROUTING,
     LAYER_06_COMMIT_VALIDATE,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.provisional_overlay import (
+    ProvisionalLayoutOverlay,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
     IntegratedRimGreedyResult,
 )
@@ -136,7 +139,9 @@ def _run_golden_inner_pattern_fill(
     capture: _LayerArtifactCapture,
     cfg: GoldenSolverConfig,
     complete_map: ReconstructionCompleteMap,
-    **kwargs: object,
+    exterior_plan: ExteriorConnectionPlan | None = None,
+    provisional_overlay: ProvisionalLayoutOverlay | None = None,
+    budget_ctx: LayerBudgetContext,
 ) -> Layer04InnerFillResult:
     rim_group_count = (
         len(capture.rim_result.committed_placements) if capture.rim_result is not None else 0
@@ -146,11 +151,14 @@ def _run_golden_inner_pattern_fill(
         field_count=len(complete_map.field_cells),
         rim_group_count=rim_group_count,
     )
+    overlay = provisional_overlay or ProvisionalLayoutOverlay.empty()
     return run_layer_04_inner_pattern_fill(
         complete_map=complete_map,
+        exterior_plan=exterior_plan,
+        provisional_overlay=overlay,
+        budget_ctx=budget_ctx,
         target_routeable_group_count=target,
         inner_fill_strategy=parse_inner_fill_strategy(cfg.inner_fill_strategy),
-        **kwargs,
     )
 
 

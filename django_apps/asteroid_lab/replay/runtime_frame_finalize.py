@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from typing import cast
 
 from django_apps.asteroid_lab.replay.overlay_composition import compose_replay_overlay_cells
 from django_apps.asteroid_lab.replay.overlay_wire_contract import overlay_cell_to_wire_dict
@@ -15,11 +16,13 @@ from django_apps.asteroid_lab.replay.timeline_dtos import (
     replay_map_view_is_renderable,
 )
 from django_apps.asteroid_lab.replay.timeline_serialization import (
+    _mapping,
     replay_timeline_frame_to_json_dict,
 )
 from django_apps.asteroid_lab.services.lab_timeline_exterior_connector_enrichment import (
     METRICS_KEY,
 )
+from django_apps.asteroid_lab.typing_boundary import JsonValue
 
 
 def structural_overlay_wire_from_source_frame(
@@ -58,13 +61,13 @@ def compose_runtime_overlay_wire(
 
 
 def _metrics_with_exterior_plan(
-    metrics: Mapping[str, object],
+    metrics: Mapping[str, JsonValue],
     *,
     exterior_plan_wire: Mapping[str, object] | None,
-) -> dict[str, object]:
-    merged = dict(metrics)
+) -> dict[str, JsonValue]:
+    merged: dict[str, JsonValue] = dict(metrics)
     if exterior_plan_wire is not None:
-        merged[METRICS_KEY] = dict(exterior_plan_wire)
+        merged[METRICS_KEY] = _mapping(exterior_plan_wire)
     return merged
 
 
@@ -100,7 +103,10 @@ def finalize_segment_spec_to_timeline_frame(
         description=spec.description,
         map_view=map_view,
         inspector=inspector,
-        metrics=_metrics_with_exterior_plan(spec.metrics, exterior_plan_wire=exterior_plan_wire),
+        metrics=_metrics_with_exterior_plan(
+            _mapping(spec.metrics),
+            exterior_plan_wire=exterior_plan_wire,
+        ),
     )
 
 
@@ -111,11 +117,11 @@ def finalize_timeline_frame_to_json_dict(
     exterior_plan_wire: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     wire = replay_timeline_frame_to_json_dict(frame)
-    mv = dict(wire["map_view"])
-    mv["overlay_cells"] = [dict(row) for row in composed_overlay_wire]
+    mv = dict(_mapping(wire.get("map_view")))
+    mv["overlay_cells"] = [cast(dict[str, JsonValue], dict(row)) for row in composed_overlay_wire]
     wire["map_view"] = mv
     wire["metrics"] = _metrics_with_exterior_plan(
-        wire.get("metrics") or {},
+        _mapping(wire.get("metrics")),
         exterior_plan_wire=exterior_plan_wire,
     )
     return wire

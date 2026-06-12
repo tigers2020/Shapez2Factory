@@ -14,27 +14,9 @@ from shapez2_factory.domain.asteroid_lab.service_dtos import (
     DecodedBlueprintSnapshotDTO,
     DecodedCellDTO,
 )
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_int
 
-
-def _as_int(val: object) -> int:
-    """Coerce blueprint scalars; ``None`` → ``0`` (same as entry ``get('X', 0)`` style).
-
-    **Caveat:** missing ``X`` on a blueprint dict row becomes ``raw_x == 0`` on
-    :class:`DecodedCellDTO`, which is **not** a valid asteroid world column (there is no
-    ``x == 0``). Prefer explicit ``X`` in JSON or treat ``raw_x == 0`` as a decode/validation
-    signal.
-    """
-
-    if val is None:
-        return 0
-    if isinstance(val, bool):
-        return int(val)
-    if isinstance(val, int):
-        return val
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return 0
+_as_int = wire_int
 
 
 def _nested_b_summary(b: object) -> tuple[int, dict[str, int], bool]:
@@ -199,4 +181,4 @@ def build_decoded_blueprint_snapshot(
     return dto
 
 
-__all__ = ["build_decoded_blueprint_snapshot"]
+__all__ = ["_as_int", "build_decoded_blueprint_snapshot"]

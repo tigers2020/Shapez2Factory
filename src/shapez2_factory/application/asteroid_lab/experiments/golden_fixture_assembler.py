@@ -9,6 +9,7 @@ from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_
 )
 from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string, encode_copy_string
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_int
 
 
 def _entry(x: int, y: int, *, tile: str, rotation: int = 0) -> dict[str, object]:
@@ -76,7 +77,7 @@ def assemble_candidate_blueprint(
             kept.append(dict(row))
 
     merged = kept + new_entries
-    merged.sort(key=lambda r: (int(r.get("X") or 0), int(r.get("Y") or 0), str(r.get("T") or "")))
+    merged.sort(key=lambda r: (wire_int(r.get("X")), wire_int(r.get("Y")), str(r.get("T") or "")))
     bp["Entries"] = merged
     bp.setdefault("$type", "Island")
     root["V"] = root.get("V", 1)

@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_int
 
 _RECON_META_KEY = "_asteroid_lab_reconstruction"
 
@@ -19,13 +20,13 @@ def island_bbox_from_xy_dicts(rows: Sequence[dict[str, object]]) -> dict[str, in
         x_val: int | None = None
         y_val: int | None = None
         try:
-            x_val = int(row["x"])
-            y_val = int(row["y"])
-        except (KeyError, TypeError, ValueError):
+            x_val = wire_int(row["x"])
+            y_val = wire_int(row["y"])
+        except KeyError:
             try:
-                x_val = int(row["X"])
-                y_val = int(row["Y"])
-            except (KeyError, TypeError, ValueError):
+                x_val = wire_int(row["X"])
+                y_val = wire_int(row["Y"])
+            except KeyError:
                 continue
         if x_val is None or y_val is None:
             continue

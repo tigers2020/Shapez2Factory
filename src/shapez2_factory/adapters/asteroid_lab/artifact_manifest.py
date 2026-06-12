@@ -10,6 +10,12 @@ import json
 from dataclasses import dataclass, field
 
 from shapez2_factory.adapters.asteroid_lab.run_status import RunLifecycleStatus
+from shapez2_factory.domain.asteroid_lab.wire_coerce import (
+    wire_dict,
+    wire_int,
+    wire_optional_str,
+    wire_str,
+)
 
 MANIFEST_SCHEMA_VERSION = 1
 MANIFEST_FILENAME = "manifest.json"
@@ -46,15 +52,20 @@ class ArtifactManifest:
     @classmethod
     def from_json_dict(cls, payload: dict[str, object]) -> ArtifactManifest:
         return cls(
-            schema_version=int(payload["schema_version"]),
-            run_key=str(payload["run_key"]),
-            lifecycle_status=RunLifecycleStatus(payload["lifecycle_status"]),
-            created_at_utc=str(payload["created_at_utc"]),
-            core_build_id=str(payload["core_build_id"]),
-            content_hashes=dict(payload.get("content_hashes", {})),
-            paths=dict(payload.get("paths", {})),
-            game_data_provenance=dict(payload.get("game_data_provenance", {})),
-            error_code=payload.get("error_code"),
+            schema_version=wire_int(payload["schema_version"]),
+            run_key=wire_str(payload["run_key"]),
+            lifecycle_status=RunLifecycleStatus(wire_str(payload["lifecycle_status"])),
+            created_at_utc=wire_str(payload["created_at_utc"]),
+            core_build_id=wire_str(payload["core_build_id"]),
+            content_hashes={
+                wire_str(k): wire_str(v)
+                for k, v in wire_dict(payload.get("content_hashes", {})).items()
+            },
+            paths={
+                wire_str(k): wire_str(v) for k, v in wire_dict(payload.get("paths", {})).items()
+            },
+            game_data_provenance=wire_dict(payload.get("game_data_provenance", {})),
+            error_code=wire_optional_str(payload.get("error_code")),
         )
 
     @classmethod

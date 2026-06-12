@@ -43,6 +43,15 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import
     build_empty_integrated_rim_greedy_result,
 )
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
+from shapez2_factory.domain.asteroid_lab.wire_coerce import (
+    wire_dict,
+    wire_float,
+    wire_int,
+    wire_list,
+    wire_optional_float,
+    wire_optional_str,
+    wire_str,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,7 +63,19 @@ class RuntimeWiresProjectionBundle:
 
 
 def _coord_from_dict(data: dict[str, object]) -> Coord:
-    return (int(data["x"]), int(data["y"]))
+    return (wire_int(data["x"]), wire_int(data["y"]))
+
+
+def _wire_dict_list(items: object, *, field: str) -> list[dict[str, object]]:
+    return [wire_dict(item, field=field) for item in wire_list(items, field=field)]
+
+
+def _wire_str_sequence(items: object) -> tuple[str, ...]:
+    if isinstance(items, tuple):
+        seq: list[object] = list(items)
+    else:
+        seq = wire_list(items, field="str_sequence")
+    return tuple(wire_str(v) for v in seq)
 
 
 def _coords_from_list(items: list[dict[str, object]]) -> frozenset[Coord]:
@@ -74,15 +95,15 @@ def _require_dict(value: object, *, field: str) -> dict[str, object]:
 
 def _deserialize_rim_greedy_metrics(data: dict[str, object]) -> RimGreedyMetrics:
     return RimGreedyMetrics(
-        rim_anchor_count=int(data.get("rim_anchor_count", 0)),
-        route_feasible_rim_anchor_count=int(data.get("route_feasible_rim_anchor_count", 0)),
-        committed_placement_count=int(data.get("committed_placement_count", 0)),
-        rejected_attempt_count=int(data.get("rejected_attempt_count", 0)),
-        reserved_route_cell_count=int(data.get("reserved_route_cell_count", 0)),
-        winning_variant_id=str(data.get("winning_variant_id", "")),
-        pass2_score=data.get("pass2_score"),
-        layer_skip_reason=data.get("layer_skip_reason"),
-        canonical_layer_slug=str(
+        rim_anchor_count=wire_int(data.get("rim_anchor_count", 0)),
+        route_feasible_rim_anchor_count=wire_int(data.get("route_feasible_rim_anchor_count", 0)),
+        committed_placement_count=wire_int(data.get("committed_placement_count", 0)),
+        rejected_attempt_count=wire_int(data.get("rejected_attempt_count", 0)),
+        reserved_route_cell_count=wire_int(data.get("reserved_route_cell_count", 0)),
+        winning_variant_id=wire_str(data.get("winning_variant_id", "")),
+        pass2_score=wire_optional_float(data.get("pass2_score")),
+        layer_skip_reason=wire_optional_str(data.get("layer_skip_reason")),
+        canonical_layer_slug=wire_str(
             data.get("canonical_layer_slug", LAYER_03_RIM_GREEDY_PLACEMENT),
         ),
     )
@@ -91,18 +112,22 @@ def _deserialize_rim_greedy_metrics(data: dict[str, object]) -> RimGreedyMetrics
 def _deserialize_committed_placement(item: dict[str, object]) -> CommittedRimSeedPlacement:
     hints = _require_dict(item.get("projection_hints", {}), field="projection_hints")
     route_probe_path = _coords_tuple_from_list(
-        list(hints.get("route_probe_path", [])),
+        _wire_dict_list(hints.get("route_probe_path", []), field="route_probe_path"),
     )
     return CommittedRimSeedPlacement(
-        placement_id=str(item["placement_id"]),
-        variant_id=str(item["variant_id"]),
+        placement_id=wire_str(item["placement_id"]),
+        variant_id=wire_str(item["variant_id"]),
         anchor=_coord_from_dict(_require_dict(item["anchor"], field="anchor")),
-        output_dir=str(item["output_dir"]),
-        seed_id=str(item["seed_id"]),
-        miner_cells=_coords_from_list(list(item.get("miner_cells", []))),
-        extension_cells=_coords_from_list(list(item.get("extension_cells", []))),
+        output_dir=wire_str(item["output_dir"]),
+        seed_id=wire_str(item["seed_id"]),
+        miner_cells=_coords_from_list(
+            _wire_dict_list(item.get("miner_cells", []), field="miner_cells"),
+        ),
+        extension_cells=_coords_from_list(
+            _wire_dict_list(item.get("extension_cells", []), field="extension_cells"),
+        ),
         m_output_stub=_coord_from_dict(_require_dict(item["m_output_stub"], field="m_output_stub")),
-        throughput_factor=int(item["throughput_factor"]),
+        throughput_factor=wire_int(item["throughput_factor"]),
         route_probe_path=route_probe_path,
     )
 
@@ -132,9 +157,11 @@ def deserialize_l3_wire(wire: dict[str, object]) -> IntegratedRimGreedyResult:
     )
     placements = tuple(
         _deserialize_committed_placement(_require_dict(item, field="committed_placement"))
-        for item in wire.get("committed_placements", [])
+        for item in _wire_dict_list(
+            wire.get("committed_placements", []), field="committed_placements"
+        )
     )
-    winning_variant_id = str(wire.get("winning_variant_id", metrics.winning_variant_id))
+    winning_variant_id = wire_str(wire.get("winning_variant_id", metrics.winning_variant_id))
     miner_count = sum(len(p.miner_cells) for p in placements)
     extension_count = sum(len(p.extension_cells) for p in placements)
     total_route_length = sum(len(p.route_probe_path) for p in placements)
@@ -173,19 +200,23 @@ def deserialize_l3_wire(wire: dict[str, object]) -> IntegratedRimGreedyResult:
 def _deserialize_inner_placement(item: dict[str, object]) -> InnerPlacement:
     return InnerPlacement(
         coord=_coord_from_dict(_require_dict(item["coord"], field="coord")),
-        pattern_id=str(item["pattern_id"]),
-        rotation=int(item.get("rotation", 0)),
+        pattern_id=wire_str(item["pattern_id"]),
+        rotation=wire_int(item.get("rotation", 0)),
     )
 
 
 def _deserialize_routeable_inner_group(item: dict[str, object]) -> RouteableInnerGroupPlacement:
     return RouteableInnerGroupPlacement(
-        placement_id=str(item["placement_id"]),
+        placement_id=wire_str(item["placement_id"]),
         anchor=_coord_from_dict(_require_dict(item["anchor"], field="anchor")),
-        miner_cells=_coords_from_list(list(item.get("miner_cells", []))),
-        extension_cells=_coords_from_list(list(item.get("extension_cells", []))),
+        miner_cells=_coords_from_list(
+            _wire_dict_list(item.get("miner_cells", []), field="miner_cells"),
+        ),
+        extension_cells=_coords_from_list(
+            _wire_dict_list(item.get("extension_cells", []), field="extension_cells"),
+        ),
         m_output_stub=_coord_from_dict(_require_dict(item["m_output_stub"], field="m_output_stub")),
-        throughput_factor=int(item["throughput_factor"]),
+        throughput_factor=wire_int(item["throughput_factor"]),
     )
 
 
@@ -208,10 +239,10 @@ def _deserialize_layer04_metrics(data: dict[str, object]) -> Layer04FillMetrics 
     if not data:
         return None
     return Layer04FillMetrics(
-        interior_occupied_cell_count=int(data.get("interior_occupied_cell_count", 0)),
-        coverage_ratio=float(data.get("coverage_ratio", 0.0)),
-        corridor_risk=float(data.get("corridor_risk", 0.0)),
-        fragment_penalty=float(data.get("fragment_penalty", 0.0)),
+        interior_occupied_cell_count=wire_int(data.get("interior_occupied_cell_count", 0)),
+        coverage_ratio=wire_float(data.get("coverage_ratio", 0.0)),
+        corridor_risk=wire_float(data.get("corridor_risk", 0.0)),
+        fragment_penalty=wire_float(data.get("fragment_penalty", 0.0)),
         budget_interrupted=bool(data.get("budget_interrupted", False)),
     )
 
@@ -219,23 +250,26 @@ def _deserialize_layer04_metrics(data: dict[str, object]) -> Layer04FillMetrics 
 def deserialize_l4_wire(wire: dict[str, object]) -> Layer04InnerFillResult:
     placements = tuple(
         _deserialize_inner_placement(_require_dict(item, field="placement"))
-        for item in wire.get("placements", [])
+        for item in _wire_dict_list(wire.get("placements", []), field="placements")
     )
     interior_occupied_cells = _coords_from_list(
-        list(wire.get("interior_occupied_cells", [])),
+        _wire_dict_list(wire.get("interior_occupied_cells", []), field="interior_occupied_cells"),
     )
     _validate_l4_placements_consistency(
         placements=placements,
         interior_occupied_cells=interior_occupied_cells,
     )
-    skip_reason_raw = wire.get("skip_reason")
+    skip_reason_raw = wire_optional_str(wire.get("skip_reason"))
     skip_reason = Layer04SkipReason(skip_reason_raw) if skip_reason_raw else None
     return Layer04InnerFillResult(
         interior_occupied_cells=interior_occupied_cells,
         placements=placements,
         routeable_inner_groups=tuple(
             _deserialize_routeable_inner_group(_require_dict(item, field="routeable_inner_group"))
-            for item in wire.get("routeable_inner_groups", [])
+            for item in _wire_dict_list(
+                wire.get("routeable_inner_groups", []),
+                field="routeable_inner_groups",
+            )
         ),
         metrics=_deserialize_layer04_metrics(
             _require_dict(wire.get("metrics", {}), field="metrics")
@@ -247,77 +281,88 @@ def deserialize_l4_wire(wire: dict[str, object]) -> Layer04InnerFillResult:
 def _deserialize_projected_transport_tile(item: dict[str, object]) -> ProjectedTransportTile:
     return ProjectedTransportTile(
         coord=_coord_from_dict(_require_dict(item["coord"], field="coord")),
-        transport_kind=str(item["transport_kind"]),
-        tile_id=str(item["tile_id"]),
-        rotation=int(item["rotation"]),
-        input_dirs=tuple(str(v) for v in item.get("input_dirs", ())),
-        output_dirs=tuple(str(v) for v in item.get("output_dirs", ())),
-        group_id=str(item["group_id"]),
-        source_route_ids=tuple(str(v) for v in item.get("source_route_ids", ())),
+        transport_kind=wire_str(item["transport_kind"]),
+        tile_id=wire_str(item["tile_id"]),
+        rotation=wire_int(item["rotation"]),
+        input_dirs=_wire_str_sequence(item.get("input_dirs", ())),
+        output_dirs=_wire_str_sequence(item.get("output_dirs", ())),
+        group_id=wire_str(item["group_id"]),
+        source_route_ids=_wire_str_sequence(item.get("source_route_ids", ())),
     )
 
 
 def _deserialize_committed_route(item: dict[str, object]) -> CommittedRoute:
     return CommittedRoute(
-        route_id=str(item["route_id"]),
-        placement_id=str(item["placement_id"]),
-        path_coords=_coords_tuple_from_list(list(item.get("path_coords", []))),
-        group_id=str(item["group_id"]),
-        route_cost=int(item["route_cost"]),
+        route_id=wire_str(item["route_id"]),
+        placement_id=wire_str(item["placement_id"]),
+        path_coords=_coords_tuple_from_list(
+            _wire_dict_list(item.get("path_coords", []), field="path_coords"),
+        ),
+        group_id=wire_str(item["group_id"]),
+        route_cost=wire_int(item["route_cost"]),
     )
 
 
 def _deserialize_route_group(item: dict[str, object]) -> RouteGroupSummary:
     return RouteGroupSummary(
-        group_id=str(item["group_id"]),
-        transport_kind=str(item["transport_kind"]),
-        connector_ids=frozenset(str(v) for v in item.get("connector_ids", ())),
-        member_placement_ids=frozenset(str(v) for v in item.get("member_placement_ids", ())),
-        route_cells=_coords_from_list(list(item.get("route_cells", []))),
-        used_m=int(item["used_m"]),
-        capacity_m=int(item["capacity_m"]),
+        group_id=wire_str(item["group_id"]),
+        transport_kind=wire_str(item["transport_kind"]),
+        connector_ids=frozenset(_wire_str_sequence(item.get("connector_ids", ()))),
+        member_placement_ids=frozenset(
+            _wire_str_sequence(item.get("member_placement_ids", ())),
+        ),
+        route_cells=_coords_from_list(
+            _wire_dict_list(item.get("route_cells", []), field="route_cells"),
+        ),
+        used_m=wire_int(item["used_m"]),
+        capacity_m=wire_int(item["capacity_m"]),
     )
 
 
 def _deserialize_layer05_failure(item: dict[str, object]) -> Layer05Failure:
     return Layer05Failure(
-        placement_id=item.get("placement_id"),
-        reason=Layer05FailureReason(str(item["reason"])),
-        detail=str(item.get("detail", "")),
+        placement_id=wire_optional_str(item.get("placement_id")),
+        reason=Layer05FailureReason(wire_str(item["reason"])),
+        detail=wire_str(item.get("detail", "")),
     )
 
 
 def _deserialize_layer05_metrics(data: dict[str, object]) -> Layer05Metrics:
     return Layer05Metrics(
-        source_count=int(data.get("source_count", 0)),
-        routed_source_count=int(data.get("routed_source_count", 0)),
-        failed_source_count=int(data.get("failed_source_count", 0)),
-        total_route_cells=int(data.get("total_route_cells", 0)),
-        total_route_cost=int(data.get("total_route_cost", 0)),
+        source_count=wire_int(data.get("source_count", 0)),
+        routed_source_count=wire_int(data.get("routed_source_count", 0)),
+        failed_source_count=wire_int(data.get("failed_source_count", 0)),
+        total_route_cells=wire_int(data.get("total_route_cells", 0)),
+        total_route_cost=wire_int(data.get("total_route_cost", 0)),
     )
 
 
 def deserialize_l5_wire(wire: dict[str, object]) -> Layer05RoutePlan:
     route_plan = _require_dict(wire.get("route_plan", {}), field="route_plan")
     return Layer05RoutePlan(
-        version=str(route_plan["version"]),
-        resource_kind=str(route_plan["resource_kind"]),
-        transport_kind=str(route_plan["transport_kind"]),
+        version=wire_str(route_plan["version"]),
+        resource_kind=wire_str(route_plan["resource_kind"]),
+        transport_kind=wire_str(route_plan["transport_kind"]),
         routes=tuple(
             _deserialize_committed_route(_require_dict(item, field="route"))
-            for item in route_plan.get("routes", [])
+            for item in _wire_dict_list(route_plan.get("routes", []), field="routes")
         ),
         groups=tuple(
             _deserialize_route_group(_require_dict(item, field="group"))
-            for item in route_plan.get("groups", [])
+            for item in _wire_dict_list(route_plan.get("groups", []), field="groups")
         ),
         transport_tiles=tuple(
-            _deserialize_projected_transport_tile(_require_dict(item, field="transport_tile"))
-            for item in route_plan.get("transport_tiles", [])
+            _deserialize_projected_transport_tile(
+                _require_dict(item, field="transport_tile"),
+            )
+            for item in _wire_dict_list(
+                route_plan.get("transport_tiles", []),
+                field="transport_tiles",
+            )
         ),
         failures=tuple(
             _deserialize_layer05_failure(_require_dict(item, field="failure"))
-            for item in route_plan.get("failures", [])
+            for item in _wire_dict_list(route_plan.get("failures", []), field="failures")
         ),
         metrics=_deserialize_layer05_metrics(
             _require_dict(route_plan.get("metrics", {}), field="metrics"),

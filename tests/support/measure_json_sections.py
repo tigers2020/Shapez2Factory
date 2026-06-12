@@ -72,7 +72,9 @@ def _diff_structure_stats(diff: object) -> dict[str, int]:
     }
 
 
-def _lab_redundancy_and_sizes(lab_list: list[object]) -> tuple[dict[str, object], list[dict[str, object]]]:
+def _lab_redundancy_and_sizes(
+    lab_list: list[object],
+) -> tuple[dict[str, object], list[dict[str, object]]]:
     """Return (redundancy_stats, largest_frames_meta) for Lab replay frames only."""
 
     fps: list[str] = []

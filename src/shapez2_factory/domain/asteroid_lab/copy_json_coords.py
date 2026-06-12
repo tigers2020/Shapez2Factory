@@ -21,6 +21,7 @@ not a runtime coordinate frame.
 from __future__ import annotations
 
 from shapez2_factory.domain.asteroid_lab.coord_frames import IslandRawCoord
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_int
 
 COPY_JSON_AXIS_X_RIGHT = "copy_json_x_increases_screen_right"
 COPY_JSON_AXIS_Y_DOWN = "copy_json_y_increases_screen_down"
@@ -29,16 +30,7 @@ COPY_JSON_AXIS_Y_DOWN = "copy_json_y_increases_screen_down"
 def as_entry_int(val: object) -> int:
     """Coerce a blueprint entry numeric field; missing / null → ``0``."""
 
-    if val is None:
-        return 0
-    if isinstance(val, bool):
-        return int(val)
-    if isinstance(val, int):
-        return val
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return 0
+    return wire_int(val)
 
 
 def entry_raw_x(entry: dict[str, object]) -> int:

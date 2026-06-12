@@ -7,6 +7,7 @@ from shapez2_factory.domain.asteroid_lab.service_dtos import (
     NormalizedBlueprintDTO,
     RawDecodedBlueprintDTO,
 )
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_dict, wire_int, wire_list, wire_str
 
 _SUMMARY_SCHEMA_VERSION = 1
 
@@ -21,10 +22,9 @@ def normalize_decoded_blueprint(raw: RawDecodedBlueprintDTO) -> NormalizedBluepr
 
 
 def _build_summary(root: dict[str, object]) -> dict[str, object]:
-    bp = root["BP"]
-    entries: list[object] = bp["Entries"]
-    v_raw = root.get("V")
-    binary_version = _coerce_int_version(v_raw)
+    bp = wire_dict(root.get("BP"), field="BP")
+    entries = wire_list(bp.get("Entries"), field="BP.Entries")
+    binary_version = wire_int(root.get("V"))
 
     xs: list[int] = []
     ys: list[int] = []
@@ -66,7 +66,7 @@ def _build_summary(root: dict[str, object]) -> dict[str, object]:
     return {
         "schema_version": _SUMMARY_SCHEMA_VERSION,
         "binary_version": binary_version,
-        "blueprint_type": str(bp["$type"]),
+        "blueprint_type": wire_str(bp.get("$type")),
         "entry_count": len(entries),
         "cell_count": len(cells),
         "bbox": {
@@ -83,30 +83,6 @@ def _build_summary(root: dict[str, object]) -> dict[str, object]:
         "pipe_count": pipe_count,
         "inferred_source_kind": "copy_code_v4",
     }
-
-
-def _coerce_int_version(v_raw: object) -> int:
-    if isinstance(v_raw, int):
-        return v_raw
-    if v_raw is None:
-        return 0
-    try:
-        return int(v_raw)
-    except (TypeError, ValueError):
-        return 0
-
-
-def _as_int(val: object) -> int:
-    if val is None:
-        return 0
-    if isinstance(val, bool):
-        return int(val)
-    if isinstance(val, int):
-        return val
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return 0
 
 
 __all__ = ["normalize_decoded_blueprint"]

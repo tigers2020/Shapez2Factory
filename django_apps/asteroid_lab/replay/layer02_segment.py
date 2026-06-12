@@ -18,7 +18,7 @@ from django_apps.asteroid_lab.services.lab_timeline_exterior_connector_enrichmen
     OVERLAY_ROLE,
     _connector_coord_keys,
     _overlay_without_connector_coord_duplicates,
-    _planned_connectors,
+    planned_connector_overlays_from_wire,
 )
 
 LAYER02_EVENT_TYPE = ReplayEventType.EXTERIOR_TRANSPORT_COMPLETED
@@ -84,7 +84,7 @@ def build_layer02_timeline_frame_wire_dict(
 ) -> dict[str, Any]:
     """Wire dict for one L2 append milestone (L1 full map + connector overlay)."""
 
-    planned_overlay = _planned_connectors(plan_wire)
+    planned_overlay = planned_connector_overlays_from_wire(plan_wire)
     if source_frame is not None:
         base = copy.deepcopy(source_frame)
         map_view = copy.deepcopy(base.get("map_view") or {})

@@ -22,6 +22,9 @@ from django_apps.asteroid_lab.replay.layer04_segment import build_layer04_runtim
 from django_apps.asteroid_lab.replay.layer05_transport_segment import (
     build_layer05_transport_frames,
 )
+from django_apps.asteroid_lab.replay.persistent_connector_overlay_wire import (
+    PersistentConnectorOverlayWire,
+)
 from django_apps.asteroid_lab.replay.persistent_exterior_overlay import (
     persistent_connector_overlays_from_wire,
 )
@@ -137,7 +140,7 @@ def build_solver_runtime_replay_frames(
     plan_dict: dict[str, object] | None = (
         dict(exterior_plan_wire) if exterior_plan_wire is not None else None
     )
-    persistent_overlay_wire: list[dict[str, object]] = (
+    persistent_overlay_wire: list[PersistentConnectorOverlayWire] = (
         persistent_connector_overlays_from_wire(plan_dict) if plan_dict is not None else []
     )
 

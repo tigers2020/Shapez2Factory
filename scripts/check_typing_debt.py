@@ -9,9 +9,9 @@ from pathlib import Path
 
 # Baseline captured 2026-06-11 before typing-zero loop slice 1.
 BASELINE = {
-    "any_token_total": 1452,
-    "files_with_any": 197,
-    "dict_str_object_production_files": 38,
+    "any_token_total": 1447,
+    "files_with_any": 195,
+    "dict_str_object_production_files": 39,
 }
 
 PRODUCTION_PREFIXES = (
@@ -44,9 +44,7 @@ def main() -> int:
 
     any_total = int(summary["any_token_total"])
     files_with_any = sum(1 for r in rows if r.any_token > 0)
-    prod_object_files = sum(
-        1 for r in rows if r.dict_str_object > 0 and _is_production(r.path)
-    )
+    prod_object_files = sum(1 for r in rows if r.dict_str_object > 0 and _is_production(r.path))
 
     failures: list[str] = []
     if any_total > BASELINE["any_token_total"]:

@@ -7,6 +7,9 @@ from django_apps.asteroid_lab.replay.effective_cell_view import (
     merge_effective_cell_view,
 )
 from django_apps.asteroid_lab.replay.effective_cell_wire import EffectiveCellWire
+from django_apps.asteroid_lab.replay.replay_overlay_bucket_registry import (
+    collect_overlay_cells_for_semantic_lookup,
+)
 from django_apps.asteroid_lab.typing_boundary import JsonObject
 
 
@@ -30,67 +33,6 @@ def _xy_match(row: object, x: int, y: int) -> bool:
         return _row_int(row["x"]) == x and _row_int(row["y"]) == y
     except KeyError:
         return False
-
-
-def _append_cells(out: list[JsonObject], lst: object) -> None:
-    if not isinstance(lst, list):
-        return
-    for c in lst:
-        if isinstance(c, dict):
-            out.append(dict(c))
-
-
-def _push_from_blocks(out: list[JsonObject], blocks: object) -> None:
-    if not isinstance(blocks, list):
-        return
-    for block in blocks:
-        if not isinstance(block, dict):
-            continue
-        cells = block.get("cells")
-        if isinstance(cells, list):
-            _append_cells(out, cells)
-        elif block.get("x") is not None and block.get("y") is not None:
-            out.append(dict(block))
-
-
-def _collect_overlay_cells(overlay: JsonObject) -> list[JsonObject]:
-    out: list[JsonObject] = []
-    _append_cells(out, overlay.get("cells"))
-    _append_cells(out, overlay.get("equipment_cells"))
-    _append_cells(out, overlay.get("equipment"))
-    _append_cells(out, overlay.get("adjacent_transport"))
-    _push_from_blocks(out, overlay.get("components"))
-    _push_from_blocks(out, overlay.get("transport_components"))
-    _append_cells(out, overlay.get("transport"))
-    main = overlay.get("main_component_candidate")
-    if isinstance(main, dict):
-        cj = main.get("cells_json")
-        if isinstance(cj, list):
-            _append_cells(out, cj)
-        elif main.get("x") is not None and main.get("y") is not None:
-            out.append(dict(main))
-    _append_cells(out, overlay.get("cleanup_candidate_cells"))
-
-    handled = frozenset(
-        {
-            "cells",
-            "equipment_cells",
-            "equipment",
-            "adjacent_transport",
-            "components",
-            "transport_components",
-            "transport",
-            "main_component_candidate",
-            "cleanup_candidate_cells",
-        }
-    )
-    for key, val in overlay.items():
-        if key in handled or not isinstance(val, dict) or isinstance(val, list):
-            continue
-        cj = val.get("cells_json")
-        if isinstance(cj, list):
-            _append_cells(out, cj)
-    return out
 
 
 def _cells_at_xy(cells: list[JsonObject], x: int, y: int) -> list[JsonObject]:
@@ -171,7 +113,7 @@ def lookup_effective_cell_in_serialized_frame(
 
     ov2 = ser.get("cell_overlay_json")
     if isinstance(ov2, dict):
-        overlay_cells = _collect_overlay_cells(dict(ov2))
+        overlay_cells = collect_overlay_cells_for_semantic_lookup(dict(ov2))
         overlay_matches = [dict(m) for m in _cells_at_xy(overlay_cells, x, y)]
         if overlay_matches:
             sources["overlay_cells_matched"] = len(overlay_matches)

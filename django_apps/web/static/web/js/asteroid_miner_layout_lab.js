@@ -5348,6 +5348,29 @@
       return out;
     }
 
+    function labEffectiveCellDetailSignature(wire) {
+      if (!wire || typeof wire !== "object") {
+        return "";
+      }
+      return JSON.stringify({
+        coord: wire.coord || null,
+        terrain: wire.terrain || null,
+        occupant: wire.occupant || null,
+        transport: wire.transport
+          ? {
+              kind: wire.transport.kind,
+              tile_id: wire.transport.tile_id,
+              simulation: wire.transport.simulation,
+            }
+          : null,
+        output: wire.output || null,
+      });
+    }
+
+    function labEffectiveCellWireMatches(a, b) {
+      return labEffectiveCellDetailSignature(a) === labEffectiveCellDetailSignature(b);
+    }
+
     function labCellDetailLookupInMapView(mapView, x, y) {
       if (!mapView || typeof mapView !== "object") {
         return { effective: null, sources: {} };
@@ -5543,6 +5566,12 @@
       if (data.frame_key !== undefined && data.frame_key !== null && String(data.frame_key) !== "") {
         parts.push("frame_key: " + String(data.frame_key));
       }
+      if (data.detail_source) {
+        parts.push("source=" + String(data.detail_source));
+      }
+      if (data.canonical_mismatch) {
+        parts.push("canonical mismatch corrected");
+      }
       if (!parts.length) {
         return "";
       }
@@ -5707,7 +5736,9 @@
         if (frameOrmId == null) {
           openCellDetailModal();
           if (cellDetailBody) {
-            labCellDetailRenderSuccess(cellDetailBody, labCellDetailFromTimelineFrame(fr, xy.x, xy.y));
+            const clientPayload = labCellDetailFromTimelineFrame(fr, xy.x, xy.y);
+            clientPayload.detail_source = "map_view_client_only";
+            labCellDetailRenderSuccess(cellDetailBody, clientPayload);
           }
           setLabCellDetailUnavailableHint("cell detail from map_view (no persisted ReplayFrame)");
           return;
@@ -5725,10 +5756,12 @@
         if (projectSlug) {
           payload.project_slug = projectSlug;
         }
-        if (cellDetailBody) {
-          cellDetailBody.textContent = "Loading…";
-        }
         openCellDetailModal();
+        const clientPayload = labCellDetailFromTimelineFrame(fr, xy.x, xy.y);
+        clientPayload.detail_source = "client_fast_path";
+        if (cellDetailBody) {
+          labCellDetailRenderSuccess(cellDetailBody, clientPayload);
+        }
         fetch(cellUrl, {
           method: "POST",
           credentials: "same-origin",
@@ -5760,7 +5793,21 @@
               cellDetailBody.textContent = err;
               return;
             }
-            labCellDetailRenderSuccess(cellDetailBody, data);
+            const clientEffective = clientPayload.effective_cell;
+            const serverEffective = data.effective_cell;
+            if (!labEffectiveCellWireMatches(clientEffective, serverEffective)) {
+              data.detail_source = "server_canonical_fallback";
+              data.canonical_mismatch = true;
+              labCellDetailRenderSuccess(cellDetailBody, data);
+              return;
+            }
+            clientPayload.detail_source = "client_fast_path_confirmed";
+            clientPayload.frame_index =
+              data.frame_index != null ? data.frame_index : clientPayload.frame_index;
+            if (data.frame_key != null) {
+              clientPayload.frame_key = data.frame_key;
+            }
+            labCellDetailRenderSuccess(cellDetailBody, clientPayload);
           })
           .catch(function () {
             if (cellDetailBody) {

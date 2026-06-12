@@ -188,24 +188,16 @@ def cell_overlay_json_from_frame(frame: Mapping[str, object]) -> dict[str, objec
 
 
 def collect_overlay_paint_targets(overlay: Mapping[str, object]) -> list[dict[str, object]]:
-    out: list[dict[str, object]] = []
-    for key in ("cells", "equipment_cells", "equipment", "adjacent_transport", "transport"):
-        rows = overlay.get(key)
-        if isinstance(rows, list):
-            for row in rows:
-                if isinstance(row, dict):
-                    out.append(normalize_replay_wire_cell(row))
-    bundles = overlay.get("equipment_bundles")
-    if isinstance(bundles, list):
-        for block in bundles:
-            if not isinstance(block, dict):
-                continue
-            cells = block.get("cells_json")
-            if isinstance(cells, list):
-                for row in cells:
-                    if isinstance(row, dict):
-                        out.append(normalize_replay_wire_cell(row))
-    return out
+    from django_apps.asteroid_lab.replay.replay_overlay_bucket_registry import (
+        collect_overlay_cells_for_paint_target,
+    )
+
+    if not isinstance(overlay, dict):
+        return []
+    return [
+        normalize_replay_wire_cell(row)
+        for row in collect_overlay_cells_for_paint_target(dict(overlay))
+    ]
 
 
 def collect_frame_spatial_targets(frame: Mapping[str, object]) -> list[dict[str, object]]:

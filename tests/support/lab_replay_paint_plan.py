@@ -50,6 +50,7 @@ def _sprite_relpath_from_tile_type(tile_type: str) -> str | None:
         return f"Miner/{t}.svg"
     return None
 
+
 # Mirror ``lab_replay_canvas_terrain.js`` TERRAIN_FILL defaults.
 BACKGROUND_FILL = "rgb(2, 6, 23)"
 VOID_FILL = "rgba(74, 4, 78, 0.72)"
@@ -95,9 +96,7 @@ def _candidate_miner_occupant(output_transport_kind: str, rotation: int) -> dict
 def _committed_occupant_sprite(occupant_kind: str, output_transport_kind: str) -> str | None:
     if occupant_kind == "committed_miner":
         ident = (
-            "Layout_FluidMiner"
-            if output_transport_kind == "space_pipe"
-            else "Layout_ShapeMiner"
+            "Layout_FluidMiner" if output_transport_kind == "space_pipe" else "Layout_ShapeMiner"
         )
         return _sprite_relpath_from_tile_type(ident)
     if occupant_kind == "extension":
@@ -325,21 +324,11 @@ def build_effective_cell_view_index(
         return {}
 
     map_view = dict(map_view_raw)
-    full_rows = [
-        dict(row)
-        for row in map_view.get("full_cells", [])
-        if isinstance(row, Mapping)
-    ]
+    full_rows = [dict(row) for row in map_view.get("full_cells", []) if isinstance(row, Mapping)]
     overlay_rows = [
-        dict(row)
-        for row in map_view.get("overlay_cells", [])
-        if isinstance(row, Mapping)
+        dict(row) for row in map_view.get("overlay_cells", []) if isinstance(row, Mapping)
     ]
-    delta_rows = [
-        dict(row)
-        for row in map_view.get("cell_delta", [])
-        if isinstance(row, Mapping)
-    ]
+    delta_rows = [dict(row) for row in map_view.get("cell_delta", []) if isinstance(row, Mapping)]
     overlay_json_rows = _overlay_json_rows_from_frame(frame)
 
     frame_index_raw = frame.get("frame_index")
@@ -415,15 +404,11 @@ def canvas_plan_from_paint_layers(
 
     occupant = layers.get("occupant")
     if isinstance(occupant, Mapping) and occupant.get("rel"):
-        sprites.append(
-            _sprite_plan_entry(grid_idx, str(occupant["rel"]), _rotation(occupant))
-        )
+        sprites.append(_sprite_plan_entry(grid_idx, str(occupant["rel"]), _rotation(occupant)))
 
     transport = layers.get("transport")
     if isinstance(transport, Mapping) and transport.get("rel"):
-        sprites.append(
-            _sprite_plan_entry(grid_idx, str(transport["rel"]), _rotation(transport))
-        )
+        sprites.append(_sprite_plan_entry(grid_idx, str(transport["rel"]), _rotation(transport)))
 
     overlays: list[dict[str, object]] = []
     chrome = layers.get("chrome")
@@ -443,11 +428,7 @@ def canvas_plan_from_paint_layers(
                 )
 
     if sprites:
-        overlays = [
-            overlay
-            for overlay in overlays
-            if not _is_rgba_fill(overlay.get("fill"))
-        ]
+        overlays = [overlay for overlay in overlays if not _is_rgba_fill(overlay.get("fill"))]
 
     return {"sprites": sprites, "overlays": overlays}
 
@@ -549,9 +530,7 @@ def dom_plan_from_paint_layers(
 
     tone_classes = ""
     if has_candidate_ring:
-        tone_classes = (
-            DOM_CANDIDATE_MINER_RING if has_sprite else DOM_CANDIDATE_MINER_FILL
-        )
+        tone_classes = DOM_CANDIDATE_MINER_RING if has_sprite else DOM_CANDIDATE_MINER_FILL
     elif overlay_kind == "candidate_miner" and not has_sprite:
         tone_classes = DOM_CANDIDATE_MINER_FILL
 

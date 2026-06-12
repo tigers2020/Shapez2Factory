@@ -8,7 +8,6 @@ cell_kind + transport_kind + tile_type.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
 
 _REPLAY_HEIGHT_LAYER_MIN = 0
 _REPLAY_HEIGHT_LAYER_MAX = 2
@@ -82,7 +81,7 @@ def clamp_replay_height_layer(value: object) -> int:
     return max(_REPLAY_HEIGHT_LAYER_MIN, min(_REPLAY_HEIGHT_LAYER_MAX, n))
 
 
-def wire_explicit_height_layer(data: Mapping[str, Any]) -> int | None:
+def wire_explicit_height_layer(data: Mapping[str, object]) -> int | None:
     for key in ("layer", "L", "z", "Z"):
         if key not in data:
             continue
@@ -148,7 +147,7 @@ def resolve_replay_height_layer(
     return 0
 
 
-def wire_transport_kind_for_layer_resolution(row: Mapping[str, Any]) -> str:
+def wire_transport_kind_for_layer_resolution(row: Mapping[str, object]) -> str:
     kind = str(row.get("kind") or row.get("cell_kind") or "")
     if kind in {
         "candidate_miner",
@@ -163,7 +162,7 @@ def wire_transport_kind_for_layer_resolution(row: Mapping[str, Any]) -> str:
     return str(row.get("transport_kind") or row.get("transport") or "")
 
 
-def enrich_replay_wire_row_with_layer(row: Mapping[str, Any]) -> dict[str, Any]:
+def enrich_replay_wire_row_with_layer(row: Mapping[str, object]) -> dict[str, object]:
     out = dict(row)
     explicit = wire_explicit_height_layer(out)
     kind = str(out.get("kind") or out.get("cell_kind") or "")

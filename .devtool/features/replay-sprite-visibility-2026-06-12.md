@@ -1,12 +1,12 @@
 ---
 id: "replay-sprite-visibility-2026-06-12"
-status: "verify"
+status: "align"
 priority: "high"
 assignee: null
 epic: null
 dueDate: null
 created: "2026-06-12T00:00:00.000Z"
-modified: "2026-06-12T20:30:00.000Z"
+modified: "2026-06-12T22:30:00.000Z"
 labels: ["asteroid-lab", "replay", "sprites", "ui"]
 order: "a0"
 ---
@@ -30,6 +30,8 @@ Replay map에서 sprite 일부 미표시·흐림(faded overlay 대체), legacy `
 | spec | docs/superpowers/specs/2026-06-12-replay-sprite-visibility-design.md | 2026-06-12 |
 | plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-1.md | 2026-06-12 |
 | plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-2.md | 2026-06-12 |
+| plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-3.md | 2026-06-12 |
+| plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-4.md | 2026-06-12 |
 
 ## Progress
 
@@ -42,3 +44,10 @@ Replay map에서 sprite 일부 미표시·흐림(faded overlay 대체), legacy `
 - 2026-06-12 — **implement** — Slice 1 Task 4: `test_replay_wire_audit.py` (golden assembler + fixture scan); audit fix `_BANNED_LEGACY_COMMITTED_TRANSPORT` (canonical `space_belt` on committed rows was false positive); 2/2 audit + 6/6 sanitizer pytest green
 - 2026-06-12 — **implement** — Slice 2 Task 3: `build_effective_cell_view_index` + `test_build_effective_cell_view_index_frame_38`; 6/6 paint-plan pytest green, ruff clean
 - 2026-06-12 — **verify** — Slice 2 complete (Tasks 1–6): `lab_paint_layers_from_view` + `build_effective_cell_view_index` (Python), `lab_replay_paint_plan.js` mirror, golden/parity/anti-fade/candidate tests; `test_python_paint_layers_frame_38_contract_snapshot` added; Slice 2 gate 10/10 pytest green; Slice 1 regression green; `buildCanvasPaintPlan` untouched
+- 2026-06-12 — **implement** — Slice 3 Task 1: `canvas_plan_from_paint_layers` Python mirror + `test_lab_replay_paint_canvas_adapter.py` (frame-38 miner sprite, anti-fade no rgba fill); 2/2 pytest green
+- 2026-06-12 — **implement** — Slice 3 Task 2: JS `canvasPlanFromPaintLayers` + `buildLabPaintPlanFromFrame` (layout carry via `lastFrameWithSpriteCapableCells` pattern); contract tests in `test_lab_canvas_renderer.py`; 2/2 pytest green; no `lab.js` changes
+- 2026-06-12 — **implement** — Slice 3 Task 3: `labPaintV2Enabled()` + `buildCanvasPaintPlan` v2 delegate behind `data-lab-paint-v2="1"`; `test_lab_js_lab_paint_v2_enabled_helper`; legacy path unchanged when flag off
+- 2026-06-12 — **implement** — Slice 3 Task 4: `filterTerrainCellsForPaintV2` excludes field_sprite indices from terrain canvas when v2; wired in `refreshLabCanvasAfterLayoutChange` + `applyLabCanvasServerReplayFrame`; `test_lab_js_filter_terrain_cells_for_paint_v2_exists`
+- 2026-06-12 — **verify** — Slice 3 complete (Tasks 1–5): canvas adapter + `buildLabPaintPlanFromFrame` + `labPaintV2Enabled` delegate + terrain anti-fade; gate 26/26 paint/canvas + 16/16 Slice 1 regression pytest green; manual smoke frame 38 (10,7) sharp miner + ring; commit `f099e7f4`
+- 2026-06-12 — **align** — Slice 4 plan drafted + reviewer amendments (frame-cached resolver, occupant-only DOM sprite, exact class tokens); approved Subagent-Driven Tasks 1→5
+- 2026-06-12 — **verify** — Slice 4 complete (Tasks 1–5, Task 7 skipped): Python/JS `domPlanFromPaintLayers`, `buildDomPlanResolverForFrame` (index once per frame), v2 DOM chrome in `renderFullMapCells`; legacy + detail lookup preserved; gate 42/42 Slice 4 + 16/16 Slice 1 regression; commits `d9cdd73e`→`de21d642`

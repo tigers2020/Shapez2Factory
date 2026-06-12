@@ -712,7 +712,26 @@ created_by: todo-plan-automation
 depends_on:      # optional; source of truth for prerequisites
   - SHA-10
   - SHA-11
+slice_type: vertical | horizontal | ops
+afk_eligible: true | false
+blocked_by: []   # advisory; prefer depends_on for pick blocking
+contract_authority:
+  - path/to/canon-or-spec
+acceptance:
+  - command: "pytest …"
+    expected: "…"
+stop_condition: "…"
 ```
+
+| Field | Policy |
+|-------|--------|
+| `slice_type: vertical` | end-to-end runnable feedback in this plan |
+| `slice_type: horizontal` | infra-only; user must have said so explicitly |
+| `afk_eligible: true` | `plan-run auto` allowed when contract/acceptance/stop explicit |
+| `blocked_by` | advisory DAG hint; `depends_on` remains pick authority |
+| `contract_authority` | canon paths — closed plan must not override |
+
+**`plan-run auto`** requires `afk_eligible: true`, clean worktree, explicit acceptance and `stop_condition`. Plan authority lifecycle: `docs/agent-workflows/plan-lifecycle.md`.
 
 Matching key: **`linear_issue`** → Linear identifier (e.g. `SHA-12`).
 

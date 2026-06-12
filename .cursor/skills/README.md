@@ -13,6 +13,7 @@ Invoke **only** when rules below match. Not default workflow — see [`AGENTS.md
 |---|---|---|
 | `bug-fix` | `/bug-fix` | Fix + regression tests, or tests-only mode |
 | `quality-check` | `/quality-check` | Diff review or pre-spec plan review |
+| `grill-me-shapez2` | `/grill-me-shapez2` | HITL alignment before contract (read-only) |
 | `doc-update` | `/doc-update` | Sync docs/ADR after contract change |
 | `cli-boundary` | CLI touch | Thin adapter rules for management commands |
 | `plan-run` | `/plan-run` | Linear plan queue automation |

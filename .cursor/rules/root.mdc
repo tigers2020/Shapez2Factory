@@ -12,6 +12,8 @@ Canon: `AGENTS.md`.
 Route when relevant:
 
 - Scope: `agent_scope.mdc`
+- Phases (Normal+): `workflow-phases.mdc` (`workflow-phases.md`)
+- Kanban WIP: `kanban-tracking.mdc` (`kanban-tracking.md`)
 - Strictness / SDD: `workflow.mdc` (`workflow-strictness.md`)
 - Ops/recovery: `ops-recovery.mdc`
 - Shapez2: `shapez2-domain.mdc`, `shapez2-core.mdc`

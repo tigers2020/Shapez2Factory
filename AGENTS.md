@@ -14,6 +14,22 @@ shapez2 Factory Planner governance: short rules, strict contracts, small safe ch
 
 Process and domain authority do not override each other across category.
 
+## Session phases (Normal+)
+
+```text
+align → contract → slice → implement → verify → STOPPED_AT_APPROVED_SCOPE
+```
+
+HITL: ambiguous alignment, contract changes, slice review, merge/taste decisions. AFK: implement/verify only when scope, acceptance, and stop are explicit. Ambiguous features: `grill-me-shapez2` before planning. Detail: `docs/agent-workflows/workflow-phases.md`.
+
+## Kanban tracking (Normal+)
+
+Link each feature/task chat to one card in `.devtool/features/`. On start and each phase change: update `status` + append **Progress** (what doing, evidence). Before unrelated work: if a WIP card exists, emit `LEFTOVER_WIP:` with unfinished acceptance — do not silently abandon; user must park (`blocked`/`backlog` + note) or finish. Read-only/Tiny: optional. Detail: `kanban-tracking.mdc`, `docs/agent-workflows/kanban-tracking.md`.
+
+## Context hygiene
+
+Prefer new session/subagent over compact when reasoning degrades. Keep always-on rules small; exploration via graphify/subagents. Detail: `documents/knowledge/raw/ai/manuals/cursor_usage.md`.
+
 ## Task routing
 
 | Kind | Path |
@@ -22,6 +38,9 @@ Process and domain authority do not override each other across category.
 | Docs-only | contract clear → edit → no runtime claims |
 | Regression | repro → minimal fix → regression gate |
 | Implementation | ICE → contract → plan → acceptance → small change → gate |
+| Alignment / ambiguous feature | `grill-me-shapez2` → contract → vertical slice review |
+| Slice planning | reject horizontal phase plans unless explicitly infra-only |
+| Review after implementation | new session/subagent → `quality-check` / Bugbot policy |
 | Ops / recovery | git/PR/CI/state inventory → safe recovery → verify → STOP (`ops-recovery.mdc`) |
 
 **ICE:** Intent · Context · Expectations — three layers, not full spec (Normal / High-risk).

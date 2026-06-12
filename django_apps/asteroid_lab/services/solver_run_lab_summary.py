@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
-from typing import Any
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
@@ -44,7 +43,7 @@ _ENUM_VALUE_LABELS = frozenset(
 )
 
 
-def _field_cell_counts_from_capacity(capacity: dict[str, Any] | None) -> tuple[Any, Any]:
+def _field_cell_counts_from_capacity(capacity: dict[str, object] | None) -> tuple[object, object]:
     """Read shape/fluid platform counts from CLI ``reconstruction_capacity`` envelope."""
 
     if not isinstance(capacity, dict):
@@ -59,7 +58,7 @@ def _field_cell_counts_from_capacity(capacity: dict[str, Any] | None) -> tuple[A
     return shape_cells, fluid_cells
 
 
-def _resolved_completed_layer_slugs(solver_summary: dict[str, Any]) -> frozenset[str]:
+def _resolved_completed_layer_slugs(solver_summary: dict[str, object]) -> frozenset[str]:
     """Merge top-level stack slugs with per-layer CLI outcomes for Lab cards."""
 
     slugs: set[str] = set()
@@ -98,7 +97,7 @@ def _resolved_completed_layer_slugs(solver_summary: dict[str, Any]) -> frozenset
     return frozenset(slugs)
 
 
-def validation_passed_from_solver_summary(solver_summary: dict[str, Any]) -> bool:
+def validation_passed_from_solver_summary(solver_summary: dict[str, object]) -> bool:
     """Resolve UI validation flag; CLI summaries may omit the key when stack succeeded."""
 
     raw = solver_summary.get("validation_passed")
@@ -107,10 +106,10 @@ def validation_passed_from_solver_summary(solver_summary: dict[str, Any]) -> boo
     return bool(solver_summary.get("run_success"))
 
 
-def _layer_metrics_by_slug(solver_summary: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def _layer_metrics_by_slug(solver_summary: dict[str, object]) -> dict[str, dict[str, object]]:
     """Index CLI artifact ``layer_summaries`` metrics by ``layer_slug``."""
 
-    indexed: dict[str, dict[str, Any]] = {}
+    indexed: dict[str, dict[str, object]] = {}
     raw = solver_summary.get("layer_summaries")
     if not isinstance(raw, list):
         return indexed
@@ -126,7 +125,7 @@ def _layer_metrics_by_slug(solver_summary: dict[str, Any]) -> dict[str, dict[str
     return indexed
 
 
-def solver_summary_for_lab_display(solver_summary: dict[str, Any]) -> dict[str, Any]:
+def solver_summary_for_lab_display(solver_summary: dict[str, object]) -> dict[str, object]:
     """Flatten nested CLI layer metrics into top-level keys the Lab cards expect."""
 
     merged = dict(solver_summary)
@@ -197,20 +196,20 @@ def solver_summary_for_lab_display(solver_summary: dict[str, Any]) -> dict[str, 
     return merged
 
 
-def _obs_field_count(obs: dict[str, Any], *keys: str) -> Any:
+def _obs_field_count(obs: dict[str, object], *keys: str) -> object:
     for key in keys:
         if key in obs:
             return obs[key]
     return _PLACEHOLDER
 
 
-def _primary_resource_kind(raw: Any) -> str:
+def _primary_resource_kind(raw: object) -> str:
     if raw in (None, "", _PLACEHOLDER):
         return "shape"
     return str(raw)
 
 
-def _primary_field_cell_count(obs: dict[str, Any], *, primary: str) -> Any:
+def _primary_field_cell_count(obs: dict[str, object], *, primary: str) -> object:
     if primary == "fluid":
         return _obs_field_count(
             obs,
@@ -243,9 +242,9 @@ def _external_connector_label(primary: str) -> str:
 
 
 def _section_reconstruction(
-    obs: dict[str, Any] | None,
-    capacity: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+    obs: dict[str, object] | None,
+    capacity: dict[str, object] | None = None,
+) -> dict[str, object]:
     keys = (
         "cell_count",
         "display_cell_count",
@@ -284,7 +283,7 @@ def _section_reconstruction(
     return dict.fromkeys(keys, _PLACEHOLDER)
 
 
-def _parse_decimal_throughput(value: Any) -> Decimal | None:
+def _parse_decimal_throughput(value: object) -> Decimal | None:
     if value in (None, "", _PLACEHOLDER):
         return None
     try:
@@ -293,7 +292,7 @@ def _parse_decimal_throughput(value: Any) -> Decimal | None:
         return None
 
 
-def _external_line_count(*, max_throughput_per_min: Any, primary: str) -> int | str:
+def _external_line_count(*, max_throughput_per_min: object, primary: str) -> int | str:
     throughput = _parse_decimal_throughput(max_throughput_per_min)
     if throughput is None:
         return _PLACEHOLDER
@@ -314,7 +313,7 @@ def _external_line_count(*, max_throughput_per_min: Any, primary: str) -> int | 
 
 def _external_connector_count(
     *,
-    max_throughput_per_min: Any,
+    max_throughput_per_min: object,
     primary: str,
 ) -> int | str:
     throughput = _parse_decimal_throughput(max_throughput_per_min)
@@ -333,8 +332,8 @@ def _external_connector_count(
         return _PLACEHOLDER
 
 
-def _section_capacity(cap: dict[str, Any] | None) -> dict[str, Any]:
-    empty: dict[str, Any] = {
+def _section_capacity(cap: dict[str, object] | None) -> dict[str, object]:
+    empty: dict[str, object] = {
         "shape_max_throughput_per_min": _PLACEHOLDER,
         "fluid_max_throughput_per_min": _PLACEHOLDER,
         "shape_output_unit": _PLACEHOLDER,
@@ -382,7 +381,7 @@ def _section_capacity(cap: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def _t2_policy_section_fields(summary: dict[str, Any]) -> dict[str, Any]:
+def _t2_policy_section_fields(summary: dict[str, object]) -> dict[str, object]:
     diagnostic = summary.get("diagnostic_expected_shortfall")
     t3_eligible = summary.get("t3_ops_eligible")
     return {
@@ -397,7 +396,7 @@ def _t2_policy_section_fields(summary: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _section_throughput_target(summary: dict[str, Any]) -> dict[str, Any]:
+def _section_throughput_target(summary: dict[str, object]) -> dict[str, object]:
     policy_fields = _t2_policy_section_fields(summary)
     keys = (
         "reconstruction_max_throughput_per_min",
@@ -449,7 +448,7 @@ def _section_throughput_target(summary: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _throughput_budget_satisfied_top_level(summary: dict[str, Any]) -> bool | None:
+def _throughput_budget_satisfied_top_level(summary: dict[str, object]) -> bool | None:
     if summary.get("actual_committed_output_per_min") is None:
         return None
     if "throughput_target_percent" not in summary:
@@ -459,7 +458,7 @@ def _throughput_budget_satisfied_top_level(summary: dict[str, Any]) -> bool | No
     return bool(summary["throughput_budget_satisfied"])
 
 
-def _rttp_validation_passed_tri_state(solver_summary: dict[str, Any]) -> bool | None:
+def _rttp_validation_passed_tri_state(solver_summary: dict[str, object]) -> bool | None:
     """Tri-state validation for L6 highlights (None = unknown, not failed)."""
 
     if "validation_passed" in solver_summary:
@@ -469,7 +468,7 @@ def _rttp_validation_passed_tri_state(solver_summary: dict[str, Any]) -> bool | 
     return None
 
 
-def _section_rttp(solver_summary: dict[str, Any]) -> dict[str, Any]:
+def _section_rttp(solver_summary: dict[str, object]) -> dict[str, object]:
     order = list(solver_summary.get("commit_order") or [])
     if not order:
         preview: str | int = _PLACEHOLDER
@@ -493,9 +492,9 @@ def _section_rttp(solver_summary: dict[str, Any]) -> dict[str, Any]:
 
 
 def _rim_route_candidate_count(
-    reconstruction: dict[str, Any],
-    solver_summary: dict[str, Any],
-) -> Any:
+    reconstruction: dict[str, object],
+    solver_summary: dict[str, object],
+) -> object:
     """Outer-rim field cells = mining bundle install slots (layer 3 route candidates)."""
 
     for source in (
@@ -509,7 +508,7 @@ def _rim_route_candidate_count(
     return _PLACEHOLDER
 
 
-def _ratio_display(*, left: Any, right: Any) -> str:
+def _ratio_display(*, left: object, right: object) -> str:
     if left in (None, "", _PLACEHOLDER) and right in (None, "", _PLACEHOLDER):
         return _PLACEHOLDER
     left_text = _PLACEHOLDER if left in (None, "", _PLACEHOLDER) else str(left)
@@ -517,7 +516,7 @@ def _ratio_display(*, left: Any, right: Any) -> str:
     return f"{left_text} / {right_text}"
 
 
-def _layer03_route_probe_succeeded_count(solver_summary: dict[str, Any]) -> Any:
+def _layer03_route_probe_succeeded_count(solver_summary: dict[str, object]) -> object:
     return _obs_field_count(
         solver_summary,
         "route_probe_succeeded_count",
@@ -525,7 +524,7 @@ def _layer03_route_probe_succeeded_count(solver_summary: dict[str, Any]) -> Any:
     )
 
 
-def _layer03_route_probed_pool_count(solver_summary: dict[str, Any]) -> Any:
+def _layer03_route_probed_pool_count(solver_summary: dict[str, object]) -> object:
     return _obs_field_count(
         solver_summary,
         "normal_candidate_count",
@@ -533,18 +532,18 @@ def _layer03_route_probed_pool_count(solver_summary: dict[str, Any]) -> Any:
     )
 
 
-def _layer04_provisional_placed_count(solver_summary: dict[str, Any]) -> Any:
+def _layer04_provisional_placed_count(solver_summary: dict[str, object]) -> object:
     return _obs_field_count(solver_summary, "layer04_selected_count", "selected_count")
 
 
-def _layer03_skip_reason_label(solver_summary: dict[str, Any]) -> str:
+def _layer03_skip_reason_label(solver_summary: dict[str, object]) -> str:
     raw = solver_summary.get("layer03_skip_reason")
     if raw in (None, "", "none"):
         return _PLACEHOLDER
     return str(raw)
 
 
-def _rim_greedy_summary_active(solver_summary: dict[str, Any]) -> bool:
+def _rim_greedy_summary_active(solver_summary: dict[str, object]) -> bool:
     if "rim_greedy_winning_variant_id" in solver_summary:
         return True
     if LAYER_03_RIM_GREEDY_PLACEMENT in _resolved_completed_layer_slugs(solver_summary):
@@ -557,7 +556,7 @@ def _rim_greedy_summary_active(solver_summary: dict[str, Any]) -> bool:
     return False
 
 
-def _is_absent_highlight_value(value: Any) -> bool:
+def _is_absent_highlight_value(value: object) -> bool:
     if value in (None, "", _PLACEHOLDER):
         return True
     text = str(value).strip().lower()
@@ -569,7 +568,7 @@ def _is_absent_highlight_value(value: Any) -> bool:
 def _append_meaningful_highlight(
     rows: list[dict[str, str]],
     label: str,
-    value: Any,
+    value: object,
     *,
     allow_zero: bool = False,
 ) -> None:
@@ -588,7 +587,7 @@ def _visible_highlights(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     return [row for row in rows if row.get("value") not in (None, "", _PLACEHOLDER)]
 
 
-def _format_coverage_ratio(value: Any) -> str:
+def _format_coverage_ratio(value: object) -> str:
     if _is_absent_highlight_value(value):
         return _PLACEHOLDER
     try:
@@ -600,7 +599,7 @@ def _format_coverage_ratio(value: Any) -> str:
     return f"{ratio:.1f}%"
 
 
-def _layer04_failure_reasons_label(solver_summary: dict[str, Any]) -> str:
+def _layer04_failure_reasons_label(solver_summary: dict[str, object]) -> str:
     raw = _obs_field_count(solver_summary, "layer04_failure_reasons", "failure_reasons")
     if isinstance(raw, list):
         parts = [str(item) for item in raw if item not in (None, "")]
@@ -608,7 +607,7 @@ def _layer04_failure_reasons_label(solver_summary: dict[str, Any]) -> str:
     return str(raw) if raw not in (None, _PLACEHOLDER) else _PLACEHOLDER
 
 
-def _layer04_transport_highlights(solver_summary: dict[str, Any]) -> list[dict[str, str]]:
+def _layer04_transport_highlights(solver_summary: dict[str, object]) -> list[dict[str, str]]:
     source_count = _obs_field_count(solver_summary, "layer04_source_count", "source_count")
     routed = _obs_field_count(
         solver_summary,
@@ -659,7 +658,7 @@ def _layer04_transport_highlights(solver_summary: dict[str, Any]) -> list[dict[s
     ]
 
 
-def _layer03_greedy_highlights(solver_summary: dict[str, Any]) -> list[dict[str, str]]:
+def _layer03_greedy_highlights(solver_summary: dict[str, object]) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     _append_meaningful_highlight(
         rows,
@@ -719,13 +718,13 @@ def _layer03_greedy_highlights(solver_summary: dict[str, Any]) -> list[dict[str,
 
 
 def _layer03_legacy_highlights(
-    solver_summary: dict[str, Any],
+    solver_summary: dict[str, object],
     *,
-    target_placement: Any,
-    rim_anchor_slots: Any,
-    route_probed_pool: Any,
-    route_probe_succeeded: Any,
-    capacity_deficit_count: Any,
+    target_placement: object,
+    rim_anchor_slots: object,
+    route_probed_pool: object,
+    route_probe_succeeded: object,
+    capacity_deficit_count: object,
 ) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     _append_meaningful_highlight(rows, "Target placements", target_placement, allow_zero=True)
@@ -749,7 +748,7 @@ def _layer03_legacy_highlights(
     return _visible_highlights(rows)
 
 
-def _layer04_inner_fill_highlights(solver_summary: dict[str, Any]) -> list[dict[str, str]]:
+def _layer04_inner_fill_highlights(solver_summary: dict[str, object]) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     _append_meaningful_highlight(
         rows,
@@ -774,10 +773,10 @@ def _layer04_inner_fill_highlights(solver_summary: dict[str, Any]) -> list[dict[
 
 
 def _layer04_rim_bundle_highlights(
-    solver_summary: dict[str, Any],
+    solver_summary: dict[str, object],
     *,
-    provisional_placed: Any,
-    route_probe_succeeded: Any,
+    provisional_placed: object,
+    route_probe_succeeded: object,
 ) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     _append_meaningful_highlight(rows, "Provisional placed", provisional_placed, allow_zero=True)
@@ -799,7 +798,7 @@ def _layer04_rim_bundle_highlights(
     return _visible_highlights(rows)
 
 
-def _format_layer03_reject_reason_counts(solver_summary: dict[str, Any]) -> str:
+def _format_layer03_reject_reason_counts(solver_summary: dict[str, object]) -> str:
     raw = solver_summary.get("layer03_reject_reason_counts")
     if not raw:
         return _PLACEHOLDER
@@ -811,7 +810,7 @@ def _format_layer03_reject_reason_counts(solver_summary: dict[str, Any]) -> str:
     return "; ".join(parts) if parts else _PLACEHOLDER
 
 
-def _layer04_placement_complete_label(solver_summary: dict[str, Any]) -> str:
+def _layer04_placement_complete_label(solver_summary: dict[str, object]) -> str:
     slugs = solver_summary.get("completed_layer_slugs")
     if not isinstance(slugs, list) or LAYER_04_RIM_BUNDLE_PLACEMENT not in slugs:
         return _PLACEHOLDER
@@ -824,7 +823,7 @@ def _layer04_placement_complete_label(solver_summary: dict[str, Any]) -> str:
         return _PLACEHOLDER
 
 
-def _format_compact_number(value: Any) -> str:
+def _format_compact_number(value: object) -> str:
     if value in (None, "", _PLACEHOLDER):
         return _PLACEHOLDER
     try:
@@ -848,7 +847,7 @@ def _format_snake_case_label(value: str) -> str:
     return value.replace("_", " ")
 
 
-def _format_highlight_value(label: str, value: Any) -> str:
+def _format_highlight_value(label: str, value: object) -> str:
     if value is None or value == "":
         return _PLACEHOLDER
     if label in _ENUM_VALUE_LABELS:
@@ -870,7 +869,7 @@ def _format_highlight_value(label: str, value: Any) -> str:
     return text
 
 
-def _highlight(label: str, value: Any) -> dict[str, str]:
+def _highlight(label: str, value: object) -> dict[str, str]:
     return {"label": label, "value": _format_highlight_value(label, value)}
 
 
@@ -882,7 +881,7 @@ def _superseded_status_label(layer_slug: str) -> str:
     return "Superseded by active stack path"
 
 
-def _cli_layer_outcome(solver_summary: dict[str, Any], layer_slug: str) -> str | None:
+def _cli_layer_outcome(solver_summary: dict[str, object], layer_slug: str) -> str | None:
     for item in solver_summary.get("layer_summaries") or []:
         if not isinstance(item, dict):
             continue
@@ -896,12 +895,12 @@ def _cli_layer_outcome(solver_summary: dict[str, Any], layer_slug: str) -> str |
 
 def _layer02_transport_highlights(
     *,
-    pct: Any,
-    target_tp: Any,
-    l2_required: Any,
-    l2_planned: Any,
-    l2_plan: dict[str, Any] | None,
-    capacity: dict[str, Any],
+    pct: object,
+    target_tp: object,
+    l2_required: object,
+    l2_planned: object,
+    l2_plan: dict[str, object] | None,
+    capacity: dict[str, object],
     primary: str,
 ) -> list[dict[str, str]]:
     shortfall = (
@@ -965,20 +964,20 @@ def _layer_outcome(
 
 def _build_layer_summaries(
     *,
-    solver_summary: dict[str, Any],
-    reconstruction: dict[str, Any],
-    capacity: dict[str, Any],
-    rttp: dict[str, Any],
-    throughput_target: dict[str, Any],
+    solver_summary: dict[str, object],
+    reconstruction: dict[str, object],
+    capacity: dict[str, object],
+    rttp: dict[str, object],
+    throughput_target: dict[str, object],
     validation_passed: bool,
-    target_placement: Any,
-    capacity_deficit_count: Any,
-    confirmed: Any,
+    target_placement: object,
+    capacity_deficit_count: object,
+    confirmed: object,
     issue_codes: list[str],
     first_issue_code: str | None,
-    macro_commit_summary: dict[str, Any] | None,
-    optimization_goal: dict[str, Any],
-) -> list[dict[str, Any]]:
+    macro_commit_summary: dict[str, object] | None,
+    optimization_goal: dict[str, object],
+) -> list[dict[str, object]]:
     stack_run_status_raw = solver_summary.get("stack_run_status")
     stack_run_status = str(stack_run_status_raw) if stack_run_status_raw not in (None, "") else None
     completed_layer_slugs = _resolved_completed_layer_slugs(solver_summary)
@@ -1185,7 +1184,7 @@ def _build_layer_summaries(
             ],
         ),
     ]
-    cards: list[dict[str, Any]] = []
+    cards: list[dict[str, object]] = []
     for index, slug, title, layer_outcome, highlights in layers:
         card_highlights = list(highlights)
         if layer_outcome == "superseded" and not any(
@@ -1208,8 +1207,8 @@ def lab_run_summary_from_solver_summary(
     *,
     run_id: int,
     status: str,
-    solver_summary: dict[str, Any],
-) -> dict[str, Any]:
+    solver_summary: dict[str, object],
+) -> dict[str, object]:
     """Build Evolution Runs / Selected Run Detail payload from persisted summary."""
 
     solver_summary = solver_summary_for_lab_display(dict(solver_summary))
@@ -1248,7 +1247,7 @@ def lab_run_summary_from_solver_summary(
     capacity = _section_capacity(solver_summary.get("reconstruction_capacity"))
     rttp = _section_rttp(solver_summary)
     throughput_target = _section_throughput_target(solver_summary)
-    row: dict[str, Any] = {
+    row: dict[str, object] = {
         "id": str(run_id),
         "status": status,
         "algorithm_steps": algorithm_steps,
@@ -1308,7 +1307,7 @@ def lab_run_summary_from_solver_summary(
     return row
 
 
-def solver_summary_payload_for_run(run: m.SolverRun) -> dict[str, Any]:
+def solver_summary_payload_for_run(run: m.SolverRun) -> dict[str, object]:
     """Persisted summary for Lab display (artifact column first, legacy config fallback)."""
 
     cached = dict(run.solver_summary_json or {})
@@ -1318,7 +1317,7 @@ def solver_summary_payload_for_run(run: m.SolverRun) -> dict[str, Any]:
     return dict(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY) or {})
 
 
-def lab_run_summary_from_orm(run: m.SolverRun) -> dict[str, Any]:
+def lab_run_summary_from_orm(run: m.SolverRun) -> dict[str, object]:
     """Serialize one :class:`SolverRun` for Lab template/JSON."""
 
     summary = solver_summary_payload_for_run(run)
@@ -1342,8 +1341,8 @@ def _lab_run_summary_from_row(
     *,
     run_id: int,
     status: str,
-    solver_summary: Any,
-) -> dict[str, Any]:
+    solver_summary: object,
+) -> dict[str, object]:
     """Serialize one run summary without loading the full ``config_json`` blob."""
 
     if status == m.SolverRun.RunStatus.COMPLETED:
@@ -1361,7 +1360,7 @@ def _lab_run_summary_from_row(
     )
 
 
-def solver_runs_for_lab_project(project_id: int, *, limit: int = 10) -> list[dict[str, Any]]:
+def solver_runs_for_lab_project(project_id: int, *, limit: int = 10) -> list[dict[str, object]]:
     """Latest solver runs for one project (newest first)."""
 
     rows = (

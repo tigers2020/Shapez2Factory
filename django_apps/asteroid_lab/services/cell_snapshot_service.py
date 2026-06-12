@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import asdict
-from typing import Any
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.observability.boundary_jsonl import DJANGO_BOUNDARY_SINK
@@ -43,7 +42,7 @@ def build_decoded_blueprint_snapshot_from_input(
         msg = f"AsteroidMapInput id={map_input_id} not found"
         raise ValueError(msg)
     raw = inp.decoded_json
-    decoded: dict[str, Any] = dict(raw) if isinstance(raw, dict) else {}
+    decoded: dict[str, object] = dict(raw) if isinstance(raw, dict) else {}
     rid = boundary_run_id if boundary_run_id is not None else f"map_input:{int(map_input_id)}"
     return build_decoded_blueprint_snapshot(
         decoded,
@@ -54,8 +53,8 @@ def build_decoded_blueprint_snapshot_from_input(
     )
 
 
-def _overlay_cell_dict(c: DecodedCellDTO) -> dict[str, Any]:
-    row: dict[str, Any] = {
+def _overlay_cell_dict(c: DecodedCellDTO) -> dict[str, object]:
+    row: dict[str, object] = {
         "x": c.x,
         "y": c.y,
         "layer": c.layer,
@@ -82,7 +81,7 @@ def record_decoded_snapshot_frames(
     raw_decode = decode_snapshot_summary(snapshot)
     summary_raw = snapshot_summary_from_rows(row_decode)
     summary_norm = snapshot_summary_from_rows(row_transport)
-    raw_metrics: dict[str, Any] = {
+    raw_metrics: dict[str, object] = {
         "binary_version": bv,
         "blueprint_type": snapshot.blueprint_type,
         "entry_count": snapshot.entry_count,
@@ -92,7 +91,7 @@ def record_decoded_snapshot_frames(
         ),
         "bbox": dict(snapshot.bbox_json),
     }
-    norm_metrics: dict[str, Any] = {
+    norm_metrics: dict[str, object] = {
         "binary_version": bv,
         "blueprint_type": snapshot.blueprint_type,
         "entry_count": snapshot.entry_count,
@@ -163,11 +162,11 @@ def persist_decoded_cell_snapshot(
         msg = "map_input.project_id does not match project_id"
         raise ValueError(msg)
 
-    overlay: dict[str, Any] = {
+    overlay: dict[str, object] = {
         "schema": "asteroid_lab_decoded_blueprint_v1",
         "cells": [_overlay_cell_dict(c) for c in snapshot.cells],
     }
-    grid: dict[str, Any] = {
+    grid: dict[str, object] = {
         "bbox": dict(snapshot.bbox_json),
         "cell_kind_counts": dict(snapshot.cell_kind_counts_json),
         "transport_kind_counts": dict(snapshot.transport_kind_counts_json),

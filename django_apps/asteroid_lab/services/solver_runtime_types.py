@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
 
 
 class SolverRuntimeEntryErrorCode(StrEnum):
@@ -25,7 +24,7 @@ class SolverRuntimeEntryErrorCode(StrEnum):
     ACTIVE_RUN_EXISTS = "active_run_exists"
 
 
-def empty_milestone_track_metrics() -> dict[str, Any]:
+def empty_milestone_track_metrics() -> dict[str, object]:
     return {
         "track_key": None,
         "frame_count": 0,
@@ -55,15 +54,15 @@ class SolverEnqueueResult:
 class SolverRuntimeEntryResult:
     ok: bool
     solver_run_id: int | None
-    lab_replay_frames_json: list[dict[str, Any]]
-    replay_track_metrics: dict[str, Any]
-    solver_summary: dict[str, Any]
+    lab_replay_frames_json: list[dict[str, object]]
+    replay_track_metrics: dict[str, object]
+    solver_summary: dict[str, object]
     validation_passed: bool
-    gene_template_source: dict[str, Any] = field(default_factory=dict)
+    gene_template_source: dict[str, object] = field(default_factory=dict)
     error_code: SolverRuntimeEntryErrorCode | None = None
     message: str | None = None
-    lab_optimization_milestone_frames_json: list[dict[str, Any]] = field(default_factory=list)
-    lab_optimization_milestone_track_metrics: dict[str, Any] = field(
+    lab_optimization_milestone_frames_json: list[dict[str, object]] = field(default_factory=list)
+    lab_optimization_milestone_track_metrics: dict[str, object] = field(
         default_factory=empty_milestone_track_metrics
     )
 

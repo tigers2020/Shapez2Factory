@@ -226,3 +226,29 @@ def test_lab_js_detail_lookup_untouched() -> None:
     assert "LabReplayPaintPlan" not in detail_body
     assert "buildDomPlanResolverForFrame" not in detail_body
     assert "mergeEffectiveCellView" in detail_body
+
+
+def test_lab_js_legacy_dom_path_preserves_non_sprite_when_flag_off() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    rel_body = src.split("function labSpriteRelpathForCell(", 1)[1].split(
+        "function attachLabSpriteImgNoDrag(", 1
+    )[0]
+    assert "isNonSpriteOverlayCell(cell, frame)" in rel_body
+    render_body = src.split("function renderFullMapCells(", 1)[1].split(
+        "function renderDiffOverlays(", 1
+    )[0]
+    assert "candidateObs" in render_body
+    assert "lab-overlay-candidate-miner" in src
+    non_sprite = src.split("var NON_SPRITE_OVERLAY_CELL_KINDS = {", 1)[1].split("};", 1)[0]
+    assert "candidate_miner: true" in non_sprite
+
+
+def test_lab_js_v2_dom_branch_gated_by_flag() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    resolver_body = src.split("function createDomPlanResolverForFrame(", 1)[1][:450]
+    assert "labPaintV2Enabled()" in resolver_body
+    render_body = src.split("function renderFullMapCells(", 1)[1].split(
+        "function renderDiffOverlays(", 1
+    )[0]
+    assert "createDomPlanResolverForFrame" in render_body
+    assert render_body.index("createDomPlanResolverForFrame") < render_body.index("for (let i = 0")

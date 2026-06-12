@@ -1,7 +1,7 @@
 # Knowledge Index
 
 > Map of synthesized knowledge. Raw sources live in `../raw/` (immutable). Maintenance: `docs/agent-workflows/dream-sequence.md`.
-> Last updated: 2026-06-12 | Total pages: 21
+> Last updated: 2026-06-12 | Total pages: 21 | Status: bootstrap complete
 
 ## Concepts
 
@@ -71,5 +71,4 @@
 
 | Topic | Notes |
 |-------|-------|
-| `building_variant_custom_config` | 156 `$type` nodes in variants — which matter for planner? (raw `08_risks`) |
-| Mirrored variant pairing | 34 `*Mirrored` rows — explicit FK vs suffix rule (unverified) |
+| _(tracked on concept pages)_ | Variant import risks → [[building-variants]] § Open questions |

@@ -1,0 +1,41 @@
+# graphify corpus filters (gitignore syntax)
+# https://github.com/safishamsi/graphify — detect() reads this at project root.
+#
+# Goal: keep django_apps + src architecture in graph.json for agents;
+# drop generated assets and binary noise from Obsidian/wiki bloat.
+#
+# Granularity policy: docs/agent-workflows/graphify-routine.md § Granularity policy
+# Default Level 1 = module/class/public API; do NOT graph every _private function.
+# Level 2/3 = scoped rebuild on replay/solver packages when debugging contract paths.
+#
+# NOT ignored: **/__init__.py (lazy re-exports e.g. asteroid_lab layers matter)
+
+# Django / Python build & test caches
+**/__pycache__/**
+**/.pytest_cache/**
+**/.mypy_cache/**
+**/.ruff_cache/**
+*.pyc
+
+# DB migrations (schema history, not runtime architecture)
+**/migrations/**
+
+# Front-end vendored bundles and static game assets
+**/vendor/**
+django_apps/web/static/**
+
+# Sprite / image corpus (hundreds of duplicate PNG nodes)
+**/*.png
+**/*.svg
+**/*.jpg
+**/*.webp
+**/*.gif
+
+# Test corpus — fixture builders add noise without architecture signal (Level 1)
+tests/**
+
+# graphify output (also hard-skipped in graphify; explicit here)
+graphify-out/**
+
+# After `graphify ... --obsidian`, run: scripts/graphify_obsidian_fixup.ps1
+# (graphify always writes obsidian/graph.canvas; fixup moves it out of the vault)

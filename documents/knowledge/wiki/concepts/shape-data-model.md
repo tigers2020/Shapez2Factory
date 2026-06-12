@@ -1,7 +1,7 @@
 ---
 title: Shape Data Model
 created: 2026-06-11
-updated: 2026-06-11
+updated: 2026-06-12
 type: concept
 tags: [shape-algebra, game-data-analysis]
 sources: [raw/analysis/shapes/00_summary.md]
@@ -32,6 +32,7 @@ confidence: high
 | `stable_id` | Import correlation | Unique within shapes.json |
 
 ## Cross-References
+- [[materials-data-model]]: quadrant `Shape` letter codes (C/R/S/W/c/P/-)
 - [[item-data-model]]: items.json contains 70 shape items whose `Hash` values ⊆ shapes (subset)
 - [[research-unlocks]]: 253 `ShapeHash` references all resolve to shapes catalog
 - [[game-data-manifest]]: Unity runtime reflection dump surface

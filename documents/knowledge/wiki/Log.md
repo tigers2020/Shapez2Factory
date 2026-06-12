@@ -85,3 +85,12 @@ Append-only chronological record. Newest entries at the bottom.
 - **Index:** 17 → 21 pages; broken wikilinks from [[building-definitions]] resolved
 - **Open questions:** narrowed to variant CustomData / mirrored pairing (from raw risks doc)
 - **Uncertainty:** Ousterhout page is abbreviated — not full PDF line ingest
+
+## [2026-06-12] complete | Wiki bootstrap finished
+
+- **Input:** user `끝까지 진행`
+- **Committed:** `raw/general_workflow_and_skill.md` (archive), `.graphifyignore` (graphify corpus filters)
+- **Hygiene:** SCHEMA `research` tag; [[shape-data-model]] → [[materials-data-model]] backlink; variant open questions on [[building-variants]]
+- **Canon pointer:** `AGENTS.md` → `documents/knowledge/wiki/Index.md` + dream-sequence routine
+- **Not committed:** `local-general-workflow/` — duplicate of archived raw; delete locally when confirmed
+- **Status:** 21 concept pages indexed; no blocking open questions; game-data + agent/governance clusters linked

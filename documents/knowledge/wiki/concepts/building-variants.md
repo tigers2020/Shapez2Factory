@@ -43,9 +43,19 @@ Each array element = one **internal building variant**: placement geometry + con
 - Normalize to `building_variant`, `building_connector`, `building_footprint_tile` — **do not** duplicate 3.8 MB snapshots per group row
 - `building_stable_id` always empty — parent FK backfill deferred (open in raw `08_risks_and_open_questions.md`)
 
+## Open questions (source: raw `08_risks_and_open_questions.md`)
+
+| Topic | Status |
+|-------|--------|
+| `CustomData` / 156 `$type` nodes | **unverified** — which nodes affect factory planner vs runtime-only |
+| 34 `*Mirrored` variants | **unverified** — suffix pairing vs explicit `mirrored_from_id` FK |
+| `building_stable_id` empty | **source** — parent FK backfill deferred at import |
+| `LabelDefaultInternalVariant` (0 connectors) | **unverified** — special-case or incomplete dump |
+
 ## Cross-References
 
 - [[building-definitions]]: 67 logical building groups
 - [[building-groups]]: group membership references variants by internal name
 - [[prefabs]]: visual prefab registry
 - [[transport-system]]: belt/pipe layout variants share connector model
+- [[deep-shallow-modules-ousterhout]]: avoid shallow per-`$type` tables without deep import boundary

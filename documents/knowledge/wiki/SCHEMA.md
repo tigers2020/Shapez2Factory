@@ -41,7 +41,7 @@ contradictions: [other-page-slug]
 ```
 
 ## Tag Taxonomy
-- **Game domain:** shape-algebra, operations, buildings, transport, fluids, crystals, island, items, materials
+- **Game domain:** shape-algebra, operations, buildings, transport, fluids, crystals, island, items, materials, research
 - **Data:** game-data-dump, game-data-analysis, schema-reconstruction
 - **Solver/Algo:** solver, asteroid-lab, gene-seed, golden-loop, optimization, routing
 - **Agent/Governance:** agent-workflow, pr-plan, adr, governance, testing

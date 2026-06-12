@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from django_apps.shapez_solver.services.recipe_graph_constants import (
     REACT_FLOW_GRAPH_PAYLOAD_VERSION,
@@ -20,8 +20,8 @@ from django_apps.shapez_solver.services.recipe_graph_constants import (
 RfNodeType = Literal["shape", "operation", "intermediate", "output"]
 
 
-def _nodes_raw_to_rf(nodes_raw: list[Any]) -> list[dict[str, Any]]:
-    rf_nodes: list[dict[str, Any]] = []
+def _nodes_raw_to_rf(nodes_raw: list[object]) -> list[dict[str, object]]:
+    rf_nodes: list[dict[str, object]] = []
     for n in nodes_raw:
         if not isinstance(n, dict):
             raise ValueError("each node must be an object")
@@ -29,8 +29,8 @@ def _nodes_raw_to_rf(nodes_raw: list[Any]) -> list[dict[str, Any]]:
     return rf_nodes
 
 
-def _edges_raw_to_rf(edges_raw: list[Any]) -> list[dict[str, Any]]:
-    rf_edges: list[dict[str, Any]] = []
+def _edges_raw_to_rf(edges_raw: list[object]) -> list[dict[str, object]]:
+    rf_edges: list[dict[str, object]] = []
     for e in edges_raw:
         if not isinstance(e, dict):
             raise ValueError("each edge must be an object")
@@ -38,7 +38,10 @@ def _edges_raw_to_rf(edges_raw: list[Any]) -> list[dict[str, Any]]:
     return rf_edges
 
 
-def _annotate_rf_edges_for_react_flow(rf_edges: list[dict[str, Any]], edges_raw: list[Any]) -> None:
+def _annotate_rf_edges_for_react_flow(
+    rf_edges: list[dict[str, object]],
+    edges_raw: list[object],
+) -> None:
     input_counts: dict[str, int] = {}
     output_counts: dict[str, int] = {}
     for ed, raw in zip(rf_edges, edges_raw, strict=True):
@@ -81,7 +84,7 @@ def _annotate_rf_edges_for_react_flow(rf_edges: list[dict[str, Any]], edges_raw:
         ed["type"] = "recipe"
 
 
-def domain_graph_to_react_flow(graph_document: dict[str, Any]) -> dict[str, Any]:
+def domain_graph_to_react_flow(graph_document: dict[str, object]) -> dict[str, object]:
     """검증된 ``graph_document``를 React Flow 초기 요소 스냅샷으로 변환한다."""
     nodes_raw = graph_document.get("nodes")
     edges_raw = graph_document.get("edges")
@@ -97,7 +100,7 @@ def domain_graph_to_react_flow(graph_document: dict[str, Any]) -> dict[str, Any]
     }
 
 
-def react_flow_to_domain_graph(payload: dict[str, Any]) -> dict[str, Any]:
+def react_flow_to_domain_graph(payload: dict[str, object]) -> dict[str, object]:
     """스냅샷을 ``graph_document`` 형태로 복원한다(저장 직전 검증은 호출 측)."""
     version = payload.get("version")
     if version is not None and int(version) != REACT_FLOW_GRAPH_PAYLOAD_VERSION:
@@ -106,12 +109,12 @@ def react_flow_to_domain_graph(payload: dict[str, Any]) -> dict[str, Any]:
     rf_edges = payload.get("edges")
     if not isinstance(rf_nodes, list) or not isinstance(rf_edges, list):
         raise ValueError("payload nodes/edges must be lists")
-    domain_nodes: list[dict[str, Any]] = []
+    domain_nodes: list[dict[str, object]] = []
     for rn in rf_nodes:
         if not isinstance(rn, dict):
             raise ValueError("each react flow node must be an object")
         domain_nodes.append(_rf_node_to_domain(rn))
-    domain_edges: list[dict[str, Any]] = []
+    domain_edges: list[dict[str, object]] = []
     for re in rf_edges:
         if not isinstance(re, dict):
             raise ValueError("each react flow edge must be an object")
@@ -123,7 +126,7 @@ def react_flow_to_domain_graph(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _domain_node_to_rf_type(node: dict[str, Any]) -> RfNodeType:
+def _domain_node_to_rf_type(node: dict[str, object]) -> RfNodeType:
     kind = node.get("kind")
     if kind == "operation":
         return "operation"
@@ -139,12 +142,12 @@ def _domain_node_to_rf_type(node: dict[str, Any]) -> RfNodeType:
     raise ValueError(f"invalid shape role for react flow: {role}")
 
 
-def _domain_node_to_rf(node: dict[str, Any]) -> dict[str, Any]:
+def _domain_node_to_rf(node: dict[str, object]) -> dict[str, object]:
     nid = str(node["id"])
     ntype = _domain_node_to_rf_type(node)
     x = float(node.get("x", 0.0))
     y = float(node.get("y", 0.0))
-    data: dict[str, Any]
+    data: dict[str, object]
     if node.get("kind") == "operation":
         data = {"operation": str(node["operation"])}
         if "paint_color" in node and node["paint_color"] is not None:
@@ -162,30 +165,30 @@ def _domain_node_to_rf(node: dict[str, Any]) -> dict[str, Any]:
     return {"id": nid, "type": ntype, "position": {"x": x, "y": y}, "data": data}
 
 
-def _domain_edge_to_rf(edge: dict[str, Any]) -> dict[str, Any]:
+def _domain_edge_to_rf(edge: dict[str, object]) -> dict[str, object]:
     ek = edge.get("kind")
     if ek not in ("input", "output", "delivery"):
         raise ValueError(f"invalid edge kind: {ek!r}")
     src = str(edge["from"])
     tgt = str(edge["to"])
     eid = f"e-{src}-{tgt}-{ek}"
-    data: dict[str, Any] = {"domainKind": ek}
+    data: dict[str, object] = {"domainKind": ek}
     if edge.get("slot") is not None:
         data["slot"] = str(edge["slot"])
     return {"id": eid, "source": src, "target": tgt, "data": data}
 
 
-def _rf_node_to_domain(rf: dict[str, Any]) -> dict[str, Any]:
+def _rf_node_to_domain(rf: dict[str, object]) -> dict[str, object]:
     nid = str(rf["id"])
     ntype = str(rf.get("type", ""))
     pos_raw = rf.get("position")
-    pos: dict[str, Any] = pos_raw if isinstance(pos_raw, dict) else {}
+    pos: dict[str, object] = pos_raw if isinstance(pos_raw, dict) else {}
     x = float(pos.get("x", 0.0))
     y = float(pos.get("y", 0.0))
     data_raw = rf.get("data")
-    data: dict[str, Any] = data_raw if isinstance(data_raw, dict) else {}
+    data: dict[str, object] = data_raw if isinstance(data_raw, dict) else {}
     if ntype == "operation":
-        out: dict[str, Any] = {
+        out: dict[str, object] = {
             "id": nid,
             "kind": "operation",
             "operation": str(data["operation"]),
@@ -201,7 +204,7 @@ def _rf_node_to_domain(rf: dict[str, Any]) -> dict[str, Any]:
     if ntype not in role_map:
         raise ValueError(f"unsupported react flow node type: {ntype}")
     role = role_map[ntype]
-    shape_node: dict[str, Any] = {
+    shape_node: dict[str, object] = {
         "id": nid,
         "kind": "shape",
         "role": role,
@@ -216,13 +219,13 @@ def _rf_node_to_domain(rf: dict[str, Any]) -> dict[str, Any]:
     return shape_node
 
 
-def _rf_edge_to_domain(rf: dict[str, Any]) -> dict[str, Any]:
+def _rf_edge_to_domain(rf: dict[str, object]) -> dict[str, object]:
     data_raw = rf.get("data")
-    data: dict[str, Any] = data_raw if isinstance(data_raw, dict) else {}
+    data: dict[str, object] = data_raw if isinstance(data_raw, dict) else {}
     kind = data.get("domainKind")
     if kind not in ("input", "output", "delivery"):
         raise ValueError("react flow edge missing data.domainKind")
-    out: dict[str, Any] = {
+    out: dict[str, object] = {
         "from": str(rf["source"]),
         "to": str(rf["target"]),
         "kind": kind,

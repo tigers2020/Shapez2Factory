@@ -14,7 +14,6 @@ from __future__ import annotations
 import base64
 import gzip
 import json
-from typing import Any
 
 from django_apps.asteroid_lab.snapshots.copy_json_coords import raw_x_to_export_column
 
@@ -43,7 +42,7 @@ def resolve_blueprint_code_version(target_game_version: int) -> str:
     return prefix
 
 
-OFFICIAL_ISLAND_ICON: dict[str, Any] = {
+OFFICIAL_ISLAND_ICON: dict[str, object] = {
     "Data": ["icon:Platforms", None, None, "shape:RuRuRuRu"],
 }
 
@@ -57,7 +56,7 @@ CONNECTED_BRANCH_FLUID_PIPE_JSON_BYTES = gzip.decompress(CONNECTED_BRANCH_FLUID_
 _GAME_ENTRY_KEYS = frozenset({"X", "Y", "R", "T"})
 
 
-def _as_int(val: Any) -> int:
+def _as_int(val: object) -> int:
     if val is None:
         return 0
     if isinstance(val, bool):
@@ -86,8 +85,8 @@ _FIELD_EXPORT_TILES: frozenset[str] = frozenset(
 )
 
 
-def _strip_lab_entry(row: dict[str, Any]) -> dict[str, Any]:
-    out: dict[str, Any] = {}
+def _strip_lab_entry(row: dict[str, object]) -> dict[str, object]:
+    out: dict[str, object] = {}
     for k in _GAME_ENTRY_KEYS:
         if k not in row:
             continue
@@ -98,7 +97,7 @@ def _strip_lab_entry(row: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _export_anchor(entries: list[dict[str, Any]]) -> tuple[int, int]:
+def _export_anchor(entries: list[dict[str, object]]) -> tuple[int, int]:
     """Anchor for lab → official XY: miner first, else min ``Layout_*MinerExtension``."""
 
     miners: list[tuple[int, int]] = []
@@ -118,18 +117,18 @@ def _export_anchor(entries: list[dict[str, Any]]) -> tuple[int, int]:
     raise ValueError(msg)
 
 
-def _extractor_anchor(entries: list[dict[str, Any]]) -> tuple[int, int]:
+def _extractor_anchor(entries: list[dict[str, object]]) -> tuple[int, int]:
     return _export_anchor(entries)
 
 
-def _coords_look_like_game_export(entries: list[dict[str, Any]]) -> bool:
+def _coords_look_like_game_export(entries: list[dict[str, object]]) -> bool:
     """True when blueprint ``X`` values match in-game paste space (negative columns common)."""
 
     xs = [_as_int(row.get("X")) for row in entries if isinstance(row, dict)]
     return bool(xs) and min(xs) < 0
 
 
-def strip_lab_fields_from_root(root: dict[str, Any]) -> dict[str, Any]:
+def strip_lab_fields_from_root(root: dict[str, object]) -> dict[str, object]:
     """Return a shallow copy without lab-only top-level keys."""
 
     bp_in = root.get("BP")
@@ -141,18 +140,18 @@ def strip_lab_fields_from_root(root: dict[str, Any]) -> dict[str, Any]:
         msg = "expected BP.Entries list"
         raise ValueError(msg)
 
-    entries: list[dict[str, Any]] = []
+    entries: list[dict[str, object]] = []
     for item in entries_raw:
         if not isinstance(item, dict):
             continue
         entries.append(dict(item))
 
-    bp: dict[str, Any] = {"$type": str(bp_in.get("$type", "Island")), "Entries": entries}
+    bp: dict[str, object] = {"$type": str(bp_in.get("$type", "Island")), "Entries": entries}
     for k in ("Icon", "BinaryVersion", "B"):
         if k in bp_in:
             bp[k] = bp_in[k]
 
-    out: dict[str, Any] = {"V": root.get("V"), "BP": bp}
+    out: dict[str, object] = {"V": root.get("V"), "BP": bp}
     for k, v in root.items():
         if k.startswith("_") or k in ("V", "BP"):
             continue
@@ -160,7 +159,9 @@ def strip_lab_fields_from_root(root: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def translate_lab_entries_to_official_xy(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def translate_lab_entries_to_official_xy(
+    entries: list[dict[str, object]],
+) -> list[dict[str, object]]:
     """Lab raw ``X,Y`` → game export ``X,Y`` (dense column anchor).
 
     Let ``(ex_x, ex_y)`` be the extractor raw cell (minimum ``(X,Y)`` among miners). Let
@@ -175,7 +176,7 @@ def translate_lab_entries_to_official_xy(entries: list[dict[str, Any]]) -> list[
     stripped = [_strip_lab_entry(dict(e)) for e in entries if isinstance(e, dict)]
     ex_x, ex_y = _extractor_anchor(stripped)
     ex_col = raw_x_to_export_column(ex_x)
-    out: list[dict[str, Any]] = []
+    out: list[dict[str, object]] = []
     for row in stripped:
         x = _as_int(row.get("X"))
         y = _as_int(row.get("Y"))
@@ -191,10 +192,10 @@ def translate_lab_entries_to_official_xy(entries: list[dict[str, Any]]) -> list[
     return out
 
 
-def _field_export_entries(entries_raw: list[Any]) -> list[dict[str, Any]]:
+def _field_export_entries(entries_raw: list[object]) -> list[dict[str, object]]:
     """Keep only Extension field tiles for in-game asteroid-field paste (no miners/pipes)."""
 
-    out: list[dict[str, Any]] = []
+    out: list[dict[str, object]] = []
     for item in entries_raw:
         if not isinstance(item, dict):
             continue
@@ -206,7 +207,7 @@ def _field_export_entries(entries_raw: list[Any]) -> list[dict[str, Any]]:
     return out
 
 
-def to_game_paste_island_root(lab_layout_root: dict[str, Any]) -> dict[str, Any]:
+def to_game_paste_island_root(lab_layout_root: dict[str, object]) -> dict[str, object]:
     """Build island JSON for in-game paste.
 
     Field tiles only (``Layout_*MinerExtension``). Game-import coordinates (``X < 0``) are kept;
@@ -234,7 +235,7 @@ def to_game_paste_island_root(lab_layout_root: dict[str, Any]) -> dict[str, Any]
             },
         }
 
-    tmp_root: dict[str, Any] = {
+    tmp_root: dict[str, object] = {
         "V": base.get("V", OFFICIAL_BINARY_VERSION),
         "BP": {
             "$type": "Island",
@@ -246,7 +247,7 @@ def to_game_paste_island_root(lab_layout_root: dict[str, Any]) -> dict[str, Any]
     return to_official_island_root(tmp_root)
 
 
-def to_official_island_root(lab_layout_root: dict[str, Any]) -> dict[str, Any]:
+def to_official_island_root(lab_layout_root: dict[str, object]) -> dict[str, object]:
     """Build ``V``/``BP`` dict matching game island export (1137 + Icon + BinaryVersion)."""
 
     base = strip_lab_fields_from_root(lab_layout_root)
@@ -256,7 +257,7 @@ def to_official_island_root(lab_layout_root: dict[str, Any]) -> dict[str, Any]:
     assert isinstance(entries_raw, list)
     official_entries = translate_lab_entries_to_official_xy(entries_raw)
 
-    bp: dict[str, Any] = {
+    bp: dict[str, object] = {
         "$type": "Island",
         "Icon": dict(OFFICIAL_ISLAND_ICON),
         "Entries": official_entries,
@@ -277,7 +278,7 @@ def _serialize_entry_row(x: int, y: int, r: int, t: str) -> str:
     return "{" + ",".join(parts) + "}"
 
 
-def serialize_game_island_export_bytes(root: dict[str, Any]) -> bytes:
+def serialize_game_island_export_bytes(root: dict[str, object]) -> bytes:
     """Deterministic JSON bytes for island export (field order + default key omission)."""
 
     v = _as_int(root.get("V"))
@@ -333,7 +334,7 @@ def serialize_game_island_export_bytes(root: dict[str, Any]) -> bytes:
     return text.encode("utf-8")
 
 
-def export_dense_x_set(entries: list[dict[str, Any]]) -> set[int]:
+def export_dense_x_set(entries: list[dict[str, object]]) -> set[int]:
     """Dense column indices for export ``X`` values (omitted ``X`` → 0)."""
 
     return {
@@ -341,7 +342,7 @@ def export_dense_x_set(entries: list[dict[str, Any]]) -> set[int]:
     }
 
 
-def export_dense_x_is_contiguous(entries: list[dict[str, Any]]) -> bool:
+def export_dense_x_is_contiguous(entries: list[dict[str, object]]) -> bool:
     """True when dense(export X) values form a contiguous interval with no gaps."""
 
     dense = export_dense_x_set(entries)
@@ -352,7 +353,7 @@ def export_dense_x_is_contiguous(entries: list[dict[str, Any]]) -> bool:
 
 
 def encode_official_copy_string(
-    root: dict[str, Any],
+    root: dict[str, object],
     *,
     target_game_version: int = 4,
 ) -> str:
@@ -369,7 +370,7 @@ def encode_official_copy_string(
     return f"{prefix}{b64}"
 
 
-def make_minimal_official_root() -> dict[str, Any]:
+def make_minimal_official_root() -> dict[str, object]:
     """Return a valid empty island root dict (useful for tests and stub exports)."""
     return {
         "V": 1,

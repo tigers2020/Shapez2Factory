@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any
 
 from django.db import transaction
 
@@ -21,12 +20,12 @@ from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
 )
 
 
-def _count_bp_dict_entries(decoded_json: dict[str, Any]) -> int:
+def _count_bp_dict_entries(decoded_json: dict[str, object]) -> int:
     bp = decoded_json.get("BP")
     if not isinstance(bp, dict):
         return 0
     entries_raw = bp.get("Entries")
-    entries: list[Any] = entries_raw if isinstance(entries_raw, list) else []
+    entries: list[object] = entries_raw if isinstance(entries_raw, list) else []
     return sum(1 for item in entries if isinstance(item, dict))
 
 

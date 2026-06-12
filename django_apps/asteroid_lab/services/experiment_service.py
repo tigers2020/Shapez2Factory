@@ -6,8 +6,6 @@ using in-memory DTOs — never read ``ReplayFrame`` / ``ReplayTrack`` as algorit
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.db import transaction
 
 from django_apps.asteroid_lab.models import AsteroidProject, ReplayTrack, SolverRun
@@ -24,7 +22,7 @@ def create_solver_run(
     *,
     run_key: str,
     algorithm_label: str,
-    config: dict[str, Any],
+    config: dict[str, object],
 ) -> SolverRunDTO:
     """Insert one ``SolverRun`` plus default ``ReplayTrack`` scaffolding.
 
@@ -59,7 +57,7 @@ def create_or_replace_solver_run(
     *,
     run_key: str,
     algorithm_label: str,
-    config: dict[str, Any],
+    config: dict[str, object],
 ) -> SolverRunDTO:
     """Insert a ``SolverRun``, replacing any prior row for the same ``(project, run_key)``.
 
@@ -138,7 +136,7 @@ def resolve_inspection_solver_run(
     *,
     run_key: str,
     algorithm_label: str,
-    config: dict[str, Any] | None = None,
+    config: dict[str, object] | None = None,
     overwrite: bool = False,
 ) -> SolverRunDTO:
     """Create a new inspection run, or reuse and clear frames when ``overwrite`` is true."""

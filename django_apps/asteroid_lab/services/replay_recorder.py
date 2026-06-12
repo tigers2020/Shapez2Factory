@@ -7,7 +7,6 @@ database for use as solver decisions.
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
 
 from django.db import transaction
 
@@ -53,8 +52,8 @@ class ReplayRecorder:
             return True
         return False
 
-    def _payload_dict(self, event: SnapshotEventDTO) -> dict[str, Any]:
-        body: dict[str, Any] = asdict(event)
+    def _payload_dict(self, event: SnapshotEventDTO) -> dict[str, object]:
+        body: dict[str, object] = asdict(event)
         if not self._policy.capture_before_after:
             body["before_state_json"] = {}
             body["after_state_json"] = {}

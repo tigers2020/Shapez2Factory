@@ -1,8 +1,8 @@
 """Shapez 2 island height layer (L=0/1/2) for replay wire cells.
 
-Golden map copy strings use three stacked planes (floor / fluid / void transport).
-Replay UI filters on ``layer``; explicit decode values win, otherwise infer from
-cell_kind + transport_kind + tile_type.
+BP.Entries ``L`` defaults to 0 (floor). L=1 is the void / lift plane (fluid pipes, all
+``Lift*`` rift tiles including Lift2). L=2 is explicit copy height only when wire carries
+``layer`` / ``L`` / ``z`` / ``Z``. Otherwise infer: ``Lift*`` in tile → 1; floor belt → 0.
 """
 
 from __future__ import annotations
@@ -25,19 +25,6 @@ _FLUID_FIELD_KINDS = frozenset(
         "asteroid_fluid_field",
         "fluid_miner",
         "fluid_miner_extension",
-    }
-)
-_VOID_TRANSPORT_KINDS = frozenset(
-    {
-        "space_belt",
-        "shape_belt",
-        "route_probe_path",
-        "route_path",
-        "route_probe",
-        "route_goal",
-        "confirmed_route",
-        "candidate_route_path",
-        "overlap_conflict",
     }
 )
 _FLUID_TRANSPORT_KINDS = frozenset(
@@ -92,6 +79,16 @@ def wire_explicit_height_layer(data: Mapping[str, object]) -> int | None:
     return None
 
 
+def _layer_from_tile_type(tile: str) -> int | None:
+    if "Lift" in tile:
+        return 1
+    if "SpacePipe" in tile or tile.startswith("SpacePipe"):
+        return 1
+    if "SpaceBelt" in tile or tile.startswith("SpaceBelt"):
+        return 0
+    return None
+
+
 def resolve_replay_height_layer(
     *,
     cell_kind: str = "",
@@ -106,6 +103,10 @@ def resolve_replay_height_layer(
     transport = str(transport_kind or "")
     tile = str(tile_type or "")
 
+    tile_layer = _layer_from_tile_type(tile)
+    if tile_layer is not None:
+        return tile_layer
+
     if kind == "candidate_miner":
         if transport in _FLUID_TRANSPORT_VALUES:
             return 1
@@ -114,12 +115,10 @@ def resolve_replay_height_layer(
     if kind == "candidate_transport_stub":
         if transport in _FLUID_TRANSPORT_VALUES:
             return 1
-        return 2
+        return 0
 
-    if kind in _VOID_TRANSPORT_KINDS:
-        if transport in _FLUID_TRANSPORT_VALUES and kind not in {"space_belt", "shape_belt"}:
-            return 1
-        return 2
+    if kind == "space_belt":
+        return 0
 
     if kind in _FLUID_TRANSPORT_KINDS:
         return 1
@@ -133,16 +132,7 @@ def resolve_replay_height_layer(
     if "route" in kind:
         if transport in _FLUID_TRANSPORT_VALUES:
             return 1
-        return 2
-
-    if "SpacePipe" in tile or tile.startswith("SpacePipe"):
-        return 1
-    if "SpaceBelt" in tile or tile.startswith("SpaceBelt"):
-        return 2
-    if "Lift2" in tile:
-        return 2
-    if "Lift1" in tile:
-        return 1
+        return 0
 
     return 0
 

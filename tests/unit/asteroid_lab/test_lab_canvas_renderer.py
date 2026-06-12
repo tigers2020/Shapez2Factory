@@ -9,6 +9,8 @@ JS_DIR = REPO / "django_apps" / "web" / "static" / "web" / "js"
 TPL = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
 LAB_JS = JS_DIR / "asteroid_miner_layout_lab.js"
 SANITIZE_JS = JS_DIR / "lab_replay_wire_sanitize.js"
+HEIGHT_JS = JS_DIR / "lab_replay_height_layer.js"
+OVERLAY_REGISTRY_JS = JS_DIR / "lab_replay_overlay_bucket_registry.js"
 PAINT_JS = JS_DIR / "lab_replay_paint_plan.js"
 EFFECTIVE_CELL_JS = JS_DIR / "lab_effective_cell_view.js"
 
@@ -66,7 +68,8 @@ def test_lab_map_z_layer_picker_contract() -> None:
     assert "L=1 · Layer 1" in src
     assert "L=2 · Layer 2" in src
     assert "function labCellMapZ(" in src
-    assert "function inferLabCellMapZ(" in src
+    assert "LabReplayHeightLayer.resolveReplayHeightLayerForWireRow" in src
+    assert "function inferLabCellMapZ(" not in src
     assert "function cellPassesMapZFilter(" in src
     assert 'id="lab-replay-layer-picker"' in tpl
     assert 'id="lab-replay-grid-viewport"' in tpl
@@ -76,6 +79,15 @@ def test_lab_map_z_layer_picker_contract() -> None:
     assert "absolute bottom-3 right-3" in tpl
     assert 'input.type = "radio"' in src
     assert "labMapZSelectedLayer" in src
+
+
+def test_lab_js_collect_overlay_paint_targets_uses_registry() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    body = src.split("function collectOverlayPaintTargets(", 1)[1].split(
+        "function isSparseReplayFrame(", 1
+    )[0]
+    assert "LabReplayOverlayBucketRegistry.collectOverlayCellsForPaintTarget" in body
+    assert "equipment_bundles" in body
 
 
 def test_collect_replay_spatial_coords_includes_cell_overlay_json() -> None:
@@ -116,6 +128,27 @@ def test_lab_sprite_path_handles_space_belt_transport_wire() -> None:
     assert "SpaceBelt_Forward" in src
 
 
+def test_js_lab_replay_overlay_bucket_registry_module_contract() -> None:
+    src = OVERLAY_REGISTRY_JS.read_text(encoding="utf-8")
+    assert "LabReplayOverlayBucketRegistry" in src
+    assert "collectOverlayCellsForPaintTarget" in src
+
+
+def test_js_lab_replay_height_layer_module_contract() -> None:
+    src = HEIGHT_JS.read_text(encoding="utf-8")
+    assert "LabReplayHeightLayer" in src
+    assert "enrichReplayWireRowWithLayer" in src
+
+
+def test_js_paint_plan_enriches_height_layer_before_index() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "enrichWireRowWithLayer" in src
+    index_body = src.split("function buildEffectiveCellViewIndex(", 1)[1].split(
+        "function buildEffectiveCellViewIndexWithCarry(", 1
+    )[0]
+    assert "enrichWireRowWithLayer" in index_body
+
+
 def test_js_lab_paint_layers_from_view_exists() -> None:
     src = PAINT_JS.read_text(encoding="utf-8")
     assert "function labPaintLayersFromView" in src
@@ -125,8 +158,12 @@ def test_js_lab_paint_layers_from_view_exists() -> None:
 
 def test_template_loads_lab_replay_paint_plan_js() -> None:
     tpl = TPL.read_text(encoding="utf-8")
+    assert "lab_replay_height_layer.js" in tpl
+    assert "lab_replay_overlay_bucket_registry.js" in tpl
     assert "lab_replay_paint_plan.js" in tpl
-    assert tpl.index("lab_effective_cell_view.js") < tpl.index("lab_replay_paint_plan.js")
+    assert tpl.index("lab_effective_cell_view.js") < tpl.index("lab_replay_height_layer.js")
+    assert tpl.index("lab_replay_height_layer.js") < tpl.index("lab_replay_overlay_bucket_registry.js")
+    assert tpl.index("lab_replay_overlay_bucket_registry.js") < tpl.index("lab_replay_paint_plan.js")
 
 
 def test_js_paint_plan_contains_candidate_priority_guard() -> None:
@@ -137,6 +174,16 @@ def test_js_paint_plan_contains_candidate_priority_guard() -> None:
     candidate_idx = transport_fn.index("candidate_miner")
     guard_region = transport_fn[candidate_idx : candidate_idx + 120]
     assert "null" in guard_region
+
+
+def test_js_paint_plan_map_z_filter_helpers() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function effectiveWirePassesMapZFilter(" in src
+    assert "selectedMapZLayer" in src
+    body = src.split("function buildLabPaintPlanFromFrame(", 1)[1].split(
+        "function collectSpriteRelsFromPaintPlanFrames(", 1
+    )[0]
+    assert "effectiveWirePassesMapZFilter(wire, ck, options)" in body
 
 
 def test_js_build_lab_paint_plan_from_frame_exists() -> None:
@@ -324,6 +371,8 @@ def test_lab_js_lab_paint_v2_enabled_helper() -> None:
     assert "replayArrayIndex" in plan_body
     assert "replayFrames" in plan_body
     assert "hasServerReplay" in plan_body
+    assert "selectedMapZLayer" in plan_body
+    assert "labMapZSelectedLayer" in plan_body
 
 
 def test_lab_js_paint_d_prime_flag_contract_step_6_1() -> None:

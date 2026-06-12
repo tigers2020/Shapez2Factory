@@ -278,6 +278,36 @@
     return matches.length ? matches[0] : null;
   }
 
+  var MAP_Z_LAYER_ALL = -1;
+
+  function mapZLayerVisible(selectedLayer, z) {
+    if (selectedLayer == null || selectedLayer === MAP_Z_LAYER_ALL) {
+      return true;
+    }
+    var plane = Math.max(0, Math.min(2, Math.trunc(Number(z))));
+    return plane === Math.trunc(Number(selectedLayer));
+  }
+
+  function effectiveWirePassesMapZFilter(wire, cellKeyStr, options) {
+    options = options || {};
+    if (options.selectedMapZLayer == null || options.selectedMapZLayer === MAP_Z_LAYER_ALL) {
+      return true;
+    }
+    var coord = coordFromWireOrKey(wire, cellKeyStr);
+    var cellLike = cellLikeFromEffectiveWire(wire);
+    cellLike.x = coord.x;
+    cellLike.y = coord.y;
+    cellLike.layer = coord.layer;
+    var z = coord.layer;
+    if (
+      typeof LabReplayHeightLayer !== "undefined" &&
+      LabReplayHeightLayer.resolveReplayHeightLayerForWireRow
+    ) {
+      z = LabReplayHeightLayer.resolveReplayHeightLayerForWireRow(cellLike);
+    }
+    return mapZLayerVisible(options.selectedMapZLayer, z);
+  }
+
   function cellOverlayJsonFromFrame(frame) {
     if (!frame || typeof frame !== "object") {
       return null;
@@ -293,29 +323,22 @@
     return null;
   }
 
-  function pushOverlayCellList(out, rows) {
-    if (!Array.isArray(rows)) {
-      return;
-    }
-    for (var i = 0; i < rows.length; i++) {
-      if (rows[i] && typeof rows[i] === "object") {
-        out.push(Object.assign({}, rows[i]));
-      }
-    }
-  }
-
   function overlayJsonRowsFromFrame(frame) {
     var overlay = cellOverlayJsonFromFrame(frame);
     if (!overlay) {
       return [];
     }
-    var out = [];
-    pushOverlayCellList(out, overlay.cells);
-    pushOverlayCellList(out, overlay.equipment_cells);
-    pushOverlayCellList(out, overlay.equipment);
-    pushOverlayCellList(out, overlay.adjacent_transport);
-    pushOverlayCellList(out, overlay.transport);
-    return out;
+    if (
+      typeof LabReplayOverlayBucketRegistry !== "undefined" &&
+      LabReplayOverlayBucketRegistry.collectOverlayCellsForPaintTarget
+    ) {
+      return LabReplayOverlayBucketRegistry.collectOverlayCellsForPaintTarget(overlay).map(
+        function (row) {
+          return Object.assign({}, row);
+        },
+      );
+    }
+    return [];
   }
 
   function collectCoordUniverse(mapView, extraRows) {
@@ -364,6 +387,16 @@
     return cell;
   }
 
+  function enrichWireRowWithLayer(row) {
+    if (
+      typeof LabReplayHeightLayer !== "undefined" &&
+      LabReplayHeightLayer.enrichReplayWireRowWithLayer
+    ) {
+      return LabReplayHeightLayer.enrichReplayWireRowWithLayer(row);
+    }
+    return row;
+  }
+
   function mergeCellView(options) {
     if (
       typeof LabEffectiveCellView !== "undefined" &&
@@ -409,26 +442,28 @@
     if (Array.isArray(fullSource)) {
       for (i = 0; i < fullSource.length; i++) {
         if (fullSource[i] && typeof fullSource[i] === "object") {
-          fullRows.push(Object.assign({}, fullSource[i]));
+          fullRows.push(enrichWireRowWithLayer(Object.assign({}, fullSource[i])));
         }
       }
     }
     if (Array.isArray(overlaySource)) {
       for (i = 0; i < overlaySource.length; i++) {
         if (overlaySource[i] && typeof overlaySource[i] === "object") {
-          overlayRows.push(Object.assign({}, overlaySource[i]));
+          overlayRows.push(enrichWireRowWithLayer(Object.assign({}, overlaySource[i])));
         }
       }
     }
     if (Array.isArray(deltaSource)) {
       for (i = 0; i < deltaSource.length; i++) {
         if (deltaSource[i] && typeof deltaSource[i] === "object") {
-          deltaRows.push(Object.assign({}, deltaSource[i]));
+          deltaRows.push(enrichWireRowWithLayer(Object.assign({}, deltaSource[i])));
         }
       }
     }
 
-    var overlayJsonRows = overlayJsonRowsFromFrame(frame);
+    var overlayJsonRows = overlayJsonRowsFromFrame(frame).map(function (row) {
+      return enrichWireRowWithLayer(row);
+    });
 
     var frameIndex = null;
     if (frame.frame_index != null) {
@@ -437,7 +472,14 @@
     }
 
     var index = {};
-    var universe = collectCoordUniverse(mapView, overlayJsonRows);
+    var universe = collectCoordUniverse(
+      {
+        full_cells: fullRows,
+        overlay_cells: overlayRows,
+        cell_delta: deltaRows,
+      },
+      overlayJsonRows,
+    );
     for (i = 0; i < universe.length; i++) {
       var x = universe[i][0];
       var y = universe[i][1];
@@ -917,6 +959,9 @@
       var wire = index[ck];
       var layers = labPaintLayersFromView(wire);
       var coord = coordFromWireOrKey(wire, ck);
+      if (!effectiveWirePassesMapZFilter(wire, ck, options)) {
+        continue;
+      }
       if (typeof resolveCellIndex !== "function") {
         continue;
       }

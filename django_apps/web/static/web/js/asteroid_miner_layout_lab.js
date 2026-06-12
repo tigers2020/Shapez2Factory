@@ -190,7 +190,7 @@
     const plan = LabReplayPaintPlan.buildLabPaintPlanFromFrame(
       frame,
       resolveCellIndex,
-      paintOptions || {},
+      Object.assign({}, paintOptions || {}, { selectedMapZLayer: labMapZSelectedLayer }),
     );
     const fieldSpriteIdx = new Set();
     const sprites = plan.sprites || [];
@@ -1067,27 +1067,13 @@
   }
 
   function wireExplicitLabCellMapZ(cell) {
-    if (!cell || typeof cell !== "object") {
-      return null;
+    if (
+      typeof LabReplayHeightLayer !== "undefined" &&
+      LabReplayHeightLayer.wireExplicitHeightLayer
+    ) {
+      return LabReplayHeightLayer.wireExplicitHeightLayer(cell);
     }
-    const raw =
-      cell.layer != null
-        ? cell.layer
-        : cell.L != null
-          ? cell.L
-          : cell.z != null
-            ? cell.z
-            : cell.Z != null
-              ? cell.Z
-              : null;
-    if (raw == null || raw === "") {
-      return null;
-    }
-    const n = Number(raw);
-    if (!Number.isFinite(n)) {
-      return null;
-    }
-    return Math.max(0, Math.min(2, Math.trunc(n)));
+    return null;
   }
 
   function normalizeReplayWireCell(c) {
@@ -1367,13 +1353,25 @@
     const out = [];
     if (!overlay || typeof overlay !== "object") return out;
 
-    pushCellList(out, overlay.cells, "");
-    pushCellList(out, overlay.equipment_cells, "equipment");
-    pushCellList(out, overlay.equipment, "equipment");
-    pushCellList(out, overlay.adjacent_transport, "adjacent_transport");
+    if (
+      typeof LabReplayOverlayBucketRegistry !== "undefined" &&
+      LabReplayOverlayBucketRegistry.collectOverlayCellsForPaintTarget
+    ) {
+      const paintRows =
+        LabReplayOverlayBucketRegistry.collectOverlayCellsForPaintTarget(overlay);
+      for (let i = 0; i < paintRows.length; i++) {
+        out.push({ cell: paintRows[i], role: "" });
+      }
+    } else {
+      pushCellList(out, overlay.cells, "");
+      pushCellList(out, overlay.equipment_cells, "equipment");
+      pushCellList(out, overlay.equipment, "equipment");
+      pushCellList(out, overlay.adjacent_transport, "adjacent_transport");
+      pushCellList(out, overlay.transport, "transport");
+    }
+
     pushFromComponentBlocks(out, overlay.components, "transport");
     pushFromComponentBlocks(out, overlay.transport_components, "transport");
-    pushCellList(out, overlay.transport, "transport");
 
     const main = overlay.main_component_candidate;
     if (main && typeof main === "object") {
@@ -1395,6 +1393,7 @@
       "transport",
       "main_component_candidate",
       "cleanup_candidate_cells",
+      "equipment_bundles",
     ]);
     const keys = Object.keys(overlay);
     for (let k = 0; k < keys.length; k++) {
@@ -1605,74 +1604,15 @@
   /** Active Shapez height layer (L); ``LAB_MAP_Z_LAYER_ALL`` shows every plane. */
   var labMapZSelectedLayer = LAB_MAP_Z_LAYER_ALL;
 
-  function inferLabCellMapZ(cell) {
-    const kind = overlayCellKind(cell);
-    const transport = String(cell.transport_kind || cell.transport || "");
-    const tile = String(cell.tile_type || cell.sprite_identifier || "");
-
-    var normalizedTransport =
-      typeof LabEffectiveCellView !== "undefined"
-        ? LabEffectiveCellView.normalizeProjectTransportKind(transport)
-        : transport;
-    if (kind === "candidate_miner") {
-      return normalizedTransport === "space_pipe" ? 1 : 0;
-    }
-    if (kind === "candidate_transport_stub") {
-      return normalizedTransport === "space_pipe" ? 1 : 2;
-    }
-    if (
-      kind === "space_belt" ||
-      kind === "route_probe_path" ||
-      kind === "route_path" ||
-      kind === "route_probe" ||
-      kind === "route_goal" ||
-      kind === "confirmed_route" ||
-      kind === "candidate_route_path" ||
-      kind === "overlap_conflict"
-    ) {
-      if (normalizedTransport === "space_pipe" && kind !== "space_belt") {
-        return 1;
-      }
-      return 2;
-    }
-    if (kind === "space_pipe") {
-      return 1;
-    }
-    if (
-      kind === "asteroid_fluid_field" ||
-      kind === "fluid_miner" ||
-      kind === "fluid_miner_extension" ||
-      normalizedTransport === "space_pipe"
-    ) {
-      return 1;
-    }
-    if (
-      kind === "asteroid_shape_field" ||
-      kind === "shape_miner" ||
-      kind === "shape_miner_extension" ||
-      kind === "inner_field_block" ||
-      normalizedTransport === "space_belt"
-    ) {
-      return 0;
-    }
-    if (kind.indexOf("route") >= 0) {
-      return normalizedTransport === "space_pipe" ? 1 : 2;
-    }
-    if (tile.indexOf("SpacePipe") >= 0 || tile.indexOf("Lift1") >= 0) {
-      return 1;
-    }
-    if (tile.indexOf("SpaceBelt") >= 0 || tile.indexOf("Lift2") >= 0) {
-      return 2;
-    }
-    return 0;
-  }
-
   function labCellMapZ(cell) {
-    const explicit = wireExplicitLabCellMapZ(cell);
-    if (explicit != null) {
-      return explicit;
+    if (
+      typeof LabReplayHeightLayer !== "undefined" &&
+      LabReplayHeightLayer.resolveReplayHeightLayerForWireRow
+    ) {
+      return LabReplayHeightLayer.resolveReplayHeightLayerForWireRow(cell);
     }
-    return inferLabCellMapZ(cell);
+    const explicit = wireExplicitLabCellMapZ(cell);
+    return explicit != null ? explicit : 0;
   }
 
   function labMapZLayerVisible(z) {
@@ -3582,6 +3522,7 @@
           replayArrayIndex: replayArrayIndex,
           replayFrames: replayFrames,
           hasServerReplay: hasServerReplay,
+          selectedMapZLayer: labMapZSelectedLayer,
         });
       }
       return { overlays: [], sprites: [] };

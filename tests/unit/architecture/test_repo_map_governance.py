@@ -104,7 +104,7 @@ def test_structure_md_top_level_paths_exist() -> None:
 def test_agents_md_links_structure_sot() -> None:
     agents = _read(_AGENTS_MD)
     assert "structure.md" in agents
-    assert "Shapez2 Routing" in agents
+    assert "## Shapez2" in agents
 
 
 @pytest.mark.unit

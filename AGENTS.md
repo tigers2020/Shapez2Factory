@@ -56,7 +56,7 @@ Classify strictness → authority split → matching gates → evidence → STOP
 6. **Verify:** command + exit code + summary; tier matches strictness (`validation-routine.md`).
 7. **Delivery:** one PR-sized purpose; no commit/push/PR unless user asks.
 
-Read when domain authority missing: `structure.md` → `documents/ai/START_HERE.md` → canon/spec → code/tests.
+Read when domain authority missing: `structure.md` → `documents/knowledge/raw/ai/START_HERE.md` → canon/spec → code/tests.
 
 ## Shapez2
 

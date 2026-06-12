@@ -5,7 +5,8 @@ Companion: [`typing_contracts.md`](typing_contracts.md) · [`docs/superpowers/sp
 
 **Canon path:** `documents/ai/manuals/typing_boundary_layers.md`
 
-Use this manual during the **typing-zero** loop (`scripts/typing_zero_next_wake.py`, PR `#284`).
+Use this manual during the **typing-zero** loop.  
+**Invoke:** `/typing-zero-loop` or `/loop typing-zero` (skill: `.cursor/skills/typing-zero-loop/SKILL.md`).
 
 ---
 
@@ -174,7 +175,7 @@ def overlay_cell_to_wire(view: ReplayOverlayCellView) -> ReplayOverlayCellWire:
 
 - Run full validation **once:** `manage.py check`, `test_full.ps1`, repo `mypy` / `ruff` / `black`, CI + Bugbot
 
-**Re-arm chain:** `powershell -NoProfile -File .cursor/typing-zero-loop.ps1`
+**Re-arm chain:** `powershell -NoProfile -File .cursor/arm-typing-zero-loop.ps1`
 
 ---
 

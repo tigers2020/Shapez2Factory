@@ -60,7 +60,7 @@ def main() -> int:
             "python scripts/check_typing_debt.py) "
             "5) commit+push same PR. NO test_full, NO Bugbot wait until Any=0. "
             "Immediately start next slice; re-arm: "
-            "powershell -NoProfile -File .cursor/typing-zero-loop.ps1"
+            "powershell -NoProfile -File .cursor/arm-typing-zero-loop.ps1"
         )
 
     payload = {"prompt": prompt, "any_remaining": any_total, "manual": MANUAL}

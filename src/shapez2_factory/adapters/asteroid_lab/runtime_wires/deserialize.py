@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any
 
 from shapez2_factory.adapters.asteroid_lab.runtime_wires.envelope import (
     DIAGNOSTIC_L3_ORDER_INVALID,
@@ -48,32 +47,32 @@ from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 
 @dataclass(frozen=True, slots=True)
 class RuntimeWiresProjectionBundle:
-    exterior_plan_wire: dict[str, Any] | None
+    exterior_plan_wire: dict[str, object] | None
     rim_greedy: IntegratedRimGreedyResult | None
     inner_fill: Layer04InnerFillResult | None
     route_plan: Layer05RoutePlan | None
 
 
-def _coord_from_dict(data: dict[str, Any]) -> Coord:
+def _coord_from_dict(data: dict[str, object]) -> Coord:
     return (int(data["x"]), int(data["y"]))
 
 
-def _coords_from_list(items: list[dict[str, Any]]) -> frozenset[Coord]:
+def _coords_from_list(items: list[dict[str, object]]) -> frozenset[Coord]:
     return frozenset(_coord_from_dict(item) for item in items)
 
 
-def _coords_tuple_from_list(items: list[dict[str, Any]]) -> tuple[Coord, ...]:
+def _coords_tuple_from_list(items: list[dict[str, object]]) -> tuple[Coord, ...]:
     return tuple(_coord_from_dict(item) for item in items)
 
 
-def _require_dict(value: Any, *, field: str) -> dict[str, Any]:
+def _require_dict(value: object, *, field: str) -> dict[str, object]:
     if not isinstance(value, dict):
         msg = f"{field} must be a dict"
         raise RuntimeWireValidationError("runtime_wire_invalid_shape", msg)
     return value
 
 
-def _deserialize_rim_greedy_metrics(data: dict[str, Any]) -> RimGreedyMetrics:
+def _deserialize_rim_greedy_metrics(data: dict[str, object]) -> RimGreedyMetrics:
     return RimGreedyMetrics(
         rim_anchor_count=int(data.get("rim_anchor_count", 0)),
         route_feasible_rim_anchor_count=int(data.get("route_feasible_rim_anchor_count", 0)),
@@ -89,7 +88,7 @@ def _deserialize_rim_greedy_metrics(data: dict[str, Any]) -> RimGreedyMetrics:
     )
 
 
-def _deserialize_committed_placement(item: dict[str, Any]) -> CommittedRimSeedPlacement:
+def _deserialize_committed_placement(item: dict[str, object]) -> CommittedRimSeedPlacement:
     hints = _require_dict(item.get("projection_hints", {}), field="projection_hints")
     route_probe_path = _coords_tuple_from_list(
         list(hints.get("route_probe_path", [])),
@@ -108,7 +107,7 @@ def _deserialize_committed_placement(item: dict[str, Any]) -> CommittedRimSeedPl
     )
 
 
-def _validate_l3_commit_index_order(wire: dict[str, Any]) -> None:
+def _validate_l3_commit_index_order(wire: dict[str, object]) -> None:
     placements = wire.get("committed_placements", [])
     if not isinstance(placements, list):
         msg = "committed_placements must be a list"
@@ -126,7 +125,7 @@ def _validate_l3_commit_index_order(wire: dict[str, Any]) -> None:
             raise RuntimeWireValidationError(DIAGNOSTIC_L3_ORDER_INVALID, msg)
 
 
-def deserialize_l3_wire(wire: dict[str, Any]) -> IntegratedRimGreedyResult:
+def deserialize_l3_wire(wire: dict[str, object]) -> IntegratedRimGreedyResult:
     _validate_l3_commit_index_order(wire)
     metrics = _deserialize_rim_greedy_metrics(
         _require_dict(wire.get("metrics", {}), field="metrics")
@@ -171,7 +170,7 @@ def deserialize_l3_wire(wire: dict[str, Any]) -> IntegratedRimGreedyResult:
     )
 
 
-def _deserialize_inner_placement(item: dict[str, Any]) -> InnerPlacement:
+def _deserialize_inner_placement(item: dict[str, object]) -> InnerPlacement:
     return InnerPlacement(
         coord=_coord_from_dict(_require_dict(item["coord"], field="coord")),
         pattern_id=str(item["pattern_id"]),
@@ -179,7 +178,7 @@ def _deserialize_inner_placement(item: dict[str, Any]) -> InnerPlacement:
     )
 
 
-def _deserialize_routeable_inner_group(item: dict[str, Any]) -> RouteableInnerGroupPlacement:
+def _deserialize_routeable_inner_group(item: dict[str, object]) -> RouteableInnerGroupPlacement:
     return RouteableInnerGroupPlacement(
         placement_id=str(item["placement_id"]),
         anchor=_coord_from_dict(_require_dict(item["anchor"], field="anchor")),
@@ -205,7 +204,7 @@ def _validate_l4_placements_consistency(
         raise RuntimeWireValidationError(DIAGNOSTIC_L4_PLACEMENT_MISMATCH, msg)
 
 
-def _deserialize_layer04_metrics(data: dict[str, Any]) -> Layer04FillMetrics | None:
+def _deserialize_layer04_metrics(data: dict[str, object]) -> Layer04FillMetrics | None:
     if not data:
         return None
     return Layer04FillMetrics(
@@ -217,7 +216,7 @@ def _deserialize_layer04_metrics(data: dict[str, Any]) -> Layer04FillMetrics | N
     )
 
 
-def deserialize_l4_wire(wire: dict[str, Any]) -> Layer04InnerFillResult:
+def deserialize_l4_wire(wire: dict[str, object]) -> Layer04InnerFillResult:
     placements = tuple(
         _deserialize_inner_placement(_require_dict(item, field="placement"))
         for item in wire.get("placements", [])
@@ -245,7 +244,7 @@ def deserialize_l4_wire(wire: dict[str, Any]) -> Layer04InnerFillResult:
     )
 
 
-def _deserialize_projected_transport_tile(item: dict[str, Any]) -> ProjectedTransportTile:
+def _deserialize_projected_transport_tile(item: dict[str, object]) -> ProjectedTransportTile:
     return ProjectedTransportTile(
         coord=_coord_from_dict(_require_dict(item["coord"], field="coord")),
         transport_kind=str(item["transport_kind"]),
@@ -258,7 +257,7 @@ def _deserialize_projected_transport_tile(item: dict[str, Any]) -> ProjectedTran
     )
 
 
-def _deserialize_committed_route(item: dict[str, Any]) -> CommittedRoute:
+def _deserialize_committed_route(item: dict[str, object]) -> CommittedRoute:
     return CommittedRoute(
         route_id=str(item["route_id"]),
         placement_id=str(item["placement_id"]),
@@ -268,7 +267,7 @@ def _deserialize_committed_route(item: dict[str, Any]) -> CommittedRoute:
     )
 
 
-def _deserialize_route_group(item: dict[str, Any]) -> RouteGroupSummary:
+def _deserialize_route_group(item: dict[str, object]) -> RouteGroupSummary:
     return RouteGroupSummary(
         group_id=str(item["group_id"]),
         transport_kind=str(item["transport_kind"]),
@@ -280,7 +279,7 @@ def _deserialize_route_group(item: dict[str, Any]) -> RouteGroupSummary:
     )
 
 
-def _deserialize_layer05_failure(item: dict[str, Any]) -> Layer05Failure:
+def _deserialize_layer05_failure(item: dict[str, object]) -> Layer05Failure:
     return Layer05Failure(
         placement_id=item.get("placement_id"),
         reason=Layer05FailureReason(str(item["reason"])),
@@ -288,7 +287,7 @@ def _deserialize_layer05_failure(item: dict[str, Any]) -> Layer05Failure:
     )
 
 
-def _deserialize_layer05_metrics(data: dict[str, Any]) -> Layer05Metrics:
+def _deserialize_layer05_metrics(data: dict[str, object]) -> Layer05Metrics:
     return Layer05Metrics(
         source_count=int(data.get("source_count", 0)),
         routed_source_count=int(data.get("routed_source_count", 0)),
@@ -298,7 +297,7 @@ def _deserialize_layer05_metrics(data: dict[str, Any]) -> Layer05Metrics:
     )
 
 
-def deserialize_l5_wire(wire: dict[str, Any]) -> Layer05RoutePlan:
+def deserialize_l5_wire(wire: dict[str, object]) -> Layer05RoutePlan:
     route_plan = _require_dict(wire.get("route_plan", {}), field="route_plan")
     return Layer05RoutePlan(
         version=str(route_plan["version"]),
@@ -326,18 +325,18 @@ def deserialize_l5_wire(wire: dict[str, Any]) -> Layer05RoutePlan:
     )
 
 
-def _validate_schema_version(document: dict[str, Any]) -> None:
+def _validate_schema_version(document: dict[str, object]) -> None:
     schema_version = document.get("schema_version")
     if schema_version != RUNTIME_WIRES_SCHEMA_VERSION:
         msg = f"unsupported runtime wire schema_version={schema_version!r}"
         raise RuntimeWireValidationError(DIAGNOSTIC_SCHEMA_UNKNOWN, msg)
 
 
-def deserialize_runtime_wires_document(document: dict[str, Any]) -> RuntimeWiresProjectionBundle:
+def deserialize_runtime_wires_document(document: dict[str, object]) -> RuntimeWiresProjectionBundle:
     _validate_schema_version(document)
     layers = _require_dict(document.get("layers", {}), field="layers")
 
-    exterior_plan_wire: dict[str, Any] | None = None
+    exterior_plan_wire: dict[str, object] | None = None
     l2 = layers.get(LAYER_02_EXTERIOR_TRANSPORT)
     if isinstance(l2, dict):
         plan = l2.get("exterior_connector_plan")

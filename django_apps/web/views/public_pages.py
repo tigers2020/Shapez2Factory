@@ -3,7 +3,7 @@ import re
 import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -220,7 +220,7 @@ def pattern_lab(request: HttpRequest) -> HttpResponse:
 
 def _asteroid_miner_lab_page_context(
     blueprint_code: str, *, project: AsteroidProject | None = None
-) -> dict[str, Any]:
+) -> dict[str, object]:
     ctx = lab_page_context(
         project_id=int(project.pk) if project is not None else None,
         project_slug=str(project.slug) if project is not None else "",
@@ -231,24 +231,24 @@ def _asteroid_miner_lab_page_context(
     ctx["lab_ui_initial"] = ui_initial
     ctx["lab_project_slug"] = str(project.slug) if project is not None else ""
     ctx["lab_identifier_sprite_paths"] = build_lab_identifier_sprite_relpath_map()
-    return cast(dict[str, Any], ctx)
+    return cast(dict[str, object], ctx)
 
 
-def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> dict[str, Any]:
-    frames: list[dict[str, Any]] = []
-    track_metrics: dict[str, Any] = {
+def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> dict[str, object]:
+    frames: list[dict[str, object]] = []
+    track_metrics: dict[str, object] = {
         "frame_count": 0,
         "replay_truncated": False,
         "truncation_reason": None,
         "dropped_frame_count": None,
         "diagnostic_reason": None,
     }
-    initial: dict[str, Any] = {}
+    initial: dict[str, object] = {}
     track: ReplayTrack | None = None
     if track_id is not None:
         track = ReplayTrack.objects.filter(pk=int(track_id)).first()
-    milestone_frames: list[dict[str, Any]] = []
-    milestone_metrics: dict[str, Any] = {
+    milestone_frames: list[dict[str, object]] = []
+    milestone_metrics: dict[str, object] = {
         "track_key": None,
         "frame_count": 0,
         "event_types": [],
@@ -328,7 +328,9 @@ def asteroid_miner_layout_project(request: HttpRequest, slug: str) -> HttpRespon
         return response
 
 
-def _run_solver_request_config(request: HttpRequest) -> tuple[dict[str, Any], JsonResponse | None]:
+def _run_solver_request_config(
+    request: HttpRequest,
+) -> tuple[dict[str, object], JsonResponse | None]:
     """Parse optional JSON POST body into runtime ``config`` (PR-K)."""
 
     if not request.body:
@@ -391,8 +393,8 @@ def _solver_async_enabled(request: HttpRequest) -> bool:
     return bool(getattr(settings, "ASTEROID_LAB_SOLVER_ASYNC_DEFAULT", True))
 
 
-def _reconcile_result_to_status_body(result: SolverRunReconcileResult) -> dict[str, Any]:
-    body: dict[str, Any] = {
+def _reconcile_result_to_status_body(result: SolverRunReconcileResult) -> dict[str, object]:
+    body: dict[str, object] = {
         "ok": result.ok,
         "solver_run_id": result.solver_run_id,
         "status": result.status,
@@ -414,7 +416,7 @@ def _run_solver_post_traced(
     *,
     slug: str,
     project: AsteroidProject,
-    run_config: dict[str, Any],
+    run_config: dict[str, object],
 ) -> JsonResponse:
     with cli_invoke_trace(
         surface="http_run_solver",
@@ -640,7 +642,7 @@ def asteroid_miner_layout_project_solver_run_lab_replay(
                     )
                 with perf_span("replay_cache_persist_ms"):
                     persist_composed_replay_for_run_id(run_pk, frames=frames, metrics=metrics)
-        payload: dict[str, Any] = {
+        payload: dict[str, object] = {
             "schema_version": 1,
             "run_id": int(run.pk),
             "project_slug": str(project.slug),
@@ -699,7 +701,7 @@ def asteroid_miner_layout_project_reset_map(request: HttpRequest, slug: str) -> 
 
     result = reset_project_map_to_inspection_clean(int(project.pk))
     bundle = _lab_json_bundle_for_track_id(result.replay_track_id, copy_code=copy_code)
-    body: dict[str, Any] = {
+    body: dict[str, object] = {
         "ok": result.status == "ok",
         "replay_ok": result.status == "ok",
         "error_message": result.error_message or "",
@@ -792,13 +794,13 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
         redirect_url: str,
         in_place: bool,
         copy_for_blueprint: str,
-        replay_bundle: dict[str, Any],
+        replay_bundle: dict[str, object],
         replay_ok: bool,
         error_message: str,
         project_slug: str = "",
         status: int = 200,
     ) -> JsonResponse:
-        body: dict[str, Any] = {
+        body: dict[str, object] = {
             "ok": ok,
             "redirect": redirect_url,
             "in_place": in_place,
@@ -994,7 +996,7 @@ def support(request: HttpRequest) -> HttpResponse:
     if settings.SUPPORT_PATREON_URL:
         support_links.append({"label": "Patreon", "url": settings.SUPPORT_PATREON_URL})
 
-    support_tabs: list[dict[str, Any]] = []
+    support_tabs: list[dict[str, object]] = []
     if settings.SUPPORT_BCH_ADDRESS:
         support_tabs.append(
             {

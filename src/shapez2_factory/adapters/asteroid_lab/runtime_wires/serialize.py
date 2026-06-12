@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from shapez2_factory.adapters.asteroid_lab.runtime_wires.envelope import (
     COMPLETE_MAP_MANIFEST_PATH_KEY,
     L3_WIRE_VERSION,
@@ -71,8 +69,8 @@ def _layer_envelope(
     outcome: LayerOutcome,
     skip_reason: str | None = None,
     failure_reason: str | None = None,
-    body: dict[str, Any],
-) -> dict[str, Any]:
+    body: dict[str, object],
+) -> dict[str, object]:
     return {
         "layer_slug": layer_slug,
         "outcome": outcome.value,
@@ -82,7 +80,7 @@ def _layer_envelope(
     }
 
 
-def _serialize_rim_greedy_metrics(metrics: RimGreedyMetrics) -> dict[str, Any]:
+def _serialize_rim_greedy_metrics(metrics: RimGreedyMetrics) -> dict[str, object]:
     return {
         "rim_anchor_count": metrics.rim_anchor_count,
         "route_feasible_rim_anchor_count": metrics.route_feasible_rim_anchor_count,
@@ -100,7 +98,7 @@ def _serialize_committed_placement(
     placement: CommittedRimSeedPlacement,
     *,
     commit_index: int,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     return {
         "commit_index": commit_index,
         "placement_id": placement.placement_id,
@@ -124,7 +122,7 @@ def _occupied_coords_from_placements(
     return frozenset(placement.coord for placement in placements)
 
 
-def _serialize_inner_placement(placement: InnerPlacement) -> dict[str, Any]:
+def _serialize_inner_placement(placement: InnerPlacement) -> dict[str, object]:
     return {
         "coord": _coord_to_dict(placement.coord),
         "pattern_id": placement.pattern_id,
@@ -134,7 +132,7 @@ def _serialize_inner_placement(placement: InnerPlacement) -> dict[str, Any]:
 
 def _serialize_routeable_inner_group(
     group: RouteableInnerGroupPlacement,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     return {
         "placement_id": group.placement_id,
         "anchor": _coord_to_dict(group.anchor),
@@ -145,7 +143,7 @@ def _serialize_routeable_inner_group(
     }
 
 
-def _serialize_layer04_metrics(result: Layer04InnerFillResult) -> dict[str, Any]:
+def _serialize_layer04_metrics(result: Layer04InnerFillResult) -> dict[str, object]:
     metrics = result.metrics
     if metrics is None:
         return {}
@@ -158,7 +156,7 @@ def _serialize_layer04_metrics(result: Layer04InnerFillResult) -> dict[str, Any]
     }
 
 
-def _serialize_projected_transport_tile(tile: ProjectedTransportTile) -> dict[str, Any]:
+def _serialize_projected_transport_tile(tile: ProjectedTransportTile) -> dict[str, object]:
     return {
         "coord": _coord_to_dict(tile.coord),
         "transport_kind": tile.transport_kind,
@@ -171,7 +169,7 @@ def _serialize_projected_transport_tile(tile: ProjectedTransportTile) -> dict[st
     }
 
 
-def _serialize_committed_route(route: CommittedRoute) -> dict[str, Any]:
+def _serialize_committed_route(route: CommittedRoute) -> dict[str, object]:
     return {
         "route_id": route.route_id,
         "placement_id": route.placement_id,
@@ -181,7 +179,7 @@ def _serialize_committed_route(route: CommittedRoute) -> dict[str, Any]:
     }
 
 
-def _serialize_route_group(group: RouteGroupSummary) -> dict[str, Any]:
+def _serialize_route_group(group: RouteGroupSummary) -> dict[str, object]:
     return {
         "group_id": group.group_id,
         "transport_kind": group.transport_kind,
@@ -193,7 +191,7 @@ def _serialize_route_group(group: RouteGroupSummary) -> dict[str, Any]:
     }
 
 
-def _serialize_layer05_failure(failure: Layer05Failure) -> dict[str, Any]:
+def _serialize_layer05_failure(failure: Layer05Failure) -> dict[str, object]:
     return {
         "placement_id": failure.placement_id,
         "reason": failure.reason.value,
@@ -201,7 +199,7 @@ def _serialize_layer05_failure(failure: Layer05Failure) -> dict[str, Any]:
     }
 
 
-def _serialize_layer05_metrics(metrics: Layer05Metrics) -> dict[str, Any]:
+def _serialize_layer05_metrics(metrics: Layer05Metrics) -> dict[str, object]:
     return {
         "source_count": metrics.source_count,
         "routed_source_count": metrics.routed_source_count,
@@ -211,7 +209,7 @@ def _serialize_layer05_metrics(metrics: Layer05Metrics) -> dict[str, Any]:
     }
 
 
-def _serialize_route_plan(plan: Layer05RoutePlan) -> dict[str, Any]:
+def _serialize_route_plan(plan: Layer05RoutePlan) -> dict[str, object]:
     return {
         "version": plan.version,
         "resource_kind": plan.resource_kind,
@@ -232,7 +230,7 @@ def serialize_layer02_wire(
     outcome: LayerOutcome = LayerOutcome.COMPLETED,
     skip_reason: str | None = None,
     failure_reason: str | None = None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     metrics = exterior_connector_plan_to_metrics_dict(plan)
     return _layer_envelope(
         layer_slug=LAYER_02_EXTERIOR_TRANSPORT,
@@ -249,7 +247,7 @@ def serialize_layer03_wire(
     outcome: LayerOutcome = LayerOutcome.COMPLETED,
     skip_reason: str | None = None,
     failure_reason: str | None = None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     return _layer_envelope(
         layer_slug=LAYER_03_RIM_GREEDY_PLACEMENT,
         outcome=outcome,
@@ -273,7 +271,7 @@ def serialize_layer04_wire(
     outcome: LayerOutcome = LayerOutcome.COMPLETED,
     skip_reason: str | None = None,
     failure_reason: str | None = None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     occupied = _occupied_coords_from_placements(result.placements)
     return _layer_envelope(
         layer_slug=LAYER_04_INNER_PATTERN_FILL,
@@ -298,7 +296,7 @@ def serialize_layer05_wire(
     outcome: LayerOutcome = LayerOutcome.COMPLETED,
     skip_reason: str | None = None,
     failure_reason: str | None = None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     return _layer_envelope(
         layer_slug=LAYER_05_TRANSPORT_ROUTING,
         outcome=outcome,
@@ -319,8 +317,8 @@ def build_runtime_wires_document(
     route_plan: Layer05RoutePlan | None = None,
     core_build_id: str = "",
     written_at_utc: str = "",
-) -> dict[str, Any]:
-    layers: dict[str, Any] = {}
+) -> dict[str, object]:
+    layers: dict[str, object] = {}
     if exterior_plan is not None:
         layers[LAYER_02_EXTERIOR_TRANSPORT] = serialize_layer02_wire(exterior_plan)
     if rim_greedy is not None:

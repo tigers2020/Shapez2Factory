@@ -644,6 +644,94 @@
     };
   }
 
+  function cellKindFromEffectiveWire(wire) {
+    var occupant = wireSection(wire, "occupant");
+    var occKind = kindStr(occupant);
+    if (occKind && occKind !== "none") {
+      return occKind;
+    }
+    var transport = wireSection(wire, "transport");
+    var transportKind = kindStr(transport);
+    if (TRANSPORT_KINDS[transportKind]) {
+      return transportKind;
+    }
+    var terrain = wireSection(wire, "terrain");
+    return kindStr(terrain) || "empty";
+  }
+
+  function overlayRoleFromWireSources(wire) {
+    var sources = wire && wire.sources;
+    if (!sources || typeof sources !== "object") {
+      return null;
+    }
+    var overlay = sources.overlay_cells;
+    if (!overlay) {
+      return null;
+    }
+    if (Array.isArray(overlay)) {
+      for (var i = overlay.length - 1; i >= 0; i--) {
+        var row = overlay[i];
+        if (row && row.overlay_role != null && String(row.overlay_role) !== "") {
+          return String(row.overlay_role);
+        }
+      }
+      return null;
+    }
+    if (overlay.overlay_role != null && String(overlay.overlay_role) !== "") {
+      return String(overlay.overlay_role);
+    }
+    return null;
+  }
+
+  function cellLikeFromEffectiveWire(wire) {
+    var coord = coordFromWireOrKey(wire, "");
+    var occupant = wireSection(wire, "occupant");
+    var kind = cellKindFromEffectiveWire(wire);
+    var cell = {
+      x: coord.x,
+      y: coord.y,
+      layer: coord.layer,
+      kind: kind,
+      cell_kind: kind,
+    };
+    if (occupant.rotation != null) {
+      cell.rotation = occupant.rotation;
+    }
+    var overlayRole = overlayRoleFromWireSources(wire);
+    if (overlayRole) {
+      cell.overlay_role = overlayRole;
+    }
+    return cell;
+  }
+
+  function buildCellByGridIndexFromFrame(frame, resolveCellIndex, options) {
+    options = options || {};
+    var map = new Map();
+    if (!frame || typeof frame !== "object" || typeof resolveCellIndex !== "function") {
+      return map;
+    }
+    var index = buildEffectiveCellViewIndexWithCarry(frame, options);
+    var keys = Object.keys(index);
+    for (var i = 0; i < keys.length; i++) {
+      var cellKeyStr = keys[i];
+      var wire = index[cellKeyStr];
+      if (!wire) {
+        continue;
+      }
+      var coord = coordFromWireOrKey(wire, cellKeyStr);
+      var gridIdx = resolveCellIndex({
+        x: coord.x,
+        y: coord.y,
+        layer: coord.layer,
+      });
+      if (gridIdx == null || gridIdx < 0) {
+        continue;
+      }
+      map.set(gridIdx, cellLikeFromEffectiveWire(wire));
+    }
+    return map;
+  }
+
   function buildLabPaintPlanFromFrame(frame, resolveCellIndex, options) {
     options = options || {};
     var index = buildEffectiveCellViewIndex(frame);
@@ -697,6 +785,7 @@
     CANDIDATE_RING_STROKE: CANDIDATE_RING_STROKE,
     buildEffectiveCellViewIndex: buildEffectiveCellViewIndex,
     buildEffectiveCellViewIndexWithCarry: buildEffectiveCellViewIndexWithCarry,
+    buildCellByGridIndexFromFrame: buildCellByGridIndexFromFrame,
     buildDomPlanResolverForFrame: buildDomPlanResolverForFrame,
     buildLabPaintPlanFromFrame: buildLabPaintPlanFromFrame,
     canvasPlanFromPaintLayers: canvasPlanFromPaintLayers,

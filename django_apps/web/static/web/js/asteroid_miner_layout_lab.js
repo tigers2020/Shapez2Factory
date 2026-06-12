@@ -1873,6 +1873,17 @@
 
   /** @deprecated HARVEST_PAINT — Slice 5 quarantine. Must not decide occupant/transport/candidate paint semantics. */
   function frameCellIndexMap(frame, resolveCellIndex) {
+    if (
+      labPaintV2Enabled() &&
+      typeof LabReplayPaintPlan !== "undefined" &&
+      typeof LabReplayPaintPlan.buildCellByGridIndexFromFrame === "function"
+    ) {
+      return LabReplayPaintPlan.buildCellByGridIndexFromFrame(
+        frame,
+        resolveCellIndex,
+        labDomPaintOptionsFromContext(frame),
+      );
+    }
     const map = new Map();
     const targets = collectFrameSpatialTargets(frame);
     for (let i = 0; i < targets.length; i++) {

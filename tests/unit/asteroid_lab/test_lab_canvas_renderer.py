@@ -171,6 +171,12 @@ def test_js_build_dom_plan_resolver_for_frame_exists() -> None:
     assert "return function" in resolver_body
 
 
+def test_js_build_cell_by_grid_index_from_frame_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function buildCellByGridIndexFromFrame" in src
+    assert "buildCellByGridIndexFromFrame:" in src
+
+
 def test_lab_js_lab_paint_v2_enabled_helper() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
     assert "function labPaintV2Enabled(" in src

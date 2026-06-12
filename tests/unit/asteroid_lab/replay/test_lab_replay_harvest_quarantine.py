@@ -32,6 +32,16 @@ def test_harvest_functions_marked_deprecated() -> None:
         ), f"{name} lacks quarantine marker within 400 chars"
 
 
+def test_frame_cell_index_map_v2_delegates_to_paint_plan() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    body = src.split("function frameCellIndexMap(", 1)[1].split(
+        "function resetDomCellsAtIndicesForFrame(", 1
+    )[0]
+    assert "labPaintV2Enabled()" in body
+    assert "buildCellByGridIndexFromFrame" in body
+    assert "collectFrameSpatialTargets" in body
+
+
 def test_v2_dom_path_does_not_use_lab_sprite_relpath_for_cell() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
     render_body = src.split("function renderFullMapCells(", 1)[1].split(

@@ -175,9 +175,9 @@
     return [];
   }
 
-  /** V2: skip terrain rgba for cells that get field_sprite on sprite canvas (anti-fade). */
+  /** Skip terrain rgba for cells that get field_sprite on sprite canvas (anti-fade). */
   function filterTerrainCellsForPaintV2(cells, frame, resolveCellIndex, paintOptions) {
-    if (!labPaintV2Enabled() || !Array.isArray(cells) || !cells.length || !frame) {
+    if (!Array.isArray(cells) || !cells.length || !frame) {
       return cells;
     }
     if (
@@ -3500,7 +3500,6 @@
 
     function collectSpriteRelpathsFromFrames(framesArr) {
       if (
-        labPaintV2Enabled() &&
         typeof LabReplayPaintPlan !== "undefined" &&
         typeof LabReplayPaintPlan.collectSpriteRelsFromPaintPlanFrames === "function"
       ) {
@@ -3510,20 +3509,7 @@
           { replayFrames: framesArr, hasServerReplay: hasServerReplay },
         );
       }
-      if (!Array.isArray(framesArr) || !framesArr.length) {
-        return [];
-      }
-      const rels = new Set();
-      for (let fi = 0; fi < framesArr.length; fi++) {
-        const fr = framesArr[fi];
-        if (!fr || typeof fr !== "object") continue;
-        const targets = collectFrameSpatialTargets(fr);
-        for (let ti = 0; ti < targets.length; ti++) {
-          const rel = labSpriteRelpathForCell(targets[ti].cell, fr);
-          if (rel) rels.add(rel);
-        }
-      }
-      return Array.from(rels);
+      return [];
     }
 
     function warmupLabReplaySpriteCache(framesArr) {
@@ -3560,48 +3546,8 @@
       }
     }
 
-    function canvasOverlayFillForCell(cell, frame, role) {
-      if (window.LabReplayCanvas && window.LabReplayCanvas.overlayFillForKind) {
-        const ck = overlayCellKind(cell);
-        if (role === "diff_removed") {
-          return window.LabReplayCanvas.overlayFillForKind("diff_removed");
-        }
-        if (role === "diff_added") {
-          return window.LabReplayCanvas.overlayFillForKind("diff_added");
-        }
-        if (role === "diff_changed") {
-          return window.LabReplayCanvas.overlayFillForKind("diff_changed");
-        }
-        return window.LabReplayCanvas.overlayFillForKind(ck);
-      }
-      return null;
-    }
-
-    function frameHasSpriteCapableCells(fr) {
-      if (!fr || typeof fr !== "object") return false;
-      const targets = collectFrameSpatialTargets(fr);
-      for (let i = 0; i < targets.length; i++) {
-        if (labSpriteRelpathForCell(targets[i].cell, fr)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    function lastFrameWithSpriteCapableCells(upToArrayIndex) {
-      const cap = Math.min(upToArrayIndex, replayFrames.length - 1);
-      for (let i = cap; i >= 0; i--) {
-        const fr = replayFrames[i];
-        if (frameHasSpriteCapableCells(fr)) {
-          return fr;
-        }
-      }
-      return null;
-    }
-
     function buildCanvasPaintPlan(frame) {
       if (
-        labPaintV2Enabled() &&
         typeof LabReplayPaintPlan !== "undefined" &&
         LabReplayPaintPlan.buildLabPaintPlanFromFrame
       ) {
@@ -3611,109 +3557,7 @@
           hasServerReplay: hasServerReplay,
         });
       }
-      const overlays = [];
-      const sprites = [];
-      const byIdx = new Map();
-      /** @deprecated HARVEST_PAINT — Slice 5 quarantine. Must not decide occupant/transport/candidate paint semantics. */
-      function stageCell(cell, role, sourceFrame) {
-        if (!cell || typeof cell !== "object") return;
-        if (!cellPassesMapZFilter(cell)) return;
-        const paintFrame = sourceFrame || frame;
-        const idx = resolveCellIndex(cell);
-        if (idx == null || idx < 0) return;
-        const rel = labSpriteRelpathForCell(cell, paintFrame);
-        const isTerrain = isLabStaticTerrainCell(cell, paintFrame);
-        const prev = byIdx.get(idx);
-        if (!prev) {
-          byIdx.set(idx, {
-            cell: cell,
-            role: role || "",
-            paintFrame: paintFrame,
-            rel: rel,
-            isTerrain: isTerrain,
-          });
-          return;
-        }
-        if (rel && !prev.rel) {
-          byIdx.set(idx, {
-            cell: cell,
-            role: role || "",
-            paintFrame: paintFrame,
-            rel: rel,
-            isTerrain: isTerrain,
-          });
-        }
-      }
-      const paintPlan =
-        typeof LabReplayPaintPlan !== "undefined" ? LabReplayPaintPlan : null;
-      const layoutFrame =
-        paintPlan &&
-        paintPlan.indexHasSpriteCapableCells &&
-        paintPlan.lastFrameWithSpriteCapableCells &&
-        !paintPlan.indexHasSpriteCapableCells(
-          paintPlan.buildEffectiveCellViewIndex(frame),
-        ) &&
-        hasServerReplay
-          ? paintPlan.lastFrameWithSpriteCapableCells(replayFrames, replayArrayIndex)
-          : !frameHasSpriteCapableCells(frame) && hasServerReplay
-            ? lastFrameWithSpriteCapableCells(replayArrayIndex)
-            : null;
-      if (layoutFrame && layoutFrame !== frame) {
-        const carryTargets = collectFrameSpatialTargets(layoutFrame);
-        for (let c = 0; c < carryTargets.length; c++) {
-          const t = carryTargets[c];
-          if (!labSpriteRelpathForCell(t.cell, layoutFrame)) continue;
-          stageCell(t.cell, "", layoutFrame);
-        }
-      }
-      const targets = collectFrameSpatialTargets(frame);
-      for (let i = 0; i < targets.length; i++) {
-        stageCell(targets[i].cell, targets[i].role, frame);
-      }
-      byIdx.forEach(function (entry, idx) {
-        const cell = entry.cell;
-        const paintFrame = entry.paintFrame;
-        const rel = entry.rel;
-        const diffRole = entry.role || "";
-        if (entry.isTerrain) {
-          if (!rel) {
-            return;
-          }
-          sprites.push({ idx: idx, rel: rel, rotation: cell.rotation });
-          return;
-        }
-        if (rel) {
-          sprites.push({ idx: idx, rel: rel, rotation: cell.rotation });
-          return;
-        }
-        const ck = overlayCellKind(cell);
-        if (
-          diffRole === "diff_removed" ||
-          diffRole === "diff_added" ||
-          diffRole === "diff_changed"
-        ) {
-          overlays.push({
-            idx: idx,
-            kind: diffRole,
-            fill: canvasOverlayFillForCell(cell, frame, diffRole),
-          });
-          return;
-        }
-        if (isRouteOverlayCellKind(ck) || isNonSpriteOverlayCell(cell, paintFrame)) {
-          overlays.push({
-            idx: idx,
-            kind: ck,
-            fill: canvasOverlayFillForCell(cell, frame, ""),
-          });
-          return;
-        }
-        overlays.push({
-          idx: idx,
-          kind: ck,
-          fill: canvasOverlayFillForCell(cell, frame, ""),
-        });
-      });
-      return { overlays: overlays, sprites: sprites };
+      return { overlays: [], sprites: [] };
     }
 
     function refreshLabCanvasAfterLayoutChange() {

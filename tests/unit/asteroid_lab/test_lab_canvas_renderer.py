@@ -38,7 +38,6 @@ def test_lab_js_wires_canvas_renderer() -> None:
     assert "function mountLabCanvasRenderer(" in src
     assert "function buildCanvasPaintPlan(" in src
     assert "function warmupLabReplaySpriteCache(" in src
-    assert "function lastFrameWithSpriteCapableCells(" in src
     assert "function applyLabCanvasServerReplayFrame(" in src
     assert "lab-replay-canvas-hit-layer" in src
     let_pos = src.index("let labCanvasRenderer = null")
@@ -188,8 +187,10 @@ def test_lab_js_lab_paint_v2_enabled_helper() -> None:
     enabled_body = src.split("function labPaintV2Enabled(", 1)[1][:120]
     assert "labPaintLegacyOptIn()" in enabled_body
 
-    plan_body = src.split("function buildCanvasPaintPlan(", 1)[1][:900]
-    assert "labPaintV2Enabled()" in plan_body
+    plan_body = src.split("function buildCanvasPaintPlan(", 1)[1].split(
+        "function refreshLabCanvasAfterLayoutChange(", 1
+    )[0]
+    assert "labPaintV2Enabled()" not in plan_body
     assert "LabReplayPaintPlan.buildLabPaintPlanFromFrame" in plan_body
     assert "resolveCellIndex" in plan_body
     assert "replayArrayIndex" in plan_body
@@ -207,16 +208,16 @@ def test_lab_js_paint_d_prime_flag_contract_step_6_1() -> None:
     assert 'ds.labPaintV2 === "0"' in legacy_body
     enabled_body = src.split("function labPaintV2Enabled(", 1)[1][:160]
     assert "!labPaintLegacyOptIn()" in enabled_body.replace(" ", "")
-    assert "function stageCell(" in src
     assert "function labSpriteRelpathForCell(" in src
     render_body = src.split("function renderFullMapCells(", 1)[1].split(
         "function renderDiffOverlays(", 1
     )[0]
     assert "let tone = toneForFullMapCell" in render_body
-    assert "function buildCanvasPaintPlan(" in src
-    fn = src.split("function buildCanvasPaintPlan(", 1)[1]
-    assert "const overlays = []" in fn
-    assert "function stageCell(" in fn.split("const overlays = []", 1)[1]
+    canvas_fn = src.split("function buildCanvasPaintPlan(", 1)[1].split(
+        "function refreshLabCanvasAfterLayoutChange(", 1
+    )[0]
+    assert "stageCell" not in canvas_fn
+    assert "const overlays = []" not in canvas_fn
 
 
 def test_lab_js_filter_terrain_cells_for_paint_v2_exists() -> None:
@@ -225,7 +226,7 @@ def test_lab_js_filter_terrain_cells_for_paint_v2_exists() -> None:
     filter_body = src.split("function filterTerrainCellsForPaintV2(", 1)[1].split(
         "function syncLabTerrainCanvasLayer(", 1
     )[0]
-    assert "labPaintV2Enabled()" in filter_body
+    assert "labPaintV2Enabled()" not in filter_body
     assert "LabReplayPaintPlan.buildLabPaintPlanFromFrame" in filter_body
     assert "AsteroidField_Fluid.svg" in filter_body
     assert "AsteroidField_Shape.svg" in filter_body
@@ -287,8 +288,9 @@ def test_lab_js_v2_dom_branch_gated_by_flag() -> None:
     assert render_body.index("createDomPlanResolverForFrame") < render_body.index("for (let i = 0")
 
 
-def test_warmup_sprite_collect_uses_paint_plan_when_v2() -> None:
+def test_warmup_sprite_collect_uses_paint_plan() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
-    body = src.split("function collectSpriteRelpathsFromFrames(", 1)[1][:700]
+    body = src.split("function collectSpriteRelpathsFromFrames(", 1)[1][:500]
     assert "collectSpriteRelsFromPaintPlanFrames" in body
-    assert "labPaintV2Enabled()" in body
+    assert "labPaintV2Enabled()" not in body
+    assert "collectFrameSpatialTargets" not in body

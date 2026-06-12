@@ -8,25 +8,17 @@ REPO = Path(__file__).resolve().parents[4]
 LAB_JS = REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
 
 
-def test_build_canvas_paint_plan_v2_has_no_stage_cell() -> None:
+def test_build_canvas_paint_plan_delegates_to_paint_plan_only() -> None:
+    """Task 6.3: canvas paint always uses LabReplayPaintPlan; no legacy harvest."""
     src = LAB_JS.read_text(encoding="utf-8")
-    fn = src.split("function buildCanvasPaintPlan(", 1)[1]
-    v2_region = fn.split("labPaintV2Enabled()", 1)[1]
-    legacy_start = v2_region.find("const overlays = []")
-    assert legacy_start >= 0
-    assert "stageCell" not in v2_region[:legacy_start]
-    assert "collectFrameSpatialTargets" not in v2_region[:legacy_start]
-
-
-def test_legacy_canvas_harvest_still_present_for_opt_in_rollback() -> None:
-    """Task 6.1 D′: legacy harvest branch retained for data-lab-paint-legacy rollback until 6.3."""
-    src = LAB_JS.read_text(encoding="utf-8")
-    fn = src.split("function buildCanvasPaintPlan(", 1)[1]
-    assert "const overlays = []" in fn
-    legacy = fn.split("const overlays = []", 1)[1]
-    assert "function stageCell(" in legacy
-    assert "collectFrameSpatialTargets" in legacy
-    assert "labSpriteRelpathForCell" in legacy
+    fn = src.split("function buildCanvasPaintPlan(", 1)[1].split(
+        "function refreshLabCanvasAfterLayoutChange(", 1
+    )[0]
+    assert "LabReplayPaintPlan.buildLabPaintPlanFromFrame" in fn
+    assert "labPaintV2Enabled()" not in fn
+    assert "stageCell" not in fn
+    assert "collectFrameSpatialTargets" not in fn
+    assert "const overlays = []" not in fn
 
 
 def test_harvest_functions_marked_deprecated() -> None:
@@ -35,7 +27,6 @@ def test_harvest_functions_marked_deprecated() -> None:
         "function collectFrameSpatialTargets(",
         "function labSpriteRelpathForCell(",
         "function frameCellIndexMap(",
-        "function stageCell(",
     ):
         idx = src.find(name)
         assert idx >= 0, f"missing {name}"
@@ -43,6 +34,7 @@ def test_harvest_functions_marked_deprecated() -> None:
         assert (
             "HARVEST" in window or "deprecated" in window.lower() or "@deprecated" in window
         ), f"{name} lacks quarantine marker within 400 chars"
+    assert "function stageCell(" not in src
 
 
 def test_frame_cell_index_map_v2_delegates_to_paint_plan() -> None:

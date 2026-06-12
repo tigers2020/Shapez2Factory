@@ -14,12 +14,41 @@ from django_apps.asteroid_lab.replay.replay_wire_read_sanitize import (
     sanitize_replay_wire_cell_for_read,
 )
 from django_apps.asteroid_lab.typing_boundary import JsonObject
+from django_apps.shapez_core.lab_sprite_path import (
+    LAB_SPRITE_IDENTIFIER_ALIASES,
+    resolve_sprite_static_relpath,
+)
 from tests.support.lab_replay_sprite_wire import (
     CELL_KIND_STATIC_RELPATH,
-    CELL_KIND_TO_IDENTIFIER,
-    _sprite_relpath_from_tile_type,
     cell_overlay_json_from_frame,
 )
+
+# Mirror ``lab_replay_paint_plan.js`` occupant identifier map.
+CELL_KIND_TO_IDENTIFIER = {
+    "fluid_miner": "Layout_FluidMiner",
+    "fluid_miner_extension": "Layout_FluidMinerExtension",
+    "shape_miner": "Layout_ShapeMiner",
+    "shape_miner_extension": "Layout_ShapeMinerExtension",
+    "miner": "Layout_ShapeMiner",
+    "extension": "Layout_ShapeMinerExtension",
+}
+
+
+def _sprite_relpath_from_tile_type(tile_type: str) -> str | None:
+    t = (tile_type or "").strip()
+    if not t:
+        return None
+    t = LAB_SPRITE_IDENTIFIER_ALIASES.get(t, t)
+    rel = resolve_sprite_static_relpath(t)
+    if rel:
+        return rel
+    if t.startswith("SpaceBelt_"):
+        return f"SpaceBelt/{t}.svg"
+    if t.startswith("SpacePipe_"):
+        return f"SpacePipe/{t}.svg"
+    if t.startswith("Layout_"):
+        return f"Miner/{t}.svg"
+    return None
 
 # Mirror ``lab_replay_canvas_terrain.js`` TERRAIN_FILL defaults.
 BACKGROUND_FILL = "rgb(2, 6, 23)"

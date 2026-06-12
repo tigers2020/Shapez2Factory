@@ -32,6 +32,13 @@ def test_harvest_paint_helpers_removed_step_6_6() -> None:
     assert "function applyLabCellSprite(" not in src
 
 
+def test_python_legacy_harvest_sprite_helpers_removed_step_6_7() -> None:
+    from tests.support import lab_replay_sprite_wire as wire
+
+    assert not hasattr(wire, "_legacy_harvest_sprite_entries_for_frame")
+    assert not hasattr(wire, "lab_sprite_relpath_for_cell")
+
+
 def test_frame_cell_index_map_always_delegates_to_paint_plan() -> None:
     """Task 6.4: frameCellIndexMap always uses paint-plan index; no harvest fallback."""
     src = LAB_JS.read_text(encoding="utf-8")

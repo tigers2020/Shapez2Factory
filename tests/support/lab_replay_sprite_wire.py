@@ -1,17 +1,13 @@
-"""Mirror Lab replay wire → sprite paint targets (parity with ``asteroid_miner_layout_lab.js``)."""
+"""Spatial / wire helpers for replay tests (layout coords + golden fixtures)."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 
-from django_apps.shapez_core.lab_sprite_path import (
-    LAB_SPRITE_IDENTIFIER_ALIASES,
-    resolve_sprite_static_relpath,
-)
-
-TERRAIN_KINDS = frozenset(
-    {"asteroid_shape_field", "asteroid_fluid_field", "internal_void"},
-)
+CELL_KIND_STATIC_RELPATH = {
+    "asteroid_fluid_field": "AsteroidField_Fluid.svg",
+    "asteroid_shape_field": "AsteroidField_Shape.svg",
+}
 
 NON_SPRITE_OVERLAY_CELL_KINDS = frozenset(
     {
@@ -20,24 +16,6 @@ NON_SPRITE_OVERLAY_CELL_KINDS = frozenset(
         "route_path",
     },
 )
-
-ROUTE_OVERLAY_CELL_KINDS = frozenset(
-    {"route_probe", "route_probe_path", "confirmed_route", "route_goal"},
-)
-
-CELL_KIND_STATIC_RELPATH = {
-    "asteroid_fluid_field": "AsteroidField_Fluid.svg",
-    "asteroid_shape_field": "AsteroidField_Shape.svg",
-}
-
-CELL_KIND_TO_IDENTIFIER = {
-    "fluid_miner": "Layout_FluidMiner",
-    "fluid_miner_extension": "Layout_FluidMinerExtension",
-    "shape_miner": "Layout_ShapeMiner",
-    "shape_miner_extension": "Layout_ShapeMinerExtension",
-    "miner": "Layout_ShapeMiner",
-    "extension": "Layout_ShapeMinerExtension",
-}
 
 
 def overlay_cell_kind(cell: Mapping[str, object]) -> str:
@@ -64,75 +42,6 @@ def normalize_replay_wire_cell(raw: Mapping[str, object]) -> dict[str, object]:
         "rotation": raw.get("rotation"),
         "overlay_role": raw.get("overlay_role"),
     }
-
-
-def _sprite_relpath_from_tile_type(tile_type: str) -> str | None:
-    t = (tile_type or "").strip()
-    if not t:
-        return None
-    t = LAB_SPRITE_IDENTIFIER_ALIASES.get(t, t)
-    rel = resolve_sprite_static_relpath(t)
-    if rel:
-        return rel
-    if t.startswith("SpaceBelt_"):
-        return f"SpaceBelt/{t}.svg"
-    if t.startswith("SpacePipe_"):
-        return f"SpacePipe/{t}.svg"
-    if t.startswith("Layout_"):
-        return f"Miner/{t}.svg"
-    return None
-
-
-def _infer_transport_sprite_identifier(cell: Mapping[str, object]) -> str | None:
-    ck = overlay_cell_kind(cell)
-    if ck in {
-        "miner",
-        "extension",
-        "shape_miner",
-        "shape_miner_extension",
-        "fluid_miner",
-        "fluid_miner_extension",
-    }:
-        return None
-    tk = str(cell.get("transport_kind") or cell.get("transport") or "")
-    if tk in {"shape_belt", "space_belt"} or ck == "space_belt":
-        return "SpaceBelt_Forward"
-    if tk in {"fluid_pipe", "space_pipe"} or ck == "space_pipe":
-        return "SpacePipe_Forward"
-    return None
-
-
-def is_non_sprite_overlay_cell(cell: Mapping[str, object]) -> bool:
-    ck = overlay_cell_kind(cell)
-    if not ck:
-        return False
-    return ck in NON_SPRITE_OVERLAY_CELL_KINDS
-
-
-def lab_sprite_relpath_for_cell(cell: Mapping[str, object]) -> str | None:
-    if not cell:
-        return None
-    ck = overlay_cell_kind(cell)
-    if ck in {"candidate_miner", "miner"}:
-        return None
-    if is_non_sprite_overlay_cell(cell):
-        return None
-    if ck in ROUTE_OVERLAY_CELL_KINDS:
-        return None
-    static = CELL_KIND_STATIC_RELPATH.get(ck)
-    if static:
-        return static
-    tile_key = str(cell.get("sprite_identifier") or cell.get("tile_type") or "")
-    rel = _sprite_relpath_from_tile_type(tile_key)
-    if not rel and ck:
-        ident = CELL_KIND_TO_IDENTIFIER.get(ck)
-        if ident:
-            rel = _sprite_relpath_from_tile_type(ident)
-    if not rel:
-        inferred = _infer_transport_sprite_identifier(cell)
-        if inferred:
-            rel = _sprite_relpath_from_tile_type(inferred)
-    return rel
 
 
 def _cells_from_map_view(map_view: Mapping[str, object] | None) -> list[dict[str, object]]:
@@ -235,42 +144,6 @@ def collect_frame_spatial_targets(frame: Mapping[str, object]) -> list[dict[str,
     if isinstance(overlay_json, dict):
         out.extend(collect_overlay_paint_targets(overlay_json))
     return out
-
-
-def _legacy_harvest_sprite_entries_for_frame(
-    frame: Mapping[str, object],
-) -> list[dict[str, object]]:
-    """Harvest paint rows — parity reference only (Slice 5 quarantine)."""
-
-    by_xy: dict[tuple[int, int], dict[str, object]] = {}
-    for cell in collect_frame_spatial_targets(frame):
-        x, y = cell.get("x"), cell.get("y")
-        try:
-            key = (int(x), int(y))
-        except (TypeError, ValueError):
-            continue
-        rel = lab_sprite_relpath_for_cell(cell)
-        prev = by_xy.get(key)
-        if prev is None:
-            by_xy[key] = {"cell": cell, "rel": rel}
-            continue
-        if rel and not prev.get("rel"):
-            by_xy[key] = {"cell": cell, "rel": rel}
-    sprites: list[dict[str, object]] = []
-    for key, entry in by_xy.items():
-        rel = entry.get("rel")
-        if not rel:
-            continue
-        cell = entry["cell"]
-        sprites.append(
-            {
-                "x": key[0],
-                "y": key[1],
-                "rel": rel,
-                "rotation": int(cell.get("rotation") or 0),
-            },
-        )
-    return sprites
 
 
 def sprite_paint_entries_for_frame(frame: Mapping[str, object]) -> list[dict[str, object]]:

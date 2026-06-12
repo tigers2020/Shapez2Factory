@@ -380,6 +380,74 @@ def _layers_have_sprite(layers: Mapping[str, object]) -> bool:
     return False
 
 
+def _index_spatial_rank(frame: Mapping[str, object]) -> dict[str, int]:
+    """Harvest ``collect_frame_spatial_targets`` order for index keys (parity collapse)."""
+
+    from django_apps.asteroid_lab.replay.replay_cell_index import cell_key
+    from tests.support.lab_replay_sprite_wire import collect_frame_spatial_targets
+
+    rank: dict[str, int] = {}
+    for i, cell in enumerate(collect_frame_spatial_targets(frame)):
+        if not isinstance(cell, Mapping):
+            continue
+        try:
+            x = int(cell["x"])  # type: ignore[arg-type]
+            y = int(cell["y"])  # type: ignore[arg-type]
+        except (TypeError, ValueError, KeyError):
+            continue
+        layer_raw = cell.get("layer")
+        layer = int(layer_raw) if layer_raw is not None else 0
+        rank.setdefault(cell_key(x, y, layer), i)
+    return rank
+
+
+def sprite_entries_from_paint_plan_frame(
+    frame: Mapping[str, object],
+) -> list[dict[str, object]]:
+    """Sprite paint rows ``{x, y, rel, rotation}`` via EffectiveCellView paint plan."""
+
+    index = build_effective_cell_view_index(frame)
+    rank = _index_spatial_rank(frame)
+    ordered_keys = sorted(index.keys(), key=lambda k: (rank.get(k, 10**9), k))
+
+    by_xy: dict[tuple[int, int], dict[str, object]] = {}
+    for key in ordered_keys:
+        view = index[key]
+        coord = view.get("coord")
+        if not isinstance(coord, Mapping):
+            continue
+        x = _row_int(coord.get("x"))
+        y = _row_int(coord.get("y"))
+        occupant_kind = _kind_str(_wire_section(view, "occupant")) or "none"
+        layers = lab_paint_layers_from_view(view)
+        plan = canvas_plan_from_paint_layers(layers)
+        occupant = layers.get("occupant")
+
+        for entry in plan.get("sprites", []):
+            if not isinstance(entry, Mapping):
+                continue
+            rel = entry.get("rel")
+            if not rel:
+                continue
+            if occupant_kind == "candidate_miner" and isinstance(occupant, Mapping):
+                if str(rel) == str(occupant.get("rel")):
+                    continue
+            row = {
+                "x": x,
+                "y": y,
+                "rel": str(rel),
+                "rotation": _rotation(entry),
+            }
+            key_xy = (x, y)
+            prev = by_xy.get(key_xy)
+            if prev is None:
+                by_xy[key_xy] = row
+            elif row["rel"] and not prev.get("rel"):
+                by_xy[key_xy] = row
+
+    return [entry for entry in by_xy.values() if entry.get("rel")]
+
+
 def dom_plan_from_paint_layers(
     layers: Mapping[str, object],
     *,
@@ -425,4 +493,5 @@ __all__ = [
     "canvas_plan_from_paint_layers",
     "dom_plan_from_paint_layers",
     "lab_paint_layers_from_view",
+    "sprite_entries_from_paint_plan_frame",
 ]

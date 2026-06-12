@@ -236,8 +236,10 @@ def collect_frame_spatial_targets(frame: Mapping[str, object]) -> list[dict[str,
     return out
 
 
-def sprite_paint_entries_for_frame(frame: Mapping[str, object]) -> list[dict[str, object]]:
-    """Return sprite paint rows ``{x, y, rel, rotation}`` (canvas paint-plan parity)."""
+def _legacy_harvest_sprite_entries_for_frame(
+    frame: Mapping[str, object],
+) -> list[dict[str, object]]:
+    """Harvest paint rows — parity reference only (Slice 5 quarantine)."""
 
     by_xy: dict[tuple[int, int], dict[str, object]] = {}
     for cell in collect_frame_spatial_targets(frame):
@@ -268,6 +270,14 @@ def sprite_paint_entries_for_frame(frame: Mapping[str, object]) -> list[dict[str
             },
         )
     return sprites
+
+
+def sprite_paint_entries_for_frame(frame: Mapping[str, object]) -> list[dict[str, object]]:
+    """Return sprite paint rows ``{x, y, rel, rotation}`` (EffectiveCellView paint plan)."""
+
+    from tests.support.lab_replay_paint_plan import sprite_entries_from_paint_plan_frame
+
+    return sprite_entries_from_paint_plan_frame(frame)
 
 
 def golden_transport_replay_frames() -> list[dict[str, object]]:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
 
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
@@ -11,7 +10,7 @@ from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw
 _RECON_META_KEY = "_asteroid_lab_reconstruction"
 
 
-def island_bbox_from_xy_dicts(rows: Sequence[dict[str, Any]]) -> dict[str, int] | None:
+def island_bbox_from_xy_dicts(rows: Sequence[dict[str, object]]) -> dict[str, int] | None:
     xs: list[int] = []
     ys: list[int] = []
     for row in rows:
@@ -50,7 +49,9 @@ def island_bbox_from_cells(cells: Sequence[DecodedCellDTO]) -> dict[str, int] | 
     return island_bbox_from_xy_dicts([{"x": c.x, "y": c.y} for c in cells])
 
 
-def full_map_island_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict[str, int] | None:
+def full_map_island_bbox_from_decoded_json(
+    decoded_json: dict[str, object],
+) -> dict[str, int] | None:
     """Read persisted reconstruction meta or compute from ``BP.Entries`` island X/Y."""
 
     meta = decoded_json.get(_RECON_META_KEY)

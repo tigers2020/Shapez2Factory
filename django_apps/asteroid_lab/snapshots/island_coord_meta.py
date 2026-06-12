@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
     COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM,
 )
 
 
-def attach_island_coord_meta_to_decoded_json(decoded_json: dict[str, Any]) -> dict[str, Any]:
+def attach_island_coord_meta_to_decoded_json(decoded_json: dict[str, object]) -> dict[str, object]:
     """Record canonical raw coord system on decode persist."""
 
     meta = decoded_json.setdefault("_asteroid_lab_coord_system", {})

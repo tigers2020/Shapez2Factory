@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
 
 from django_apps.asteroid_lab.replay.layer02_segment import (
     build_layer02_exterior_transport_frame,
@@ -101,7 +100,7 @@ def _finalize_specs(
     structural_overlay_wire: Sequence[Mapping[str, object]],
     persistent_overlay_wire: Sequence[Mapping[str, object]],
     exterior_plan_wire: Mapping[str, object] | None,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     return [
         finalize_segment_spec_to_json_dict(
             spec,
@@ -117,15 +116,15 @@ def _finalize_specs(
 def build_solver_runtime_replay_frames(
     *,
     complete_map: ReconstructionCompleteMap,
-    lab_frames_before_append: Sequence[Mapping[str, Any]],
-    exterior_plan_wire: Mapping[str, Any] | None,
+    lab_frames_before_append: Sequence[Mapping[str, object]],
+    exterior_plan_wire: Mapping[str, object] | None,
     layer03: RimBundleCandidateSet | IntegratedRimGreedyResult | None,
     layer04: Layer04RimPlacementResult | None,
     layer04_inner_fill: Layer04InnerFillResult | None = None,
     layer05_route_plan: Layer05RoutePlan | None = None,
     layer04_route_plan: Layer05RoutePlan | None = None,
     transport_kind: str = "space_belt",
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """JSON-serializable frames for ``SolverRun.config_json[solver_runtime_replay_frames]``."""
 
     source = find_reconstruction_complete_source_frame(
@@ -144,7 +143,7 @@ def build_solver_runtime_replay_frames(
         persistent_connector_overlays_from_wire(plan_dict) if plan_dict is not None else []
     )
 
-    out: list[dict[str, Any]] = []
+    out: list[dict[str, object]] = []
 
     if plan_dict is not None:
         l2_frame = build_layer02_exterior_transport_frame(

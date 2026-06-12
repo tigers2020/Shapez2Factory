@@ -150,6 +150,24 @@ def test_lookup_does_not_infer_empty_from_all_full_map_xy() -> None:
     assert "lab_synthetic" not in sources
 
 
+def test_lookup_sanitizes_legacy_candidate_transport_on_read() -> None:
+    ser = {
+        "map_view": {
+            "full_cells": [
+                {"x": 10, "y": 7, "kind": "asteroid_shape_field", "transport": "none"},
+            ],
+            "overlay_cells": [
+                {"x": 10, "y": 7, "kind": "candidate_miner", "transport": "shape_belt"},
+            ],
+            "cell_delta": [],
+        }
+    }
+    effective, _sources = lookup_effective_cell_in_serialized_frame(ser, 10, 7)
+    assert effective is not None
+    assert effective["output"]["transport_kind"] == "space_belt"
+    assert effective["transport"]["kind"] == "none"
+
+
 def test_lookup_synthetic_none_outside_raw_bbox() -> None:
     bbox = {
         "min_x": 0,

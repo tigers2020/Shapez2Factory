@@ -10,6 +10,9 @@ from django_apps.asteroid_lab.replay.effective_cell_wire import EffectiveCellWir
 from django_apps.asteroid_lab.replay.replay_overlay_bucket_registry import (
     collect_overlay_cells_for_semantic_lookup,
 )
+from django_apps.asteroid_lab.replay.replay_wire_read_sanitize import (
+    sanitize_replay_wire_cell_for_read,
+)
 from django_apps.asteroid_lab.typing_boundary import JsonObject
 
 
@@ -37,6 +40,18 @@ def _xy_match(row: object, x: int, y: int) -> bool:
 
 def _cells_at_xy(cells: list[JsonObject], x: int, y: int) -> list[JsonObject]:
     return [c for c in cells if _xy_match(c, x, y)]
+
+
+def _sanitize_wire_cell(row: JsonObject | None) -> JsonObject | None:
+    if row is None:
+        return None
+    return sanitize_replay_wire_cell_for_read(row)
+
+
+def _sanitize_wire_cells(rows: list[JsonObject] | None) -> list[JsonObject] | None:
+    if not rows:
+        return None
+    return [sanitize_replay_wire_cell_for_read(row) for row in rows]
 
 
 def _bbox_blocks(ser: JsonObject) -> list[JsonObject]:
@@ -152,6 +167,35 @@ def lookup_effective_cell_in_serialized_frame(
                         if delta_cell is None:
                             delta_cell = dict(c)
 
+    map_view_raw = ser.get("map_view")
+    if isinstance(map_view_raw, dict):
+        if not full_cells:
+            mv_full = map_view_raw.get("full_cells")
+            if isinstance(mv_full, list):
+                for row in mv_full:
+                    if isinstance(row, dict) and _xy_match(row, x, y):
+                        sources["full_map"] = row
+                        full_cells.append(dict(row))
+        if not overlay_matches:
+            mv_overlay = map_view_raw.get("overlay_cells")
+            if isinstance(mv_overlay, list):
+                overlay_matches = [dict(m) for m in _cells_at_xy(mv_overlay, x, y)]
+                if overlay_matches:
+                    sources["overlay_cells_matched"] = len(overlay_matches)
+                    sources["overlay_cells"] = (
+                        overlay_matches
+                        if len(overlay_matches) > 1
+                        else overlay_matches[0]
+                    )
+        if delta_cell is None:
+            mv_delta = map_view_raw.get("cell_delta")
+            if isinstance(mv_delta, list):
+                for cell in mv_delta:
+                    if isinstance(cell, dict) and _xy_match(cell, x, y):
+                        sources["map_view_cell_delta"] = cell
+                        delta_cell = dict(cell)
+                        break
+
     frame_index_raw = ser.get("frame_index")
     frame_index: int | None
     if frame_index_raw is None:
@@ -164,15 +208,18 @@ def lookup_effective_cell_in_serialized_frame(
         except (TypeError, ValueError):
             frame_index = None
 
+    sanitized_delta = _sanitize_wire_cell(delta_cell)
+    sanitized_overlays = _sanitize_wire_cells(overlay_matches or None)
+
     view = None
     for full_cell in full_cells:
         view = merge_effective_cell_view(
             x=x,
             y=y,
             frame_index=frame_index,
-            full_cell=full_cell,
-            delta_cell=delta_cell,
-            overlay_cells=overlay_matches or None,
+            full_cell=_sanitize_wire_cell(full_cell),
+            delta_cell=sanitized_delta,
+            overlay_cells=sanitized_overlays,
         )
     if view is None and (delta_cell is not None or overlay_matches):
         view = merge_effective_cell_view(
@@ -180,8 +227,8 @@ def lookup_effective_cell_in_serialized_frame(
             y=y,
             frame_index=frame_index,
             full_cell=None,
-            delta_cell=delta_cell,
-            overlay_cells=overlay_matches or None,
+            delta_cell=sanitized_delta,
+            overlay_cells=sanitized_overlays,
         )
     if view is not None:
         return effective_cell_to_wire(view), sources

@@ -5371,6 +5371,16 @@
       return labEffectiveCellDetailSignature(a) === labEffectiveCellDetailSignature(b);
     }
 
+    function sanitizeWireCellForMerge(cell) {
+      if (
+        typeof LabReplayWireSanitize !== "undefined" &&
+        typeof LabReplayWireSanitize.sanitizeReplayWireCellForRead === "function"
+      ) {
+        return LabReplayWireSanitize.sanitizeReplayWireCellForRead(cell);
+      }
+      return cell;
+    }
+
     function labCellDetailLookupInMapView(mapView, x, y) {
       if (!mapView || typeof mapView !== "object") {
         return { effective: null, sources: {} };
@@ -5415,14 +5425,19 @@
       if (!fullCell && !deltaCell && !overlayMatches.length) {
         return { effective: null, sources: sources };
       }
+      const mergeFullCell = fullCell != null ? sanitizeWireCellForMerge(fullCell) : null;
+      const mergeDeltaCell = deltaCell != null ? sanitizeWireCellForMerge(deltaCell) : null;
+      const mergeOverlayCells = overlayMatches.map(function (o) {
+        return sanitizeWireCellForMerge(o);
+      });
       const effective =
         typeof LabEffectiveCellView !== "undefined"
           ? LabEffectiveCellView.mergeEffectiveCellView({
               x: x,
               y: y,
-              fullCell: fullCell,
-              deltaCell: deltaCell,
-              overlayCells: overlayMatches,
+              fullCell: mergeFullCell,
+              deltaCell: mergeDeltaCell,
+              overlayCells: mergeOverlayCells,
             })
           : null;
       return { effective: effective, sources: sources };

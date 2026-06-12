@@ -8,6 +8,7 @@ REPO = Path(__file__).resolve().parents[3]
 JS_DIR = REPO / "django_apps" / "web" / "static" / "web" / "js"
 TPL = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
 LAB_JS = JS_DIR / "asteroid_miner_layout_lab.js"
+SANITIZE_JS = JS_DIR / "lab_replay_wire_sanitize.js"
 
 
 def test_canvas_renderer_module_contract() -> None:
@@ -82,6 +83,22 @@ def test_collect_frame_spatial_targets_includes_cell_overlay_json() -> None:
     body = src[idx : idx + 900]
     assert "cellOverlayJsonFromFrame(frame)" in body
     assert "collectOverlayPaintTargets(overlayJson)" in body
+
+
+def test_js_sanitize_replay_wire_cell_for_read_exists() -> None:
+    src = SANITIZE_JS.read_text(encoding="utf-8")
+    assert "function sanitizeReplayWireCellForRead" in src
+    assert "function cellKey" in src
+    assert "LabReplayWireSanitize" in src
+
+
+def test_js_sanitizer_matches_python_candidate_compat_cases() -> None:
+    src = SANITIZE_JS.read_text(encoding="utf-8")
+    assert '"shape_belt"' in src  # legacy compat token handled in sanitizer
+    assert "output_transport_kind" in src
+    assert "candidate_miner" in src
+    assert "space_belt" in src
+    assert "function isCandidateOutputHintKind" in src
 
 
 def test_lab_sprite_path_handles_space_belt_transport_wire() -> None:

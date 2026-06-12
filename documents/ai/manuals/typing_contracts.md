@@ -37,13 +37,12 @@ Converters are the only legal path between semantic DTOs and wire dictionaries.
 Module: `django_apps/asteroid_lab/typing_boundary.py`
 
 ```python
-from typing import Any, TypeAlias
+type JsonScalar = str | int | float | bool | None
+type JsonValue = JsonScalar | list[JsonValue] | dict[str, JsonValue]
+type JsonObject = dict[str, JsonValue]
 
-JsonScalar: TypeAlias = str | int | float | bool | None
-JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
-
-# typing_contracts: raw JSON before normalization only
-RawJsonObject: TypeAlias = dict[str, Any]
+# typing_contracts: validated generic JSON object after json.loads narrow
+type RawJsonObject = JsonObject
 ```
 
 Implementation may use Python 3.12 `type` alias syntax where ruff UP040 prefers it over `TypeAlias`.

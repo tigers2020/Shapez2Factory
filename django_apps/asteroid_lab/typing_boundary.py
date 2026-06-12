@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 type JsonScalar = str | int | float | bool | None
 type JsonValue = JsonScalar | list[JsonValue] | dict[str, JsonValue]
+type JsonObject = dict[str, JsonValue]
 
-# typing_contracts: raw JSON before normalization only
-type RawJsonObject = dict[str, Any]
+# typing_contracts: validated generic JSON object tree (post json.loads narrow)
+type RawJsonObject = JsonObject
 
-__all__ = ["JsonScalar", "JsonValue", "RawJsonObject"]
+__all__ = ["JsonObject", "JsonScalar", "JsonValue", "RawJsonObject"]

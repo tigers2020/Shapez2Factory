@@ -195,6 +195,40 @@ strict = true
 - shapez_solver graph (`recipe_graph_*`) — may warrant separate sub-spec
 - lab summary display DTOs (`solver_run_lab_summary.py`)
 
+### Phase 5+ — Gap buckets (typing-zero loop inventory)
+
+**Scan command:** `python scripts/typing_debt_inventory.py`  
+**Guard:** `python scripts/check_typing_debt.py` (non-increase until baseline reaches zero)
+
+**Baseline (2026-06-11, pre slice-1):**
+
+| Metric | Count |
+|--------|------:|
+| `typing.Any` tokens | 1,454 |
+| Any-containing `.py` files | 198 |
+| Production `dict[str, object]` files | 44 |
+| `dict[str, Any]` tokens | 982 |
+
+| Phase | Bucket | Files | Any | Priority |
+|------:|--------|------:|----:|----------|
+| 5a | `replay/` wire gaps (beyond Phase 1 four) | 12 | 76 | high |
+| 5b | `replay/persistent_exterior_overlay` + connector plan | 2 | 6 | **slice-1** |
+| 6 | `asteroid_lab/services/` replay compose | 35 | 219 | high |
+| 7 | `web/` replay UI | 11 | 91 | high |
+| 8 | `snapshots/` + `adapters/` | 10 | 117 | medium |
+| 9 | `genetic_sample/` | 6 | 39 | medium |
+| 10 | `src/` strict region | 32 | 207 | medium |
+| 11 | `shapez_solver/` graph stack | 11+ | 203+ | low (sub-spec) |
+| 12 | `game_data/` + `shapez_core/` | 15+ | 80+ | low |
+
+**Parallel escape hatch (same governance):** `dict[str, object]` on production boundaries — 44 files; includes `replay/layer03_segment.py`, `layer04_segment.py`, `layer05_transport_segment.py`, observability post-summary metrics in `src/`.
+
+**Slice-1 (branch `typing-zero/phase-5-persistent-exterior-overlay`):**
+
+- Add `PersistentConnectorOverlayWire` + `planned_connector_overlays_from_wire()`
+- Remove `Any` from `typing_boundary.py` (`RawJsonObject` → `JsonObject` / `JsonValue`)
+- Tighten `overlay_wire_contract.assert_candidate_overlay_wire_contract` to `Mapping[str, object]`
+
 ---
 
 ## 6. Testing and validation

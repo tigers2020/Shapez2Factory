@@ -142,11 +142,26 @@ shapez_2_data/
 
 .understand-anything/
 
-# --- graphify (local knowledge graph; regenerate: graphify update <path>) ---
-# Raw output is local-only; tracked summaries live under docs/agent-context/ (exceptions below).
+# --- graphify (shared map at repo root; regenerate: graphify update <path>) ---
+# Track: graphify-out/graph.json, GRAPH_REPORT.md, manifest.json; optional graph.html.
+# Local-only patterns below. Agent digests: docs/agent-context/ (exceptions).
 docs/agent-context/
 !docs/agent-context/graphify-summary.md
 !docs/agent-context/graphify-index.md
+
+# graphify local-only / wrong-CWD outputs (upstream: cost.json local; cache optional ignore)
+graphify-out/cost.json
+graphify-out/cache/
+graphify-out/.graphify_detect.json
+graphify-out/.graphify_python
+graphify-out/2026-*/
+graphify-out/obsidian/
+django_apps/graphify-out/
+src/graphify-out/
+
+# Obsidian machine state (not vault markdown)
+.obsidian/
+graphify-out/**/.obsidian/
 
 # --- Agent research stubs (canon digests under documents/ai/workflow-research/) ---
 docs/agent-research/

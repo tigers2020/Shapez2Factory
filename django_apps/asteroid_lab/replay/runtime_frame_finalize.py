@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
 
 from django_apps.asteroid_lab.replay.overlay_composition import compose_replay_overlay_cells
 from django_apps.asteroid_lab.replay.overlay_wire_contract import overlay_cell_to_wire_dict
@@ -24,7 +23,7 @@ from django_apps.asteroid_lab.services.lab_timeline_exterior_connector_enrichmen
 
 
 def structural_overlay_wire_from_source_frame(
-    source_frame: Mapping[str, Any] | None,
+    source_frame: Mapping[str, object] | None,
 ) -> list[dict[str, object]]:
     """Non-connector overlay rows from reconstruction source only (not L2 display overlay)."""
 
@@ -110,7 +109,7 @@ def finalize_timeline_frame_to_json_dict(
     *,
     composed_overlay_wire: Sequence[Mapping[str, object]],
     exterior_plan_wire: Mapping[str, object] | None = None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     wire = replay_timeline_frame_to_json_dict(frame)
     mv = dict(wire["map_view"])
     mv["overlay_cells"] = [dict(row) for row in composed_overlay_wire]
@@ -129,7 +128,7 @@ def finalize_segment_spec_to_json_dict(
     structural_overlay_wire: Sequence[Mapping[str, object]],
     persistent_overlay_wire: Sequence[Mapping[str, object]],
     exterior_plan_wire: Mapping[str, object] | None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     composed = compose_runtime_overlay_wire(
         structural_overlay_wire=structural_overlay_wire,
         persistent_overlay_wire=persistent_overlay_wire,

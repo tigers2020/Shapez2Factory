@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.game_data.enums import SimulationAuditIssueCode, SimulationAuditSeverity
 from django_apps.game_data.importers.base import ImportContext
 from django_apps.game_data.importers.simulation_definition_snapshot_audit import (
@@ -65,7 +63,7 @@ def _ensure_profile(profile_key: str) -> SimulationProfile:
     return profile
 
 
-def _bounds_coords(bounds: dict[str, Any] | None) -> tuple[int, int, int, int, int, int]:
+def _bounds_coords(bounds: dict[str, object] | None) -> tuple[int, int, int, int, int, int]:
     if not isinstance(bounds, dict):
         return (0, 0, 0, 0, 0, 0)
     min_pt = bounds.get("<Min>k__BackingField") or bounds.get("Min") or {}
@@ -84,7 +82,7 @@ def _bounds_coords(bounds: dict[str, Any] | None) -> tuple[int, int, int, int, i
     )
 
 
-def _building_internal_name(building: dict[str, Any] | None) -> str:
+def _building_internal_name(building: dict[str, object] | None) -> str:
     if not isinstance(building, dict):
         return ""
     definition = building.get("Definition")
@@ -103,7 +101,7 @@ def _set_connector_property(
     property_key: str,
     value: object,
 ) -> None:
-    defaults: dict[str, Any] = {
+    defaults: dict[str, object] = {
         "value_int": None,
         "value_float": None,
         "value_bool": None,
@@ -127,7 +125,7 @@ def _set_connector_property(
 def _import_connectable_attachment(
     ctx: ImportContext,
     system: SimulationSystem,
-    attachment: dict[str, Any],
+    attachment: dict[str, object],
     attachment_index: int,
 ) -> None:
     building = attachment.get("Building") if isinstance(attachment.get("Building"), dict) else {}
@@ -233,7 +231,7 @@ def _import_connectable_attachment(
     ctx.bump("connectable_simulation")
 
 
-def import_simulation_systems(ctx: ImportContext, rows: list[dict[str, Any]]) -> None:
+def import_simulation_systems(ctx: ImportContext, rows: list[dict[str, object]]) -> None:
     touched_param_keys: set[str] = set()
     for i, row in enumerate(rows):
         params = row.get("simulation_parameters")

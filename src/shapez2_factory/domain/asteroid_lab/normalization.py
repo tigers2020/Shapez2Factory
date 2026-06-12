@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from shapez2_factory.domain.asteroid_lab.copy_json_coords import entry_island_raw_coord
 from shapez2_factory.domain.asteroid_lab.service_dtos import (
     NormalizedBlueprintDTO,
@@ -17,14 +15,14 @@ def normalize_decoded_blueprint(raw: RawDecodedBlueprintDTO) -> NormalizedBluepr
     """Return a shallow-copied root dict with ``_asteroid_lab_summary`` injected."""
 
     summary = _build_summary(raw.root)
-    merged: dict[str, Any] = dict(raw.root)
+    merged: dict[str, object] = dict(raw.root)
     merged["_asteroid_lab_summary"] = summary
     return NormalizedBlueprintDTO(decoded_json=merged)
 
 
-def _build_summary(root: dict[str, Any]) -> dict[str, Any]:
+def _build_summary(root: dict[str, object]) -> dict[str, object]:
     bp = root["BP"]
-    entries: list[Any] = bp["Entries"]
+    entries: list[object] = bp["Entries"]
     v_raw = root.get("V")
     binary_version = _coerce_int_version(v_raw)
 
@@ -87,7 +85,7 @@ def _build_summary(root: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _coerce_int_version(v_raw: Any) -> int:
+def _coerce_int_version(v_raw: object) -> int:
     if isinstance(v_raw, int):
         return v_raw
     if v_raw is None:
@@ -98,7 +96,7 @@ def _coerce_int_version(v_raw: Any) -> int:
         return 0
 
 
-def _as_int(val: Any) -> int:
+def _as_int(val: object) -> int:
     if val is None:
         return 0
     if isinstance(val, bool):

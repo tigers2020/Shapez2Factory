@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
-from typing import Any
 
 from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
     GeneticSampleSeedSnapshot,
@@ -107,11 +106,11 @@ class _LayerArtifactCapture:
 
 
 def _capture_layer_run(
-    run: Callable[..., Any],
+    run: Callable[..., object],
     capture: _LayerArtifactCapture,
     field_name: str,
-) -> Callable[..., Any]:
-    def wrapped(**kwargs: Any) -> Any:
+) -> Callable[..., object]:
+    def wrapped(**kwargs: object) -> object:
         result = run(**kwargs)
         setattr(capture, field_name, result)
         return result
@@ -137,7 +136,7 @@ def _run_golden_inner_pattern_fill(
     capture: _LayerArtifactCapture,
     cfg: GoldenSolverConfig,
     complete_map: ReconstructionCompleteMap,
-    **kwargs: Any,
+    **kwargs: object,
 ) -> Layer04InnerFillResult:
     rim_group_count = (
         len(capture.rim_result.committed_placements) if capture.rim_result is not None else 0
@@ -158,7 +157,7 @@ def _run_golden_inner_pattern_fill(
 def _build_runners(
     *,
     game_data_rules: GameDataRulesPort,
-    capacity_envelope: dict[str, Any],
+    capacity_envelope: dict[str, object],
     cfg: GoldenSolverConfig,
     capture: _LayerArtifactCapture,
 ) -> tuple[_LayerStackRunner, ...]:

@@ -14,6 +14,9 @@
 
   var CANDIDATE_RING_STROKE = "rgba(244,114,182,0.9)";
 
+  var DOM_CANDIDATE_MINER_RING = "lab-overlay-candidate-miner-ring relative";
+  var DOM_CANDIDATE_MINER_FILL = "lab-overlay-candidate-miner relative";
+
   var CELL_KIND_STATIC_RELPATH = {
     asteroid_fluid_field: "AsteroidField_Fluid.svg",
     asteroid_shape_field: "AsteroidField_Shape.svg",
@@ -501,6 +504,126 @@
     return null;
   }
 
+  function buildEffectiveCellViewIndexWithCarry(frame, options) {
+    options = options || {};
+    var index = buildEffectiveCellViewIndex(frame);
+    if (
+      options.replayFrames &&
+      options.hasServerReplay &&
+      !indexHasSpriteCapableCells(index)
+    ) {
+      var replayArrayIndex =
+        options.replayArrayIndex != null
+          ? options.replayArrayIndex
+          : options.replayFrames.length - 1;
+      var layoutFrame = lastFrameWithSpriteCapableCells(
+        options.replayFrames,
+        replayArrayIndex
+      );
+      if (layoutFrame && layoutFrame !== frame) {
+        index = mergeCarriedIndexKeys(
+          buildEffectiveCellViewIndex(layoutFrame),
+          index
+        );
+      }
+    }
+    return index;
+  }
+
+  function layersHaveSprite(layers) {
+    if (!layers) {
+      return false;
+    }
+    var occupant = layers.occupant;
+    if (occupant && typeof occupant === "object" && occupant.rel) {
+      return true;
+    }
+    var transport = layers.transport;
+    if (transport && typeof transport === "object" && transport.rel) {
+      return true;
+    }
+    return false;
+  }
+
+  function domPlanFromPaintLayers(layers, opts) {
+    opts = opts || {};
+    var overlayKind = opts.overlayKind != null ? String(opts.overlayKind) : "";
+
+    var occupant = layers && layers.occupant;
+    var chrome = layers && layers.chrome;
+    var hasSprite = layersHaveSprite(layers);
+    var hasCandidateRing = false;
+    if (Array.isArray(chrome)) {
+      for (var i = 0; i < chrome.length; i++) {
+        var c = chrome[i];
+        if (c && typeof c === "object" && kindStr(c) === "candidate_ring") {
+          hasCandidateRing = true;
+          break;
+        }
+      }
+    }
+
+    var spriteRel = null;
+    var spriteRotation = 0;
+    if (occupant && typeof occupant === "object" && occupant.rel) {
+      spriteRel = String(occupant.rel);
+      spriteRotation = rotation(occupant);
+    }
+
+    var toneClasses = "";
+    if (hasCandidateRing) {
+      toneClasses = hasSprite ? DOM_CANDIDATE_MINER_RING : DOM_CANDIDATE_MINER_FILL;
+    } else if (overlayKind === "candidate_miner" && !hasSprite) {
+      toneClasses = DOM_CANDIDATE_MINER_FILL;
+    }
+
+    return {
+      toneClasses: toneClasses,
+      spriteRel: spriteRel,
+      spriteRotation: spriteRotation,
+      candidateObservation: hasCandidateRing || overlayKind === "candidate_miner",
+      skipFullFill: hasSprite,
+    };
+  }
+
+  function overlayCellKindFromWire(cell) {
+    if (!cell || typeof cell !== "object") {
+      return "";
+    }
+    if (cell.cell_kind != null && String(cell.cell_kind) !== "") {
+      return String(cell.cell_kind);
+    }
+    if (cell.kind != null && String(cell.kind) !== "") {
+      return String(cell.kind);
+    }
+    return "";
+  }
+
+  function buildDomPlanResolverForFrame(frame, options) {
+    if (!frame) {
+      return function () {
+        return null;
+      };
+    }
+    options = options || {};
+    var index = buildEffectiveCellViewIndexWithCarry(frame, options);
+    return function resolveDomPlan(cell) {
+      if (!cell) {
+        return null;
+      }
+      var layer = cell.layer != null ? cell.layer : 0;
+      var key = keyForCell(cell.x, cell.y, layer);
+      var wire = index[key];
+      if (!wire) {
+        return null;
+      }
+      var layers = labPaintLayersFromView(wire);
+      return domPlanFromPaintLayers(layers, {
+        overlayKind: overlayCellKindFromWire(cell),
+      });
+    };
+  }
+
   function coordFromWireOrKey(wire, cellKeyStr) {
     if (wire && wire.coord && typeof wire.coord === "object") {
       return wire.coord;
@@ -573,8 +696,11 @@
     VOID_FILL: VOID_FILL,
     CANDIDATE_RING_STROKE: CANDIDATE_RING_STROKE,
     buildEffectiveCellViewIndex: buildEffectiveCellViewIndex,
+    buildEffectiveCellViewIndexWithCarry: buildEffectiveCellViewIndexWithCarry,
+    buildDomPlanResolverForFrame: buildDomPlanResolverForFrame,
     buildLabPaintPlanFromFrame: buildLabPaintPlanFromFrame,
     canvasPlanFromPaintLayers: canvasPlanFromPaintLayers,
+    domPlanFromPaintLayers: domPlanFromPaintLayers,
     labPaintLayersFromView: labPaintLayersFromView,
   };
 })(typeof window !== "undefined" ? window : globalThis);

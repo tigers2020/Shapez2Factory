@@ -154,6 +154,23 @@ def test_js_canvas_plan_from_paint_layers_exists() -> None:
     assert "isRgbaFill" in src
 
 
+def test_js_dom_plan_from_paint_layers_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function domPlanFromPaintLayers" in src
+    assert "domPlanFromPaintLayers:" in src
+    assert "lab-overlay-candidate-miner-ring" in src
+    assert "skipFullFill" in src
+
+
+def test_js_build_dom_plan_resolver_for_frame_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function buildDomPlanResolverForFrame" in src
+    assert "buildDomPlanResolverForFrame:" in src
+    resolver_body = src.split("function buildDomPlanResolverForFrame", 1)[1][:900]
+    assert "buildEffectiveCellViewIndexWithCarry" in resolver_body
+    assert "return function" in resolver_body
+
+
 def test_lab_js_lab_paint_v2_enabled_helper() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
     assert "function labPaintV2Enabled(" in src

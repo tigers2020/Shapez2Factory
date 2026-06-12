@@ -218,3 +218,65 @@ def test_run_golden_loop_writes_best_copy_when_requested(tmp_path: Path) -> None
     assert best_copy_path.read_text(encoding="utf-8") == "SHAPEZ2-4-test$\n"
     assert summary["best_copy_path"] == str(best_copy_path)
     encode_mock.assert_called_once_with(artifacts=fake_artifacts, empty_copy="empty$")
+
+
+def test_run_golden_loop_db_gene_seeds_writes_snapshot(tmp_path: Path) -> None:
+    loop = _load_loop_module()
+    configs = (
+        loop.GoldenLoopRunConfig(throughput_target_percent=80, budget_ms=60_000, speed_tier=1),
+    )
+    fake_seeds = mock.Mock(entries=(mock.Mock(), mock.Mock()))
+    seed_payload = {
+        "schema_version": "genetic_sample_seed_v1",
+        "entries": [{"gene_id": "miner_seed_m0e_01"}],
+        "provenance_hash": "abc",
+    }
+
+    with (
+        mock.patch.object(
+            loop,
+            "_load_genetic_sample_seeds_for_loop",
+            return_value=(fake_seeds, seed_payload),
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_solver_run.run_golden_solver",
+            return_value=mock.Mock(),
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_eval.evaluate_against_golden",
+            return_value=_eval_result(valid=True, score=100.0),
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures.load_empty_copy",
+            return_value="empty$",
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures.load_golden_copy",
+            return_value="golden$",
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures.load_game_data_rules",
+            return_value=mock.Mock(),
+        ),
+        mock.patch(
+            "shapez2_factory.domain.asteroid_lab.copy_decode.decode_copy_string",
+            return_value=mock.Mock(root={"mock": True}),
+        ),
+        mock.patch(
+            "shapez2_factory.application.asteroid_lab.experiments.golden_fixture_loader.build_golden_oracle",
+            return_value=mock.Mock(),
+        ),
+    ):
+        summary = loop.run_golden_loop(
+            out_dir=tmp_path,
+            configs=configs,
+            gene_seeds_source="db",
+            gene_seeds_db_scope="admin",
+        )
+
+    snapshot_path = tmp_path / "genetic_sample_seeds.json"
+    assert snapshot_path.is_file()
+    diagnostics = json.loads((tmp_path / "diagnostics.json").read_text(encoding="utf-8"))
+    assert diagnostics["gene_seeds_source"] == "db"
+    assert diagnostics["gene_seeds_entry_count"] == 2
+    assert summary["best_valid"] is True

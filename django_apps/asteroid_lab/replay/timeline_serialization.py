@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
-from typing import Any
+from collections.abc import Callable, Mapping
 
 from django_apps.asteroid_lab.replay.map_height_layer import (
     resolve_replay_height_layer,
@@ -22,6 +21,7 @@ from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayOverlayCell,
     ReplayTimelineFrame,
 )
+from django_apps.asteroid_lab.typing_boundary import JsonObject, JsonValue
 
 
 class ReplayTimelineDeserializationError(ValueError):
@@ -47,7 +47,7 @@ def _coerce_int(value: object, *, default: int = 0) -> int:
     return default
 
 
-def _mapping(value: object) -> dict[str, Any]:
+def _mapping(value: object) -> JsonObject:
     if not isinstance(value, dict):
         return {}
     return dict(value)
@@ -87,7 +87,7 @@ def _wire_transport(data: Mapping[str, object]) -> str:
     return str(data.get("transport") or data.get("transport_kind") or "")
 
 
-def _cell_from_dict(data: dict[str, Any]) -> ReplayCell:
+def _cell_from_dict(data: JsonObject) -> ReplayCell:
     return ReplayCell(
         x=_require_int(data.get("x"), field="cell.x"),
         y=_require_int(data.get("y"), field="cell.y"),
@@ -99,7 +99,7 @@ def _cell_from_dict(data: dict[str, Any]) -> ReplayCell:
     )
 
 
-def _cell_delta_from_dict(data: dict[str, Any]) -> ReplayCellDelta:
+def _cell_delta_from_dict(data: JsonObject) -> ReplayCellDelta:
     return ReplayCellDelta(
         x=_require_int(data.get("x"), field="cell_delta.x"),
         y=_require_int(data.get("y"), field="cell_delta.y"),
@@ -112,7 +112,7 @@ def _cell_delta_from_dict(data: dict[str, Any]) -> ReplayCellDelta:
     )
 
 
-def _overlay_from_dict(data: Mapping[str, object]) -> ReplayOverlayCell:
+def _overlay_from_dict(data: JsonObject) -> ReplayOverlayCell:
     return ReplayOverlayCell(
         x=_require_int(data.get("x"), field="overlay.x"),
         y=_require_int(data.get("y"), field="overlay.y"),
@@ -121,7 +121,7 @@ def _overlay_from_dict(data: Mapping[str, object]) -> ReplayOverlayCell:
         output_transport_kind=str(data.get("output_transport_kind") or ""),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=_coerce_int(data.get("rotation"), default=0),
-        layer=wire_explicit_height_layer(dict(data)),
+        layer=wire_explicit_height_layer(data),
     )
 
 
@@ -148,7 +148,7 @@ def _resolved_layer_for_cell(
     )
 
 
-def _annotation_from_dict(data: dict[str, Any]) -> ReplayAnnotation:
+def _annotation_from_dict(data: JsonObject) -> ReplayAnnotation:
     return ReplayAnnotation(
         x=_require_int(data.get("x"), field="annotation.x"),
         y=_require_int(data.get("y"), field="annotation.y"),
@@ -156,10 +156,10 @@ def _annotation_from_dict(data: dict[str, Any]) -> ReplayAnnotation:
     )
 
 
-def _tuple_from_list(raw: object, factory: Any) -> tuple[Any, ...]:
+def _tuple_from_list[T](raw: object, factory: Callable[[JsonObject], T]) -> tuple[T, ...]:
     if not isinstance(raw, list):
         return ()
-    out: list[Any] = []
+    out: list[T] = []
     for item in raw:
         if not isinstance(item, dict):
             raise ReplayTimelineDeserializationError("cell list items must be objects")
@@ -167,7 +167,7 @@ def _tuple_from_list(raw: object, factory: Any) -> tuple[Any, ...]:
     return tuple(out)
 
 
-def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, Any]:
+def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, object]:
     return {
         "base_ref": map_view.base_ref,
         "full_cells": [
@@ -232,8 +232,8 @@ def replay_map_view_from_json_dict(data: object) -> ReplayMapView:
     )
 
 
-def replay_timeline_frame_to_json_dict(frame: ReplayTimelineFrame) -> dict[str, Any]:
-    out: dict[str, Any] = {
+def replay_timeline_frame_to_json_dict(frame: ReplayTimelineFrame) -> dict[str, object]:
+    out: dict[str, object] = {
         "frame_index": int(frame.frame_index),
         "phase": frame.phase.value,
         "event_type": frame.event_type.value,
@@ -269,11 +269,11 @@ def parse_replay_event_type(raw: object) -> ReplayEventType:
         raise ReplayTimelineDeserializationError(f"unknown event_type: {raw!r}") from exc
 
 
-def replay_timeline_frame_from_json_dict(data: Mapping[str, Any]) -> ReplayTimelineFrame:
+def replay_timeline_frame_from_json_dict(data: Mapping[str, object]) -> ReplayTimelineFrame:
     if "map_view" not in data:
         raise ReplayTimelineDeserializationError("map_view is required")
     raw_diff = data.get("diff")
-    diff_out: dict[str, Any] | None = None
+    diff_out: dict[str, JsonValue] | None = None
     if isinstance(raw_diff, dict) and raw_diff:
         diff_out = dict(raw_diff)
     return ReplayTimelineFrame(

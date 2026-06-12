@@ -7,7 +7,6 @@ import logging
 import uuid
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from typing import Any
 
 from config.log_timing import log_timing
 from django_apps.shapez_core.domain.shape import Shape
@@ -49,7 +48,7 @@ def _as_str(value: object, *, label: str) -> str:
     return value.strip()
 
 
-def _normalize_shape_node_shape_code(node: dict[str, Any]) -> None:
+def _normalize_shape_node_shape_code(node: dict[str, object]) -> None:
     sc = node.get("shape_code", "")
     if sc is not None and not isinstance(sc, str):
         raise ValueError("shape.shape_code must be a string")
@@ -57,7 +56,7 @@ def _normalize_shape_node_shape_code(node: dict[str, Any]) -> None:
 
 
 def _normalize_shape_node_source_carrier(
-    node: dict[str, Any],
+    node: dict[str, object],
     index: int,
     role: str,
 ) -> None:
@@ -81,7 +80,7 @@ def _normalize_shape_node_source_carrier(
         )
 
 
-def _normalize_shape_node(node: dict[str, Any], *, index: int) -> None:
+def _normalize_shape_node(node: dict[str, object], *, index: int) -> None:
     _normalize_shape_node_shape_code(node)
     node.setdefault("role", "intermediate")
     role = str(node.get("role", "intermediate")).strip()
@@ -98,7 +97,7 @@ def _normalize_shape_node(node: dict[str, Any], *, index: int) -> None:
             node["quantity"] = 1
 
 
-def _normalize_painter_paint_color(node: dict[str, Any], index: int) -> None:
+def _normalize_painter_paint_color(node: dict[str, object], index: int) -> None:
     pc = node.get("paint_color")
     if pc is None:
         return
@@ -116,7 +115,7 @@ def _normalize_painter_paint_color(node: dict[str, Any], index: int) -> None:
     node["paint_color"] = ink
 
 
-def _normalize_crystal_generator_crystal_color(node: dict[str, Any], index: int) -> None:
+def _normalize_crystal_generator_crystal_color(node: dict[str, object], index: int) -> None:
     cc = node.get("crystal_color")
     if cc is None:
         return
@@ -128,7 +127,7 @@ def _normalize_crystal_generator_crystal_color(node: dict[str, Any], index: int)
     node["crystal_color"] = cc.strip()
 
 
-def _normalize_operation_node(node: dict[str, Any], index: int) -> None:
+def _normalize_operation_node(node: dict[str, object], index: int) -> None:
     opv = _as_str(node.get("operation"), label="operation.operation")
     try:
         op_enum = OperationType(opv)
@@ -178,13 +177,13 @@ def _validate_graph_edge_row(edge: object, index: int) -> None:
         raise ValueError("edge.slot must be a string or null")
 
 
-def _assert_edges_reference_known_nodes(edges: list[dict[str, Any]], seen_ids: set[str]) -> None:
+def _assert_edges_reference_known_nodes(edges: list[dict[str, object]], seen_ids: set[str]) -> None:
     for edge in edges:
         if edge["from"] not in seen_ids or edge["to"] not in seen_ids:
             raise ValueError(f"edge references unknown node: {edge}")
 
 
-def validate_graph_document(raw: object) -> dict[str, Any]:
+def validate_graph_document(raw: object) -> dict[str, object]:
     """graph_document JSON 검증. 통과 시 정규화된 dict 반환."""
     if raw is None:
         raise ValueError("graph_document is required")
@@ -215,7 +214,7 @@ def validate_graph_document(raw: object) -> dict[str, Any]:
     return doc
 
 
-def default_empty_graph_document() -> dict[str, Any]:
+def default_empty_graph_document() -> dict[str, object]:
     """검증을 통과한 빈 레시피 그래프(JSON)."""
     return validate_graph_document(
         {"schema_version": RECIPE_GRAPH_SCHEMA_VERSION, "nodes": [], "edges": []},
@@ -223,9 +222,9 @@ def default_empty_graph_document() -> dict[str, Any]:
 
 
 def _apply_delivery_edges(
-    edges: list[dict[str, Any]],
+    edges: list[dict[str, object]],
     *,
-    node_by_id: dict[str, dict[str, Any]],
+    node_by_id: dict[str, dict[str, object]],
 ) -> None:
     """연산 재계산 후 intermediate의 ``shape_code``를 delivery 링크로 target에 복사한다."""
     for e in edges:
@@ -241,8 +240,8 @@ def _apply_delivery_edges(
 
 
 def _shape_op_edge_action(
-    e: dict[str, Any],
-    node_kind: dict[str, Any],
+    e: dict[str, object],
+    node_kind: dict[str, object],
 ) -> tuple[str, str, str] | None:
     """Return (role, shape_id, op_id) with role ``produce`` or ``consume``, else None."""
     fr, to = e["from"], e["to"]
@@ -269,8 +268,8 @@ def _operation_dep_pairs_from_shape_links(
 
 
 def _operation_dependency_edges(
-    edges: list[dict[str, Any]],
-    node_by_id: dict[str, dict[str, Any]],
+    edges: list[dict[str, object]],
+    node_by_id: dict[str, dict[str, object]],
 ) -> list[tuple[str, str]]:
     """Return list of (producer_op_id, consumer_op_id) where consumer runs after producer."""
     node_kind = {nid: n.get("kind") for nid, n in node_by_id.items()}
@@ -289,11 +288,11 @@ def _operation_dependency_edges(
 
 
 def _edge_adjacency(
-    edges: list[dict[str, Any]],
-) -> tuple[defaultdict[str, list[dict[str, Any]]], defaultdict[str, list[dict[str, Any]]]]:
+    edges: list[dict[str, object]],
+) -> tuple[defaultdict[str, list[dict[str, object]]], defaultdict[str, list[dict[str, object]]]]:
     """input: to → edges, output: from → edges (참조는 원본 edge dict와 동일)."""
-    input_edges_by_to: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
-    output_edges_by_from: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
+    input_edges_by_to: defaultdict[str, list[dict[str, object]]] = defaultdict(list)
+    output_edges_by_from: defaultdict[str, list[dict[str, object]]] = defaultdict(list)
     for e in edges:
         ek = e.get("kind")
         if ek == "input":
@@ -327,7 +326,7 @@ def _topological_operation_order(op_ids: list[str], dep_pairs: list[tuple[str, s
     return out
 
 
-def _output_edge_sort_key(e: dict[str, Any]) -> tuple[bool, str, str]:
+def _output_edge_sort_key(e: dict[str, object]) -> tuple[bool, str, str]:
     return (
         e.get("slot") is None,
         str(e.get("slot") or ""),
@@ -335,7 +334,7 @@ def _output_edge_sort_key(e: dict[str, Any]) -> tuple[bool, str, str]:
     )
 
 
-def _shape_quantity_int(shape_node: dict[str, Any]) -> int:
+def _shape_quantity_int(shape_node: dict[str, object]) -> int:
     raw_q = shape_node.get("quantity", 1)
     if isinstance(raw_q, bool) or not isinstance(raw_q, int):
         return 1
@@ -344,8 +343,8 @@ def _shape_quantity_int(shape_node: dict[str, Any]) -> int:
 
 
 def _merge_input_quantity_sum(
-    node_by_id: dict[str, dict[str, Any]],
-    input_edges: list[dict[str, Any]],
+    node_by_id: dict[str, dict[str, object]],
+    input_edges: list[dict[str, object]],
     *,
     need: int,
 ) -> int:
@@ -361,8 +360,8 @@ def _merge_input_quantity_sum(
 
 
 def _cutter_output_quantities(
-    node_by_id: dict[str, dict[str, Any]],
-    input_edges: list[dict[str, Any]],
+    node_by_id: dict[str, dict[str, object]],
+    input_edges: list[dict[str, object]],
 ) -> tuple[int, int]:
     """세로 컷: 조각 수를 반으로 나눈다(풀 4 → 2+2). ``quantity``<2 는 레거시로 (1,1)."""
 
@@ -382,8 +381,8 @@ def _cutter_output_quantities(
 
 
 def _sorted_input_codes_for_operation(
-    node_by_id: dict[str, dict[str, Any]],
-    input_edges: list[dict[str, Any]],
+    node_by_id: dict[str, dict[str, object]],
+    input_edges: list[dict[str, object]],
 ) -> tuple[str, ...]:
     ordered = sorted_shape_input_edges_to_operation(input_edges, node_by_id)
     codes: list[str] = []
@@ -397,7 +396,7 @@ def _sorted_input_codes_for_operation(
 
 
 def _pattern_macro_input_slot_label(
-    shape_node: dict[str, Any],
+    shape_node: dict[str, object],
     shape_code: str,
     *,
     shape_parse_cache: dict[str, Shape] | None = None,
@@ -415,8 +414,8 @@ def _pattern_macro_input_slot_label(
 
 
 def _sorted_pattern_macro_input_slots(
-    node_by_id: dict[str, dict[str, Any]],
-    input_edges: list[dict[str, Any]],
+    node_by_id: dict[str, dict[str, object]],
+    input_edges: list[dict[str, object]],
     *,
     shape_parse_cache: dict[str, Shape] | None = None,
 ) -> list[str]:
@@ -436,8 +435,8 @@ def _sorted_pattern_macro_input_slots(
 
 def _sorted_output_edges_for_operation(
     op_id: str,
-    output_edges_by_from: defaultdict[str, list[dict[str, Any]]],
-) -> list[dict[str, Any]]:
+    output_edges_by_from: defaultdict[str, list[dict[str, object]]],
+) -> list[dict[str, object]]:
     out_edges = output_edges_by_from[op_id]
     out_edges.sort(key=_output_edge_sort_key)
     return out_edges
@@ -463,7 +462,7 @@ _TWO_INPUT_OPERATION_TYPES = frozenset(
 
 def _required_input_count_for_recompute(
     op_type: OperationType,
-    op_node: dict[str, Any],
+    op_node: dict[str, object],
 ) -> int:
     if op_type == OperationType.PAINTER:
         pc = str(op_node.get("paint_color", "")).strip()
@@ -480,7 +479,7 @@ def _apply_recomputed_operation(
     op_id: str,
     op_type: OperationType,
     input_codes: list[str],
-    op_node: dict[str, Any],
+    op_node: dict[str, object],
     *,
     shape_parse_cache: dict[str, Shape],
 ) -> tuple[bool, tuple[str, ...], str]:
@@ -521,7 +520,7 @@ def _apply_recomputed_operation(
 
 
 def _apply_operation_output_lane_to_shape_node(
-    shape_node: dict[str, Any],
+    shape_node: dict[str, object],
     op_type: OperationType,
     lane_index: int,
 ) -> None:
@@ -533,21 +532,21 @@ def _apply_operation_output_lane_to_shape_node(
 
 @dataclass
 class _RecomputeGraphMutation:
-    node_by_id: dict[str, dict[str, Any]]
-    nodes: list[dict[str, Any]]
-    edges: list[dict[str, Any]]
-    output_edges_by_from: defaultdict[str, list[dict[str, Any]]]
+    node_by_id: dict[str, dict[str, object]]
+    nodes: list[dict[str, object]]
+    edges: list[dict[str, object]]
+    output_edges_by_from: defaultdict[str, list[dict[str, object]]]
     existing_ids: set[str]
     warnings: list[str]
 
 
 def _fill_linked_shape_from_operation_output(
-    edge: dict[str, Any],
+    edge: dict[str, object],
     out_code: str,
     op_type: OperationType,
     lane_index: int,
     *,
-    node_by_id: dict[str, dict[str, Any]],
+    node_by_id: dict[str, dict[str, object]],
     output_quantities: tuple[int, ...] | None,
 ) -> None:
     target = node_by_id.get(edge["to"])
@@ -579,7 +578,7 @@ def _append_auto_created_operation_output_shape(
     q_new = 1
     if output_quantities is not None and lane_index < len(output_quantities):
         q_new = max(1, int(output_quantities[lane_index]))
-    new_shape: dict[str, Any] = {
+    new_shape: dict[str, object] = {
         "id": nid,
         "kind": "shape",
         "role": "intermediate",
@@ -591,7 +590,7 @@ def _append_auto_created_operation_output_shape(
     _apply_operation_output_lane_to_shape_node(new_shape, op_type, lane_index)
     mutation.nodes.append(new_shape)
     mutation.node_by_id[nid] = new_shape
-    new_edge: dict[str, Any] = {
+    new_edge: dict[str, object] = {
         "from": op_id,
         "to": nid,
         "kind": "output",
@@ -605,14 +604,14 @@ def _append_auto_created_operation_output_shape(
 def _assign_operation_outputs(
     op_id: str,
     op_type: OperationType,
-    op_node: dict[str, Any],
+    op_node: dict[str, object],
     outputs: tuple[str, ...],
-    out_edges: list[dict[str, Any]],
+    out_edges: list[dict[str, object]],
     *,
-    node_by_id: dict[str, dict[str, Any]],
-    nodes: list[dict[str, Any]],
-    edges: list[dict[str, Any]],
-    output_edges_by_from: defaultdict[str, list[dict[str, Any]]],
+    node_by_id: dict[str, dict[str, object]],
+    nodes: list[dict[str, object]],
+    edges: list[dict[str, object]],
+    output_edges_by_from: defaultdict[str, list[dict[str, object]]],
     existing_ids: set[str],
     warnings: list[str],
     output_quantities: tuple[int, ...] | None = None,
@@ -660,10 +659,10 @@ def _assign_operation_outputs(
 
 def _output_quantities_for_recomputed_op(
     op_type: OperationType,
-    op_node: dict[str, Any],
+    op_node: dict[str, object],
     *,
-    node_by_id: dict[str, dict[str, Any]],
-    input_edges: list[dict[str, Any]],
+    node_by_id: dict[str, dict[str, object]],
+    input_edges: list[dict[str, object]],
 ) -> tuple[int, ...] | None:
     """MERGE/STACKER/CUTTER 등 출력 레인별 수량이 필요할 때만 튜플을 반환한다."""
     need_in = _required_input_count_for_recompute(op_type, op_node)
@@ -677,11 +676,11 @@ def _output_quantities_for_recomputed_op(
 def _recompute_one_operation_in_topo(
     op_id: str,
     *,
-    node_by_id: dict[str, dict[str, Any]],
-    nodes: list[dict[str, Any]],
-    edges: list[dict[str, Any]],
-    input_edges_by_to: defaultdict[str, list[dict[str, Any]]],
-    output_edges_by_from: defaultdict[str, list[dict[str, Any]]],
+    node_by_id: dict[str, dict[str, object]],
+    nodes: list[dict[str, object]],
+    edges: list[dict[str, object]],
+    input_edges_by_to: defaultdict[str, list[dict[str, object]]],
+    output_edges_by_from: defaultdict[str, list[dict[str, object]]],
     existing_ids: set[str],
     warnings: list[str],
     shape_parse_cache: dict[str, Shape],
@@ -747,15 +746,17 @@ def _recompute_one_operation_in_topo(
     )
 
 
-def recompute_validated_graph_document(work: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+def recompute_validated_graph_document(
+    work: dict[str, object],
+) -> tuple[dict[str, object], list[str]]:
     """
     ``validate_graph_document`` 를 통과한 문서에 대해 재계산만 수행한다(추가 deepcopy 없음).
 
     ``work`` 는 호출부가 소유하며 이 함수가 노드·엣지를 갱신한다.
     """
     warnings: list[str] = []
-    nodes: list[dict[str, Any]] = work["nodes"]
-    edges: list[dict[str, Any]] = work["edges"]
+    nodes: list[dict[str, object]] = work["nodes"]
+    edges: list[dict[str, object]] = work["edges"]
     node_by_id = index_recipe_graph_nodes_by_id(nodes)
     op_ids = [nid for nid, n in node_by_id.items() if n.get("kind") == "operation"]
     dep_pairs = _operation_dependency_edges(edges, node_by_id)
@@ -789,7 +790,7 @@ def recompute_validated_graph_document(work: dict[str, Any]) -> tuple[dict[str, 
     return work, warnings
 
 
-def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+def recompute_graph_document(doc: dict[str, object]) -> tuple[dict[str, object], list[str]]:
     """
     연결이 갖춰진 operation에 대해 apply_operation으로 하류 shape_code를 갱신한다.
 
@@ -804,7 +805,7 @@ def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[
         return recompute_validated_graph_document(work)
 
 
-def _validated_graph_document_for_pattern_macro(raw: object) -> dict[str, Any] | None:
+def _validated_graph_document_for_pattern_macro(raw: object) -> dict[str, object] | None:
     """``try_pattern_macro_step_rows_from_graph_document`` 선행 검증. 실패 시 ``None``."""
     if raw is None:
         return None
@@ -820,8 +821,8 @@ def _validated_graph_document_for_pattern_macro(raw: object) -> dict[str, Any] |
 
 
 def _output_slots_strings_for_edges(
-    out_edges: list[dict[str, Any]],
-    node_by_id: dict[str, dict[str, Any]],
+    out_edges: list[dict[str, object]],
+    node_by_id: dict[str, dict[str, object]],
 ) -> list[str]:
     """output 엣리스트를 Pattern Macro 스텝의 ``output_slots`` 문자열 목록으로 바꾼다."""
     output_slots_list: list[str] = []
@@ -836,7 +837,7 @@ def _output_slots_strings_for_edges(
     return output_slots_list
 
 
-def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[str, Any]] | None:
+def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[str, object]] | None:
     """
     Pattern Lab·스태프 카탈로그용: ``graph_document``에서 operation 위상순 스텝 요약을 만든다.
 
@@ -848,8 +849,8 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
     work = _validated_graph_document_for_pattern_macro(raw)
     if work is None:
         return None
-    nodes: list[dict[str, Any]] = work["nodes"]
-    edges: list[dict[str, Any]] = work["edges"]
+    nodes: list[dict[str, object]] = work["nodes"]
+    edges: list[dict[str, object]] = work["edges"]
     node_by_id = index_recipe_graph_nodes_by_id(nodes)
     op_ids = [nid for nid, n in node_by_id.items() if n.get("kind") == "operation"]
     if not op_ids:
@@ -861,7 +862,7 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
         return None
     input_edges_by_to, output_edges_by_from = _edge_adjacency(edges)
     shape_parse_cache: dict[str, Shape] = {}
-    out: list[dict[str, Any]] = []
+    out: list[dict[str, object]] = []
     step_index = 0
     for op_id in topo:
         op_node = node_by_id.get(op_id)

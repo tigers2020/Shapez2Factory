@@ -11,6 +11,7 @@ Canon: `AGENTS.md`.
 
 Route when relevant:
 
+- DOX hierarchy: `dox-framework.mdc` (`dox-framework.md`, `workflow-phases.md` § Workflow + DOX)
 - Scope: `agent_scope.mdc`
 - Phases (Normal+): `workflow-phases.mdc` (`workflow-phases.md`)
 - Kanban WIP: `kanban-tracking.mdc` (`kanban-tracking.md`)

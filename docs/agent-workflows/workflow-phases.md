@@ -1,8 +1,30 @@
 # Workflow Phases
 
-Canon: `AGENTS.md` § Session phases. Router: `.cursor/rules/workflow-phases.mdc`.
+Canon: `AGENTS.md` § Workflow & DOX. Routers: `workflow-phases.mdc`, `dox-framework.mdc`. DOX detail: `dox-framework.md`.
 
 Matt-style **align → slice → AFK implement → fresh review** mapped onto Shapez2 **risk-tier SDD**. Detail source: `documents/knowledge/wiki/concepts/vibe-coding-agentic-engineering-2026.md`.
+
+## Workflow + DOX
+
+Phases and DOX are one pipeline — not parallel checklists.
+
+| Phase | Workflow | DOX | Kanban |
+|-------|----------|-----|--------|
+| Align | shared intent; `grill-me-shapez2` when ambiguous | read root `AGENTS.md`; skim child `AGENTS.md` for likely touch paths | find/create card; `status: align` |
+| Contract | ICE / contract-brief; authority split (process vs domain) | walk DOX chain for every path in scope; nearest doc = local contract | `status: contract` |
+| Slice | vertical slice plan; reject horizontal unless infra-only | confirm subtree `AGENTS.md` covers slice boundaries | `status: slice` |
+| Implement | code + tests; closed-world (`agent_scope.mdc`) | **re-read** nearest `AGENTS.md` before each edit batch | `status: implement`; append **Progress** |
+| Verify | validation tier; fresh-context review when Normal+ | **DOX pass**: update owning `AGENTS.md` if contracts changed; else note unchanged | `status: verify` → `done` |
+| Stop | `STOPPED_AT_APPROVED_SCOPE` | top-level index: root `AGENTS.md` § Child DOX Index only | archive card |
+
+**By strictness mode:**
+
+| Mode | DOX |
+|------|-----|
+| Read-only | read chain; no edits; no DOX pass |
+| Tiny | read chain for touched path; DOX pass; doc update only if contract changed |
+| Normal / High-risk | full table above |
+| Ops / recovery | read chain; edits on recovery whitelist only (`ops-recovery.mdc`) |
 
 ## Phase map
 
@@ -104,6 +126,7 @@ agent memory = never authority
 
 ## References
 
+- DOX hierarchy: `dox-framework.md` · `dox-framework.mdc`
 - Kanban columns (`.devtool/`): `.devtool/README.md` · `kanban.settings.json` · `scripts/sync-kanban-settings.ps1`
 - Kanban WIP tracking: `kanban-tracking.md` · `kanban-tracking.mdc`
 - `documents/ai/templates/contract-brief.md`, `pr-plan.md`, `execution-scope-contract.md`

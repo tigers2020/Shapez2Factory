@@ -4,7 +4,7 @@ Agent-native feature cards for [Kanban Markdown](https://marketplace.visualstudi
 
 ## Columns ↔ workflow phases
 
-Maps to `AGENTS.md` § Session phases and `docs/agent-workflows/workflow-phases.md`:
+Maps to `AGENTS.md` § Workflow & DOX and `docs/agent-workflows/workflow-phases.md`:
 
 | Column `id` | Phase | HITL / AFK | Typical action |
 |-------------|-------|------------|----------------|

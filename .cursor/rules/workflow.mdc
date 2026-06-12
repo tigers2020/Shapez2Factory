@@ -22,10 +22,10 @@ Auto-upgrade to **High-risk** for: solver, routing, replay, validation, DTO/sche
 Pipeline (Normal / High-risk):
 
 ```text
-problem -> authority -> contract -> plan -> acceptance tests -> small change -> gate
+problem -> authority -> contract -> plan -> acceptance tests -> DOX read chain -> small change -> gate -> DOX pass
 ```
 
-Phase order (Normal+): `align -> contract -> slice -> implement -> verify` (`workflow-phases.mdc`). Reject horizontal phase plans unless user explicitly scoped infra-only work.
+Phase order (Normal+): `align -> contract -> slice -> implement -> verify` (`workflow-phases.mdc` § Workflow + DOX). Reject horizontal phase plans unless user explicitly scoped infra-only work.
 
 Authority for architecture/coupling: if `graphify-out/graph.json` exists, **mandatory** `/graphify` query/path/explain before wide grep or multi-module reads (`graphify.mdc`).
 

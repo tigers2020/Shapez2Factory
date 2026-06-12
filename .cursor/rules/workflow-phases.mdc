@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Workflow Phases Router
 
-Canon: `AGENTS.md` § Session phases. Detail: `docs/agent-workflows/workflow-phases.md`.
+Canon: `AGENTS.md` § Workflow & DOX. Detail: `docs/agent-workflows/workflow-phases.md` § Workflow + DOX.
 
 ## Phase order (Normal+)
 
@@ -44,3 +44,7 @@ Ambiguous features: `/grill-me-shapez2` before contract (`grill-me-shapez2` skil
 ## Kanban
 
 Every task/chat: one `.devtool/features/` card; create at session start if none linked; update on phase change (`kanban-tracking.mdc`).
+
+## DOX
+
+**Implement:** re-read nearest `AGENTS.md` on path before edit batches (`dox-framework.mdc`). **Verify:** DOX pass with validation — update owning doc if contracts changed.

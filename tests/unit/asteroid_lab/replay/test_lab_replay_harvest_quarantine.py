@@ -78,3 +78,72 @@ def test_replay_full_map_dom_legacy_branch_removed_step_6_4() -> None:
     assert "candidateObservationToneClasses" not in render_body
     assert "isNonSpriteOverlayCell(cell, frame)" not in render_body
     assert "if (!candidateObs)" not in render_body
+
+
+def test_apply_lab_cell_sprite_from_rel_is_pure_loader_step_6_5() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    body = src.split("function applyLabCellSpriteFromRel(", 1)[1].split(
+        "function applyLabCellStandaloneSprite(", 1
+    )[0]
+    assert "clearLabCellSprite" in body
+    assert "ensureLabCellSpriteLayer" in body
+    assert "labSpriteRelpathForCell" not in body
+    assert "resolveSpriteRelForStandaloneOverlayCell" not in body
+    assert "isNonSpriteOverlayCell" not in body
+    assert "isRouteOverlayCellKind" not in body
+    assert "inferTransportSpriteIdentifier" not in body
+    assert "overlayCellKind" not in body
+
+
+def test_render_full_map_uses_direct_rel_loader_step_6_5() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    render_body = src.split("function renderFullMapCells(", 1)[1].split(
+        "function renderDiffOverlays(", 1
+    )[0]
+    assert "applyLabCellSpriteFromRel(el, domPlan.spriteRel, domPlan.spriteRotation)" in render_body
+    assert "clearLabCellSprite(el)" in render_body
+    assert "applyLabCellSprite(" not in render_body
+    assert "labSpriteRelpathForCell" not in render_body
+
+
+def test_standalone_paths_use_resolver_not_full_map_loader_step_6_5() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    diff_body = src.split("function renderDiffOverlays(", 1)[1].split(
+        "function renderDecodedCells(", 1
+    )[0]
+    decoded_body = src.split("function renderDecodedCells(", 1)[1].split(
+        "function renderExistingLayoutOverlay(", 1
+    )[0]
+    existing_body = src.split("function renderExistingLayoutOverlay(", 1)[1].split(
+        "function renderCellOverlay(", 1
+    )[0]
+    connector_body = src.split("function renderPlannedExteriorConnectorHighlights(", 1)[1].split(
+        "function clearLabCellSprite(", 1
+    )[0]
+    for name, body in (
+        ("diff", diff_body),
+        ("decoded", decoded_body),
+        ("existing", existing_body),
+        ("connector", connector_body),
+    ):
+        assert "applyLabCellStandaloneSprite" in body, name
+        assert "applyLabCellSpriteFromRel" not in body, name
+        assert "applyLabCellSprite(" not in body, name
+
+
+def test_resolver_shim_and_standalone_wrapper_step_6_5() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    resolver_body = src.split("function resolveSpriteRelForStandaloneOverlayCell(", 1)[1].split(
+        "function labSpriteRelpathForCell(", 1
+    )[0]
+    assert "isNonSpriteOverlayCell" in resolver_body
+    assert "isRouteOverlayCellKind" in resolver_body
+    shim_body = src.split("function labSpriteRelpathForCell(", 1)[1].split(
+        "function attachLabSpriteImgNoDrag(", 1
+    )[0]
+    assert "resolveSpriteRelForStandaloneOverlayCell" in shim_body
+    standalone_body = src.split("function applyLabCellStandaloneSprite(", 1)[1].split(
+        "function applyLabCellSprite(", 1
+    )[0]
+    assert "resolveSpriteRelForStandaloneOverlayCell" in standalone_body
+    assert "applyLabCellSpriteFromRel" in standalone_body

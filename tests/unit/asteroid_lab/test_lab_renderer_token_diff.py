@@ -46,7 +46,7 @@ def test_incremental_reset_skips_unchanged_token() -> None:
 
 def test_sprite_src_write_is_guarded() -> None:
     src = JS.read_text(encoding="utf-8")
-    idx = src.find("function applyLabCellSprite(")
+    idx = src.find("function applyLabCellSpriteFromRel(")
     assert idx >= 0
     body = src[idx : idx + 900]
     assert 'getAttribute("src")' in body

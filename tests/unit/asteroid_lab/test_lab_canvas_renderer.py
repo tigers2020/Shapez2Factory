@@ -289,10 +289,12 @@ def test_warmup_sprite_collect_uses_paint_plan() -> None:
 
 def test_lab_js_non_sprite_policy_retained_until_step_6_6() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
-    rel_body = src.split("function labSpriteRelpathForCell(", 1)[1].split(
-        "function attachLabSpriteImgNoDrag(", 1
+    resolver_body = src.split("function resolveSpriteRelForStandaloneOverlayCell(", 1)[1].split(
+        "function labSpriteRelpathForCell(", 1
     )[0]
-    assert "isNonSpriteOverlayCell(cell, frame)" in rel_body
+    assert "isNonSpriteOverlayCell(cell, frame)" in resolver_body
     assert "lab-overlay-candidate-miner" in src
     non_sprite = src.split("var NON_SPRITE_OVERLAY_CELL_KINDS = {", 1)[1].split("};", 1)[0]
     assert "candidate_miner: true" in non_sprite
+    assert "candidate_transport_stub: true" in non_sprite
+    assert "route_path: true" in non_sprite

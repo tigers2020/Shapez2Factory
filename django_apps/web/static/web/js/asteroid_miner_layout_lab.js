@@ -417,14 +417,13 @@
     return null;
   }
 
-  /** @deprecated HARVEST_PAINT — Slice 5 quarantine. Must not decide occupant/transport/candidate paint semantics. */
-  function labSpriteRelpathForCell(cell, frame) {
+  /** Standalone overlay sprite resolve — diff/decoded/existing/connector only; not replay full-map paint. */
+  function resolveSpriteRelForStandaloneOverlayCell(cell, frame) {
     if (!cell || typeof cell !== "object") return null;
-    if (isNonSpriteOverlayCell(cell, frame)) return null;
     const ck = overlayCellKind(cell);
+    if (isRouteOverlayCellKind(ck) || isNonSpriteOverlayCell(cell, frame)) return null;
     const fieldRel = ck ? LAB_SPRITE_CELL_KIND_STATIC_RELPATH[ck] : null;
     if (fieldRel) return fieldRel;
-    // sprite_identifier is the alias emitted alongside tile_type; prefer it so either field works.
     const tileKey = cell.sprite_identifier || cell.tile_type;
     let rel = labSpriteRelpathFromTileType(tileKey);
     if (!rel && ck) {
@@ -435,6 +434,11 @@
       if (inferred) rel = labSpriteRelpathFromTileType(inferred);
     }
     return rel;
+  }
+
+  /** @deprecated Step 6.5 — shim to resolveSpriteRelForStandaloneOverlayCell; delete in 6.6. */
+  function labSpriteRelpathForCell(cell, frame) {
+    return resolveSpriteRelForStandaloneOverlayCell(cell, frame);
   }
 
   function attachLabSpriteImgNoDrag(img) {
@@ -586,12 +590,12 @@
       if (role === "spare") {
         el.className = LAB_CELL_BASE + " lab-planned-exterior-connector-spare";
         applyLabCellHudAttributes(el, cell, "planned_exterior_connector");
-        applyLabCellSprite(el, cell);
+        applyLabCellStandaloneSprite(el, cell, frame);
         applyPlannedExteriorConnectorSpareHighlight(el);
       } else {
         el.className = LAB_CELL_BASE + " lab-planned-exterior-connector";
         applyLabCellHudAttributes(el, cell, "planned_exterior_connector");
-        applyLabCellSprite(el, cell);
+        applyLabCellStandaloneSprite(el, cell, frame);
         applyPlannedExteriorConnectorWhiteHighlight(el);
       }
     }
@@ -613,14 +617,11 @@
     el.removeAttribute("data-sprite-file");
   }
 
-  function applyLabCellSprite(el, cell, frame) {
-    if (!cell || typeof cell !== "object") return;
-    const ck = overlayCellKind(cell);
-    if (isRouteOverlayCellKind(ck) || isNonSpriteOverlayCell(cell, frame)) return;
+  function applyLabCellSpriteFromRel(el, spriteRel, rotation) {
+    if (!el || !spriteRel) return;
     clearLabCellSprite(el);
     if (!labSpriteBaseUrl) return;
-    const rel = labSpriteRelpathForCell(cell, frame);
-    if (!rel) return;
+    const rel = String(spriteRel);
     const layer = ensureLabCellSpriteLayer(el);
     const img = layer.querySelector("img.lab-cell-sprite");
     if (!img) return;
@@ -630,7 +631,7 @@
     if (img.getAttribute("src") !== nextSrc) {
       img.src = nextSrc;
     }
-    const logicalQ = normalizeQuarterTurns(cell.rotation);
+    const logicalQ = normalizeQuarterTurns(rotation);
     const deg = rotationToDeg(logicalQ);
     if (deg !== 0) {
       img.style.transform = "rotate(" + String(deg) + "deg)";
@@ -643,6 +644,21 @@
       el.setAttribute("data-r", String(logicalQ));
       el.setAttribute("data-sprite-file", rel);
     }
+  }
+
+  function applyLabCellStandaloneSprite(el, cell, frame) {
+    if (!cell || typeof cell !== "object") return;
+    const rel = resolveSpriteRelForStandaloneOverlayCell(cell, frame);
+    if (!rel) {
+      clearLabCellSprite(el);
+      return;
+    }
+    applyLabCellSpriteFromRel(el, rel, cell.rotation);
+  }
+
+  /** @deprecated Step 6.5 — standalone overlay paths only; not replay full-map DOM. */
+  function applyLabCellSprite(el, cell, frame) {
+    applyLabCellStandaloneSprite(el, cell, frame);
   }
 
   function readJsonScript(id) {
@@ -1978,16 +1994,9 @@
         el.removeAttribute("data-lab-candidate-overlay");
       }
       if (domPlan.spriteRel) {
-        applyLabCellSprite(
-          el,
-          {
-            sprite_identifier: domPlan.spriteRel,
-            rotation: domPlan.spriteRotation,
-          },
-          frame,
-        );
-      } else if (!domPlan.candidateObservation) {
-        applyLabCellSprite(el, cell, frame);
+        applyLabCellSpriteFromRel(el, domPlan.spriteRel, domPlan.spriteRotation);
+      } else {
+        clearLabCellSprite(el);
       }
       renderedTokenByKey.set(idx, token);
       if (labPerfDebugEnabled()) {
@@ -2009,7 +2018,7 @@
       const el = domCells[idx];
       el.className = base + " " + tone;
       applyLabCellHudAttributes(el, cell, role);
-      applyLabCellSprite(el, cell);
+      applyLabCellStandaloneSprite(el, cell, frame);
     }
   }
 
@@ -2456,7 +2465,7 @@
       const el = domCells[idx];
       el.className = base + " " + tone;
       applyLabCellHudAttributes(el, cell, role != null ? String(role) : "");
-      applyLabCellSprite(el, cell);
+      applyLabCellStandaloneSprite(el, cell);
     }
   }
 
@@ -2472,7 +2481,7 @@
       const el = domCells[idx];
       el.className = base + " " + tone;
       applyLabCellHudAttributes(el, cell, role != null ? String(role) : "");
-      applyLabCellSprite(el, cell);
+      applyLabCellStandaloneSprite(el, cell);
     }
   }
 

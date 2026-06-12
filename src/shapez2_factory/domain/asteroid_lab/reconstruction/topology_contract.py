@@ -185,6 +185,8 @@ def topology_diff_is_empty(diff: dict[str, object]) -> bool:
         if not isinstance(items_obj, list):
             continue
         items: list[object] = items_obj
+        if not items:
+            continue
         if len(items) == 1 and items[0] == ["...0 more"]:
             continue
         return False

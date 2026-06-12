@@ -75,6 +75,8 @@ def wire_dict(val: object, *, field: str = "") -> dict[str, object]:
 def wire_list(val: object, *, field: str = "") -> list[object]:
     if isinstance(val, list):
         return val
+    if isinstance(val, tuple):
+        return list(val)
     label = f"{field} " if field else ""
     msg = f"{label}must be a list"
     raise TypeError(msg)

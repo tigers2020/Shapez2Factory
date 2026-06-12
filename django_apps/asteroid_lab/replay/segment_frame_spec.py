@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
-from django_apps.asteroid_lab.typing_boundary import JsonValue
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
+from django_apps.asteroid_lab.typing_boundary import JsonValue
 
 
 @dataclass(frozen=True, slots=True)

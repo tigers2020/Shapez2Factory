@@ -1,12 +1,13 @@
 ---
 id: "replay-sprite-visibility-2026-06-12"
-status: "verify"
+status: "done"
 priority: "high"
 assignee: null
 epic: null
 dueDate: null
 created: "2026-06-12T00:00:00.000Z"
-modified: "2026-06-12T23:45:00.000Z"
+modified: "2026-06-12T20:05:00.000Z"
+completedAt: "2026-06-12T20:05:00.000Z"
 labels: ["asteroid-lab", "replay", "sprites", "ui"]
 order: "a0"
 ---
@@ -22,6 +23,12 @@ Replay map에서 sprite 일부 미표시·흐림(faded overlay 대체), legacy `
 - [x] root cause (wire vs resolve vs paint-plan vs canvas/DOM) 확정
 - [x] design spec + implementation plan 승인
 - [x] golden/parity tests + UI 검증 (Slice 1 gate)
+- [x] §1–§3 contracts implemented (Slices 1–5 + Task 6 delete phase)
+- [x] `(10,7)` frame-38: miner sprite + ring, no fade/full-fill stack
+- [x] `shape_belt` absent from new producer wire; sanitizer compat only
+- [x] Parity: detail effective cell ↔ paint plan for golden frames
+- [x] Deprecated harvest quarantined then removed (Task 6.3–6.7)
+- [x] Task 7 full epic gate + manual smoke
 
 ## Artifacts
 
@@ -33,6 +40,12 @@ Replay map에서 sprite 일부 미표시·흐림(faded overlay 대체), legacy `
 | plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-3.md | 2026-06-12 |
 | plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-4.md | 2026-06-12 |
 | plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-5.md | 2026-06-12 |
+
+## Archive summary
+
+Replay sprite visibility epic complete. Paint authority: `EffectiveCellView` → `LabPaintLayers` → canvas/DOM adapters. Harvest paint deleted; `candidate_miner` paint-plan authority restored.
+
+Task 6 commits: `93f457c1` → `0d1a1049`. No template flag change; no git tag.
 
 ## Progress
 
@@ -65,4 +78,5 @@ Replay map에서 sprite 일부 미표시·흐림(faded overlay 대체), legacy `
 - 2026-06-12 — **verify** — Task 6 Step 6.4 (CP-4): DOM legacy delete + spatial split — `collectReplaySpatialCoordsForLayout` (bbox/index superset); `createDomPlanResolverForFrame` + `frameCellIndexMap` always paint-plan; replay full-map domPlan-only; bbox baseline fixtures; gate **49/49** pytest; commit `3a79c47e`
 - 2026-06-12 — **verify** — Task 6 Step 6.5 (CP-5): DOM sprite loader/resolver split — `applyLabCellSpriteFromRel` (pure loader); `resolveSpriteRelForStandaloneOverlayCell`; replay full-map direct rel + `clearLabCellSprite` when no rel; standalone paths via `applyLabCellStandaloneSprite`; shims retained; NON_SPRITE untouched; gate **49/49** pytest; commit `f36c2d68`
 - 2026-06-12 — **verify** — Task 6 Step 6.6 (CP-6): `candidate_miner` removed from NON_SPRITE (JS + Python mirror); `isCandidateMinerOverlayKind` resolver/observation guards; deleted shims; gate **54/54** pytest; commit `dee9bdc0`
-- 2026-06-12 — **verify** — Task 6 Step 6.7: legacy harvest parity retired — `_legacy_harvest_sprite_entries_for_frame` + Python harvest resolve removed; `test_sprite_entries_paint_plan_authority_golden_transport`; replay matrix **87/87** pytest
+- 2026-06-12 — **verify** — Task 6 Step 6.7: legacy harvest parity retired — `_legacy_harvest_sprite_entries_for_frame` + Python harvest resolve removed; `test_sprite_entries_paint_plan_authority_golden_transport`; replay matrix **87/87** pytest; commit `0d1a1049`
+- 2026-06-12 — **done** — Task 7 epic gate: full matrix **87/87** pytest (12.02s); manual smoke `copy-import-52921cd2` run #5 frame 38 — scrub 39/39, `layer05_transport_routing_complete`, `(10,7)` domPlan ring + `Miner/Layout_ShapeMiner.svg` + `skip_full_fill`, live paint-plan 13 belt sprites / 591 total; canvas mode grid visible, sprite canvas alpha; golden transport + overlay_json pipe covered by pytest; no tag; no template flag change — **epic closed**

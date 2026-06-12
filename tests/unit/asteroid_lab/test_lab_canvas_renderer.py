@@ -203,3 +203,26 @@ def test_lab_js_filter_terrain_cells_for_paint_v2_exists() -> None:
 
     canvas_frame_block = src.split("function applyLabCanvasServerReplayFrame(", 1)[1][:1400]
     assert "filterTerrainCellsForPaintV2(" in canvas_frame_block
+
+
+def test_lab_js_dom_paint_v2_wiring_in_token_and_render() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    assert "function createDomPlanResolverForFrame(" in src
+    assert "function labDomPaintOptionsFromContext(" in src
+    assert "LabReplayPaintPlan.buildDomPlanResolverForFrame" in src
+    token_body = src.split("function labPaintTokenForCell(", 1)[1].split("function frameCellIndexMap(", 1)[0]
+    render_body = src.split("function renderFullMapCells(", 1)[1].split("function renderDiffOverlays(", 1)[0]
+    assert "resolveDomPlan" in token_body or "domPlan" in token_body
+    assert "createDomPlanResolverForFrame" in render_body
+    assert render_body.index("createDomPlanResolverForFrame") < render_body.index("for (let i = 0")
+    assert "domPlan" in render_body or "skipFullFill" in render_body
+
+
+def test_lab_js_detail_lookup_untouched() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    detail_body = src.split("function labCellDetailLookupInMapView(", 1)[1].split(
+        "function labCellDetailFromTimelineFrame(", 1
+    )[0]
+    assert "LabReplayPaintPlan" not in detail_body
+    assert "buildDomPlanResolverForFrame" not in detail_body
+    assert "mergeEffectiveCellView" in detail_body

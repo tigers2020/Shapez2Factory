@@ -248,6 +248,44 @@
     return Boolean(root && root.dataset && root.dataset.labPaintV2 === "1");
   }
 
+  /** Synced from init before each replay paint — same replay context as canvas v2. */
+  const labDomPaintContext = {
+    replayFrames: [],
+    replayArrayIndex: 0,
+    hasServerReplay: false,
+  };
+
+  function syncLabDomPaintContext(replayFrames, replayArrayIndex, hasServerReplay) {
+    labDomPaintContext.replayFrames = Array.isArray(replayFrames) ? replayFrames : [];
+    labDomPaintContext.replayArrayIndex =
+      replayArrayIndex != null && Number.isFinite(Number(replayArrayIndex))
+        ? Number(replayArrayIndex)
+        : 0;
+    labDomPaintContext.hasServerReplay = Boolean(hasServerReplay);
+  }
+
+  function labDomPaintOptionsFromContext(frame) {
+    return {
+      replayFrames: labDomPaintContext.replayFrames,
+      replayArrayIndex: labDomPaintContext.replayArrayIndex,
+      hasServerReplay: labDomPaintContext.hasServerReplay,
+    };
+  }
+
+  function createDomPlanResolverForFrame(frame) {
+    if (
+      !labPaintV2Enabled() ||
+      typeof LabReplayPaintPlan === "undefined" ||
+      typeof LabReplayPaintPlan.buildDomPlanResolverForFrame !== "function"
+    ) {
+      return null;
+    }
+    return LabReplayPaintPlan.buildDomPlanResolverForFrame(
+      frame,
+      labDomPaintOptionsFromContext(frame),
+    );
+  }
+
   function labCanvasRendererEnabled() {
     const root = document.getElementById("lab-root");
     if (root && root.dataset && root.dataset.labRenderer !== "canvas") {
@@ -1798,12 +1836,23 @@
     return ck + "|" + role + "|" + rot + "|" + sprite + "|" + tone + "|" + cand;
   }
 
-  function labPaintTokenForCell(cell, frame, domCells, idx) {
+  function labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan) {
     if (!cell || typeof cell !== "object") {
       return null;
     }
     const ck = overlayCellKind(cell);
     const el = domCells[idx];
+    if (resolveDomPlan) {
+      const domPlan = resolveDomPlan(cell);
+      if (domPlan) {
+        const rot = cell.rotation != null ? String(cell.rotation) : "";
+        const role = cell.overlay_role != null ? String(cell.overlay_role) : "";
+        const domTone = domPlan.toneClasses || "";
+        const domSprite = domPlan.spriteRel || "";
+        const domCand = domPlan.candidateObservation ? "1" : "0";
+        return ck + "|" + role + "|" + rot + "|" + domSprite + "|" + domTone + "|" + domCand + "|v2";
+      }
+    }
     const candidateObs = isNonSpriteOverlayCell(cell, frame);
     if (candidateObs && shouldSkipCandidateObservationOnSpriteCell(frame, ck, el)) {
       return null;
@@ -1838,6 +1887,7 @@
     if (!indices || !indices.length) {
       return;
     }
+    const resolveDomPlan = createDomPlanResolverForFrame(frame);
     const cellByIndex =
       frame && typeof frame === "object" && resolveCellIndex
         ? frameCellIndexMap(frame, resolveCellIndex)
@@ -1847,7 +1897,7 @@
       if (cellByIndex) {
         const cell = cellByIndex.get(idx);
         if (cell) {
-          const token = labPaintTokenForCell(cell, frame, domCells, idx);
+          const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan);
           if (token != null && renderedTokenByKey.get(idx) === token) {
             continue;
           }
@@ -1859,6 +1909,7 @@
 
   function renderFullMapCells(baseClasses, domCells, cells, resolveCellIndex, frame) {
     if (!Array.isArray(cells)) return;
+    const resolveDomPlan = createDomPlanResolverForFrame(frame);
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (!cell || typeof cell !== "object") continue;
@@ -1869,7 +1920,7 @@
       const ck = overlayCellKind(cell);
       const el = domCells[idx];
       const candidateObs = isNonSpriteOverlayCell(cell, frame);
-      const token = labPaintTokenForCell(cell, frame, domCells, idx);
+      const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan);
       if (token == null) {
         continue;
       }
@@ -1878,6 +1929,44 @@
       }
       if (isLabStaticTerrainCell(cell, frame)) {
         applyLabTerrainCanvasHitTarget(el, base);
+        renderedTokenByKey.set(idx, token);
+        if (labPerfDebugEnabled()) {
+          labPerfTouchedCells += 1;
+        }
+        continue;
+      }
+      const domPlan = resolveDomPlan ? resolveDomPlan(cell) : null;
+      if (domPlan) {
+        const tone = domPlan.toneClasses || toneForFullMapCell(cell, frame);
+        el.className = tone ? base + " " + tone : base;
+        const hudRole =
+          cell.overlay_role != null
+            ? String(cell.overlay_role)
+            : isRouteOverlayCellKind(ck)
+              ? ck
+              : domPlan.candidateObservation
+                ? ck
+                : "";
+        applyLabCellHudAttributes(el, cell, hudRole);
+        if (domPlan.candidateObservation) {
+          el.setAttribute("title", CANDIDATE_OBSERVATION_TITLE);
+          el.setAttribute("data-lab-candidate-overlay", "1");
+        } else {
+          el.removeAttribute("title");
+          el.removeAttribute("data-lab-candidate-overlay");
+        }
+        if (domPlan.spriteRel) {
+          applyLabCellSprite(
+            el,
+            {
+              sprite_identifier: domPlan.spriteRel,
+              rotation: domPlan.spriteRotation,
+            },
+            frame,
+          );
+        } else if (!domPlan.candidateObservation) {
+          applyLabCellSprite(el, cell, frame);
+        }
         renderedTokenByKey.set(idx, token);
         if (labPerfDebugEnabled()) {
           labPerfTouchedCells += 1;
@@ -3771,6 +3860,7 @@
         }
         if (!painted) {
           /* READ: rimDrawCtx from cached cell sizing. WRITE: renderReplayFrame (no layout read). */
+          syncLabDomPaintContext(replayFrames, replayArrayIndex, hasServerReplay);
           renderReplayFrame(
             paintFr,
             baseClasses,
@@ -5928,6 +6018,7 @@
           replayPaintedCellIndices = collectReplayFrameCellIndices(fr, resolveCellIndex);
           return;
         }
+        syncLabDomPaintContext(replayFrames, replayArrayIndex, hasServerReplay);
         renderReplayFrame(
           fr,
           baseClasses,

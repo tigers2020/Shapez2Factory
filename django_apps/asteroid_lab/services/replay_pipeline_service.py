@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import secrets
-from typing import Any
 
 from django.db import transaction
 
@@ -92,7 +91,7 @@ def build_initial_replay_for_map_input(
     *,
     run_key: str | None = None,
     algorithm_label: str = "inspection_only",
-    config: dict[str, Any] | None = None,
+    config: dict[str, object] | None = None,
     force: bool = False,
     overwrite: bool = False,
 ) -> InitialReplayPipelineResultDTO:

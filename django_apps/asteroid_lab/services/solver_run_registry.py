@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from django.conf import settings
 from django.db import transaction
@@ -64,7 +63,7 @@ def create_running_solver_run(
     *,
     project_id: int,
     run_key: str,
-    spawn_config: dict[str, Any],
+    spawn_config: dict[str, object],
 ) -> m.SolverRun:
     """Create a RUNNING row before detach spawn (one-active-run guard)."""
 

@@ -28,6 +28,8 @@ VOID_TERRAIN_KINDS = frozenset({"internal_void", "void"})
 TRANSPORT_KINDS = frozenset({"space_belt", "space_pipe"})
 _NONE_KINDS = frozenset({"", "none"})
 
+CANDIDATE_RING_STROKE = "rgba(244,114,182,0.9)"
+
 
 def _wire_section(view: Mapping[str, object], key: str) -> dict[str, object]:
     section = view.get(key)
@@ -304,9 +306,73 @@ def build_effective_cell_view_index(
     return index
 
 
+def _is_rgba_fill(value: object) -> bool:
+    return isinstance(value, str) and value.strip().lower().startswith("rgba(")
+
+
+def _sprite_plan_entry(grid_idx: int, rel: str, rotation: int) -> dict[str, object]:
+    return {"idx": grid_idx, "rel": rel, "rotation": rotation}
+
+
+def canvas_plan_from_paint_layers(
+    layers: Mapping[str, object],
+    *,
+    grid_idx: int = 0,
+) -> dict[str, list[dict[str, object]]]:
+    """Convert LabPaintLayers for one cell into canvas ``{sprites, overlays}`` plan."""
+
+    sprites: list[dict[str, object]] = []
+
+    terrain = layers.get("terrain")
+    if isinstance(terrain, Mapping) and terrain.get("mode") == "field_sprite":
+        rel = terrain.get("rel")
+        if rel:
+            sprites.append(_sprite_plan_entry(grid_idx, str(rel), 0))
+
+    occupant = layers.get("occupant")
+    if isinstance(occupant, Mapping) and occupant.get("rel"):
+        sprites.append(
+            _sprite_plan_entry(grid_idx, str(occupant["rel"]), _rotation(occupant))
+        )
+
+    transport = layers.get("transport")
+    if isinstance(transport, Mapping) and transport.get("rel"):
+        sprites.append(
+            _sprite_plan_entry(grid_idx, str(transport["rel"]), _rotation(transport))
+        )
+
+    overlays: list[dict[str, object]] = []
+    chrome = layers.get("chrome")
+    if isinstance(chrome, list):
+        for entry in chrome:
+            if not isinstance(entry, Mapping):
+                continue
+            kind = _kind_str(entry)
+            if kind == "candidate_ring":
+                overlays.append(
+                    {
+                        "idx": grid_idx,
+                        "kind": "candidate_ring",
+                        "stroke": CANDIDATE_RING_STROKE,
+                        "fill": None,
+                    }
+                )
+
+    if sprites:
+        overlays = [
+            overlay
+            for overlay in overlays
+            if not _is_rgba_fill(overlay.get("fill"))
+        ]
+
+    return {"sprites": sprites, "overlays": overlays}
+
+
 __all__ = [
     "BACKGROUND_FILL",
+    "CANDIDATE_RING_STROKE",
     "VOID_FILL",
     "build_effective_cell_view_index",
+    "canvas_plan_from_paint_layers",
     "lab_paint_layers_from_view",
 ]

@@ -12,6 +12,8 @@
   var TRANSPORT_KINDS = { space_belt: 1, space_pipe: 1 };
   var NONE_KINDS = { "": 1, none: 1 };
 
+  var CANDIDATE_RING_STROKE = "rgba(244,114,182,0.9)";
+
   var CELL_KIND_STATIC_RELPATH = {
     asteroid_fluid_field: "AsteroidField_Fluid.svg",
     asteroid_shape_field: "AsteroidField_Shape.svg",
@@ -386,10 +388,193 @@
     return index;
   }
 
+  function isRgbaFill(value) {
+    return typeof value === "string" && value.trim().toLowerCase().indexOf("rgba(") === 0;
+  }
+
+  function spritePlanEntry(gridIdx, rel, rot) {
+    return { idx: gridIdx, rel: rel, rotation: rot };
+  }
+
+  function canvasPlanFromPaintLayers(layers, gridIdx) {
+    if (gridIdx == null) {
+      gridIdx = 0;
+    }
+    var sprites = [];
+
+    var terrain = layers && layers.terrain;
+    if (terrain && typeof terrain === "object" && terrain.mode === "field_sprite") {
+      if (terrain.rel) {
+        sprites.push(spritePlanEntry(gridIdx, String(terrain.rel), 0));
+      }
+    }
+
+    var occupant = layers && layers.occupant;
+    if (occupant && typeof occupant === "object" && occupant.rel) {
+      sprites.push(spritePlanEntry(gridIdx, String(occupant.rel), rotation(occupant)));
+    }
+
+    var transport = layers && layers.transport;
+    if (transport && typeof transport === "object" && transport.rel) {
+      sprites.push(spritePlanEntry(gridIdx, String(transport.rel), rotation(transport)));
+    }
+
+    var overlays = [];
+    var chrome = layers && layers.chrome;
+    if (Array.isArray(chrome)) {
+      for (var i = 0; i < chrome.length; i++) {
+        var entry = chrome[i];
+        if (!entry || typeof entry !== "object") {
+          continue;
+        }
+        if (kindStr(entry) === "candidate_ring") {
+          overlays.push({
+            idx: gridIdx,
+            kind: "candidate_ring",
+            stroke: CANDIDATE_RING_STROKE,
+            fill: null,
+          });
+        }
+      }
+    }
+
+    if (sprites.length) {
+      overlays = overlays.filter(function (overlay) {
+        return !isRgbaFill(overlay.fill);
+      });
+    }
+
+    return { sprites: sprites, overlays: overlays };
+  }
+
+  function layersHasDrawableSprite(layers) {
+    if (layers.occupant && layers.occupant.rel) {
+      return true;
+    }
+    if (layers.transport && layers.transport.rel) {
+      return true;
+    }
+    if (layers.terrain && layers.terrain.mode === "field_sprite") {
+      return true;
+    }
+    return false;
+  }
+
+  function indexHasSpriteCapableCells(index) {
+    var keys = Object.keys(index);
+    for (var i = 0; i < keys.length; i++) {
+      if (layersHasDrawableSprite(labPaintLayersFromView(index[keys[i]]))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function filterIndexSpriteEntries(index) {
+    var out = {};
+    var keys = Object.keys(index);
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      if (layersHasDrawableSprite(labPaintLayersFromView(index[key]))) {
+        out[key] = index[key];
+      }
+    }
+    return out;
+  }
+
+  function mergeCarriedIndexKeys(carryIndex, currentIndex) {
+    var merged = Object.assign({}, filterIndexSpriteEntries(carryIndex), currentIndex);
+    return merged;
+  }
+
+  function lastFrameWithSpriteCapableCells(replayFrames, upToArrayIndex) {
+    if (!replayFrames || !replayFrames.length) {
+      return null;
+    }
+    var cap = Math.min(upToArrayIndex, replayFrames.length - 1);
+    for (var i = cap; i >= 0; i--) {
+      var fr = replayFrames[i];
+      if (indexHasSpriteCapableCells(buildEffectiveCellViewIndex(fr))) {
+        return fr;
+      }
+    }
+    return null;
+  }
+
+  function coordFromWireOrKey(wire, cellKeyStr) {
+    if (wire && wire.coord && typeof wire.coord === "object") {
+      return wire.coord;
+    }
+    var layer = 0;
+    var xy = cellKeyStr;
+    var colonIdx = cellKeyStr.indexOf(":");
+    if (colonIdx !== -1) {
+      var parsedLayer = parseInt(cellKeyStr.slice(0, colonIdx), 10);
+      layer = Number.isFinite(parsedLayer) ? parsedLayer : 0;
+      xy = cellKeyStr.slice(colonIdx + 1);
+    }
+    var parts = xy.split(",");
+    return {
+      x: parseInt(parts[0], 10) || 0,
+      y: parseInt(parts[1], 10) || 0,
+      layer: layer,
+    };
+  }
+
+  function buildLabPaintPlanFromFrame(frame, resolveCellIndex, options) {
+    options = options || {};
+    var index = buildEffectiveCellViewIndex(frame);
+
+    // Layout carry: sparse current frame (no drawable sprites in its index) inherits
+    // sprite-capable effective views from the nearest prior replay frame — mirrors
+    // lastFrameWithSpriteCapableCells + layoutFrame staging in buildCanvasPaintPlan.
+    if (
+      options.replayFrames &&
+      options.hasServerReplay &&
+      !indexHasSpriteCapableCells(index)
+    ) {
+      var replayArrayIndex =
+        options.replayArrayIndex != null ? options.replayArrayIndex : options.replayFrames.length - 1;
+      var layoutFrame = lastFrameWithSpriteCapableCells(
+        options.replayFrames,
+        replayArrayIndex
+      );
+      if (layoutFrame && layoutFrame !== frame) {
+        index = mergeCarriedIndexKeys(buildEffectiveCellViewIndex(layoutFrame), index);
+      }
+    }
+
+    var sprites = [];
+    var overlays = [];
+    var cellKeys = Object.keys(index).sort();
+
+    for (var i = 0; i < cellKeys.length; i++) {
+      var ck = cellKeys[i];
+      var wire = index[ck];
+      var layers = labPaintLayersFromView(wire);
+      var coord = coordFromWireOrKey(wire, ck);
+      if (typeof resolveCellIndex !== "function") {
+        continue;
+      }
+      var gridIdx = resolveCellIndex({ x: coord.x, y: coord.y });
+      if (gridIdx == null || gridIdx < 0) {
+        continue;
+      }
+      var plan = canvasPlanFromPaintLayers(layers, gridIdx);
+      sprites = sprites.concat(plan.sprites);
+      overlays = overlays.concat(plan.overlays);
+    }
+
+    return { overlays: overlays, sprites: sprites };
+  }
+
   global.LabReplayPaintPlan = {
     BACKGROUND_FILL: BACKGROUND_FILL,
     VOID_FILL: VOID_FILL,
+    CANDIDATE_RING_STROKE: CANDIDATE_RING_STROKE,
     buildEffectiveCellViewIndex: buildEffectiveCellViewIndex,
+    buildLabPaintPlanFromFrame: buildLabPaintPlanFromFrame,
+    canvasPlanFromPaintLayers: canvasPlanFromPaintLayers,
     labPaintLayersFromView: labPaintLayersFromView,
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -134,3 +134,55 @@ def test_js_paint_plan_contains_candidate_priority_guard() -> None:
     candidate_idx = transport_fn.index("candidate_miner")
     guard_region = transport_fn[candidate_idx : candidate_idx + 120]
     assert "null" in guard_region
+
+
+def test_js_build_lab_paint_plan_from_frame_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function buildLabPaintPlanFromFrame" in src
+    assert "buildLabPaintPlanFromFrame:" in src
+    assert "lastFrameWithSpriteCapableCells" in src
+    assert "mergeCarriedIndexKeys" in src
+    assert "Layout carry" in src
+
+
+def test_js_canvas_plan_from_paint_layers_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function canvasPlanFromPaintLayers" in src
+    assert "canvasPlanFromPaintLayers:" in src
+    assert "CANDIDATE_RING_STROKE" in src
+    assert 'kind: "candidate_ring"' in src
+    assert "isRgbaFill" in src
+
+
+def test_lab_js_lab_paint_v2_enabled_helper() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    assert "function labPaintV2Enabled(" in src
+    enabled_body = src.split("function labPaintV2Enabled(", 1)[1][:220]
+    assert "lab-root" in enabled_body
+    assert 'dataset.labPaintV2 === "1"' in enabled_body
+
+    plan_body = src.split("function buildCanvasPaintPlan(", 1)[1][:900]
+    assert "labPaintV2Enabled()" in plan_body
+    assert "LabReplayPaintPlan.buildLabPaintPlanFromFrame" in plan_body
+    assert "resolveCellIndex" in plan_body
+    assert "replayArrayIndex" in plan_body
+    assert "replayFrames" in plan_body
+    assert "hasServerReplay" in plan_body
+
+
+def test_lab_js_filter_terrain_cells_for_paint_v2_exists() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    assert "function filterTerrainCellsForPaintV2(" in src
+    filter_body = src.split("function filterTerrainCellsForPaintV2(", 1)[1].split(
+        "function syncLabTerrainCanvasLayer(", 1
+    )[0]
+    assert "labPaintV2Enabled()" in filter_body
+    assert "LabReplayPaintPlan.buildLabPaintPlanFromFrame" in filter_body
+    assert "AsteroidField_Fluid.svg" in filter_body
+    assert "AsteroidField_Shape.svg" in filter_body
+
+    refresh_block = src.split("function refreshLabCanvasAfterLayoutChange(", 1)[1][:1200]
+    assert "filterTerrainCellsForPaintV2(" in refresh_block
+
+    canvas_frame_block = src.split("function applyLabCanvasServerReplayFrame(", 1)[1][:1400]
+    assert "filterTerrainCellsForPaintV2(" in canvas_frame_block

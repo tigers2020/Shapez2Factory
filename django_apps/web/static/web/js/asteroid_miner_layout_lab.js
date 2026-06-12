@@ -175,6 +175,42 @@
     return [];
   }
 
+  /** V2: skip terrain rgba for cells that get field_sprite on sprite canvas (anti-fade). */
+  function filterTerrainCellsForPaintV2(cells, frame, resolveCellIndex, paintOptions) {
+    if (!labPaintV2Enabled() || !Array.isArray(cells) || !cells.length || !frame) {
+      return cells;
+    }
+    if (
+      typeof LabReplayPaintPlan === "undefined" ||
+      !LabReplayPaintPlan.buildLabPaintPlanFromFrame ||
+      typeof resolveCellIndex !== "function"
+    ) {
+      return cells;
+    }
+    const plan = LabReplayPaintPlan.buildLabPaintPlanFromFrame(
+      frame,
+      resolveCellIndex,
+      paintOptions || {},
+    );
+    const fieldSpriteIdx = new Set();
+    const sprites = plan.sprites || [];
+    for (let i = 0; i < sprites.length; i++) {
+      const sp = sprites[i];
+      if (!sp || sp.idx == null) continue;
+      const rel = String(sp.rel || "");
+      if (rel === "AsteroidField_Fluid.svg" || rel === "AsteroidField_Shape.svg") {
+        fieldSpriteIdx.add(sp.idx);
+      }
+    }
+    if (!fieldSpriteIdx.size) {
+      return cells;
+    }
+    return cells.filter(function (cell) {
+      const idx = resolveCellIndex(cell);
+      return idx == null || !fieldSpriteIdx.has(idx);
+    });
+  }
+
   function syncLabTerrainCanvasLayer(cells, layout, cellPx, gapPx) {
     if (!labTerrainCanvasEnabled() || !layout) {
       return;
@@ -205,6 +241,12 @@
   }
 
   const LAB_CANVAS_HIT_CLASS = "lab-replay-canvas-hit-layer";
+
+  /** Opt-in via ``#lab-root`` ``data-lab-paint-v2="1"`` — v2 canvas paint plan (Slice 3); not enabled by default. */
+  function labPaintV2Enabled() {
+    const root = document.getElementById("lab-root");
+    return Boolean(root && root.dataset && root.dataset.labPaintV2 === "1");
+  }
 
   function labCanvasRendererEnabled() {
     const root = document.getElementById("lab-root");
@@ -3436,6 +3478,17 @@
     }
 
     function buildCanvasPaintPlan(frame) {
+      if (
+        labPaintV2Enabled() &&
+        typeof LabReplayPaintPlan !== "undefined" &&
+        LabReplayPaintPlan.buildLabPaintPlanFromFrame
+      ) {
+        return LabReplayPaintPlan.buildLabPaintPlanFromFrame(frame, resolveCellIndex, {
+          replayArrayIndex: replayArrayIndex,
+          replayFrames: replayFrames,
+          hasServerReplay: hasServerReplay,
+        });
+      }
       const overlays = [];
       const sprites = [];
       const byIdx = new Map();
@@ -3541,7 +3594,16 @@
         if (fr) {
           const fm = fullMapCellsFromFrame(fr);
           if (fm.length) {
-            syncLabTerrainCanvasLayer(fm, rimDrawCtx.layout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+            syncLabTerrainCanvasLayer(
+              filterTerrainCellsForPaintV2(fm, fr, resolveCellIndex, {
+                replayArrayIndex: replayArrayIndex,
+                replayFrames: replayFrames,
+                hasServerReplay: hasServerReplay,
+              }),
+              rimDrawCtx.layout,
+              rimDrawCtx.cellPx,
+              rimDrawCtx.gapPx,
+            );
           }
           labCanvasRenderer.drawFrame(buildCanvasPaintPlan(fr));
         }
@@ -3591,7 +3653,16 @@
         applyLabCanvasHitLayer(null);
         const fm = fullMapCellsFromFrame(fr);
         if (fm.length && rimDrawCtx) {
-          syncLabTerrainCanvasLayer(fm, rimDrawCtx.layout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+          syncLabTerrainCanvasLayer(
+            filterTerrainCellsForPaintV2(fm, fr, resolveCellIndex, {
+              replayArrayIndex: replayArrayIndex,
+              replayFrames: replayFrames,
+              hasServerReplay: hasServerReplay,
+            }),
+            rimDrawCtx.layout,
+            rimDrawCtx.cellPx,
+            rimDrawCtx.gapPx,
+          );
         }
       } else if (paintedIndices && paintedIndices.length) {
         resetDomCellsAtIndicesForFrame(

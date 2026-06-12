@@ -1,5 +1,5 @@
 ---
-status: verify
+status: done
 modified: 2026-06-12
 ---
 
@@ -19,3 +19,4 @@ Fix L3 committed miner + extension replay overlay when `append_result` is empty 
 
 - 2026-06-12 — align — user report: outer_rim M/E placement weird on `copy-import-52921cd2` run #7; root cause: empty append fallback paints all equipment as `candidate_miner` @ rot 0
 - 2026-06-12 — implement — rebuild append on deserialize + synthesize on replay projection; fix committed fallback overlay kinds/rotation; tests 6/6 + replay 17/17; refreshed run #7 cache
+- 2026-06-12 — verify — commit `f30555ef`; PR #288; focused pytest green (`test_layer03_persistent_equipment_replay`)

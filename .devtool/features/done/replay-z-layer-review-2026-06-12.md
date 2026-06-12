@@ -1,15 +1,11 @@
 ---
 id: "replay-z-layer-review-2026-06-12"
-status: "verify"
-priority: "medium"
-assignee: null
-epic: null
-dueDate: null
-created: "2026-06-12T12:00:00.000Z"
-modified: "2026-06-12T12:00:00.000Z"
+status: done
+priority: medium
 labels: ["asteroid-lab", "replay", "read-only"]
-order: "a2"
+modified: 2026-06-12
 ---
+
 # Replay Z / height layer concept review
 
 ## Scope
@@ -24,4 +20,5 @@ Read-only audit: how replay maps Shapez 2 Z/L height planes (L=0/1/2) to wire `l
 
 ## Progress
 
-- 2026-06-12 — **verify** — Code/spec review for user report; no production edits
+- 2026-06-12 — verify — Code/spec review for user report; no production edits
+- 2026-06-12 — done — Archived; height-layer contract work tracked separately (`replay-height-layer-contract-2026-06-12`)

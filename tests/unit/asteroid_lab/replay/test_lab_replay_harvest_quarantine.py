@@ -105,8 +105,11 @@ def test_render_full_map_uses_direct_rel_loader_step_6_5() -> None:
     render_body = src.split("function renderFullMapCells(", 1)[1].split(
         "function renderDiffOverlays(", 1
     )[0]
-    assert "applyLabCellSpriteFromRel(el, domPlan.spriteRel, domPlan.spriteRotation)" in render_body
-    assert "clearLabCellSprite(el)" in render_body
+    assert "applyDomPlanToCell(" in render_body
+    apply_body = src.split("function applyDomPlanToCell(", 1)[1].split(
+        "function applyLabCellHudAttributes(", 1
+    )[0]
+    assert "clearLabCellSprite(el)" in apply_body
     assert "applyLabCellSprite(" not in render_body
     assert "labSpriteRelpathForCell" not in render_body
 

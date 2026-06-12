@@ -35,4 +35,4 @@ Or merge `kanban.settings.json` keys manually under **Settings → Workspace →
 
 See extension readme. Features live in `features/*.md` (`status` frontmatter = column `id`).
 
-Agents (Normal+): link each task/chat to one card; update `status` + **Progress** on phase changes. Pivot without finishing → `LEFTOVER_WIP:` warning. See `docs/agent-workflows/kanban-tracking.md`.
+Agents (all modes): link or **create** one card per **feature thread** at session start; append **Progress** on each slice; `done` only when full Acceptance met. Pivot without finishing → `LEFTOVER_WIP:` warning. See `docs/agent-workflows/kanban-tracking.md`.

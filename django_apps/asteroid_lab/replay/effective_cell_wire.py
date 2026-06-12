@@ -21,6 +21,8 @@ class EffectiveCellTerrainWire(TypedDict):
 
 class EffectiveCellOccupantWire(TypedDict):
     kind: str
+    wire_kind: str | None
+    sprite_id: str | None
     rotation: int | None
 
 
@@ -41,6 +43,7 @@ class EffectiveCellWire(TypedDict):
     occupant: EffectiveCellOccupantWire
     transport: EffectiveCellTransportWire
     output: EffectiveCellOutputWire
+    overlay_role: str | None
     sources: dict[str, object]
 
 
@@ -56,6 +59,8 @@ def effective_cell_to_wire(view: EffectiveCellView) -> EffectiveCellWire:
         },
         "occupant": {
             "kind": view.occupant_kind,
+            "wire_kind": view.occupant_wire_kind,
+            "sprite_id": view.occupant_sprite_id,
             "rotation": view.occupant_rotation,
         },
         "transport": {
@@ -64,6 +69,7 @@ def effective_cell_to_wire(view: EffectiveCellView) -> EffectiveCellWire:
             "simulation": view.simulation,
         },
         "output": {"transport_kind": view.output_transport_kind},
+        "overlay_role": view.overlay_role,
         "sources": dict(view.sources),
     }
 

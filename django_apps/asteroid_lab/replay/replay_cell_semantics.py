@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
+from django_apps.asteroid_lab.replay.replay_map_cell_wire import wire_field_kind
+
 _LEGACY_SHAPE_OUTPUT_TOKENS = frozenset({"shape_belt", "belt", "shape"})
 _LEGACY_FLUID_OUTPUT_TOKENS = frozenset({"fluid_pipe", "pipe", "fluid"})
 
@@ -28,6 +32,17 @@ TERRAIN_CELL_KINDS = frozenset(
         "asteroid_fluid_field",
         "void",
         "empty",
+    }
+)
+
+OVERLAY_SEMANTIC_KINDS = frozenset(
+    {
+        "inner_field_block",
+        "candidate_miner",
+        "candidate_transport_stub",
+        "candidate_route_path",
+        "route_probe_path",
+        "planned_exterior_connector",
     }
 )
 
@@ -77,6 +92,18 @@ def occupant_kind_from_cell(kind: str) -> str | None:
     return kind
 
 
+def overlay_role_from_cell(cell: Mapping[str, object]) -> str | None:
+    """Resolve overlay semantic role from explicit ``overlay_role`` or semantic ``kind``."""
+
+    raw_role = cell.get("overlay_role")
+    if raw_role is not None and str(raw_role).strip():
+        return str(raw_role).strip()
+    kind = wire_field_kind(cell).strip()
+    if kind in OVERLAY_SEMANTIC_KINDS:
+        return kind
+    return None
+
+
 def resolve_route_transport_kind(tile_type: str, kind: str, transport_raw: object) -> str:
     """Resolve route occupancy transport from kind, transport field, and tile prefix."""
 
@@ -93,12 +120,14 @@ def resolve_route_transport_kind(tile_type: str, kind: str, transport_raw: objec
 __all__ = [
     "NORMALIZED_TRANSPORT_KINDS",
     "OCCUPANT_CELL_KINDS",
+    "OVERLAY_SEMANTIC_KINDS",
     "ROUTE_CELL_KINDS",
     "SPACE_TILE_PREFIXES",
     "TERRAIN_CELL_KINDS",
     "is_route_tile",
     "normalize_project_transport_kind",
     "occupant_kind_from_cell",
+    "overlay_role_from_cell",
     "resolve_route_transport_kind",
     "simulation_for_tile_id",
 ]

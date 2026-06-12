@@ -334,6 +334,78 @@
     if (toolbarEl) toolbarEl.textContent = text;
   }
 
+  function applyDomPlanDataAttrs(el, domPlan) {
+    if (!el || !domPlan || !domPlan.dataAttrs) {
+      return;
+    }
+    const da = domPlan.dataAttrs;
+    if (da.overlayRole) {
+      el.setAttribute("data-overlay-role", String(da.overlayRole));
+    } else {
+      el.removeAttribute("data-overlay-role");
+    }
+    if (da.terrainKind) {
+      el.setAttribute("data-terrain-kind", String(da.terrainKind));
+    } else {
+      el.removeAttribute("data-terrain-kind");
+    }
+    if (da.transportKind) {
+      el.setAttribute("data-transport-kind", String(da.transportKind));
+    } else {
+      el.removeAttribute("data-transport-kind");
+    }
+    if (da.outputTransportKind) {
+      el.setAttribute("data-output-transport-kind", String(da.outputTransportKind));
+    } else {
+      el.removeAttribute("data-output-transport-kind");
+    }
+    if (da.paintV2) {
+      el.setAttribute("data-paint-v2", String(da.paintV2));
+    } else {
+      el.removeAttribute("data-paint-v2");
+    }
+  }
+
+  function applyDomPlanToCell(el, base, cell, domPlan) {
+    if (!el || !domPlan) {
+      return;
+    }
+    const tone = domPlan.rootClasses || domPlan.toneClasses || "";
+    el.className = tone ? base + " " + tone : base;
+    applyDomPlanDataAttrs(el, domPlan);
+    const hudRole =
+      domPlan.hudRole != null && String(domPlan.hudRole) !== ""
+        ? String(domPlan.hudRole)
+        : domPlan.dataAttrs && domPlan.dataAttrs.overlayRole
+          ? String(domPlan.dataAttrs.overlayRole)
+          : "";
+    applyLabCellHudAttributes(el, cell, hudRole);
+    if (domPlan.candidateObservation) {
+      el.setAttribute("title", CANDIDATE_OBSERVATION_TITLE);
+      el.setAttribute("data-lab-candidate-overlay", "1");
+    } else {
+      el.removeAttribute("title");
+      el.removeAttribute("data-lab-candidate-overlay");
+    }
+    const spriteRel =
+      domPlan.sprite && domPlan.sprite.rel
+        ? String(domPlan.sprite.rel)
+        : domPlan.spriteRel
+          ? String(domPlan.spriteRel)
+          : "";
+    const spriteRotation =
+      domPlan.sprite && domPlan.sprite.rotation != null
+        ? domPlan.sprite.rotation
+        : domPlan.spriteRotation != null
+          ? domPlan.spriteRotation
+          : 0;
+    if (spriteRel) {
+      applyLabCellSpriteFromRel(el, spriteRel, spriteRotation);
+    } else {
+      clearLabCellSprite(el);
+    }
+  }
+
   /** HUD: ``data-overlay-role``, ``data-cell-kind``, ``data-tile-type`` (cleared in ``resetGridBase``). */
   function applyLabCellHudAttributes(el, cell, overlayRoleForAttr) {
     if (!el) return;
@@ -1852,19 +1924,30 @@
     return ck + "|" + role + "|" + rot + "||" + tone + "|" + cand;
   }
 
-  function labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan) {
+  function labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan, domPlanIn) {
     if (!cell || typeof cell !== "object") {
       return null;
     }
     const ck = overlayCellKind(cell);
     const el = domCells[idx];
+    const domPlan =
+      domPlanIn != null ? domPlanIn : resolveDomPlan ? resolveDomPlan(cell) : null;
     if (resolveDomPlan) {
-      const domPlan = resolveDomPlan(cell);
       if (domPlan) {
+        const role =
+          domPlan.hudRole != null && String(domPlan.hudRole) !== ""
+            ? String(domPlan.hudRole)
+            : domPlan.dataAttrs && domPlan.dataAttrs.overlayRole
+              ? String(domPlan.dataAttrs.overlayRole)
+              : "";
         const rot = cell.rotation != null ? String(cell.rotation) : "";
-        const role = cell.overlay_role != null ? String(cell.overlay_role) : "";
-        const domTone = domPlan.toneClasses || "";
-        const domSprite = domPlan.spriteRel || "";
+        const domTone = domPlan.rootClasses || domPlan.toneClasses || "";
+        const domSprite =
+          domPlan.sprite && domPlan.sprite.rel
+            ? String(domPlan.sprite.rel)
+            : domPlan.spriteRel
+              ? String(domPlan.spriteRel)
+              : "";
         const domCand = domPlan.candidateObservation ? "1" : "0";
         return ck + "|" + role + "|" + rot + "|" + domSprite + "|" + domTone + "|" + domCand + "|v2";
       }
@@ -1924,7 +2007,8 @@
       if (cellByIndex) {
         const cell = cellByIndex.get(idx);
         if (cell) {
-          const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan);
+          const domPlan = resolveDomPlan ? resolveDomPlan(cell) : null;
+          const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan, domPlan);
           if (token != null && renderedTokenByKey.get(idx) === token) {
             continue;
           }
@@ -1944,9 +2028,9 @@
       const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
-      const ck = overlayCellKind(cell);
       const el = domCells[idx];
-      const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan);
+      const domPlan = resolveDomPlan ? resolveDomPlan(cell) : null;
+      const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan, domPlan);
       if (token == null) {
         continue;
       }
@@ -1961,33 +2045,10 @@
         }
         continue;
       }
-      const domPlan = resolveDomPlan ? resolveDomPlan(cell) : null;
       if (!domPlan) {
         continue;
       }
-      const tone = domPlan.toneClasses || toneForFullMapCell(cell, frame);
-      el.className = tone ? base + " " + tone : base;
-      const hudRole =
-        cell.overlay_role != null
-          ? String(cell.overlay_role)
-          : isRouteOverlayCellKind(ck)
-            ? ck
-            : domPlan.candidateObservation
-              ? ck
-              : "";
-      applyLabCellHudAttributes(el, cell, hudRole);
-      if (domPlan.candidateObservation) {
-        el.setAttribute("title", CANDIDATE_OBSERVATION_TITLE);
-        el.setAttribute("data-lab-candidate-overlay", "1");
-      } else {
-        el.removeAttribute("title");
-        el.removeAttribute("data-lab-candidate-overlay");
-      }
-      if (domPlan.spriteRel) {
-        applyLabCellSpriteFromRel(el, domPlan.spriteRel, domPlan.spriteRotation);
-      } else {
-        clearLabCellSprite(el);
-      }
+      applyDomPlanToCell(el, base, cell, domPlan);
       renderedTokenByKey.set(idx, token);
       if (labPerfDebugEnabled()) {
         labPerfTouchedCells += 1;
@@ -5489,19 +5550,6 @@
       return payload;
     }
 
-    const LAB_CELL_DETAIL_KEY_ORDER = [
-      "coord",
-      "terrain",
-      "occupant",
-      "output",
-      "transport",
-      "frame_index",
-    ];
-
-    function labCellDetailIsSuppressedKey(key) {
-      return String(key || "").startsWith("server_");
-    }
-
     function labCellDetailEscapeHtml(s) {
       return String(s)
         .replace(/&/g, "&amp;")
@@ -5510,94 +5558,16 @@
         .replace(/"/g, "&quot;");
     }
 
-    function labCellDetailOrderedKeys(obj) {
-      const keys = Object.keys(obj || {});
-      const seen = {};
-      const out = [];
-      for (let i = 0; i < LAB_CELL_DETAIL_KEY_ORDER.length; i++) {
-        const k = LAB_CELL_DETAIL_KEY_ORDER[i];
-        if (keys.indexOf(k) >= 0) {
-          out.push(k);
-          seen[k] = true;
-        }
-      }
-      const rest = keys
-        .filter(function (k) {
-          return !seen[k] && !labCellDetailIsSuppressedKey(k);
-        })
-        .sort();
-      return out.concat(rest);
-    }
-
-    function labCellDetailFormatValue(v) {
-      if (v === null || v === undefined) {
-        return '<span class="text-slate-500">—</span>';
-      }
-      if (typeof v === "number" || typeof v === "boolean") {
-        return labCellDetailEscapeHtml(String(v));
-      }
-      if (typeof v === "string") {
-        const t = v.trim();
-        if (t === "") {
-          return '<span class="text-slate-500">(empty)</span>';
-        }
-        return labCellDetailEscapeHtml(v);
-      }
-      const json = JSON.stringify(v);
-      if (json.length <= 140) {
-        return (
-          '<span class="wrap-break-word font-mono text-[11px]">' + labCellDetailEscapeHtml(json) + "</span>"
-        );
-      }
-      return (
-        '<details class="mt-1">' +
-        '<summary class="cursor-pointer text-xs text-slate-400">JSON (' +
-        String(json.length) +
-        " chars)</summary>" +
-        '<pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap wrap-break-word rounded border border-slate-800 bg-slate-900/80 p-2 font-mono text-[11px] leading-snug">' +
-        labCellDetailEscapeHtml(JSON.stringify(v, null, 2)) +
-        "</pre></details>"
-      );
-    }
-
-    function labCellDetailKvTableHtml(obj) {
-      if (!obj || typeof obj !== "object") {
-        return '<p class="text-slate-500">—</p>';
-      }
-      const keys = labCellDetailOrderedKeys(obj);
-      if (!keys.length) {
-        return '<p class="text-slate-500">(empty object)</p>';
-      }
-      let rows = "";
-      for (let i = 0; i < keys.length; i++) {
-        const k = keys[i];
-        let dd = labCellDetailFormatValue(obj[k]);
-        if (k === "rotation") {
-          dd +=
-            ' <span class="whitespace-nowrap text-xs text-slate-500">(East=0, clockwise)</span>';
-        }
-        rows +=
-          '<div class="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 border-b border-slate-800/80 py-2 last:border-b-0">' +
-          '<dt class="shrink-0 font-mono text-xs text-slate-500">' +
-          labCellDetailEscapeHtml(k) +
-          "</dt>" +
-          '<dd class="min-w-0 text-slate-200">' +
-          dd +
-          "</dd></div>";
-      }
-      return '<dl class="rounded-lg border border-slate-800/80 px-3">' + rows + "</dl>";
-    }
-
     function labCellDetailFrameMetaHtml(data) {
       const parts = [];
       if (data.frame_index !== undefined && data.frame_index !== null) {
-        parts.push("frame_index: " + String(data.frame_index));
+        parts.push("Frame " + String(data.frame_index));
       }
       if (data.frame_key !== undefined && data.frame_key !== null && String(data.frame_key) !== "") {
-        parts.push("frame_key: " + String(data.frame_key));
+        parts.push(String(data.frame_key));
       }
       if (data.detail_source) {
-        parts.push("source=" + String(data.detail_source));
+        parts.push(String(data.detail_source));
       }
       if (data.canonical_mismatch) {
         parts.push("canonical mismatch corrected");
@@ -5612,60 +5582,80 @@
       );
     }
 
-    function labCellDetailSourceBlockHtml(sourceKey, val, mergedCell) {
+    function labEffectiveCellDiagnosticsHtml(effectiveCell, sources) {
       if (
-        sourceKey === "full_map" &&
-        mergedCell &&
-        typeof mergedCell === "object" &&
-        val &&
-        typeof val === "object" &&
-        !Array.isArray(val) &&
-        JSON.stringify(val) === JSON.stringify(mergedCell)
+        !effectiveCell ||
+        typeof effectiveCell !== "object" ||
+        typeof LabEffectiveCellView === "undefined" ||
+        typeof LabEffectiveCellView.effectiveCellViewDisplayDiagnostics !== "function"
       ) {
-        return (
-          '<div class="mb-4 last:mb-0">' +
-          '<h4 class="mb-1 font-mono text-xs text-slate-400">' +
-          labCellDetailEscapeHtml(sourceKey) +
-          "</h4>" +
-          '<p class="text-xs text-slate-500">Same as merged cell above.</p></div>'
-        );
+        return "";
       }
-      const head =
-        '<h4 class="mb-2 font-mono text-xs text-slate-400">' +
-        labCellDetailEscapeHtml(sourceKey) +
-        "</h4>";
-      if (val !== null && val !== undefined && typeof val === "object" && !Array.isArray(val)) {
-        return '<div class="mb-4 last:mb-0">' + head + labCellDetailKvTableHtml(val) + "</div>";
+      const diag = LabEffectiveCellView.effectiveCellViewDisplayDiagnostics(
+        effectiveCell,
+        sources || {}
+      );
+      if (!diag.hasContent || !diag.items.length) {
+        return "";
+      }
+      let rows = "";
+      for (let i = 0; i < diag.items.length; i++) {
+        const row = diag.items[i];
+        rows +=
+          '<div class="grid grid-cols-[minmax(0,8.5rem)_1fr] gap-x-3 border-b border-slate-800/60 py-1.5 last:border-b-0">' +
+          '<dt class="text-[11px] text-slate-500">' +
+          labCellDetailEscapeHtml(row.label) +
+          "</dt>" +
+          '<dd class="font-mono text-[11px] text-slate-200 wrap-break-word">' +
+          labCellDetailEscapeHtml(row.value) +
+          "</dd></div>";
       }
       return (
-        '<div class="mb-4 last:mb-0">' +
-        head +
-        '<div class="text-slate-200">' +
-        labCellDetailFormatValue(val) +
-        "</div></div>"
+        '<details class="mt-4">' +
+        '<summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-500">Diagnostics</summary>' +
+        '<p class="mt-2 text-[11px] leading-relaxed text-slate-500">Sprite identifiers and simulation only when not shown above.</p>' +
+        '<dl class="mt-3 rounded-lg border border-slate-800/80 bg-slate-950/40 px-3 py-1">' +
+        rows +
+        "</dl></details>"
       );
     }
 
-    function labEffectiveCellDetailTableHtml(effectiveCell) {
+    function labEffectiveCellDetailSectionsHtml(effectiveCell, meta) {
       if (!effectiveCell || typeof effectiveCell !== "object") {
         return '<p class="text-slate-500">—</p>';
       }
-      const rows =
+      const display =
         typeof LabEffectiveCellView !== "undefined"
-          ? LabEffectiveCellView.effectiveCellViewDisplayRows(effectiveCell)
-          : [];
-      let body = "";
-      for (let i = 0; i < rows.length; i++) {
-        body +=
-          '<div class="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 border-b border-slate-800/80 py-2 last:border-b-0">' +
-          '<dt class="shrink-0 font-mono text-xs text-slate-500">' +
-          labCellDetailEscapeHtml(rows[i][0]) +
-          "</dt>" +
-          '<dd class="min-w-0 text-slate-200">' +
-          labCellDetailEscapeHtml(rows[i][1]) +
-          "</dd></div>";
+          ? LabEffectiveCellView.effectiveCellViewDisplaySections(effectiveCell, meta || {})
+          : { sections: [] };
+      const sections = display.sections || [];
+      if (!sections.length) {
+        return '<p class="text-slate-500">—</p>';
       }
-      return '<dl class="rounded-lg border border-slate-800/80 px-3">' + body + "</dl>";
+      let body = "";
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
+        let itemsHtml = "";
+        for (let j = 0; j < section.items.length; j++) {
+          itemsHtml +=
+            '<li class="text-sm text-slate-200">' +
+            labCellDetailEscapeHtml(section.items[j].value) +
+            "</li>";
+        }
+        body +=
+          '<div class="space-y-1">' +
+          '<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-400">' +
+          labCellDetailEscapeHtml(section.title) +
+          "</h4>" +
+          '<ul class="list-none space-y-1 pl-0">' +
+          itemsHtml +
+          "</ul></div>";
+      }
+      return '<div class="space-y-4 rounded-lg border border-slate-800/80 px-3 py-3">' + body + "</div>";
+    }
+
+    function labEffectiveCellDetailTableHtml(effectiveCell, meta) {
+      return labEffectiveCellDetailSectionsHtml(effectiveCell, meta);
     }
 
     function labCellDetailRenderSuccess(cellDetailEl, data) {
@@ -5685,7 +5675,11 @@
           '<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">Effective cell</h3>' +
           observationBanner +
           frameMeta +
-          labEffectiveCellDetailTableHtml(effectiveCell) +
+          labEffectiveCellDetailSectionsHtml(effectiveCell, {
+            frame_index: data.frame_index,
+            detail_source: data.detail_source,
+          }) +
+          labEffectiveCellDiagnosticsHtml(effectiveCell, sources) +
           "</section>";
       } else {
         const msg = data.message || "no_cell_at_xy";
@@ -5696,19 +5690,6 @@
           "</p>" +
           frameMeta +
           "</section>";
-      }
-      const srcKeys = Object.keys(sources);
-      if (srcKeys.length) {
-        let srcHtml = "";
-        for (let s = 0; s < srcKeys.length; s++) {
-          srcHtml += labCellDetailSourceBlockHtml(srcKeys[s], sources[srcKeys[s]], null);
-        }
-        html +=
-          '<details class="space-y-3">' +
-          '<summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-400">Sources</summary>' +
-          '<div class="mt-3 space-y-3">' +
-          srcHtml +
-          "</div></details>";
       }
       html += "</div>";
       cellDetailEl.innerHTML = html;

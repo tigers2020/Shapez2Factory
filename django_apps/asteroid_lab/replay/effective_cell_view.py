@@ -13,6 +13,7 @@ from django_apps.asteroid_lab.replay.replay_cell_semantics import (
     is_route_tile,
     normalize_project_transport_kind,
     occupant_kind_from_cell,
+    overlay_role_from_cell,
     resolve_route_transport_kind,
     simulation_for_tile_id,
 )
@@ -33,11 +34,14 @@ class EffectiveCellView:
     terrain_kind: str
     terrain_tile_type: str | None
     occupant_kind: str
+    occupant_wire_kind: str | None
+    occupant_sprite_id: str | None
     occupant_rotation: int | None
     transport_kind: str
     transport_tile_id: str | None
     simulation: str | None
     output_transport_kind: str
+    overlay_role: str | None = None
     sources: dict[str, object] = field(default_factory=dict)
 
 
@@ -103,11 +107,14 @@ def merge_effective_cell_view(
     terrain_kind = "empty"
     terrain_tile_type: str | None = None
     occupant_kind = "none"
+    occupant_wire_kind: str | None = None
+    occupant_sprite_id: str | None = None
     occupant_rotation: int | None = None
     transport_kind = "none"
     transport_tile_id: str | None = None
     simulation: str | None = None
     output_transport_kind = "none"
+    overlay_role: str | None = None
     layer = 0
 
     for cell in (full_cell, delta_cell):
@@ -124,10 +131,14 @@ def merge_effective_cell_view(
         occupant = occupant_kind_from_cell(kind)
         if occupant is not None:
             occupant_kind = occupant
+            if kind:
+                occupant_wire_kind = kind
             occupant_rotation = _wire_rotation(cell)
             profile = _wire_output_transport_kind(cell)
             if profile != "none":
                 output_transport_kind = profile
+            if tile_type and not is_route_tile(tile_type, kind):
+                occupant_sprite_id = tile_type or None
         if is_route_tile(tile_type, kind):
             transport_kind = resolve_route_transport_kind(
                 tile_type, kind, wire_field_transport(cell)
@@ -138,15 +149,26 @@ def merge_effective_cell_view(
     if overlay_cells:
         for overlay in overlay_cells:
             kind = wire_field_kind(overlay).strip()
+            role = overlay_role_from_cell(overlay)
+            if role:
+                overlay_role = role
+            profile = _wire_output_transport_kind(overlay)
+            if profile != "none" and occupant_kind_from_cell(kind) is None:
+                output_transport_kind = profile
             occupant = occupant_kind_from_cell(kind)
             if occupant is not None:
                 occupant_kind = occupant
+                if kind:
+                    occupant_wire_kind = kind
                 rot = _wire_rotation(overlay)
                 if rot is not None:
                     occupant_rotation = rot
-                profile = _wire_output_transport_kind(overlay)
-                if profile != "none":
-                    output_transport_kind = profile
+                occ_profile = _wire_output_transport_kind(overlay)
+                if occ_profile != "none":
+                    output_transport_kind = occ_profile
+                occ_tile = wire_field_tile_type(overlay).strip()
+                if occ_tile and not is_route_tile(occ_tile, kind):
+                    occupant_sprite_id = occ_tile or None
                 layer = _wire_layer(overlay, default=layer)
             tile_type = wire_field_tile_type(overlay).strip()
             if is_route_tile(tile_type, kind):
@@ -168,11 +190,14 @@ def merge_effective_cell_view(
         terrain_kind=terrain_kind,
         terrain_tile_type=terrain_tile_type,
         occupant_kind=occupant_kind,
+        occupant_wire_kind=occupant_wire_kind,
+        occupant_sprite_id=occupant_sprite_id,
         occupant_rotation=occupant_rotation,
         transport_kind=transport_kind,
         transport_tile_id=transport_tile_id,
         simulation=simulation,
         output_transport_kind=output_transport_kind,
+        overlay_role=overlay_role,
         sources=sources,
     )
 

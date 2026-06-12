@@ -10,6 +10,7 @@ TPL = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layou
 LAB_JS = JS_DIR / "asteroid_miner_layout_lab.js"
 SANITIZE_JS = JS_DIR / "lab_replay_wire_sanitize.js"
 PAINT_JS = JS_DIR / "lab_replay_paint_plan.js"
+EFFECTIVE_CELL_JS = JS_DIR / "lab_effective_cell_view.js"
 
 
 def test_canvas_renderer_module_contract() -> None:
@@ -162,6 +163,133 @@ def test_js_dom_plan_from_paint_layers_exists() -> None:
     assert "domPlanFromPaintLayers:" in src
     assert "lab-overlay-candidate-miner-ring" in src
     assert "skipFullFill" in src
+
+
+def test_js_slice_c_dom_plan_builder_and_render_authority() -> None:
+    paint_src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function buildDomPlanForCell" in paint_src
+    assert "function resolveDomPlanForWire" in paint_src
+    assert "wireDataAttrsFromEffectiveWire" in paint_src
+    resolver_body = paint_src.split("function buildDomPlanResolverForFrame(", 1)[1].split(
+        "function coordFromWireOrKey(", 1
+    )[0]
+    assert "buildDomPlanForCell(wire)" in resolver_body
+    assert "sources.overlay_cells" not in resolver_body
+
+    lab_src = LAB_JS.read_text(encoding="utf-8")
+    assert "function applyDomPlanToCell(" in lab_src
+    render_body = lab_src.split("function renderFullMapCells(", 1)[1].split(
+        "function renderDiffOverlays(", 1
+    )[0]
+    assert "applyDomPlanToCell(" in render_body
+    assert "toneForFullMapCell(cell, frame)" not in render_body
+    assert "sources.overlay_cells" not in render_body
+    token_body = lab_src.split("function labPaintTokenForCell(", 1)[1].split(
+        "function frameCellIndexMap(", 1
+    )[0]
+    assert "cellRenderToken" in token_body
+    assert "domPlan.hudRole" in token_body or "domPlan.dataAttrs" in token_body
+
+
+def test_js_b2_semantic_display_model_projection() -> None:
+    src = EFFECTIVE_CELL_JS.read_text(encoding="utf-8")
+    assert "function effectiveCellViewDisplayModel" in src
+    model_body = src.split("function effectiveCellViewDisplayModel(", 1)[1].split(
+        "function effectiveCellViewDisplaySections(", 1
+    )[0]
+    sections_body = src.split("function effectiveCellViewDisplaySections(", 1)[1].split(
+        "function effectiveCellViewDisplayRows(", 1
+    )[0]
+    assert "effectiveCellViewDisplayModel" in sections_body
+    assert 'id: "machine"' in model_body
+    assert "Facing:" in model_body
+    assert "Output:" in model_body
+    assert 'title: "Sprite"' not in model_body
+    assert "Output requirement" not in model_body
+
+
+def test_js_overlay_output_hint_for_candidate_miner() -> None:
+    src = EFFECTIVE_CELL_JS.read_text(encoding="utf-8")
+    hint_body = src.split("function isOverlayOutputHint(", 1)[1].split(
+        "function hasMachineSummary(", 1
+    )[0]
+    assert "isOverlaySemanticKind" in hint_body
+    diag_body = src.split("function effectiveCellViewDisplayDiagnostics(", 1)[1].split(
+        "global.LabEffectiveCellView", 1
+    )[0]
+    assert "Merge inputs" not in diag_body
+    assert "Map view hits" not in diag_body
+    assert "Wire kind" not in diag_body
+
+
+def test_js_b2_overlay_semantic_kinds_skip_machine_summary() -> None:
+    src = EFFECTIVE_CELL_JS.read_text(encoding="utf-8")
+    assert "function isOverlaySemanticKind" in src
+    assert "function effectiveCellViewDisplayDiagnostics" in src
+    machine_body = src.split("function hasMachineSummary(", 1)[1].split(
+        "function effectiveCellViewDisplayModel(", 1
+    )[0]
+    assert "isOverlaySemanticKind" in machine_body
+
+
+def test_js_effective_cell_canonical_detail_sections() -> None:
+    src = EFFECTIVE_CELL_JS.read_text(encoding="utf-8")
+    assert "function effectiveCellViewDisplaySections" in src
+    assert "Requires output:" in src
+    display_body = src.split("function effectiveCellViewDisplayModel(", 1)[1].split(
+        "function effectiveCellViewDisplaySections(", 1
+    )[0]
+    assert "sources.overlay_cells" not in display_body
+    assert "sources.full_cell" not in display_body
+    assert "transport_tile" not in display_body
+    assert "sprite_identifier" not in display_body
+    assert "tile_type" not in display_body
+
+
+def test_js_lab_detail_panel_uses_canonical_sections() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    assert "effectiveCellViewDisplaySections" in src
+    assert "labEffectiveCellDetailSectionsHtml" in src
+    render_body = src.split("function labCellDetailRenderSuccess(", 1)[1].split(
+        "const cellDetailModal =", 1
+    )[0]
+    assert "labEffectiveCellDiagnosticsHtml" in render_body
+    assert "Diagnostics" in render_body
+    assert "Source wires" not in render_body
+    assert "Raw sources / debug evidence" not in render_body
+    assert "sources.overlay_cells" not in render_body.split("labEffectiveCellDetailSectionsHtml")[0]
+    detail_html_body = src.split("function labEffectiveCellDetailSectionsHtml(", 1)[1].split(
+        "function labCellDetailRenderSuccess(", 1
+    )[0]
+    assert "sources." not in detail_html_body
+
+
+def test_js_effective_cell_merge_carries_overlay_role() -> None:
+    src = EFFECTIVE_CELL_JS.read_text(encoding="utf-8")
+    assert "overlay_role:" in src
+    assert "OVERLAY_SEMANTIC_KINDS" in src
+    assert "overlayRoleFromCell" in src
+
+
+def test_js_paint_plan_uses_merged_overlay_role_not_raw_sources() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "overlayRoleFromWireSources" not in src
+    resolver_body = src.split("function buildDomPlanResolverForFrame(", 1)[1].split(
+        "function coordFromWireOrKey(", 1
+    )[0]
+    assert "buildDomPlanForCell(wire)" in resolver_body
+    build_body = src.split("function buildDomPlanForCell(", 1)[1].split(
+        "function resolveDomPlanForWire(", 1
+    )[0]
+    attrs_body = src.split("function wireDataAttrsFromEffectiveWire(", 1)[1].split(
+        "function resolveHudRoleFromWire(", 1
+    )[0]
+    assert "wire.overlay_role" in attrs_body
+    cell_like_body = src.split("function cellLikeFromEffectiveWire(", 1)[1].split(
+        "function buildCellByGridIndexFromFrame(", 1
+    )[0]
+    assert "wire.overlay_role" in cell_like_body
+    assert "sources.overlay_cells" not in cell_like_body
 
 
 def test_js_build_dom_plan_resolver_for_frame_exists() -> None:

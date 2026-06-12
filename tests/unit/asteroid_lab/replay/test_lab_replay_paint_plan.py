@@ -18,6 +18,7 @@ from tests.support.lab_replay_paint_plan import (
     BACKGROUND_FILL,
     VOID_FILL,
     build_effective_cell_view_index,
+    dom_plan_from_paint_layers,
     lab_paint_layers_from_view,
 )
 from tests.support.lab_replay_sprite_wire import CELL_KIND_STATIC_RELPATH
@@ -100,6 +101,66 @@ def test_build_effective_cell_view_index_frame_38() -> None:
     assert key in index
     assert index[key]["occupant"]["kind"] == "candidate_miner"
     assert index[key]["output"]["transport_kind"] == "space_belt"
+    assert index[key]["overlay_role"] == "candidate_miner"
+
+
+def test_inner_field_block_paint_from_merged_wire_without_source_overlay() -> None:
+    wire = {
+        "frame_index": 38,
+        "coord": {"x": 5, "y": 8, "layer": 0},
+        "terrain": {"kind": "asteroid_shape_field", "tile_type": None},
+        "occupant": {"kind": "none", "rotation": None},
+        "transport": {"kind": "none", "tile_id": None, "simulation": None},
+        "output": {"transport_kind": "space_belt"},
+        "overlay_role": "inner_field_block",
+        "sources": {},
+    }
+    layers = lab_paint_layers_from_view(wire)
+    assert layers["occupant"] is None
+    assert layers["transport"] is None
+    assert layers["terrain"] is not None
+    assert layers["terrain"]["mode"] == "field_sprite"
+    dom = dom_plan_from_paint_layers(layers, overlay_kind=str(wire["overlay_role"]))
+    assert dom["candidate_observation"] is False
+    assert dom["skip_full_fill"] is False
+
+
+def test_build_effective_cell_view_index_inner_field_block_at_5_8() -> None:
+    frame = {
+        "frame_index": 38,
+        "map_view": {
+            "full_cells": [
+                {
+                    "x": 5,
+                    "y": 8,
+                    "kind": "asteroid_shape_field",
+                    "transport_kind": "none",
+                    "layer": 0,
+                }
+            ],
+            "overlay_cells": [
+                {
+                    "x": 5,
+                    "y": 8,
+                    "kind": "inner_field_block",
+                    "transport": "none",
+                    "transport_kind": "none",
+                    "output_transport_kind": "space_belt",
+                    "layer": 0,
+                }
+            ],
+        },
+    }
+    index = build_effective_cell_view_index(frame)
+    key = cell_key(5, 8, 0)
+    assert key in index
+    view = index[key]
+    assert view["terrain"]["kind"] == "asteroid_shape_field"
+    assert view["overlay_role"] == "inner_field_block"
+    assert view["occupant"]["kind"] == "none"
+    assert view["transport"]["kind"] == "none"
+    assert view["output"]["transport_kind"] == "space_belt"
+    assert "overlay_cells" in view["sources"]
 
 
 def test_anti_fade_precondition_no_background_fill_when_occupant_sprite() -> None:

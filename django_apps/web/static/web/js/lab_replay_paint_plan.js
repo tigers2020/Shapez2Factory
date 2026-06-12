@@ -17,6 +17,13 @@
   var DOM_CANDIDATE_MINER_RING = "lab-overlay-candidate-miner-ring relative";
   var DOM_CANDIDATE_MINER_FILL = "lab-overlay-candidate-miner relative";
 
+  var OVERLAY_DOM_TONE_BY_ROLE = {
+    inner_field_block: "ring-1 ring-inset ring-violet-400/35 bg-violet-950/15",
+    candidate_transport_stub: "lab-overlay-candidate-transport-stub relative",
+    candidate_route_path: "lab-overlay-candidate-route-path relative",
+    planned_exterior_connector: "lab-planned-exterior-connector relative",
+  };
+
   var CELL_KIND_STATIC_RELPATH = {
     asteroid_fluid_field: "AsteroidField_Fluid.svg",
     asteroid_shape_field: "AsteroidField_Shape.svg",
@@ -135,7 +142,7 @@
     return { occupant: null, chrome: chrome };
   }
 
-  function rotationFromOverlaySources(view) {
+  function legacyFallbackRotationFromWireSources(view) {
     var sources = view && view.sources;
     if (!sources || typeof sources !== "object") {
       return 0;
@@ -178,7 +185,7 @@
     var occupant = wireSection(view, "occupant");
     var rot = rotation(occupant);
     if (NONE_KINDS[kindStr(occupant)]) {
-      var overlayRot = rotationFromOverlaySources(view);
+      var overlayRot = legacyFallbackRotationFromWireSources(view);
       if (overlayRot) {
         rot = overlayRot;
       }
@@ -658,6 +665,8 @@
       toneClasses = hasSprite ? DOM_CANDIDATE_MINER_RING : DOM_CANDIDATE_MINER_FILL;
     } else if (overlayKind === "candidate_miner" && !hasSprite) {
       toneClasses = DOM_CANDIDATE_MINER_FILL;
+    } else if (overlayKind && OVERLAY_DOM_TONE_BY_ROLE[overlayKind]) {
+      toneClasses = OVERLAY_DOM_TONE_BY_ROLE[overlayKind];
     }
 
     return {
@@ -667,6 +676,95 @@
       candidateObservation: hasCandidateRing || overlayKind === "candidate_miner",
       skipFullFill: hasSprite,
     };
+  }
+
+  function wireDataAttrsFromEffectiveWire(wire) {
+    if (!wire || typeof wire !== "object") {
+      return {
+        overlayRole: "",
+        terrainKind: "",
+        transportKind: "",
+        outputTransportKind: "",
+        paintV2: "1",
+      };
+    }
+    var terrain = wireSection(wire, "terrain");
+    var transport = wireSection(wire, "transport");
+    var output = wireSection(wire, "output");
+    return {
+      overlayRole:
+        wire.overlay_role != null && String(wire.overlay_role).trim()
+          ? String(wire.overlay_role).trim()
+          : "",
+      terrainKind: kindStr(terrain) || "empty",
+      transportKind: kindStr(transport) || "none",
+      outputTransportKind: kindStr(output, "transport_kind") || "none",
+      paintV2: "1",
+    };
+  }
+
+  function resolveHudRoleFromWire(wire, paintPlan) {
+    if (!wire || typeof wire !== "object") {
+      return "";
+    }
+    var dataAttrs = wireDataAttrsFromEffectiveWire(wire);
+    if (dataAttrs.overlayRole) {
+      return dataAttrs.overlayRole;
+    }
+    if (paintPlan && paintPlan.candidateObservation) {
+      var occupant = wireSection(wire, "occupant");
+      var occKind = kindStr(occupant);
+      if (occKind && occKind !== "none") {
+        return occKind;
+      }
+    }
+    var transportKind = dataAttrs.transportKind;
+    if (TRANSPORT_KINDS[transportKind]) {
+      return transportKind;
+    }
+    return "";
+  }
+
+  function buildDomPlanForCell(wire) {
+    if (!wire || typeof wire !== "object") {
+      return null;
+    }
+    var coord = coordFromWireOrKey(wire, "");
+    var cellKeyStr = keyForCell(coord.x, coord.y, coord.layer);
+    var dataAttrs = wireDataAttrsFromEffectiveWire(wire);
+    var overlayKind = dataAttrs.overlayRole;
+    var layers = labPaintLayersFromView(wire);
+    var paintPlan = domPlanFromPaintLayers(layers, {
+      overlayKind: overlayKind,
+    });
+    var sprite =
+      paintPlan.spriteRel != null && String(paintPlan.spriteRel).trim()
+        ? { rel: String(paintPlan.spriteRel), rotation: paintPlan.spriteRotation || 0 }
+        : null;
+    var hudRole = resolveHudRoleFromWire(wire, paintPlan);
+    return {
+      cellKey: cellKeyStr,
+      coord: coord,
+      rootClasses: paintPlan.toneClasses || "",
+      chromeClasses: paintPlan.toneClasses || "",
+      paintLayers: layers,
+      sprite: sprite,
+      toneClasses: paintPlan.toneClasses || "",
+      spriteRel: paintPlan.spriteRel,
+      spriteRotation: paintPlan.spriteRotation,
+      candidateObservation: paintPlan.candidateObservation,
+      skipFullFill: paintPlan.skipFullFill,
+      hudRole: hudRole,
+      dataAttrs: dataAttrs,
+      fallbackToken: null,
+      debug: {
+        overlayKind: overlayKind,
+      },
+    };
+  }
+
+  function resolveDomPlanForWire(wire) {
+    return buildDomPlanForCell(wire);
   }
 
   function overlayCellKindFromWire(cell) {
@@ -700,10 +798,7 @@
       if (!wire) {
         return null;
       }
-      var layers = labPaintLayersFromView(wire);
-      return domPlanFromPaintLayers(layers, {
-        overlayKind: overlayCellKindFromWire(cell),
-      });
+      return buildDomPlanForCell(wire);
     };
   }
 
@@ -742,30 +837,6 @@
     return kindStr(terrain) || "empty";
   }
 
-  function overlayRoleFromWireSources(wire) {
-    var sources = wire && wire.sources;
-    if (!sources || typeof sources !== "object") {
-      return null;
-    }
-    var overlay = sources.overlay_cells;
-    if (!overlay) {
-      return null;
-    }
-    if (Array.isArray(overlay)) {
-      for (var i = overlay.length - 1; i >= 0; i--) {
-        var row = overlay[i];
-        if (row && row.overlay_role != null && String(row.overlay_role) !== "") {
-          return String(row.overlay_role);
-        }
-      }
-      return null;
-    }
-    if (overlay.overlay_role != null && String(overlay.overlay_role) !== "") {
-      return String(overlay.overlay_role);
-    }
-    return null;
-  }
-
   function cellLikeFromEffectiveWire(wire) {
     var coord = coordFromWireOrKey(wire, "");
     var occupant = wireSection(wire, "occupant");
@@ -780,9 +851,8 @@
     if (occupant.rotation != null) {
       cell.rotation = occupant.rotation;
     }
-    var overlayRole = overlayRoleFromWireSources(wire);
-    if (overlayRole) {
-      cell.overlay_role = overlayRole;
+    if (wire && wire.overlay_role != null && String(wire.overlay_role).trim()) {
+      cell.overlay_role = String(wire.overlay_role).trim();
     }
     return cell;
   }
@@ -896,6 +966,7 @@
     buildEffectiveCellViewIndex: buildEffectiveCellViewIndex,
     buildEffectiveCellViewIndexWithCarry: buildEffectiveCellViewIndexWithCarry,
     buildCellByGridIndexFromFrame: buildCellByGridIndexFromFrame,
+    buildDomPlanForCell: buildDomPlanForCell,
     buildDomPlanResolverForFrame: buildDomPlanResolverForFrame,
     buildLabPaintPlanFromFrame: buildLabPaintPlanFromFrame,
     canvasPlanFromPaintLayers: canvasPlanFromPaintLayers,
@@ -904,5 +975,6 @@
     indexHasSpriteCapableCells: indexHasSpriteCapableCells,
     labPaintLayersFromView: labPaintLayersFromView,
     lastFrameWithSpriteCapableCells: lastFrameWithSpriteCapableCells,
+    resolveDomPlanForWire: resolveDomPlanForWire,
   };
 })(typeof window !== "undefined" ? window : globalThis);

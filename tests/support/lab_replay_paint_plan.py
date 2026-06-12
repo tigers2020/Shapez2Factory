@@ -64,6 +64,13 @@ CANDIDATE_RING_STROKE = "rgba(244,114,182,0.9)"
 DOM_CANDIDATE_MINER_RING = "lab-overlay-candidate-miner-ring relative"
 DOM_CANDIDATE_MINER_FILL = "lab-overlay-candidate-miner relative"
 
+OVERLAY_DOM_TONE_BY_ROLE: dict[str, str] = {
+    "inner_field_block": "ring-1 ring-inset ring-violet-400/35 bg-violet-950/15",
+    "candidate_transport_stub": "lab-overlay-candidate-transport-stub relative",
+    "candidate_route_path": "lab-overlay-candidate-route-path relative",
+    "planned_exterior_connector": "lab-planned-exterior-connector relative",
+}
+
 
 def _wire_section(view: Mapping[str, object], key: str) -> dict[str, object]:
     section = view.get(key)
@@ -136,6 +143,7 @@ def _resolve_occupant(
 
 
 def _rotation_from_overlay_sources(view: Mapping[str, object]) -> int:
+    """Legacy fallback: rotation from raw wire sources when merged wire lacks it."""
     sources = view.get("sources")
     if not isinstance(sources, Mapping):
         return 0
@@ -533,6 +541,8 @@ def dom_plan_from_paint_layers(
         tone_classes = DOM_CANDIDATE_MINER_RING if has_sprite else DOM_CANDIDATE_MINER_FILL
     elif overlay_kind == "candidate_miner" and not has_sprite:
         tone_classes = DOM_CANDIDATE_MINER_FILL
+    elif overlay_kind in OVERLAY_DOM_TONE_BY_ROLE:
+        tone_classes = OVERLAY_DOM_TONE_BY_ROLE[overlay_kind]
 
     return {
         "tone_classes": tone_classes,
@@ -543,12 +553,79 @@ def dom_plan_from_paint_layers(
     }
 
 
+def _wire_data_attrs_from_effective_wire(wire: Mapping[str, object]) -> dict[str, str]:
+    terrain = _wire_section(wire, "terrain")
+    transport = _wire_section(wire, "transport")
+    output = _wire_section(wire, "output")
+    overlay_role_raw = wire.get("overlay_role")
+    overlay_role = str(overlay_role_raw).strip() if overlay_role_raw is not None else ""
+    return {
+        "overlay_role": overlay_role,
+        "terrain_kind": _kind_str(terrain) or "empty",
+        "transport_kind": _kind_str(transport) or "none",
+        "output_transport_kind": _kind_str(output, "transport_kind") or "none",
+        "paint_v2": "1",
+    }
+
+
+def _resolve_hud_role_from_wire(
+    wire: Mapping[str, object],
+    paint_plan: Mapping[str, object],
+) -> str:
+    data_attrs = _wire_data_attrs_from_effective_wire(wire)
+    if data_attrs["overlay_role"]:
+        return data_attrs["overlay_role"]
+    if paint_plan.get("candidate_observation"):
+        occupant = _wire_section(wire, "occupant")
+        occ_kind = _kind_str(occupant)
+        if occ_kind and occ_kind not in _NONE_KINDS:
+            return occ_kind
+    transport_kind = data_attrs["transport_kind"]
+    if transport_kind in TRANSPORT_KINDS:
+        return transport_kind
+    return ""
+
+
+def build_dom_plan_for_wire(wire: Mapping[str, object]) -> dict[str, object]:
+    data_attrs = _wire_data_attrs_from_effective_wire(wire)
+    overlay_kind = data_attrs["overlay_role"]
+    layers = lab_paint_layers_from_view(wire)
+    paint_plan = dom_plan_from_paint_layers(layers, overlay_kind=overlay_kind)
+    sprite_rel = paint_plan.get("sprite_rel")
+    sprite = (
+        {"rel": str(sprite_rel), "rotation": int(paint_plan.get("sprite_rotation", 0))}
+        if sprite_rel
+        else None
+    )
+    coord = wire.get("coord")
+    coord_dict = dict(coord) if isinstance(coord, Mapping) else {"x": 0, "y": 0, "layer": 0}
+    return {
+        "cell_key": None,
+        "coord": coord_dict,
+        "root_classes": paint_plan["tone_classes"],
+        "chrome_classes": paint_plan["tone_classes"],
+        "paint_layers": layers,
+        "sprite": sprite,
+        "tone_classes": paint_plan["tone_classes"],
+        "sprite_rel": paint_plan["sprite_rel"],
+        "sprite_rotation": paint_plan["sprite_rotation"],
+        "candidate_observation": paint_plan["candidate_observation"],
+        "skip_full_fill": paint_plan["skip_full_fill"],
+        "hud_role": _resolve_hud_role_from_wire(wire, paint_plan),
+        "data_attrs": data_attrs,
+        "fallback_token": None,
+        "debug": {"overlay_kind": overlay_kind},
+    }
+
+
 __all__ = [
     "BACKGROUND_FILL",
     "CANDIDATE_RING_STROKE",
     "DOM_CANDIDATE_MINER_FILL",
     "DOM_CANDIDATE_MINER_RING",
+    "OVERLAY_DOM_TONE_BY_ROLE",
     "VOID_FILL",
+    "build_dom_plan_for_wire",
     "build_effective_cell_view_index",
     "canvas_plan_from_paint_layers",
     "dom_plan_from_paint_layers",

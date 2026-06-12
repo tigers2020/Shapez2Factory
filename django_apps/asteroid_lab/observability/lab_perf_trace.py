@@ -15,7 +15,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 _write_lock = threading.Lock()
 _active_var: contextvars.ContextVar[_Collector | None] = contextvars.ContextVar(
@@ -27,7 +26,7 @@ _active_var: contextvars.ContextVar[_Collector | None] = contextvars.ContextVar(
 @dataclass
 class _Collector:
     request_kind: str
-    meta: dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, object] = field(default_factory=dict)
     phases_ms: dict[str, float] = field(default_factory=dict)
 
 
@@ -47,7 +46,7 @@ def lab_perf_trace_log_path() -> Path:
     return _repo_base_dir() / "var" / "log" / "asteroid_lab_perf" / "lab_perf.jsonl"
 
 
-def record_perf_meta(**fields: Any) -> None:
+def record_perf_meta(**fields: object) -> None:
     """Attach scalar metadata to the active request trace (no-op when disabled)."""
 
     active = _active_var.get()
@@ -84,7 +83,7 @@ def perf_span(phase: str) -> Iterator[None]:
 
 
 @contextmanager
-def lab_perf_trace_request(*, request_kind: str, **meta: Any) -> Iterator[None]:
+def lab_perf_trace_request(*, request_kind: str, **meta: object) -> Iterator[None]:
     """Collect phase timings for one HTTP handler; emit one JSONL line on exit."""
 
     if not lab_perf_trace_enabled():
@@ -104,7 +103,7 @@ def lab_perf_trace_request(*, request_kind: str, **meta: Any) -> Iterator[None]:
 
 def emit_lab_perf_trace(collector: _Collector) -> None:
     ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    record: dict[str, Any] = {
+    record: dict[str, object] = {
         "event": "asteroid_lab_perf",
         "ts": ts,
         "request_kind": collector.request_kind,
@@ -118,7 +117,7 @@ def emit_lab_perf_trace(collector: _Collector) -> None:
         path.open("a", encoding="utf-8").write(line)
 
 
-def serialized_json_utf8_bytes(value: Any) -> int:
+def serialized_json_utf8_bytes(value: object) -> int:
     """UTF-8 size of ``value`` as compact JSON (perf meta only; not solver input)."""
 
     if value is None:
@@ -126,7 +125,7 @@ def serialized_json_utf8_bytes(value: Any) -> int:
     return len(json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
 
 
-def count_full_map_cells(frames: Sequence[Mapping[str, Any]]) -> int:
+def count_full_map_cells(frames: Sequence[Mapping[str, object]]) -> int:
     """Cheap aggregate for perf records (not used by solver or replay logic)."""
 
     total = 0

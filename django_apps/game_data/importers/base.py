@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from django_apps.game_data.models import (
     GameDataReference,
@@ -37,7 +36,7 @@ class ImportContext:
         owner_key: str,
         json_path: str,
         key: str,
-        value: Any,
+        value: object,
         *,
         reason_code: str = "",
         classification: str = "",
@@ -64,7 +63,7 @@ class ImportContext:
         self,
         filename: str,
         index: int,
-        row: dict[str, Any],
+        row: dict[str, object],
         *,
         source_path: str = "",
         system_id: str = "",
@@ -108,8 +107,8 @@ class ImportContext:
         return ref
 
 
-def dig(obj: dict[str, Any], *keys: str, default: Any = None) -> Any:
-    cur: Any = obj
+def dig(obj: dict[str, object], *keys: str, default: object = None) -> object:
+    cur: object = obj
     for key in keys:
         if not isinstance(cur, dict):
             return default

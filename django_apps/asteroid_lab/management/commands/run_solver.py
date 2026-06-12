@@ -7,7 +7,6 @@ import sys
 import time
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 from django.test import override_settings
@@ -36,7 +35,7 @@ class Command(BaseCommand):
         "(mirrors POST run-solver)."
     )
 
-    def add_arguments(self, parser: Any) -> None:
+    def add_arguments(self, parser: object) -> None:
         parser.add_argument(
             "--slug",
             required=True,
@@ -69,7 +68,7 @@ class Command(BaseCommand):
             help="Forward verbose layer logging to the pure CLI subprocess.",
         )
 
-    def handle(self, *args: Any, **options: Any) -> None:
+    def handle(self, *args: object, **options: object) -> None:
         slug = str(options["slug"]).strip()
         emit_cli_line("run_solver start", surface="django_management", slug=slug)
         started = time.monotonic()
@@ -106,7 +105,7 @@ class Command(BaseCommand):
         self,
         *,
         slug: str,
-        options: dict[str, Any],
+        options: dict[str, object],
     ) -> SolverRuntimeEntryResult:
         if not slug:
             raise CommandError("--slug is required.")
@@ -122,7 +121,7 @@ class Command(BaseCommand):
             raise CommandError(f"Project {slug!r} has no map input.")
 
         run_key = options.get("run_key")
-        overrides: dict[str, Any] = {}
+        overrides: dict[str, object] = {}
         if options.get("use_subprocess"):
             overrides["ASTEROID_LAB_SOLVER_MODE"] = "subprocess_only"
         artifact_root = options.get("artifact_root")
@@ -161,7 +160,7 @@ class Command(BaseCommand):
             raise CommandError(result.message or f"run failed: {result.error_code}")
         return result
 
-    def _print_human_summary(self, *, slug: str, body: dict[str, Any]) -> None:
+    def _print_human_summary(self, *, slug: str, body: dict[str, object]) -> None:
         lines = [
             f"slug: {slug}",
             f"solver_run_id: {body.get('solver_run_id')}",

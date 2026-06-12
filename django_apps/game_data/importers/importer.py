@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from django.db import transaction
 
@@ -63,7 +62,7 @@ class GameDataImporter:
         self.batch_name = batch_name
         self.ctx: ImportContext | None = None
 
-    def run(self) -> dict[str, Any]:
+    def run(self) -> dict[str, object]:
         assert_import_preconditions()
         with transaction.atomic():
             batch = self._load_manifest()
@@ -140,7 +139,7 @@ class GameDataImporter:
         self,
         filename: str,
         index: int,
-        row: dict[str, Any],
+        row: dict[str, object],
         *,
         source_path: str = "",
         system_id: str = "",
@@ -250,7 +249,7 @@ class GameDataImporter:
 
     def _upsert_building_group(
         self,
-        row: dict[str, Any],
+        row: dict[str, object],
         *,
         filename: str,
         index: int,
@@ -423,7 +422,7 @@ class GameDataImporter:
 
     def _upsert_lazy_localized_text(
         self,
-        raw: Any,
+        raw: object,
         *,
         owner_model: str,
         owner_key: str,
@@ -586,7 +585,7 @@ class GameDataImporter:
 
     def _import_research_prerequisites(
         self,
-        snap: dict[str, Any],
+        snap: dict[str, object],
         *,
         parent_kind: str,
         parent_key: str,
@@ -641,7 +640,7 @@ class GameDataImporter:
 
     def _import_research_costs(
         self,
-        snap: dict[str, Any],
+        snap: dict[str, object],
         *,
         milestone_key: str = "",
         side_quest: ResearchSideQuest | None = None,

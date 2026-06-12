@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import cast
 
-from django_apps.asteroid_lab.replay.effective_cell_view import simulation_for_tile_id
 from django_apps.asteroid_lab.replay.map_height_layer import enrich_replay_wire_row_with_layer
+from django_apps.asteroid_lab.replay.replay_cell_semantics import simulation_for_tile_id
 from django_apps.asteroid_lab.replay.replay_map_cell_wire import (
     wire_field_kind,
     wire_field_transport,

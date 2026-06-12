@@ -1,8 +1,10 @@
-"""Unit tests for replay frame (x, y) cell lookup (lab POST detail)."""
+"""Unit tests for serialized replay frame (x, y) cell resolver."""
 
 from __future__ import annotations
 
-from django_apps.web.services.replay_frame_cell_lookup import lookup_cell_in_serialized_frame
+from django_apps.asteroid_lab.replay.replay_frame_cell_resolver import (
+    lookup_effective_cell_in_serialized_frame,
+)
 
 
 def test_lookup_full_map_empty_cell_returns_none() -> None:
@@ -11,12 +13,12 @@ def test_lookup_full_map_empty_cell_returns_none() -> None:
         "diff": {},
         "cell_overlay_json": {},
     }
-    cell, _sources = lookup_cell_in_serialized_frame(ser, 9, 9)
-    assert cell is None
+    effective, _sources = lookup_effective_cell_in_serialized_frame(ser, 9, 9)
+    assert effective is None
 
 
 def test_lookup_removed_transport_coord_has_no_full_map_source() -> None:
-    """step0-style frame: pipe only in diff.removed, not in full_map ??no sources['full_map']."""
+    """step0-style frame: pipe only in diff.removed, not in full_map — no sources['full_map']."""
     ser = {
         "full_map": [{"x": 1, "y": 0, "cell_kind": "fluid_miner", "layer": None}],
         "diff": {
@@ -35,11 +37,12 @@ def test_lookup_removed_transport_coord_has_no_full_map_source() -> None:
         },
         "cell_overlay_json": {},
     }
-    cell, sources = lookup_cell_in_serialized_frame(ser, 2, 0)
+    effective, sources = lookup_effective_cell_in_serialized_frame(ser, 2, 0)
+    assert effective is not None
     assert "full_map" not in sources
     assert sources.get("diff_removed", {}).get("cell_kind") == "space_pipe"
-    assert cell is not None
-    assert cell.get("cell_kind") == "space_pipe"
+    assert effective["transport"]["kind"] == "space_pipe"
+    assert effective["transport"]["tile_id"] == "SpacePipe_Forward"
 
 
 def test_lookup_overlay_only_matches_last() -> None:
@@ -50,9 +53,9 @@ def test_lookup_overlay_only_matches_last() -> None:
             {"x": -1, "y": 0, "cell_kind": "space_pipe"},
         ],
     }
-    cell, sources = lookup_cell_in_serialized_frame(ser, -1, 0)
-    assert cell is not None
-    assert cell.get("cell_kind") == "space_pipe"
+    effective, sources = lookup_effective_cell_in_serialized_frame(ser, -1, 0)
+    assert effective is not None
+    assert effective["transport"]["kind"] == "space_pipe"
     assert sources.get("overlay_cells_matched") == 2
 
 
@@ -74,14 +77,15 @@ def test_lookup_overlay_fallback_when_full_map_misses_xy() -> None:
             ],
         },
     }
-    cell, sources = lookup_cell_in_serialized_frame(ser, 2, 0)
-    assert cell is not None
-    assert cell.get("cell_kind") == "space_pipe"
+    effective, sources = lookup_effective_cell_in_serialized_frame(ser, 2, 0)
+    assert effective is not None
+    assert effective["transport"]["kind"] == "space_pipe"
+    assert effective["transport"]["tile_id"] == "SpacePipe_Forward"
     assert sources.get("overlay_cells_matched") == 1
 
 
-def test_lookup_full_map_two_rows_same_xy_merge_order() -> None:
-    """All ``full_map`` rows at (x,y) merge; later dict keys overwrite earlier (``dict.update``)."""
+def test_lookup_full_map_two_rows_same_xy_last_row_wins_in_sources() -> None:
+    """All ``full_map`` rows at (x,y) merge; resolver keeps last row in sources['full_map']."""
 
     ser = {
         "full_map": [
@@ -91,9 +95,10 @@ def test_lookup_full_map_two_rows_same_xy_merge_order() -> None:
         "diff": {},
         "cell_overlay_json": {},
     }
-    cell, _sources = lookup_cell_in_serialized_frame(ser, 1, 0)
-    assert cell.get("cell_kind") == "second"
-    assert cell.get("tile_type") == "T9"
+    effective, sources = lookup_effective_cell_in_serialized_frame(ser, 1, 0)
+    assert effective is not None
+    assert sources.get("full_map", {}).get("cell_kind") == "second"
+    assert effective["coord"]["layer"] == 1
 
 
 def test_lookup_synthetic_lab_empty_inside_raw_bbox() -> None:
@@ -109,10 +114,10 @@ def test_lookup_synthetic_lab_empty_inside_raw_bbox() -> None:
         "cell_overlay_json": {},
         "summary": {"bbox": bbox},
     }
-    cell, sources = lookup_cell_in_serialized_frame(ser, 1, 0)
-    assert cell is not None
-    assert cell.get("_lab_synthetic") is True
-    assert cell.get("cell_kind") == "lab_empty"
+    effective, sources = lookup_effective_cell_in_serialized_frame(ser, 1, 0)
+    assert effective is not None
+    assert effective["coord"]["x"] == 1
+    assert effective["coord"]["y"] == 0
     assert sources.get("lab_synthetic") == "empty_island_cell"
 
 
@@ -124,10 +129,10 @@ def test_lookup_synthetic_lab_empty_inside_island_bbox_only() -> None:
         "cell_overlay_json": {},
         "summary": {"bbox": bbox},
     }
-    cell, sources = lookup_cell_in_serialized_frame(ser, 0, 0)
-    assert cell is not None
-    assert cell.get("_lab_synthetic") is True
-    assert cell.get("cell_kind") == "lab_empty"
+    effective, sources = lookup_effective_cell_in_serialized_frame(ser, 0, 0)
+    assert effective is not None
+    assert effective["coord"]["x"] == 0
+    assert effective["coord"]["y"] == 0
     assert sources.get("lab_synthetic") == "empty_island_cell"
 
 
@@ -140,8 +145,8 @@ def test_lookup_does_not_infer_empty_from_all_full_map_xy() -> None:
         "diff": {},
         "cell_overlay_json": {},
     }
-    cell, sources = lookup_cell_in_serialized_frame(ser, 5, 0)
-    assert cell is None
+    effective, sources = lookup_effective_cell_in_serialized_frame(ser, 5, 0)
+    assert effective is None
     assert "lab_synthetic" not in sources
 
 
@@ -158,5 +163,5 @@ def test_lookup_synthetic_none_outside_raw_bbox() -> None:
         "cell_overlay_json": {},
         "metric_snapshot_json": {"bbox": bbox},
     }
-    cell, _sources = lookup_cell_in_serialized_frame(ser, 5, 0)
-    assert cell is None
+    effective, _sources = lookup_effective_cell_in_serialized_frame(ser, 5, 0)
+    assert effective is None

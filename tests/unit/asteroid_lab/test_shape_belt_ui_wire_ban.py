@@ -26,6 +26,7 @@ _L3_PRODUCER_PY_ROOTS = (
 _ALLOWED_SHAPE_BELT_PY_FILES = frozenset(
     {
         _REPO_ROOT / "django_apps" / "asteroid_lab" / "replay" / "effective_cell_view.py",
+        _REPO_ROOT / "django_apps" / "asteroid_lab" / "replay" / "replay_cell_semantics.py",
         _REPO_ROOT / "django_apps" / "asteroid_lab" / "replay" / "map_height_layer.py",
         _REPO_ROOT / "django_apps" / "asteroid_lab" / "replay" / "overlay_wire_contract.py",
         _REPO_ROOT
@@ -37,6 +38,7 @@ _ALLOWED_SHAPE_BELT_PY_FILES = frozenset(
         / "transport_kind_normalization.py",
         Path(__file__).resolve(),
         _REPO_ROOT / "tests" / "unit" / "asteroid_lab" / "replay" / "test_effective_cell_view.py",
+        _REPO_ROOT / "tests" / "unit" / "asteroid_lab" / "replay" / "test_replay_cell_semantics.py",
         _REPO_ROOT / "tests" / "unit" / "asteroid_lab" / "replay" / "test_overlay_wire_contract.py",
         _REPO_ROOT / "tests" / "unit" / "asteroid_lab" / "replay" / "test_map_height_layer.py",
     }

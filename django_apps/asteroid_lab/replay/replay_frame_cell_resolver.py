@@ -97,13 +97,6 @@ def _cells_at_xy(cells: list[JsonObject], x: int, y: int) -> list[JsonObject]:
     return [c for c in cells if _xy_match(c, x, y)]
 
 
-def _merge_layers(layers: list[JsonObject]) -> JsonObject:
-    merged: JsonObject = {}
-    for d in layers:
-        merged.update(d)
-    return merged
-
-
 def _bbox_blocks(ser: JsonObject) -> list[JsonObject]:
     blocks: list[JsonObject] = []
     for key in ("summary", "metric_snapshot_json"):
@@ -266,36 +259,4 @@ def lookup_effective_cell_in_serialized_frame(
     return None, sources
 
 
-def lookup_cell_in_serialized_frame(
-    ser: JsonObject, x: int, y: int
-) -> tuple[JsonObject | None, dict[str, object]]:
-    """Deprecated flat merge; prefer ``lookup_effective_cell_in_serialized_frame``."""
-
-    effective, sources = lookup_effective_cell_in_serialized_frame(ser, x, y)
-    if effective is None:
-        return None, sources
-    occupant_kind = effective["occupant"]["kind"]
-    if occupant_kind == "none" and effective["transport"]["kind"] != "none":
-        occupant_kind = effective["transport"]["kind"]
-    raw_kind: str | None = None
-    raw_tile_type = ""
-    for key in ("diff_removed", "diff_added", "diff_changed_after", "full_map"):
-        block = sources.get(key)
-        if isinstance(block, dict):
-            raw_kind = str(block.get("cell_kind") or block.get("kind") or "") or raw_kind
-            tile = block.get("tile_type") or block.get("sprite_identifier")
-            if tile:
-                raw_tile_type = str(tile)
-    flat: JsonObject = {
-        "x": effective["coord"]["x"],
-        "y": effective["coord"]["y"],
-        "layer": effective["coord"]["layer"],
-        "cell_kind": raw_kind or occupant_kind,
-        "transport_kind": effective["transport"]["kind"],
-        "tile_type": raw_tile_type or effective["transport"]["tile_id"] or "",
-        "rotation": effective["occupant"]["rotation"] or 0,
-    }
-    if sources.get("lab_synthetic") == "empty_island_cell":
-        flat["_lab_synthetic"] = True
-        flat["cell_kind"] = "lab_empty"
-    return flat, sources
+__all__ = ["lookup_effective_cell_in_serialized_frame"]

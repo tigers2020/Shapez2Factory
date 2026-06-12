@@ -6,7 +6,6 @@ import hashlib
 import json
 from dataclasses import dataclass
 from io import BytesIO
-from typing import Any
 
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
@@ -29,7 +28,7 @@ _CELL_KIND_FILL: dict[str, tuple[int, int, int]] = {
 _BG_RGB = (15, 23, 42)
 
 
-def canonical_decoded_json_hash(decoded_json: dict[str, Any]) -> str:
+def canonical_decoded_json_hash(decoded_json: dict[str]) -> str:
     payload = json.dumps(decoded_json, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -44,7 +43,7 @@ class ListThumbnailWindow:
     cell_count: int
 
 
-def compute_list_thumbnail_window(decoded_json: dict[str, Any]) -> ListThumbnailWindow | None:
+def compute_list_thumbnail_window(decoded_json: dict[str]) -> ListThumbnailWindow | None:
     if not decoded_json or not isinstance(decoded_json.get("BP"), dict):
         return None
     snap = build_decoded_blueprint_snapshot(decoded_json)
@@ -89,7 +88,7 @@ def _fill_for_cell(cell: DecodedCellDTO) -> tuple[int, int, int]:
     return _CELL_KIND_FILL["unknown"]
 
 
-def render_list_thumbnail_image_bytes(decoded_json: dict[str, Any]) -> tuple[bytes, str]:
+def render_list_thumbnail_image_bytes(decoded_json: dict[str]) -> tuple[bytes, str]:
     """Return (image_bytes, extension) where extension is webp or png."""
 
     from PIL import Image  # noqa: PLC0415

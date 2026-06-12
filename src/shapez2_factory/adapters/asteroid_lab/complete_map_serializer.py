@@ -9,7 +9,6 @@ are sorted so the payload is byte-stable; ``cells`` preserves the terrain SoT or
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.coord_frames import CoordFrame
 from shapez2_factory.domain.asteroid_lab.decoded_cell import DecodedCellDTO
@@ -21,7 +20,7 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
 COMPLETE_MAP_SCHEMA_VERSION = "complete_map_v1"
 
 
-def _cell_to_dict(cell: DecodedCellDTO) -> dict[str, Any]:
+def _cell_to_dict(cell: DecodedCellDTO) -> dict[str]:
     return {
         "x": cell.x,
         "y": cell.y,
@@ -37,7 +36,7 @@ def _cell_to_dict(cell: DecodedCellDTO) -> dict[str, Any]:
     }
 
 
-def _cell_from_dict(data: dict[str, Any]) -> DecodedCellDTO:
+def _cell_from_dict(data: dict[str]) -> DecodedCellDTO:
     return DecodedCellDTO(
         x=int(data["x"]),
         y=int(data["y"]),
@@ -61,7 +60,7 @@ def _coords_from_payload(items: Sequence[Sequence[int]]) -> frozenset[Coord]:
     return frozenset((int(pair[0]), int(pair[1])) for pair in items)
 
 
-def serialize_complete_map(complete_map: ReconstructionCompleteMap) -> dict[str, Any]:
+def serialize_complete_map(complete_map: ReconstructionCompleteMap) -> dict[str]:
     """Render a ``ReconstructionCompleteMap`` to a deterministic JSON-ready dict."""
 
     return {
@@ -75,7 +74,7 @@ def serialize_complete_map(complete_map: ReconstructionCompleteMap) -> dict[str,
     }
 
 
-def parse_complete_map(payload: dict[str, Any]) -> ReconstructionCompleteMap:
+def parse_complete_map(payload: dict[str]) -> ReconstructionCompleteMap:
     """Parse a serialized payload back into a ``ReconstructionCompleteMap``."""
 
     schema = payload.get("schema_version")

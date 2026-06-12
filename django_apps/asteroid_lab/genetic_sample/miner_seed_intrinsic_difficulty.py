@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from django_apps.asteroid_lab.genetic_sample.miner_seed_parent_tree import (
     EquipmentNodes,
@@ -34,7 +33,7 @@ SortKey = tuple[int, int, float, int, str]
 class IntrinsicDifficultyResult:
     score: int
     tier: int
-    reason: dict[str, Any]
+    reason: dict[str]
 
 
 def _branch_count(edges: list[ParentEdge]) -> int:
@@ -86,7 +85,7 @@ def _difficulty_tier(extension_count: int, branch_count: int, turn_count: int) -
     return 5
 
 
-def intrinsic_difficulty_from_root(root: dict[str, Any]) -> IntrinsicDifficultyResult:
+def intrinsic_difficulty_from_root(root: dict[str]) -> IntrinsicDifficultyResult:
     miner_xy, nodes = equipment_nodes(root)
     edges = parent_edges_bfs(miner_xy, nodes)
     extension_count = count_extensions(root)
@@ -114,7 +113,7 @@ def intrinsic_difficulty_from_root(root: dict[str, Any]) -> IntrinsicDifficultyR
         - throughput_soft_penalty
     )
     tier = _difficulty_tier(extension_count, branches, turns)
-    reason: dict[str, Any] = {
+    reason: dict[str] = {
         "extension_count": extension_count,
         "occupied_cell_count": occupied_cell_count,
         "bbox_width": bbox_width,

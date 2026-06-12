@@ -9,8 +9,8 @@ from pathlib import Path
 
 # Baseline captured 2026-06-11 before typing-zero loop slice 1.
 BASELINE = {
-    "any_token_total": 357,
-    "files_with_any": 100,
+    "any_token_total": 300,
+    "files_with_any": 88,
     "dict_str_object_production_files": 122,
 }
 

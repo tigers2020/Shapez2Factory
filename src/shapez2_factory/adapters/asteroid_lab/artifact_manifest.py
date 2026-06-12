@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any
 
 from shapez2_factory.adapters.asteroid_lab.run_status import RunLifecycleStatus
 
@@ -25,10 +24,10 @@ class ArtifactManifest:
     core_build_id: str
     content_hashes: dict[str, str] = field(default_factory=dict)
     paths: dict[str, str] = field(default_factory=dict)
-    game_data_provenance: dict[str, Any] = field(default_factory=dict)
+    game_data_provenance: dict[str] = field(default_factory=dict)
     error_code: str | None = None
 
-    def to_json_dict(self) -> dict[str, Any]:
+    def to_json_dict(self) -> dict[str]:
         return {
             "schema_version": self.schema_version,
             "run_key": self.run_key,
@@ -45,7 +44,7 @@ class ArtifactManifest:
         return json.dumps(self.to_json_dict(), indent=2, sort_keys=True, ensure_ascii=False)
 
     @classmethod
-    def from_json_dict(cls, payload: dict[str, Any]) -> ArtifactManifest:
+    def from_json_dict(cls, payload: dict[str]) -> ArtifactManifest:
         return cls(
             schema_version=int(payload["schema_version"]),
             run_key=str(payload["run_key"]),
@@ -60,7 +59,7 @@ class ArtifactManifest:
 
     @classmethod
     def from_json(cls, text: str) -> ArtifactManifest:
-        parsed: dict[str, Any] = json.loads(text)
+        parsed: dict[str] = json.loads(text)
         return cls.from_json_dict(parsed)
 
 
@@ -80,7 +79,7 @@ def parse_manifest_checked(text: str) -> ArtifactManifest:
     Genuinely malformed JSON propagates as :class:`json.JSONDecodeError`; a
     well-formed but non-object top-level (e.g. a list or number) is rejected.
     """
-    payload: Any = json.loads(text)
+    payload: object = json.loads(text)
     if not isinstance(payload, dict):
         raise ManifestSchemaVersionError(
             f"manifest top-level is not a JSON object (got {type(payload).__name__}); "

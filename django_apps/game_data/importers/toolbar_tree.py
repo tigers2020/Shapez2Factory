@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from django_apps.game_data.importers.base import ImportContext, dig, parse_toolbar_child_index
 from django_apps.game_data.importers.toolbar_identity import toolbar_row_identity
@@ -30,7 +29,7 @@ from django_apps.game_data.services.toolbar_node_kind import (
 class PendingToolbarNode:
     tree_path: str
     source_stable_id: str
-    snapshot: dict[str, Any]
+    snapshot: dict[str]
     source_row_index: int
     node_kind: str = ""
     child_index: int = 0
@@ -42,7 +41,7 @@ class PendingToolbarNode:
 
 
 def _element_display_name(
-    snap: dict[str, Any], element_kind: str, internal_name: str, title_key: str
+    snap: dict[str], element_kind: str, internal_name: str, title_key: str
 ) -> str:
     if element_kind == ToolbarElement.ElementKind.ISLAND:
         group = str(dig(snap, "IslandGroup", "Id", "Name", default=""))
@@ -56,7 +55,7 @@ def _element_display_name(
 
 
 def _element_stable_key(
-    snap: dict[str, Any], element_kind: str, internal_name: str, source_stable_id: str
+    snap: dict[str], element_kind: str, internal_name: str, source_stable_id: str
 ) -> str:
     if element_kind == ToolbarElement.ElementKind.ISLAND:
         return str(dig(snap, "IslandGroup", "Id", "Name", default="")) or source_stable_id
@@ -72,7 +71,7 @@ def _element_stable_key(
     return internal_name or source_stable_id
 
 
-def import_toolbar_tree(ctx: ImportContext, rows: list[dict[str, Any]]) -> None:
+def import_toolbar_tree(ctx: ImportContext, rows: list[dict[str]]) -> None:
     ToolbarTreeNode.objects.filter(import_batch=ctx.batch).delete()
 
     path_to_row: dict[str, dict] = {

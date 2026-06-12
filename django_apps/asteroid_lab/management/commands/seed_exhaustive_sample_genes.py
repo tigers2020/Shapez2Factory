@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.core.management.base import BaseCommand, CommandError
 
 from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
@@ -20,7 +18,7 @@ class Command(BaseCommand):  # type: ignore[misc]
         "by gene_key (metadata_json.generator scoped)."
     )
 
-    def add_arguments(self, parser: Any) -> None:
+    def add_arguments(self, parser: object) -> None:
         parser.add_argument(
             "--dry-run",
             action="store_true",
@@ -63,7 +61,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             help="metadata_json['generator'] value and stale-delete filter.",
         )
 
-    def handle(self, *args: Any, **options: Any) -> None:
+    def handle(self, *args: object, **options: object) -> None:
         max_ext = int(options["max_extensions"])
         if max_ext < 0 or max_ext > 3:
             raise CommandError("--max-extensions must be between 0 and 3.")

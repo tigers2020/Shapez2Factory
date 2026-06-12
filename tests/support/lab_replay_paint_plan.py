@@ -30,6 +30,9 @@ _NONE_KINDS = frozenset({"", "none"})
 
 CANDIDATE_RING_STROKE = "rgba(244,114,182,0.9)"
 
+DOM_CANDIDATE_MINER_RING = "lab-overlay-candidate-miner-ring relative"
+DOM_CANDIDATE_MINER_FILL = "lab-overlay-candidate-miner relative"
+
 
 def _wire_section(view: Mapping[str, object], key: str) -> dict[str, object]:
     section = view.get(key)
@@ -368,11 +371,58 @@ def canvas_plan_from_paint_layers(
     return {"sprites": sprites, "overlays": overlays}
 
 
+def _layers_have_sprite(layers: Mapping[str, object]) -> bool:
+    """Tone anti-fade: occupant OR transport sprite blocks full-fill."""
+    for slot in ("occupant", "transport"):
+        entry = layers.get(slot)
+        if isinstance(entry, Mapping) and entry.get("rel"):
+            return True
+    return False
+
+
+def dom_plan_from_paint_layers(
+    layers: Mapping[str, object],
+    *,
+    overlay_kind: str = "",
+) -> dict[str, object]:
+    occupant = layers.get("occupant")
+    chrome = layers.get("chrome")
+    has_sprite = _layers_have_sprite(layers)
+    has_candidate_ring = isinstance(chrome, list) and any(
+        isinstance(c, Mapping) and c.get("kind") == "candidate_ring" for c in chrome
+    )
+
+    sprite_rel: str | None = None
+    sprite_rotation = 0
+    if isinstance(occupant, Mapping) and occupant.get("rel"):
+        sprite_rel = str(occupant["rel"])
+        sprite_rotation = _rotation(occupant)
+
+    tone_classes = ""
+    if has_candidate_ring:
+        tone_classes = (
+            DOM_CANDIDATE_MINER_RING if has_sprite else DOM_CANDIDATE_MINER_FILL
+        )
+    elif overlay_kind == "candidate_miner" and not has_sprite:
+        tone_classes = DOM_CANDIDATE_MINER_FILL
+
+    return {
+        "tone_classes": tone_classes,
+        "sprite_rel": sprite_rel,
+        "sprite_rotation": sprite_rotation,
+        "candidate_observation": has_candidate_ring or overlay_kind == "candidate_miner",
+        "skip_full_fill": has_sprite,
+    }
+
+
 __all__ = [
     "BACKGROUND_FILL",
     "CANDIDATE_RING_STROKE",
+    "DOM_CANDIDATE_MINER_FILL",
+    "DOM_CANDIDATE_MINER_RING",
     "VOID_FILL",
     "build_effective_cell_view_index",
     "canvas_plan_from_paint_layers",
+    "dom_plan_from_paint_layers",
     "lab_paint_layers_from_view",
 ]

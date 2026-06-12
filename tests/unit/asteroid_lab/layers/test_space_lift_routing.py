@@ -58,7 +58,7 @@ def test_astar_inner_source_via_space_lift_reaches_connector() -> None:
             goal_id="c0",
             kind=RouteGoalKind.EXTERIOR_CONNECTOR_VOID,
             coord=connector,
-            transport_kind=TransportKind.SHAPE_BELT,
+            transport_kind=TransportKind.SPACE_BELT,
             priority=0,
             connector_role=ExteriorConnectorRole.REQUIRED,
         ),

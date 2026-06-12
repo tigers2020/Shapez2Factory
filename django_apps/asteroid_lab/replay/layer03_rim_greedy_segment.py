@@ -121,7 +121,7 @@ def _spec(
 
 
 def _transport_wire() -> str:
-    return TransportKind.SHAPE_BELT.value
+    return TransportKind.SPACE_BELT.value
 
 
 def _placement_output_rotation(output_dir: str) -> int:

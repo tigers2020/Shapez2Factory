@@ -248,23 +248,26 @@ def collect_frame_spatial_targets(frame: Mapping[str, Any]) -> list[dict[str, An
 def sprite_paint_entries_for_frame(frame: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Return sprite paint rows ``{x, y, rel, rotation}`` (canvas paint-plan parity)."""
 
-    seen: set[tuple[int, int]] = set()
-    sprites: list[dict[str, Any]] = []
+    by_xy: dict[tuple[int, int], dict[str, Any]] = {}
     for cell in collect_frame_spatial_targets(frame):
-        ck = overlay_cell_kind(cell)
-        if ck in TERRAIN_KINDS and not cell.get("tile_type") and not cell.get("sprite_identifier"):
-            continue
         x, y = cell.get("x"), cell.get("y")
         try:
             key = (int(x), int(y))
         except (TypeError, ValueError):
             continue
-        if key in seen:
-            continue
         rel = lab_sprite_relpath_for_cell(cell)
+        prev = by_xy.get(key)
+        if prev is None:
+            by_xy[key] = {"cell": cell, "rel": rel}
+            continue
+        if rel and not prev.get("rel"):
+            by_xy[key] = {"cell": cell, "rel": rel}
+    sprites: list[dict[str, Any]] = []
+    for key, entry in by_xy.items():
+        rel = entry.get("rel")
         if not rel:
             continue
-        seen.add(key)
+        cell = entry["cell"]
         sprites.append(
             {
                 "x": key[0],

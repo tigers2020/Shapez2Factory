@@ -37,7 +37,7 @@ def _shape_goal(*, goal_id: str, coord: tuple[int, int]) -> RouteGoal:
         goal_id=goal_id,
         kind=RouteGoalKind.EXTERIOR_CONNECTOR_VOID,
         coord=coord,
-        transport_kind=TransportKind.SHAPE_BELT,
+        transport_kind=TransportKind.SPACE_BELT,
         priority=0,
         connector_role=ExteriorConnectorRole.REQUIRED,
     )
@@ -208,7 +208,7 @@ def test_no_matching_goals_emits_no_goals_reason() -> None:
         goal_id="fluid_only",
         kind=RouteGoalKind.EXTERIOR_CONNECTOR_VOID,
         coord=(4, 0),
-        transport_kind=TransportKind.FLUID_PIPE,
+        transport_kind=TransportKind.SPACE_PIPE,
         priority=0,
         connector_role=ExteriorConnectorRole.REQUIRED,
     )

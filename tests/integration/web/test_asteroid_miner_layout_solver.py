@@ -187,10 +187,10 @@ def test_replay_frame_cell_post_returns_cell_json() -> None:
     assert response.status_code == 200
     data = json.loads(response.content.decode())
     assert data["ok"] is True
-    assert data["cell"] is not None
-    assert data["cell"].get("x") == 1
-    assert data["cell"].get("y") == 0
-    assert "cell_kind" in data["cell"]
+    assert data["effective_cell"] is not None
+    assert data["effective_cell"]["coord"]["x"] == 1
+    assert data["effective_cell"]["coord"]["y"] == 0
+    assert "terrain" in data["effective_cell"]
 
 
 def test_replay_frame_cell_post_wrong_track_403() -> None:

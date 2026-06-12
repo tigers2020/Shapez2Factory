@@ -110,10 +110,10 @@ def _empty_oracle() -> GoldenOracle:
 def test_normalize_transport_family_aliases() -> None:
     assert normalize_transport_family("shape") == "shape"
     assert normalize_transport_family("space_belt") == "shape"
-    assert normalize_transport_family(TransportKind.SHAPE_BELT) == "shape"
+    assert normalize_transport_family(TransportKind.SPACE_BELT) == "shape"
     assert normalize_transport_family("fluid") == "fluid"
     assert normalize_transport_family("space_pipe") == "fluid"
-    assert normalize_transport_family(TransportKind.FLUID_PIPE) == "fluid"
+    assert normalize_transport_family(TransportKind.SPACE_PIPE) == "fluid"
     assert normalize_transport_family("unknown") is None
 
 

@@ -21,6 +21,9 @@ from django_apps.asteroid_lab.replay.timeline_dtos import (
 from django_apps.asteroid_lab.replay.timeline_serialization import (
     ReplayTimelineDeserializationError,
     parse_replay_event_type,
+    replay_bbox_from_json_dict,
+    replay_bbox_to_wire,
+    replay_overlay_cell_from_wire,
     replay_timeline_frame_from_json_dict,
     replay_timeline_frame_json_round_trip,
     replay_timeline_frame_to_json_dict,
@@ -145,6 +148,18 @@ def test_map_view_commit_delta_is_renderable() -> None:
 def test_metadata_only_map_view_is_not_renderable() -> None:
     mv = ReplayMapView(bbox=_bbox())
     assert not replay_map_view_is_renderable(mv)
+
+
+def test_replay_bbox_wire_round_trip() -> None:
+    bbox = ReplayBBox(min_x=0, min_y=0, max_x=10, max_y=10)
+    wire = replay_bbox_to_wire(bbox)
+    assert wire == {"min_x": 0, "min_y": 0, "max_x": 10, "max_y": 10}
+    assert replay_bbox_from_json_dict(wire) == bbox
+
+
+def test_replay_overlay_cell_from_wire_rejects_non_int_x() -> None:
+    with pytest.raises(ReplayTimelineDeserializationError, match="overlay.x"):
+        replay_overlay_cell_from_wire({"x": "bad", "y": 0})
 
 
 def test_replay_timeline_frame_json_round_trip() -> None:

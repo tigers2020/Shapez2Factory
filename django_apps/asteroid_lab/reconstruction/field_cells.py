@@ -49,9 +49,9 @@ def asteroid_field_cell_count_for_placement(
 ) -> int:
     """Installable platform slots for ``transport_kind`` on reconstruction-complete map."""
 
-    if transport_kind == TransportKind.SHAPE_BELT:
+    if transport_kind == TransportKind.SPACE_BELT:
         return complete_map.shape_field_cell_count
-    if transport_kind == TransportKind.FLUID_PIPE:
+    if transport_kind == TransportKind.SPACE_PIPE:
         return complete_map.fluid_field_cell_count
     return len(complete_map.field_cells)
 

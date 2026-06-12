@@ -154,6 +154,6 @@ def test_transport_kind_corridor_conflict_regression() -> None:
     fluid_probe = _pick(pool, anchor=(3, 3), gene_key="fluid_m0e")
     assert shape_probe.route_probe_result is not None
     assert fluid_probe.route_probe_result is not None
-    assert shape_probe.route_probe_result.transport_kind == TransportKind.SHAPE_BELT
-    assert fluid_probe.route_probe_result.transport_kind == TransportKind.FLUID_PIPE
+    assert shape_probe.route_probe_result.transport_kind == TransportKind.SPACE_BELT
+    assert fluid_probe.route_probe_result.transport_kind == TransportKind.SPACE_PIPE
     assert shape_probe.route_probe_result.goal_coord != fluid_probe.route_probe_result.goal_coord

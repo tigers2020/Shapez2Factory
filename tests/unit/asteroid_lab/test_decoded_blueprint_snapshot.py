@@ -11,30 +11,30 @@ from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
 )
 
 
-def test_classify_space_pipe_fluid_pipe() -> None:
+def test_classify_space_pipe_space_pipe() -> None:
     ck, tk = classify_blueprint_entry("SpacePipe_Forward")
-    assert ck == "space_pipe" and tk == "fluid_pipe"
+    assert ck == "space_pipe" and tk == "space_pipe"
 
 
-def test_classify_space_belt_shape_belt() -> None:
+def test_classify_space_belt_space_belt() -> None:
     ck, tk = classify_blueprint_entry("SpaceBelt_Left")
-    assert ck == "space_belt" and tk == "shape_belt"
+    assert ck == "space_belt" and tk == "space_belt"
 
 
 def test_classify_fluid_miner_and_extension() -> None:
-    assert classify_blueprint_entry("Layout_FluidMiner") == ("fluid_miner", "fluid_pipe")
+    assert classify_blueprint_entry("Layout_FluidMiner") == ("fluid_miner", "space_pipe")
     assert classify_blueprint_entry("Layout_FluidMinerExtension") == (
         "fluid_miner_extension",
-        "fluid_pipe",
+        "space_pipe",
     )
 
 
 def test_classify_shape_miner_and_extension() -> None:
-    assert classify_blueprint_entry("Layout_ShapeMiner") == ("shape_miner", "shape_belt")
-    assert classify_blueprint_entry("Layout_ProMiner") == ("shape_miner", "shape_belt")
+    assert classify_blueprint_entry("Layout_ShapeMiner") == ("shape_miner", "space_belt")
+    assert classify_blueprint_entry("Layout_ProMiner") == ("shape_miner", "space_belt")
     assert classify_blueprint_entry("Layout_ShapeMinerExtension") == (
         "shape_miner_extension",
-        "shape_belt",
+        "space_belt",
     )
 
 
@@ -97,8 +97,8 @@ def test_bbox_and_counts() -> None:
     assert snap.cell_kind_counts_json["space_pipe"] == 1
     assert snap.cell_kind_counts_json["space_belt"] == 1
     assert snap.cell_kind_counts_json["unknown"] == 1
-    assert snap.transport_kind_counts_json["fluid_pipe"] == 1
-    assert snap.transport_kind_counts_json["shape_belt"] == 1
+    assert snap.transport_kind_counts_json["space_pipe"] == 1
+    assert snap.transport_kind_counts_json["space_belt"] == 1
     assert snap.transport_kind_counts_json["none"] == 1
 
 

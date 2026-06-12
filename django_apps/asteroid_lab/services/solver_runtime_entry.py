@@ -371,6 +371,15 @@ def entry_result_to_json_dict(
             solver_run_id=run_id,
             manifest_summary=manifest_summary,
         )
+        if handle.preview_frame is None and handle.frame_count > 0 and run_id is not None:
+            loaded_frames = load_composed_frames_for_run_id(int(run_id))
+            if loaded_frames:
+                handle = build_lab_replay_lazy_handle(
+                    mode=mode,
+                    frames=loaded_frames,
+                    project_slug=slug,
+                    solver_run_id=run_id,
+                )
         replay_track_metrics = dict(manifest_summary.get("replay_track_metrics") or {})
         lab_replay_frame_count = int(handle.frame_count)
     else:

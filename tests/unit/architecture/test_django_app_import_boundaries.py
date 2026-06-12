@@ -60,6 +60,8 @@ _IMPORT_MATRIX_SKIP: dict[str, frozenset[str]] = {
             "django_apps/asteroid_lab/layers/layer_02_exterior_transport/capacity.py",
             # PR-CLI-2b: sole sanctioned ORM bridge that builds the game_data snapshot payload.
             "django_apps/asteroid_lab/adapters/orm_game_data_rules.py",
+            # Space transport layout registry → tile catalog (game_data ORM only).
+            "django_apps/asteroid_lab/adapters/space_transport_catalog_orm.py",
         }
     ),
 }

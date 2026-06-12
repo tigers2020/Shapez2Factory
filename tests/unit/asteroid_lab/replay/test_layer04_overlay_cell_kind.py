@@ -42,7 +42,7 @@ def _succeeded_entry(*, placements: tuple[BundlePlacement, ...]) -> RouteProbedB
             goal_coord=(8, 4),
             path_coords=(stub_start, (8, 4)),
             steps_expanded=2,
-            transport_kind=TransportKind.SHAPE_BELT,
+            transport_kind=TransportKind.SPACE_BELT,
             route_cost=4,
         ),
         route_goal_id="ext_conn_00",

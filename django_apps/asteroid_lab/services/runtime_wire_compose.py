@@ -265,7 +265,7 @@ def compose_lab_replay_frames_from_runtime_wires(
     """Project validated runtime wires via assembler (no solver layer execution)."""
 
     transport_summary = wires_doc.get("transport_summary")
-    transport_kind = "shape_belt"
+    transport_kind = "space_belt"
     if isinstance(transport_summary, dict):
         effective = transport_summary.get("effective_transport_kind")
         if isinstance(effective, str) and effective:

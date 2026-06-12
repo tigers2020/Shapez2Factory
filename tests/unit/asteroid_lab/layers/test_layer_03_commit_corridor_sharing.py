@@ -128,7 +128,7 @@ def _probed_miner(
             goal_coord=path[-1],
             path_coords=path,
             steps_expanded=len(path),
-            transport_kind=TransportKind.SHAPE_BELT,
+            transport_kind=TransportKind.SPACE_BELT,
             route_cost=len(path),
         ),
         route_goal_id="goal_0",

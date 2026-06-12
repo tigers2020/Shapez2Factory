@@ -106,8 +106,8 @@ def test_mixed_map_builds_shape_and_fluid_profiles() -> None:
         exterior_plan=plan,
     )
     assert len(profiles) == 2
-    assert profiles[0].transport_kind is TransportKind.SHAPE_BELT
-    assert profiles[1].transport_kind is TransportKind.FLUID_PIPE
+    assert profiles[0].transport_kind is TransportKind.SPACE_BELT
+    assert profiles[1].transport_kind is TransportKind.SPACE_PIPE
     assert profiles[0].route_goals
     assert profiles[1].route_goals
 
@@ -123,7 +123,7 @@ def test_mixed_map_fluid_pipe_diagnostics_exclude_no_goals() -> None:
     fluid_rejects = [
         r
         for r in result.diagnostic_rejected_candidates
-        if r.candidate.transport_kind is TransportKind.FLUID_PIPE
+        if r.candidate.transport_kind is TransportKind.SPACE_PIPE
     ]
     no_goals = [
         r

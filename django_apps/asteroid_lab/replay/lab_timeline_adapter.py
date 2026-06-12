@@ -33,6 +33,7 @@ from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayTimelineFrame,
     replay_map_view_is_renderable,
 )
+from django_apps.asteroid_lab.replay.timeline_serialization import replay_overlay_cell_from_wire
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO, SnapshotEventDTO
 from django_apps.asteroid_lab.snapshots.equipment_bundles import (
     cell_overlay_json_for_bundle_highlight,
@@ -105,15 +106,10 @@ def _cell_from_row(row: Mapping[str, Any]) -> ReplayCell:
 
 
 def _overlay_from_row(row: Mapping[str, Any]) -> ReplayOverlayCell:
-    return ReplayOverlayCell(
-        x=int(row["x"]),
-        y=int(row["y"]),
-        kind=str(row.get("cell_kind") or row.get("kind") or ""),
-        transport=str(row.get("transport_kind") or row.get("transport") or ""),
-        tile_type=str(row.get("tile_type") or row.get("sprite_identifier") or ""),
-        rotation=int(row.get("rotation") or 0),
-        layer=wire_explicit_height_layer(row),
-    )
+    if not isinstance(row, dict) or "x" not in row or "y" not in row:
+        msg = "overlay row must be a dict with x and y"
+        raise LabTimelineAdapterError(msg)
+    return replay_overlay_cell_from_wire(row)
 
 
 def _bbox_from_cells(

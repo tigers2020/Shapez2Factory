@@ -11,15 +11,15 @@ class ResourceKind(StrEnum):
 
 
 class TransportKind(StrEnum):
-    SHAPE_BELT = "shape_belt"
-    FLUID_PIPE = "fluid_pipe"
+    SPACE_BELT = "space_belt"
+    SPACE_PIPE = "space_pipe"
 
 
 def map_resource_kind_to_transport_kind(resource_kind: ResourceKind) -> TransportKind:
     if resource_kind == ResourceKind.SHAPE:
-        return TransportKind.SHAPE_BELT
+        return TransportKind.SPACE_BELT
     if resource_kind == ResourceKind.FLUID:
-        return TransportKind.FLUID_PIPE
+        return TransportKind.SPACE_PIPE
     msg = f"unknown resource_kind: {resource_kind!r}"
     raise ValueError(msg)
 

@@ -54,6 +54,7 @@ class ReplayOverlayCell:
     y: int
     kind: str = ""
     transport: str = ""
+    output_transport_kind: str = ""
     tile_type: str = ""
     rotation: int = 0
     layer: int | None = None

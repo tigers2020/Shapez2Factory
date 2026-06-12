@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.replay.event_types import assert_registered_event_type
+from django_apps.asteroid_lab.replay.overlay_wire_contract import build_output_hint_overlay_cell
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
@@ -21,11 +22,11 @@ _L4_INNER_FILL_INSPECTOR = {
 
 
 def _miner_kind(*, transport_kind: str) -> str:
-    return "fluid_miner" if transport_kind == "fluid_pipe" else "shape_miner"
+    return "fluid_miner" if transport_kind == "space_pipe" else "shape_miner"
 
 
 def _extension_kind(*, transport_kind: str) -> str:
-    return "fluid_miner_extension" if transport_kind == "fluid_pipe" else "shape_miner_extension"
+    return "fluid_miner_extension" if transport_kind == "space_pipe" else "shape_miner_extension"
 
 
 def _overlay_cells_for_result(
@@ -53,11 +54,11 @@ def _overlay_cells_for_result(
             continue
         seen.add((x, y))
         cells.append(
-            ReplayOverlayCell(
+            build_output_hint_overlay_cell(
                 x=x,
                 y=y,
                 kind="inner_field_block",
-                transport=transport_kind,
+                profile_transport_kind=transport_kind,
             )
         )
     return tuple(cells)
@@ -116,7 +117,7 @@ def _spec(
 def build_layer04_inner_pattern_fill_frames(
     result: Layer04InnerFillResult,
     *,
-    transport_kind: str = "shape_belt",
+    transport_kind: str = "space_belt",
 ) -> tuple[ReplaySegmentFrameSpec, ...]:
     overlays = _overlay_cells_for_result(result, transport_kind=transport_kind)
     metrics = _metrics_for_result(result)
@@ -143,7 +144,7 @@ def build_layer04_inner_pattern_fill_frames(
 def build_persistent_inner_fill_overlay_wire(
     result: Layer04InnerFillResult,
     *,
-    transport_kind: str = "shape_belt",
+    transport_kind: str = "space_belt",
 ) -> list[dict[str, object]]:
     """Committed L4 interior occupancy carried on L5+ runtime frames."""
 

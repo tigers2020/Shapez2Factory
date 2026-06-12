@@ -77,7 +77,7 @@ def run_layer_03_rim_greedy_placement(
         )
 
     anchors = scan_rim_anchors(complete_map)
-    # Phase B: per transport profile (shape_belt, fluid_pipe) then merge pools; C1/D shared.
+    # Phase B: per transport profile (space_belt, space_pipe) then merge pools; C1/D shared.
     try:
         candidate_set = generate_candidates(
             complete_map=complete_map,

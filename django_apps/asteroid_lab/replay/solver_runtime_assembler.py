@@ -121,7 +121,7 @@ def build_solver_runtime_replay_frames(
     layer04_inner_fill: Layer04InnerFillResult | None = None,
     layer05_route_plan: Layer05RoutePlan | None = None,
     layer04_route_plan: Layer05RoutePlan | None = None,
-    transport_kind: str = "shape_belt",
+    transport_kind: str = "space_belt",
 ) -> list[dict[str, Any]]:
     """JSON-serializable frames for ``SolverRun.config_json[solver_runtime_replay_frames]``."""
 

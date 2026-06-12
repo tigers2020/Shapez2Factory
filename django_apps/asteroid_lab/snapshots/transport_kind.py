@@ -7,8 +7,8 @@ from enum import StrEnum
 
 class TransportKind(StrEnum):
     NONE = "none"
-    SHAPE_BELT = "shape_belt"
-    FLUID_PIPE = "fluid_pipe"
+    SPACE_BELT = "space_belt"
+    SPACE_PIPE = "space_pipe"
 
 
 __all__ = ["TransportKind"]

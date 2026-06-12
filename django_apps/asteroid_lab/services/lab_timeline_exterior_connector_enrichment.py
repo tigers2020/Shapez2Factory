@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-from typing import Any
 
 from django_apps.asteroid_lab.replay.persistent_connector_overlay_wire import (
     ConnectorRoleWire,
@@ -14,6 +13,15 @@ METRICS_KEY = "exterior_connector_plan"
 OVERLAY_ROLE = "planned_exterior_connector"
 
 
+def _coord_int(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, (int, str, float)):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _connector_coord_keys(plan_wire: dict[str, object]) -> set[tuple[int, int]]:
     keys: set[tuple[int, int]] = set()
     for row in planned_connector_overlays_from_wire(plan_wire):
@@ -22,12 +30,12 @@ def _connector_coord_keys(plan_wire: dict[str, object]) -> set[tuple[int, int]]:
 
 
 def _overlay_without_connector_coord_duplicates(
-    overlay: list[Any],
+    overlay: list[object],
     connector_coords: set[tuple[int, int]],
-) -> list[Any]:
+) -> list[object]:
     """Drop generic belt overlays on void coords reserved for white L2 markers."""
 
-    out: list[Any] = []
+    out: list[object] = []
     for row in overlay:
         if not isinstance(row, dict):
             out.append(row)
@@ -37,18 +45,20 @@ def _overlay_without_connector_coord_duplicates(
             continue
         x = row.get("x")
         y = row.get("y")
-        if x is not None and y is not None and (int(x), int(y)) in connector_coords:
+        xi = _coord_int(x) if x is not None else None
+        yi = _coord_int(y) if y is not None else None
+        if xi is not None and yi is not None and (xi, yi) in connector_coords:
             continue
         out.append(row)
     return out
 
 
 def enrich_lab_timeline_frames_with_exterior_connector_plan(
-    frames: list[dict[str, Any]],
+    frames: list[dict[str, object]],
     *,
     plan_wire: dict[str, object] | None,
     l2_complete_frame_index: int | None = None,
-) -> tuple[list[dict[str, Any]], dict[str, object] | None]:
+) -> tuple[list[dict[str, object]], dict[str, object] | None]:
     """Return enriched frames and optional frozen plan wire for track metrics.
 
     When *l2_complete_frame_index* is ``None``, no frame is enriched (append-stack:
@@ -63,7 +73,7 @@ def enrich_lab_timeline_frames_with_exterior_connector_plan(
         return frames, None
 
     frozen_wire: dict[str, object] | None = None
-    out: list[dict[str, Any]] = []
+    out: list[dict[str, object]] = []
 
     for index, frame in enumerate(frames):
         fr_copy = copy.deepcopy(frame)
@@ -71,7 +81,8 @@ def enrich_lab_timeline_frames_with_exterior_connector_plan(
             out.append(fr_copy)
             continue
 
-        metrics = dict(fr_copy.get("metrics") or {})
+        metrics_raw = fr_copy.get("metrics")
+        metrics: dict[str, object] = dict(metrics_raw) if isinstance(metrics_raw, dict) else {}
         metrics.pop(METRICS_KEY, None)
         metrics[METRICS_KEY] = plan_wire
         if frozen_wire is None and index == start:
@@ -120,7 +131,9 @@ def planned_connector_overlays_from_wire(
             continue
         x = void_coord.get("x")
         y = void_coord.get("y")
-        if x is None or y is None:
+        xi = _coord_int(x)
+        yi = _coord_int(y)
+        if xi is None or yi is None:
             continue
         role_raw = str(item.get("role") or "required").strip().lower()
         role: ConnectorRoleWire
@@ -130,8 +143,8 @@ def planned_connector_overlays_from_wire(
             role = "required"
         out.append(
             PersistentConnectorOverlayWire(
-                x=int(x),
-                y=int(y),
+                x=xi,
+                y=yi,
                 overlay_role=OVERLAY_ROLE,
                 connector_role=role,
                 tile_type=str(item.get("layout_t") or ""),

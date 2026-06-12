@@ -242,10 +242,18 @@
 
   const LAB_CANVAS_HIT_CLASS = "lab-replay-canvas-hit-layer";
 
-  /** Opt-in via ``#lab-root`` ``data-lab-paint-v2="1"`` — v2 canvas paint plan (Slice 3); not enabled by default. */
-  function labPaintV2Enabled() {
+  /** D′ (Task 6.1): v2 default-on; legacy rollback via explicit opt-in only. */
+  function labPaintLegacyOptIn() {
     const root = document.getElementById("lab-root");
-    return Boolean(root && root.dataset && root.dataset.labPaintV2 === "1");
+    if (!root || !root.dataset) {
+      return false;
+    }
+    const ds = root.dataset;
+    return ds.labPaintLegacy === "1" || ds.labPaintV2 === "0";
+  }
+
+  function labPaintV2Enabled() {
+    return !labPaintLegacyOptIn();
   }
 
   /** Synced from init before each replay paint — same replay context as canvas v2. */

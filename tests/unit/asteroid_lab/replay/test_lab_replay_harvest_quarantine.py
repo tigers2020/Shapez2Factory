@@ -18,8 +18,8 @@ def test_build_canvas_paint_plan_v2_has_no_stage_cell() -> None:
     assert "collectFrameSpatialTargets" not in v2_region[:legacy_start]
 
 
-def test_legacy_canvas_harvest_still_present_when_flag_off() -> None:
-    """Policy (A): legacy harvest branch retained until Slice 5 Task 6 HITL delete."""
+def test_legacy_canvas_harvest_still_present_for_opt_in_rollback() -> None:
+    """Task 6.1 D′: legacy harvest branch retained for data-lab-paint-legacy rollback until 6.3."""
     src = LAB_JS.read_text(encoding="utf-8")
     fn = src.split("function buildCanvasPaintPlan(", 1)[1]
     assert "const overlays = []" in fn

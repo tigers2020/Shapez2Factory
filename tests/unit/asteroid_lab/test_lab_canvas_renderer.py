@@ -179,10 +179,14 @@ def test_js_build_cell_by_grid_index_from_frame_exists() -> None:
 
 def test_lab_js_lab_paint_v2_enabled_helper() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
+    assert "function labPaintLegacyOptIn(" in src
     assert "function labPaintV2Enabled(" in src
-    enabled_body = src.split("function labPaintV2Enabled(", 1)[1][:220]
-    assert "lab-root" in enabled_body
-    assert 'dataset.labPaintV2 === "1"' in enabled_body
+    legacy_body = src.split("function labPaintLegacyOptIn(", 1)[1][:320]
+    assert "lab-root" in legacy_body
+    assert 'ds.labPaintLegacy === "1"' in legacy_body
+    assert 'ds.labPaintV2 === "0"' in legacy_body
+    enabled_body = src.split("function labPaintV2Enabled(", 1)[1][:120]
+    assert "labPaintLegacyOptIn()" in enabled_body
 
     plan_body = src.split("function buildCanvasPaintPlan(", 1)[1][:900]
     assert "labPaintV2Enabled()" in plan_body
@@ -191,6 +195,28 @@ def test_lab_js_lab_paint_v2_enabled_helper() -> None:
     assert "replayArrayIndex" in plan_body
     assert "replayFrames" in plan_body
     assert "hasServerReplay" in plan_body
+
+
+def test_lab_js_paint_d_prime_flag_contract_step_6_1() -> None:
+    """Step 6.1: D′ default v2; legacy opt-in only; no harvest/DOM delete."""
+    src = LAB_JS.read_text(encoding="utf-8")
+    legacy_body = src.split("function labPaintLegacyOptIn(", 1)[1].split(
+        "function labPaintV2Enabled(", 1
+    )[0]
+    assert 'ds.labPaintLegacy === "1"' in legacy_body
+    assert 'ds.labPaintV2 === "0"' in legacy_body
+    enabled_body = src.split("function labPaintV2Enabled(", 1)[1][:160]
+    assert "!labPaintLegacyOptIn()" in enabled_body.replace(" ", "")
+    assert "function stageCell(" in src
+    assert "function labSpriteRelpathForCell(" in src
+    render_body = src.split("function renderFullMapCells(", 1)[1].split(
+        "function renderDiffOverlays(", 1
+    )[0]
+    assert "let tone = toneForFullMapCell" in render_body
+    assert "function buildCanvasPaintPlan(" in src
+    fn = src.split("function buildCanvasPaintPlan(", 1)[1]
+    assert "const overlays = []" in fn
+    assert "function stageCell(" in fn.split("const overlays = []", 1)[1]
 
 
 def test_lab_js_filter_terrain_cells_for_paint_v2_exists() -> None:
@@ -234,7 +260,8 @@ def test_lab_js_detail_lookup_untouched() -> None:
     assert "mergeEffectiveCellView" in detail_body
 
 
-def test_lab_js_legacy_dom_path_preserves_non_sprite_when_flag_off() -> None:
+def test_lab_js_legacy_dom_path_preserves_non_sprite_on_legacy_opt_in() -> None:
+    """Legacy DOM branch retained for labPaintLegacyOptIn rollback until Task 6.4."""
     src = LAB_JS.read_text(encoding="utf-8")
     rel_body = src.split("function labSpriteRelpathForCell(", 1)[1].split(
         "function attachLabSpriteImgNoDrag(", 1

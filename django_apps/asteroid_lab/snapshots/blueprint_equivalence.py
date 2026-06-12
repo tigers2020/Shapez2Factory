@@ -5,8 +5,6 @@ Horizontal comparison uses compact export columns, while vertical offset uses ra
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.copy_json_coords import raw_x_to_export_column
@@ -18,7 +16,7 @@ layout_map_payload = layout_fingerprint_payload
 _LAB_ENTRY_KEYS = frozenset({"X", "Y", "R", "T", "L", "Layer"})
 
 
-def _as_int(val: Any) -> int:
+def _as_int(val: object) -> int:
     if val is None:
         return 0
     if isinstance(val, bool):
@@ -31,11 +29,11 @@ def _as_int(val: Any) -> int:
         return 0
 
 
-def _strip_entry_for_compare(row: dict[str, Any]) -> dict[str, Any]:
+def _strip_entry_for_compare(row: dict[str, object]) -> dict[str, object]:
     return {k: row[k] for k in _LAB_ENTRY_KEYS if k in row}
 
 
-def _entries(decoded: dict[str, Any]) -> list[dict[str, Any]]:
+def _entries(decoded: dict[str, object]) -> list[dict[str, object]]:
     bp = decoded.get("BP")
     if not isinstance(bp, dict):
         return []
@@ -59,11 +57,11 @@ def _is_transport_tile(t: str) -> bool:
 
 
 def _filter_entries(
-    rows: list[dict[str, Any]],
+    rows: list[dict[str, object]],
     *,
     include_transport: bool,
-) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
+) -> list[dict[str, object]]:
+    out: list[dict[str, object]] = []
     for row in rows:
         t_raw = row.get("T")
         t = str(t_raw) if isinstance(t_raw, str) else ""
@@ -75,7 +73,7 @@ def _filter_entries(
     return out
 
 
-def _extractor_anchor_export_xy(rows: list[dict[str, Any]]) -> tuple[int, int] | None:
+def _extractor_anchor_export_xy(rows: list[dict[str, object]]) -> tuple[int, int] | None:
     """Anchor ``(export_x, raw_y)`` for the minimum extractor."""
 
     candidates: list[tuple[int, int]] = []
@@ -91,7 +89,7 @@ def _extractor_anchor_export_xy(rows: list[dict[str, Any]]) -> tuple[int, int] |
     return min(candidates)
 
 
-def _fallback_anchor_export_xy(rows: list[dict[str, Any]]) -> tuple[int, int]:
+def _fallback_anchor_export_xy(rows: list[dict[str, object]]) -> tuple[int, int]:
     if not rows:
         return (0, 0)
     dense_vals = [raw_x_to_export_column(_as_int(r.get("X"))) for r in rows]
@@ -100,7 +98,7 @@ def _fallback_anchor_export_xy(rows: list[dict[str, Any]]) -> tuple[int, int]:
 
 
 def _normalized_signature(
-    rows: list[dict[str, Any]],
+    rows: list[dict[str, object]],
     *,
     include_transport: bool,
 ) -> tuple[tuple[int, int, int, str], ...]:
@@ -126,8 +124,8 @@ def _normalized_signature(
 
 
 def decoded_json_layout_equivalent(
-    a: dict[str, Any],
-    b: dict[str, Any],
+    a: dict[str, object],
+    b: dict[str, object],
     *,
     include_transport: bool,
 ) -> bool:

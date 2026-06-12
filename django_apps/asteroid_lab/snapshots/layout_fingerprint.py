@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any
 
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
@@ -15,7 +14,7 @@ _SCHEMA_ABSOLUTE = "asteroid-miner-layout-absolute.v2"
 COORD_ABSOLUTE_ISLAND = "island_raw_xy_v1"
 
 
-def _as_int(val: Any) -> int:
+def _as_int(val: object) -> int:
     if val is None:
         return 0
     if isinstance(val, bool):
@@ -44,11 +43,11 @@ def _transport_label(cell_kind: str) -> str:
     return "none"
 
 
-def _compact_json(data: Any) -> bytes:
+def _compact_json(data: object) -> bytes:
     return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
-def layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
+def layout_fingerprint_payload(decoded_json: dict[str, object]) -> dict[str, object]:
     """Canonical dict for bbox-normalized island layout (miners/extensions only).
 
     Uses copy JSON island-local ``X``/``Y`` via ``entry_island_raw_coord``.
@@ -58,7 +57,7 @@ def layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(bp, dict):
         bp = {}
     entries_raw = bp.get("Entries")
-    entries: list[Any] = entries_raw if isinstance(entries_raw, list) else []
+    entries: list[object] = entries_raw if isinstance(entries_raw, list) else []
 
     staged: list[tuple[int, int, str, int, str]] = []
     for item in entries:
@@ -73,7 +72,7 @@ def layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
         island = entry_island_raw_coord(item)
         staged.append((island.x, island.y, fk, _as_int(item.get("R")), _transport_label(cell_kind)))
 
-    rows: list[dict[str, Any]] = []
+    rows: list[dict[str, object]] = []
     if staged:
         min_x = min(s[0] for s in staged)
         min_y = min(s[1] for s in staged)
@@ -112,21 +111,21 @@ def layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def layout_fingerprint_sha256(decoded_json: dict[str, Any]) -> str:
+def layout_fingerprint_sha256(decoded_json: dict[str, object]) -> str:
     payload = layout_fingerprint_payload(decoded_json)
     return hashlib.sha256(_compact_json(payload)).hexdigest()
 
 
-def absolute_layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
+def absolute_layout_fingerprint_payload(decoded_json: dict[str, object]) -> dict[str, object]:
     """Canonical dict using island-local x/y (translation-sensitive vs bbox-normalized layout)."""
 
     bp = decoded_json.get("BP")
     if not isinstance(bp, dict):
         bp = {}
     entries_raw = bp.get("Entries")
-    entries: list[Any] = entries_raw if isinstance(entries_raw, list) else []
+    entries: list[object] = entries_raw if isinstance(entries_raw, list) else []
 
-    rows: list[dict[str, Any]] = []
+    rows: list[dict[str, object]] = []
     for item in entries:
         if not isinstance(item, dict):
             continue
@@ -157,7 +156,7 @@ def absolute_layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[st
     }
 
 
-def absolute_layout_fingerprint_sha256(decoded_json: dict[str, Any]) -> str:
+def absolute_layout_fingerprint_sha256(decoded_json: dict[str, object]) -> str:
     payload = absolute_layout_fingerprint_payload(decoded_json)
     return hashlib.sha256(_compact_json(payload)).hexdigest()
 

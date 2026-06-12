@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
 
 from django.conf import settings
 from django.db import transaction
@@ -47,7 +46,7 @@ class SolverRunReconcileResult:
     status: str
     lifecycle_status: str
     log_tail: str
-    run_summary: dict[str, Any] | None
+    run_summary: dict[str, object] | None
     validation_passed: bool
     error_code: str | None = None
     message: str | None = None
@@ -63,7 +62,7 @@ def _max_runtime_seconds() -> float:
     )
 
 
-def _spawn_config(run: m.SolverRun) -> dict[str, Any]:
+def _spawn_config(run: m.SolverRun) -> dict[str, object]:
     raw = run.config_json
     return dict(raw) if isinstance(raw, dict) else {}
 

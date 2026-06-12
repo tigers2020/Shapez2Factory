@@ -9,7 +9,6 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from django.conf import settings
 
@@ -34,14 +33,14 @@ class SolverSubprocessRequest:
 
     run_key: str
     copy_code: str
-    game_data_snapshot: dict[str, Any]
+    game_data_snapshot: dict[str, object]
     artifact_root: Path
     allowed_root: Path
     timeout_seconds: float
     replace_existing: bool = False
     verbose: bool = False
     throughput_target_percent: int | None = None
-    genetic_sample_seeds: dict[str, Any] = field(default_factory=dict)
+    genetic_sample_seeds: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

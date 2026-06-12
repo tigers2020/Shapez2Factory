@@ -14,7 +14,6 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
-from typing import Any
 
 from django.db.models import QuerySet
 
@@ -30,7 +29,7 @@ SORT_KEY = "by_gene_id_then_throughput_desc"
 MINER_SOURCE_BATCH_ID = "miner_seed_v2"
 
 
-def _entry_from_template(template: GeneTemplate) -> dict[str, Any]:
+def _entry_from_template(template: GeneTemplate) -> dict[str, object]:
     raw_output_dir = (
         template.output_dir.value
         if hasattr(template.output_dir, "value")
@@ -55,7 +54,7 @@ def build_genetic_sample_seed_snapshot(
     queryset: QuerySet[GeneSeed],
     *,
     source_batch_id: str = "exhaustive_sample_gene_v1",
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Build a ``genetic_sample_seed_v1`` payload from a ``GeneSeed`` queryset."""
     templates, _skipped, _errors = load_gene_templates_from_gene_seeds(queryset)
     batch_id = MINER_SOURCE_BATCH_ID if queryset_has_miner_seed_v2(queryset) else source_batch_id

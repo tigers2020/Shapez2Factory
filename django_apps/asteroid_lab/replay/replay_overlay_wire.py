@@ -18,6 +18,7 @@ class ReplayOverlayCellWire(TypedDict):
     rotation: int
     layer: NotRequired[int]
     simulation: NotRequired[str]
+    overlay_role: NotRequired[str]
 
 
 __all__ = ["ReplayOverlayCellWire"]

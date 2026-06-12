@@ -95,8 +95,8 @@ def _finalize_specs(
     specs: Sequence[ReplaySegmentFrameSpec],
     *,
     structural_map_view: ReplayMapView,
-    structural_overlay_wire: list[dict[str, object]],
-    persistent_overlay_wire: list[dict[str, object]],
+    structural_overlay_wire: Sequence[Mapping[str, object]],
+    persistent_overlay_wire: Sequence[Mapping[str, object]],
     exterior_plan_wire: Mapping[str, object] | None,
 ) -> list[dict[str, Any]]:
     return [
@@ -125,7 +125,9 @@ def build_solver_runtime_replay_frames(
 ) -> list[dict[str, Any]]:
     """JSON-serializable frames for ``SolverRun.config_json[solver_runtime_replay_frames]``."""
 
-    source = find_reconstruction_complete_source_frame(list(lab_frames_before_append))
+    source = find_reconstruction_complete_source_frame(
+        [dict(frame) for frame in lab_frames_before_append]
+    )
     if source is not None:
         structural_base_map_view = replay_map_view_from_json_dict(source["map_view"])
     else:
@@ -166,13 +168,13 @@ def build_solver_runtime_replay_frames(
         complete_map=complete_map,
     )
 
-    persistent_with_equipment = list(persistent_overlay_wire)
+    persistent_with_equipment: list[Mapping[str, object]] = list(persistent_overlay_wire)
     if isinstance(layer03, IntegratedRimGreedyResult):
         persistent_with_equipment.extend(
             build_persistent_committed_equipment_overlay_wire(layer03),
         )
 
-    persistent_with_inner_fill = list(persistent_with_equipment)
+    persistent_with_inner_fill: list[Mapping[str, object]] = list(persistent_with_equipment)
     if layer04_inner_fill is not None:
         persistent_with_inner_fill.extend(
             build_persistent_inner_fill_overlay_wire(

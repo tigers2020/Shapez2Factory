@@ -233,10 +233,11 @@ def _cell_overlay_json_for_timeline_lab_frame(
         return overlay
     rows: list[dict[str, Any]] = []
     seen: set[tuple[int, int]] = set()
-    for cell in (*map_view.full_cells, *map_view.overlay_cells):
+
+    def _append_map_cell(cell: ReplayCell | ReplayOverlayCell) -> None:
         key = (int(cell.x), int(cell.y))
         if key in seen:
-            continue
+            return
         seen.add(key)
         rows.append(
             {
@@ -248,6 +249,11 @@ def _cell_overlay_json_for_timeline_lab_frame(
                 "tile_type": str(cell.tile_type),
             }
         )
+
+    for full_cell in map_view.full_cells:
+        _append_map_cell(full_cell)
+    for overlay_cell in map_view.overlay_cells:
+        _append_map_cell(overlay_cell)
     return equipment_bundle_overlay_from_rows(rows) or overlay
 
 

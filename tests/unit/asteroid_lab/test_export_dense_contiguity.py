@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
     export_dense_x_is_contiguous,
     export_dense_x_set,
@@ -14,8 +12,8 @@ from django_apps.asteroid_lab.snapshots.copy_json_coords import raw_x_to_export_
 
 
 def _lab_to_official_entries(
-    exts: list[dict[str, Any]], *, transport_kind: str = "pipe"
-) -> list[dict[str, Any]]:
+    exts: list[dict[str, object]], *, transport_kind: str = "pipe"
+) -> list[dict[str, object]]:
     lab = build_layout_root(transport_kind=transport_kind, exts=exts)
     official = to_official_island_root(lab)
     entries = official["BP"]["Entries"]

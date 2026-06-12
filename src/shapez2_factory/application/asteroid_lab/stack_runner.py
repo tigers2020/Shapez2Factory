@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
@@ -91,7 +91,7 @@ _LAYER_INDEX: dict[str, int] = {
 @dataclass(frozen=True, slots=True)
 class _LayerStackRunner:
     slug: str
-    run: Callable[..., Any]
+    run: Callable[..., object]
 
 
 # Backward-compatible alias (PR-3c).
@@ -130,7 +130,7 @@ def run_layers_02_to_06(
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
     genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
-    capacity_envelope: dict[str, Any] | None = None,
+    capacity_envelope: dict[str, object] | None = None,
     throughput_target_percent: int | None = None,
     transport_catalog: SpaceTransportTileCatalog | None = None,
 ) -> CoreStackRunResult:
@@ -171,37 +171,40 @@ def run_layers_02_to_06(
         started = budget_ctx.now_fn()
         post_metrics: dict[str, object] = {"stub": True}
         if canonical_slug == LAYER_02_EXTERIOR_TRANSPORT:
-            last_exterior_plan = entry.run(
+            layer02_result = entry.run(
                 complete_map=complete_map,
                 budget_ctx=budget_ctx,
                 capacity_envelope=capacity_envelope,
                 throughput_target_percent=throughput_target_percent,
             )
-            if isinstance(last_exterior_plan, ExteriorConnectionPlan):
-                post_metrics = build_layer02_post_summary_metrics(last_exterior_plan)
+            if isinstance(layer02_result, ExteriorConnectionPlan):
+                last_exterior_plan = layer02_result
+                post_metrics = build_layer02_post_summary_metrics(layer02_result)
         elif canonical_slug == LAYER_03_RIM_GREEDY_PLACEMENT:
-            last_rim_greedy = entry.run(
+            layer03_result = entry.run(
                 complete_map=complete_map,
                 budget_ctx=budget_ctx,
                 exterior_plan=last_exterior_plan,
                 genetic_sample_seeds=genetic_sample_seeds,
             )
-            if isinstance(last_rim_greedy, IntegratedRimGreedyResult):
-                post_metrics = build_layer03_rim_greedy_post_summary_metrics(last_rim_greedy)
+            if isinstance(layer03_result, IntegratedRimGreedyResult):
+                last_rim_greedy = layer03_result
+                post_metrics = build_layer03_rim_greedy_post_summary_metrics(layer03_result)
         elif canonical_slug == LAYER_04_INNER_PATTERN_FILL:
             overlay = (
                 last_rim_greedy.provisional_overlay
                 if last_rim_greedy is not None
                 else ProvisionalLayoutOverlay.empty()
             )
-            last_inner_fill = entry.run(
+            layer04_result = entry.run(
                 complete_map=complete_map,
                 exterior_plan=last_exterior_plan,
                 provisional_overlay=overlay,
                 budget_ctx=budget_ctx,
             )
-            if isinstance(last_inner_fill, Layer04InnerFillResult):
-                post_metrics = build_layer04_inner_fill_post_summary_metrics(last_inner_fill)
+            if isinstance(layer04_result, Layer04InnerFillResult):
+                last_inner_fill = layer04_result
+                post_metrics = build_layer04_inner_fill_post_summary_metrics(layer04_result)
         elif canonical_slug == LAYER_05_TRANSPORT_ROUTING:
             resource_kind = (
                 last_exterior_plan.transport_kind if last_exterior_plan is not None else "shape"
@@ -211,7 +214,7 @@ def run_layers_02_to_06(
                 if last_inner_fill is not None
                 else frozenset()
             )
-            last_layer05_plan = entry.run(
+            layer05_result = entry.run(
                 complete_map=complete_map,
                 exterior_plan=last_exterior_plan,
                 rim_result=last_rim_greedy,
@@ -221,8 +224,9 @@ def run_layers_02_to_06(
                 interior_occupied_cells=interior,
                 inner_fill=last_inner_fill,
             )
-            if isinstance(last_layer05_plan, Layer05RoutePlan):
-                post_metrics = build_layer05_transport_post_summary_metrics(last_layer05_plan)
+            if isinstance(layer05_result, Layer05RoutePlan):
+                last_layer05_plan = layer05_result
+                post_metrics = build_layer05_transport_post_summary_metrics(layer05_result)
         elif canonical_slug == LAYER_06_COMMIT_VALIDATE:
             entry.run(complete_map=complete_map, budget_ctx=budget_ctx)
             post_metrics = build_layer06_post_summary_metrics()
@@ -263,7 +267,7 @@ def run_layers_02_to_05(
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
     genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
-    capacity_envelope: dict[str, Any] | None = None,
+    capacity_envelope: dict[str, object] | None = None,
     throughput_target_percent: int | None = None,
     transport_catalog: SpaceTransportTileCatalog | None = None,
 ) -> CoreStackRunResult:

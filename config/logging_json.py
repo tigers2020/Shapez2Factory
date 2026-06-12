@@ -6,7 +6,6 @@ import contextvars
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any
 
 BASE_PAYLOAD_KEYS = frozenset({"ts", "level", "logger", "message", "request_id"})
 
@@ -56,7 +55,7 @@ class JsonLogFormatter(logging.Formatter):
     """Emit one JSON object per log record (no trailing newline — handler owns terminator)."""
 
     def format(self, record: logging.LogRecord) -> str:
-        payload: dict[str, Any] = {
+        payload: dict[str, object] = {
             "ts": datetime.fromtimestamp(record.created, tz=UTC).isoformat(timespec="milliseconds"),
             "level": record.levelname,
             "logger": record.name,

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.templatetags.static import static
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString, mark_safe
@@ -162,7 +160,7 @@ def _genetic_sample_mini_map_cells_html(
 
 
 def genetic_sample_mini_map_html(
-    decoded_json: dict[str, Any] | None,
+    decoded_json: dict[str, object] | None,
     *,
     cell_px: int = _DEFAULT_CELL_PX,
     for_list: bool = False,

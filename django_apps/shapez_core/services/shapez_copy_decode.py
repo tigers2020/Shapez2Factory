@@ -14,7 +14,6 @@ import binascii
 import gzip
 import json
 from dataclasses import dataclass
-from typing import Any
 
 SHAPEZ2_COPY_PREFIX_V4 = "SHAPEZ2-4-"
 _GZIP_MAGIC = b"\x1f\x8b"
@@ -30,8 +29,8 @@ class DecodeTraceResult:
     """Result of :func:`decode_shapez2_copy_trace` (success or failure with partial steps)."""
 
     success: bool
-    data: dict[str, Any] | None
-    steps: list[dict[str, Any]]
+    data: dict[str, object] | None
+    steps: list[dict[str, object]]
     error: str | None
 
 
@@ -42,16 +41,16 @@ def decode_shapez2_copy_trace(
 ) -> DecodeTraceResult:
     """Decode like :func:`decode_shapez2_copy` but record pipeline steps for UI playback."""
 
-    steps: list[dict[str, Any]] = []
+    steps: list[dict[str, object]] = []
 
     def push(
         step_id: str,
         ok: bool = True,
         *,
-        detail: dict[str, Any] | None = None,
+        detail: dict[str, object] | None = None,
         error: str | None = None,
     ) -> None:
-        row: dict[str, Any] = {"id": step_id, "ok": ok}
+        row: dict[str, object] = {"id": step_id, "ok": ok}
         if detail is not None:
             row["detail"] = detail
         if error is not None:
@@ -138,7 +137,7 @@ def decode_shapez2_copy_trace(
     return DecodeTraceResult(True, data, steps, None)
 
 
-def decode_shapez2_copy(code: str, *, prefix: str = SHAPEZ2_COPY_PREFIX_V4) -> dict[str, Any]:
+def decode_shapez2_copy(code: str, *, prefix: str = SHAPEZ2_COPY_PREFIX_V4) -> dict[str, object]:
     """Decode a Shapez 2 copy code into a JSON object (``dict``).
 
     Whitespace anywhere in the input is ignored. Only a top-level JSON object is accepted.

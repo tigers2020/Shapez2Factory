@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.game_data.importers.base import ImportContext
 from django_apps.game_data.models import (
     GlobalBeltSpeedPolicy,
@@ -58,7 +56,7 @@ def _record_speed_import_issue(
     ctx: ImportContext,
     source_stable_id: str,
     parameter_name: str,
-    blob: dict[str, Any],
+    blob: dict[str, object],
     *,
     reason_code: str,
 ) -> None:
@@ -76,7 +74,7 @@ def _record_speed_import_issue(
 def import_simulation_speeds(
     ctx: ImportContext,
     system: SimulationSystem,
-    params: dict[str, Any],
+    params: dict[str, object],
     *,
     source_stable_id: str = "",
 ) -> None:

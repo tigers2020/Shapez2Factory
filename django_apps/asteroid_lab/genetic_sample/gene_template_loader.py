@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from django_apps.asteroid_lab.genetic_sample.enums import Direction
 from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
@@ -27,7 +26,7 @@ from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 _ROUTE_PROBE_START_OFFSET_CANONICAL: Coord = (2, 0)
 
 
-def _parse_coord_pair(raw: Any, *, field: str) -> Coord:
+def _parse_coord_pair(raw: object, *, field: str) -> Coord:
     if not isinstance(raw, (list, tuple)) or len(raw) != 2:
         msg = f"{field} must be [x, y]"
         raise ValueError(msg)
@@ -38,7 +37,7 @@ def _parse_coord_pair(raw: Any, *, field: str) -> Coord:
     return (x, y)
 
 
-def _parse_direction(raw: Any) -> Direction:
+def _parse_direction(raw: object) -> Direction:
     if isinstance(raw, Direction):
         return raw
     if not isinstance(raw, str):
@@ -51,7 +50,7 @@ def _parse_direction(raw: Any) -> Direction:
     raise ValueError(msg)
 
 
-def parse_gene_template_record(record: dict[str, Any]) -> GeneTemplate:
+def parse_gene_template_record(record: dict[str, object]) -> GeneTemplate:
     gene_id = record.get("gene_id")
     if not isinstance(gene_id, str) or not gene_id:
         msg = "gene_id must be a non-empty string"

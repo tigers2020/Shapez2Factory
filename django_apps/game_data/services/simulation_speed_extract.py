@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
 
 DUMP_TYPE_KEY = "$type"
 DUMP_TYPE_BUFFABLE = "BuffableBeltSpeed"
@@ -31,11 +30,11 @@ class SpeedShapeError(ValueError):
     pass
 
 
-def dump_type_name(blob: dict[str, Any]) -> str:
+def dump_type_name(blob: dict[str, object]) -> str:
     return str(blob.get(DUMP_TYPE_KEY, "") or "").strip()
 
 
-def classify_speed_entry(parameter_name: str, blob: dict[str, Any]) -> tuple[SpeedRoute, str]:
+def classify_speed_entry(parameter_name: str, blob: dict[str, object]) -> tuple[SpeedRoute, str]:
     """Route by ``$type`` first, then parameter_name (dump has no cross-type rows)."""
     dtype = dump_type_name(blob)
     if dtype == DUMP_TYPE_MULTIPLE:
@@ -57,7 +56,7 @@ def parameter_matches_route(parameter_name: str, route: SpeedRoute) -> bool:
     return False
 
 
-def validate_buffable_shape(blob: dict[str, Any]) -> list[str]:
+def validate_buffable_shape(blob: dict[str, object]) -> list[str]:
     issues: list[str] = []
     extra = set(blob) - BUFFABLE_SHAPE
     if extra:
@@ -74,7 +73,7 @@ def validate_buffable_shape(blob: dict[str, Any]) -> list[str]:
     return issues
 
 
-def validate_multiple_shape(blob: dict[str, Any]) -> list[str]:
+def validate_multiple_shape(blob: dict[str, object]) -> list[str]:
     issues: list[str] = []
     extra = set(blob) - MULTIPLE_SHAPE
     if extra:
@@ -101,7 +100,7 @@ def steps_per_tick_value(raw: object) -> int:
     return 0
 
 
-def research_upgrade_key(blob: dict[str, Any]) -> str:
+def research_upgrade_key(blob: dict[str, object]) -> str:
     rid = blob.get("ResearchId")
     if not isinstance(rid, dict):
         return ""
@@ -111,7 +110,7 @@ def research_upgrade_key(blob: dict[str, Any]) -> str:
     return str(key or "")[:255]
 
 
-def parse_buffable_speed_blob(parameter_name: str, blob: dict[str, Any]) -> dict[str, Any]:
+def parse_buffable_speed_blob(parameter_name: str, blob: dict[str, object]) -> dict[str, object]:
     issues = validate_buffable_shape(blob)
     if issues:
         raise SpeedShapeError(f"{parameter_name}: {issues}")
@@ -124,7 +123,7 @@ def parse_buffable_speed_blob(parameter_name: str, blob: dict[str, Any]) -> dict
     }
 
 
-def parse_multiple_speed_blob(parameter_name: str, blob: dict[str, Any]) -> dict[str, Any]:
+def parse_multiple_speed_blob(parameter_name: str, blob: dict[str, object]) -> dict[str, object]:
     issues = validate_multiple_shape(blob)
     if issues:
         raise SpeedShapeError(f"{parameter_name}: {issues}")

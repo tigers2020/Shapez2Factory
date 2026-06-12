@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any
 
-
-def index_recipe_graph_nodes_by_id(nodes: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def index_recipe_graph_nodes_by_id(
+    nodes: list[dict[str, object]],
+) -> dict[str, dict[str, object]]:
     """``graph_document`` 의 ``nodes`` 리스트에서 ``str(id) -> 노드 dict`` 맵을 만든다.
 
     ``validate_graph_document`` 통과 후 노드만 넘기는 것을 전제로 한다(비 dict·id 없음은 건너뜀).
     """
-    by_id: dict[str, dict[str, Any]] = {}
+    by_id: dict[str, dict[str, object]] = {}
     for n in nodes:
         if isinstance(n, dict) and n.get("id") is not None:
             by_id[str(n["id"])] = n
@@ -18,8 +18,8 @@ def index_recipe_graph_nodes_by_id(nodes: list[dict[str, Any]]) -> dict[str, dic
 
 
 def _resolved_edge_nodes(
-    by_id: dict[str, dict[str, Any]], fr: str, to: str
-) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    by_id: dict[str, dict[str, object]], fr: str, to: str
+) -> tuple[dict[str, object], dict[str, object]] | None:
     nf = by_id.get(fr)
     nt = by_id.get(to)
     if not nf or not nt:
@@ -27,7 +27,7 @@ def _resolved_edge_nodes(
     return nf, nt
 
 
-def _validate_input_edge(i: int, nf: dict[str, Any], nt: dict[str, Any]) -> None:
+def _validate_input_edge(i: int, nf: dict[str, object], nt: dict[str, object]) -> None:
     if nf.get("kind") != "shape" or nt.get("kind") != "operation":
         raise ValueError(
             f"edges[{i}]: input edge must be shape → operation, "
@@ -35,7 +35,7 @@ def _validate_input_edge(i: int, nf: dict[str, Any], nt: dict[str, Any]) -> None
         )
 
 
-def _validate_output_edge(i: int, nf: dict[str, Any], nt: dict[str, Any]) -> None:
+def _validate_output_edge(i: int, nf: dict[str, object], nt: dict[str, object]) -> None:
     if nf.get("kind") != "operation" or nt.get("kind") != "shape":
         raise ValueError(
             f"edges[{i}]: output edge must be operation → shape, "
@@ -49,7 +49,7 @@ def _validate_output_edge(i: int, nf: dict[str, Any], nt: dict[str, Any]) -> Non
         )
 
 
-def _validate_delivery_edge(i: int, nf: dict[str, Any], nt: dict[str, Any]) -> None:
+def _validate_delivery_edge(i: int, nf: dict[str, object], nt: dict[str, object]) -> None:
     if nf.get("kind") != "shape" or nt.get("kind") != "shape":
         raise ValueError(
             f"edges[{i}]: delivery edge must be shape → shape, "
@@ -63,7 +63,7 @@ def _validate_delivery_edge(i: int, nf: dict[str, Any], nt: dict[str, Any]) -> N
         raise ValueError(f"edges[{i}]: delivery target must be role=target, got role={rt!r}")
 
 
-def assert_recipe_graph_edge_topology(doc: dict[str, Any]) -> None:
+def assert_recipe_graph_edge_topology(doc: dict[str, object]) -> None:
     """
     검증 통과용 graph_document에 대해 연결 규칙을 강제한다.
 
@@ -98,7 +98,7 @@ def assert_recipe_graph_edge_topology(doc: dict[str, Any]) -> None:
             _validate_delivery_edge(i, nf, nt)
 
 
-def assert_delivery_targets_unique(edges: list[dict[str, Any]]) -> None:
+def assert_delivery_targets_unique(edges: list[dict[str, object]]) -> None:
     """각 target shape에는 최대 하나의 ``delivery`` 입력만 허용한다."""
     seen: set[str] = set()
     for i, e in enumerate(edges):

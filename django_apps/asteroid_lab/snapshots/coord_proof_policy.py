@@ -9,7 +9,6 @@ uses ``CoordFrame.WORLD_RAW``.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
 
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 
@@ -29,7 +28,7 @@ def island_raw_promotion_allowed(proof: FixtureCoordProof) -> bool:
     return proof == FixtureCoordProof.ISLAND_PASTE_ONLY
 
 
-def lab_solver_optimization_coord_frame(run_config: dict[str, Any] | None) -> CoordFrame:
+def lab_solver_optimization_coord_frame(run_config: dict[str, object] | None) -> CoordFrame:
     """Default RTTP lab solver optimization frame: island-local raw coordinates."""
 
     if run_config is None:

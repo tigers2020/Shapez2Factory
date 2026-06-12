@@ -8,7 +8,6 @@ pure DTO consumer over in-memory structures.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.decoded_cell import DecodedCellDTO as DecodedCellDTO
 
@@ -38,7 +37,7 @@ class SolverRunDTO:
     run_key: str
     algorithm_label: str
     status: str
-    config_json: dict[str, Any]
+    config_json: dict[str, object]
     replay_track_id: int
 
 
@@ -50,9 +49,9 @@ class ReplayFrameAppendDTO:
     phase: str
     title: str
     description: str = ""
-    frame_payload: dict[str, Any] = field(default_factory=dict)
-    cell_overlay_json: dict[str, Any] = field(default_factory=dict)
-    metric_snapshot_json: dict[str, Any] = field(default_factory=dict)
+    frame_payload: dict[str, object] = field(default_factory=dict)
+    cell_overlay_json: dict[str, object] = field(default_factory=dict)
+    metric_snapshot_json: dict[str, object] = field(default_factory=dict)
     is_placeholder: bool = False
     is_keyframe: bool = False
     frame_index: int | None = None
@@ -73,9 +72,9 @@ class ReplayFrameRowDTO:
     phase: str
     title: str
     description: str
-    frame_payload: dict[str, Any]
-    cell_overlay_json: dict[str, Any]
-    metric_snapshot_json: dict[str, Any]
+    frame_payload: dict[str, object]
+    cell_overlay_json: dict[str, object]
+    metric_snapshot_json: dict[str, object]
     is_placeholder: bool
     is_keyframe: bool
 
@@ -112,7 +111,7 @@ class PlaybackPatchDTO:
     selected_layer: str | None = None
     selected_candidate_id: str | None = None
     selected_bundle_id: str | None = None
-    ui_state_json: dict[str, Any] | None = None
+    ui_state_json: dict[str, object] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,7 +125,7 @@ class PlaybackSessionDTO:
     selected_layer: str
     selected_candidate_id: str
     selected_bundle_id: str
-    ui_state_json: dict[str, Any]
+    ui_state_json: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,8 +138,8 @@ class TopologyRuleSummaryDTO:
     rule_group: str
     severity: str
     description: str
-    examples_json: list[Any]
-    diagram_json: dict[str, Any]
+    examples_json: list[object]
+    diagram_json: dict[str, object]
     is_active: bool
     sort_order: int
 
@@ -151,8 +150,8 @@ class TopologyModalBodyDTO:
 
     modal_title: str
     lead_html: str
-    sections_json: list[Any]
-    footer_json: dict[str, Any]
+    sections_json: list[object]
+    footer_json: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,14 +176,14 @@ class TopologyModalResultDTO:
 class RawDecodedBlueprintDTO:
     """Validated root JSON from :func:`decode_copy_string` (no lab summary block yet)."""
 
-    root: dict[str, Any]
+    root: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
 class NormalizedBlueprintDTO:
     """Blueprint JSON ready to persist on ``AsteroidMapInput.decoded_json``."""
 
-    decoded_json: dict[str, Any]
+    decoded_json: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,11 +195,11 @@ class DecodedBlueprintSnapshotDTO:
     binary_version: int | None
     blueprint_type: str
     entry_count: int
-    bbox_json: dict[str, Any]
+    bbox_json: dict[str, object]
     cell_kind_counts_json: dict[str, int]
     transport_kind_counts_json: dict[str, int]
     cells: tuple[DecodedCellDTO, ...]
-    summary_json: dict[str, Any]
+    summary_json: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,9 +210,9 @@ class ExistingTransportComponentDTO:
     transport_kind: str
     cell_kind: str
     cell_count: int
-    bbox_json: dict[str, Any]
+    bbox_json: dict[str, object]
     touches_bbox_edge: bool
-    cells_json: list[dict[str, Any]]
+    cells_json: list[dict[str, object]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -228,7 +227,7 @@ class ExistingEquipmentDTO:
     tile_type: str
     cell_kind: str
     transport_kind: str
-    raw_entry_json: dict[str, Any]
+    raw_entry_json: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -236,7 +235,7 @@ class EquipmentAttachmentDTO:
     """4-neighbor attachment between equipment and indexed transport components."""
 
     equipment_id: str
-    adjacent_transport_cells_json: list[dict[str, Any]]
+    adjacent_transport_cells_json: list[dict[str, object]]
     adjacent_component_ids: list[int]
     attached_to_any_transport: bool
     attached_to_main_component: bool
@@ -251,8 +250,8 @@ class ExistingLayoutInspectionDTO:
     transport_components: tuple[ExistingTransportComponentDTO, ...]
     equipment: tuple[ExistingEquipmentDTO, ...]
     attachments: tuple[EquipmentAttachmentDTO, ...]
-    hints_json: dict[str, Any]
-    summary_json: dict[str, Any]
+    hints_json: dict[str, object]
+    summary_json: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,11 +264,11 @@ class SnapshotEventDTO:
     event_type: str = ""
     title: str = ""
     description: str = ""
-    before_state_json: dict[str, Any] = field(default_factory=dict)
-    after_state_json: dict[str, Any] = field(default_factory=dict)
-    delta_json: dict[str, Any] = field(default_factory=dict)
-    cell_overlay_json: dict[str, Any] = field(default_factory=dict)
-    focus_cells_json: list[Any] = field(default_factory=list)
+    before_state_json: dict[str, object] = field(default_factory=dict)
+    after_state_json: dict[str, object] = field(default_factory=dict)
+    delta_json: dict[str, object] = field(default_factory=dict)
+    cell_overlay_json: dict[str, object] = field(default_factory=dict)
+    focus_cells_json: list[object] = field(default_factory=list)
     candidate_ref: str = ""
     bundle_ref: str = ""
     route_ref: str = ""
@@ -277,10 +276,10 @@ class SnapshotEventDTO:
     is_reversible: bool = True
     is_placeholder: bool = False
     severity: str = "info"
-    metrics_json: dict[str, Any] = field(default_factory=dict)
-    full_map: list[dict[str, Any]] = field(default_factory=list)
-    diff: dict[str, Any] = field(default_factory=dict)
-    summary: dict[str, Any] = field(default_factory=dict)
+    metrics_json: dict[str, object] = field(default_factory=dict)
+    full_map: list[dict[str, object]] = field(default_factory=list)
+    diff: dict[str, object] = field(default_factory=dict)
+    summary: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -294,9 +293,9 @@ class SnapshotFrameDTO:
     phase: str
     event_type: str
     title: str
-    frame_payload: dict[str, Any]
-    cell_overlay_json: dict[str, Any]
-    metric_snapshot_json: dict[str, Any]
+    frame_payload: dict[str, object]
+    cell_overlay_json: dict[str, object]
+    metric_snapshot_json: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)

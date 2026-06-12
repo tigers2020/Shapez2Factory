@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from enum import StrEnum
-from typing import Any
 
 from django_apps.asteroid_lab.genetic_sample.gene_template import (
     CANONICAL_EXTRACTOR_OFFSET,
@@ -57,7 +56,7 @@ def _rel_offset(origin: tuple[int, int], xy: tuple[int, int]) -> Coord:
     return (xy[0] - ox, xy[1] - oy)
 
 
-def _resource_kind_from_metadata(meta: dict[str, Any]) -> str:
+def _resource_kind_from_metadata(meta: dict[str, object]) -> str:
     stored = meta.get("resource_kind_stored", "shape")
     if stored == "shape":
         return "shape"

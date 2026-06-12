@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
 
 from django_apps.asteroid_lab.snapshots.asteroid_map_coords import (
     iter_four_neighbors_map,
@@ -46,17 +45,19 @@ def _equipment_family(cell_kind: str) -> str | None:
     return None
 
 
-def _as_int(val: Any) -> int:
+def _as_int(val: object) -> int:
     if val is None:
         return 0
     if isinstance(val, bool):
         return int(val)
     if isinstance(val, int):
         return val
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return 0
+    if isinstance(val, (float, str)):
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return 0
+    return 0
 
 
 def _rotate_dir_clockwise(d: str, quarter_turns: int) -> str:
@@ -169,13 +170,13 @@ def _port_linked(
     return forward or backward
 
 
-def _layer_key(row: Mapping[str, Any]) -> int | None:
+def _layer_key(row: Mapping[str, object]) -> int | None:
     if "layer" not in row or row["layer"] is None:
         return None
     return _as_int(row["layer"])
 
 
-def _cell_pos_key(row: Mapping[str, Any]) -> tuple[int, int, int | None]:
+def _cell_pos_key(row: Mapping[str, object]) -> tuple[int, int, int | None]:
     return (_as_int(row["x"]), _as_int(row["y"]), _layer_key(row))
 
 
@@ -203,20 +204,20 @@ class _UnionFind:
             self._p[rb] = ra
 
 
-def _effective_equipment_cell_kind(row: Mapping[str, Any]) -> str:
+def _effective_equipment_cell_kind(row: Mapping[str, object]) -> str:
     ck = str(row.get("cell_kind") or "")
     if ck in _EQUIPMENT_KINDS:
         return ck
     tt = str(row.get("tile_type") or "")
     if tt:
         resolved, _ = classify_blueprint_entry(tt)
-        return resolved
+        return str(resolved)
     return ck
 
 
 def _iter_equipment_rows(
-    rows: Sequence[Mapping[str, Any]],
-) -> Iterator[tuple[_Pos, Mapping[str, Any], EquipmentPorts, str, str]]:
+    rows: Sequence[Mapping[str, object]],
+) -> Iterator[tuple[_Pos, Mapping[str, object], EquipmentPorts, str, str]]:
     for row in rows:
         ck = _effective_equipment_cell_kind(row)
         if ck not in _EQUIPMENT_KINDS:
@@ -267,7 +268,7 @@ def _bundle_links_for_cell(
     return "".join(sorted(parts, key=lambda s: _DIR_ORDER.index(s)))
 
 
-def equipment_bundle_overlay_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def equipment_bundle_overlay_from_rows(rows: list[dict[str, object]]) -> dict[str, object]:
     """Lab replay wire passthrough for bundle highlight JS (output-only; not solver input)."""
 
     bundles = build_equipment_bundles(rows)
@@ -277,16 +278,16 @@ def equipment_bundle_overlay_from_rows(rows: list[dict[str, Any]]) -> dict[str, 
 
 
 def cell_overlay_json_for_bundle_highlight(
-    overlay_json: Mapping[str, Any],
+    overlay_json: Mapping[str, object],
     *,
-    full_map: Sequence[Mapping[str, Any]] | None = None,
-) -> dict[str, Any]:
+    full_map: Sequence[Mapping[str, object]] | None = None,
+) -> dict[str, object]:
     """Prefer persisted ``equipment_bundles``; else build from overlay/full_map cell rows."""
 
     bundles = overlay_json.get("equipment_bundles")
     if isinstance(bundles, list) and bundles:
         return {"equipment_bundles": list(bundles)}
-    rows: list[dict[str, Any]] = []
+    rows: list[dict[str, object]] = []
     cells = overlay_json.get("cells")
     if isinstance(cells, list):
         for raw in cells:
@@ -299,14 +300,14 @@ def cell_overlay_json_for_bundle_highlight(
     return equipment_bundle_overlay_from_rows(rows)
 
 
-def build_equipment_bundles(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def build_equipment_bundles(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     """Group equipment cells by undirected port-compatible adjacency (same layer, same family)."""
 
     items = list(_iter_equipment_rows(rows))
     if not items:
         return []
 
-    pos_to_row: dict[_Pos, Mapping[str, Any]] = {}
+    pos_to_row: dict[_Pos, Mapping[str, object]] = {}
     pos_to_ports: dict[_Pos, EquipmentPorts] = {}
     pos_to_family: dict[_Pos, str] = {}
     pos_to_kind: dict[_Pos, str] = {}
@@ -340,12 +341,12 @@ def build_equipment_bundles(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         root = uf.find(pos)
         groups.setdefault(root, []).append(pos)
 
-    bundle_blocks: list[dict[str, Any]] = []
+    bundle_blocks: list[dict[str, object]] = []
     sorted_roots = sorted(groups, key=lambda r: min(groups[r], key=_pos_sort_tuple))
     for bundle_id, root in enumerate(sorted_roots, start=1):
         positions = sorted(groups[root], key=_pos_sort_tuple)
         bundle_set = frozenset(positions)
-        cells_json: list[dict[str, Any]] = []
+        cells_json: list[dict[str, object]] = []
         for pos in positions:
             row = pos_to_row[pos]
             edges = _bundle_edges_for_cell(pos, bundle_set)

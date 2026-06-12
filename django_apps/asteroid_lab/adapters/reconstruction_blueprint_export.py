@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import copy
 from dataclasses import replace
-from typing import Any
 
 from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
     OFFICIAL_BINARY_VERSION,
@@ -105,7 +104,7 @@ def cells_for_field_export(cells: tuple[DecodedCellDTO, ...]) -> tuple[DecodedCe
 
 
 def cells_for_field_export_from_decoded_json(
-    decoded_json: dict[str, Any],
+    decoded_json: dict[str, object],
 ) -> tuple[DecodedCellDTO, ...]:
     """Import decoded blueprint then keep only asteroid field cells for game paste."""
 
@@ -122,19 +121,19 @@ def cell_kind_for_reconstruction_import(tile_type: str) -> tuple[str, str]:
     return classify_blueprint_entry(tile_type if tile_type else None)
 
 
-def _entry_dict_from_cell(cell: DecodedCellDTO) -> dict[str, Any]:
+def _entry_dict_from_cell(cell: DecodedCellDTO) -> dict[str, object]:
     t = tile_type_for_reconstruction_export(cell)
     if not t and cell.raw_entry_json:
         raw_t = cell.raw_entry_json.get("T")
         if isinstance(raw_t, str) and raw_t:
             t = raw_t
-    row: dict[str, Any] = {"X": cell.x, "Y": cell.y, "T": t}
+    row: dict[str, object] = {"X": cell.x, "Y": cell.y, "T": t}
     if cell.rotation:
         row["R"] = cell.rotation
     return row
 
 
-def _shell_from_source(source_decoded_json: dict[str, Any] | None) -> dict[str, Any]:
+def _shell_from_source(source_decoded_json: dict[str, object] | None) -> dict[str, object]:
     if not source_decoded_json:
         return {
             "V": OFFICIAL_BINARY_VERSION,
@@ -164,12 +163,12 @@ def _shell_from_source(source_decoded_json: dict[str, Any] | None) -> dict[str, 
 def build_reconstructed_blueprint_root(
     cells: tuple[DecodedCellDTO, ...],
     *,
-    source_decoded_json: dict[str, Any] | None = None,
+    source_decoded_json: dict[str, object] | None = None,
     map_input_id: int | None = None,
     run_key: str = "",
-    summary_json: dict[str, Any] | None = None,
+    summary_json: dict[str, object] | None = None,
     full_map_island_bbox: dict[str, int] | None = None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Build lab blueprint root with Extension ``T`` for asteroid field cells."""
 
     root = _shell_from_source(source_decoded_json)
@@ -177,7 +176,7 @@ def build_reconstructed_blueprint_root(
     assert isinstance(bp, dict)
     entries = [_entry_dict_from_cell(c) for c in sorted(cells, key=sort_key_xy_layer)]
     bp["Entries"] = entries
-    recon_meta: dict[str, Any] = {
+    recon_meta: dict[str, object] = {
         "schema_version": _RECON_META_SCHEMA,
         "map_input_id": map_input_id,
         "run_key": run_key,
@@ -193,10 +192,10 @@ def build_reconstructed_blueprint_root(
 def build_reconstructed_normalized_dto(
     cells: tuple[DecodedCellDTO, ...],
     *,
-    source_decoded_json: dict[str, Any] | None = None,
+    source_decoded_json: dict[str, object] | None = None,
     map_input_id: int | None = None,
     run_key: str = "",
-    summary_json: dict[str, Any] | None = None,
+    summary_json: dict[str, object] | None = None,
     full_map_island_bbox: dict[str, int] | None = None,
 ) -> NormalizedBlueprintDTO:
     """Root with summary + island coord meta (persist ``decoded_json``)."""
@@ -215,14 +214,14 @@ def build_reconstructed_normalized_dto(
     return NormalizedBlueprintDTO(decoded_json=merged)
 
 
-def encode_reconstructed_copy_string(root: dict[str, Any]) -> str:
+def encode_reconstructed_copy_string(root: dict[str, object]) -> str:
     """``SHAPEZ2-4-??` with trailing ``$`` (game paste convention)."""
 
     return f"{encode_copy_string(root)}$"
 
 
 def entries_to_reconstruction_cells(
-    entries: list[dict[str, Any]],
+    entries: list[dict[str, object]],
 ) -> tuple[DecodedCellDTO, ...]:
     """Import ``BP.Entries`` with Extension ??``asteroid_*_field`` (not miner_extension)."""
 
@@ -241,7 +240,7 @@ def entries_to_reconstruction_cells(
         nested_count, nested_type_counts, has_nested = _nested_b_summary(b)
         rot = _as_int(item.get("R"))
         layer = _extract_layer(item)
-        raw_entry: dict[str, Any] = dict(item)
+        raw_entry: dict[str, object] = dict(item)
 
         cells.append(
             DecodedCellDTO(
@@ -263,7 +262,7 @@ def entries_to_reconstruction_cells(
 
 
 def load_reconstruction_cells_from_decoded_json(
-    decoded_json: dict[str, Any],
+    decoded_json: dict[str, object],
 ) -> tuple[DecodedCellDTO, ...]:
     """Load reconstructed island cells from persisted ``decoded_json``."""
 
@@ -271,7 +270,7 @@ def load_reconstruction_cells_from_decoded_json(
     if not isinstance(bp, dict):
         return ()
     entries_raw = bp.get("Entries")
-    entries: list[Any] = entries_raw if isinstance(entries_raw, list) else []
+    entries: list[object] = entries_raw if isinstance(entries_raw, list) else []
     return entries_to_reconstruction_cells(entries)
 
 

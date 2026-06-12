@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.coord_frames import CoordFrame
 from shapez2_factory.domain.asteroid_lab.decoded_cell import DecodedCellDTO
@@ -19,7 +18,7 @@ class ReconstructionResult:
     """
 
     cells: tuple[DecodedCellDTO, ...]  # overlay only
-    summary_json: dict[str, Any] = field(default_factory=dict)
+    summary_json: dict[str, object] = field(default_factory=dict)
     outer_rim_coords: tuple[tuple[int, int], ...] = ()
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW
     confirmed_cells: frozenset[Coord] = field(default_factory=frozenset)

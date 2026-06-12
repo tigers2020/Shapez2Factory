@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.game_data.importers.base import ImportContext, dig
 from django_apps.game_data.models import (
     FluidColor,
@@ -16,7 +14,7 @@ from django_apps.game_data.models import (
 from django_apps.game_data.services import identifiers
 
 
-def _shape_definition(row: dict[str, Any]) -> dict[str, Any]:
+def _shape_definition(row: dict[str, object]) -> dict[str, object]:
     snap = row.get("definition_snapshot") or {}
     if isinstance(snap.get("Definition"), dict):
         return snap["Definition"]
@@ -57,8 +55,8 @@ def import_shape_rows(
     *,
     catalog_source: str,
     filename: str,
-    rows: list[dict[str, Any]],
-    record_source_row: Any,
+    rows: list[dict[str, object]],
+    record_source_row: object,
 ) -> None:
     touched_recipe_ids: set[int] = set()
     for i, row in enumerate(rows):
@@ -69,7 +67,7 @@ def import_shape_rows(
             continue
         src = record_source_row(filename, i, row)
         cid = identifiers.canonical_shape_recipe(op_uid, shape_hash)
-        recipe_defaults: dict[str, Any] = {
+        recipe_defaults: dict[str, object] = {
             "import_batch": ctx.batch,
             "operation_uid": op_uid,
             "shape_hash": shape_hash,

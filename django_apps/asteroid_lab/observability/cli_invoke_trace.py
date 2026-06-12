@@ -5,7 +5,6 @@ from __future__ import annotations
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any
 
 from shapez2_factory.adapters.asteroid_lab.cli_console import emit_cli_line
 
@@ -21,12 +20,12 @@ def cli_invoke_trace(
     surface: str,
     command: str,
     slug: str,
-) -> Iterator[dict[str, Any]]:
+) -> Iterator[dict[str, object]]:
     """Emit BA-9 start/end lines for a Django solver invocation."""
 
     emit_cli_line(f"{command} start", surface=surface, slug=slug)
     started = time.monotonic()
-    fields: dict[str, Any] = {
+    fields: dict[str, object] = {
         "exit": 1,
         "ok": False,
     }

@@ -8,7 +8,6 @@ re-exports this name for backward compatibility.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,7 +24,7 @@ class DecodedCellDTO:
     has_nested_blueprint: bool
     nested_entry_count: int
     nested_type_counts_json: dict[str, int]
-    raw_entry_json: dict[str, Any]
+    raw_entry_json: dict[str, object]
 
 
 __all__ = ["DecodedCellDTO"]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Literal
+from typing import Literal
 
 from django_apps.shapez_solver.domain.operation_catalog import OPERATION_CATALOG
 from django_apps.shapez_solver.domain.operations import OperationType
@@ -21,14 +21,14 @@ from django_apps.shapez_solver.view_graph_serialization import (
 )
 
 
-def _normalize_shape_role(role_raw: Any) -> str:
+def _normalize_shape_role(role_raw: object) -> str:
     role = str(role_raw or "intermediate")
     if role in ("source", "intermediate", "target"):
         return role
     return "intermediate"
 
 
-def _graph_node_doc_to_solver(n: dict[str, Any]) -> SolverShapeNode | SolverOperationNode:
+def _graph_node_doc_to_solver(n: dict[str, object]) -> SolverShapeNode | SolverOperationNode:
     if n.get("kind") == "shape":
         role = _normalize_shape_role(n.get("role"))
         code = str(n.get("shape_code", "")).strip()
@@ -72,7 +72,7 @@ def _graph_node_doc_to_solver(n: dict[str, Any]) -> SolverShapeNode | SolverOper
     )
 
 
-def _edge_doc_to_solver_edge(e: dict[str, Any]) -> SolverGraphEdge | None:
+def _edge_doc_to_solver_edge(e: dict[str, object]) -> SolverGraphEdge | None:
     k = str(e.get("kind", ""))
     if k not in ("input", "output", "delivery"):
         return None
@@ -85,7 +85,7 @@ def _edge_doc_to_solver_edge(e: dict[str, Any]) -> SolverGraphEdge | None:
     )
 
 
-def _solver_graph_from_validated_document(v: dict[str, Any]) -> SolverGraph:
+def _solver_graph_from_validated_document(v: dict[str, object]) -> SolverGraph:
     """``validate_graph_document`` 결과 dict만 받는다(추가 검증·deepcopy 없음)."""
     nodes_out = [_graph_node_doc_to_solver(n) for n in v["nodes"]]
     edges_out: list[SolverGraphEdge] = []
@@ -96,13 +96,13 @@ def _solver_graph_from_validated_document(v: dict[str, Any]) -> SolverGraph:
     return SolverGraph(nodes=tuple(nodes_out), edges=tuple(edges_out))
 
 
-def document_to_solver_graph(doc: dict[str, Any]) -> SolverGraph:
+def document_to_solver_graph(doc: dict[str, object]) -> SolverGraph:
     """graph_document JSON을 검증한 뒤 SolverGraph DTO로 변환한다."""
     v = validate_graph_document(doc)
     return _solver_graph_from_validated_document(v)
 
 
-def _collect_node_xy(nodes: list[Any]) -> dict[str, tuple[float, float]]:
+def _collect_node_xy(nodes: list[object]) -> dict[str, tuple[float, float]]:
     node_xy: dict[str, tuple[float, float]] = {}
     for n in nodes:
         nid = str(n.get("id", ""))
@@ -125,7 +125,7 @@ def _macro_payload_for_node(
     renderer: GraphPreviewRenderer,
     *,
     sync_png: bool = True,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     if isinstance(node, SolverShapeNode) and not str(node.shape_code).strip():
         return {
             "id": node.id,
@@ -140,16 +140,16 @@ def _macro_payload_for_node(
 
 
 def serialize_macro_recipe_visual(
-    doc: dict[str, Any],
+    doc: dict[str, object],
     *,
     sync_png: bool = True,
     preview_renderer: GraphPreviewRenderer,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """graph_document를 ``renderSolverGraph`` / ``mountGraph``가 기대하는 JSON으로 직렬화한다."""
     v = validate_graph_document(doc)
     graph = _solver_graph_from_validated_document(v)
     node_xy = _collect_node_xy(v["nodes"])
-    nodes_payload: list[dict[str, Any]] = []
+    nodes_payload: list[dict[str, object]] = []
     for node in graph.nodes:
         payload = _macro_payload_for_node(node, preview_renderer, sync_png=sync_png)
         xy = node_xy.get(str(node.id))
@@ -165,10 +165,10 @@ def serialize_macro_recipe_visual(
 
 
 def _load_macro_visual_payload(
-    graph_doc: dict[str, Any],
-    macro_visual: dict[str, Any] | None,
+    graph_doc: dict[str, object],
+    macro_visual: dict[str, object] | None,
     preview_renderer: GraphPreviewRenderer,
-) -> dict[str, Any] | None:
+) -> dict[str, object] | None:
     try:
         if isinstance(macro_visual, dict):
             return macro_visual
@@ -177,8 +177,8 @@ def _load_macro_visual_payload(
         return None
 
 
-def _build_shape_overlay_entry_fields(item: dict[str, Any]) -> dict[str, Any]:
-    entry: dict[str, Any] = {}
+def _build_shape_overlay_entry_fields(item: dict[str, object]) -> dict[str, object]:
+    entry: dict[str, object] = {}
     ps = item.get("preview_scene")
     if isinstance(ps, dict):
         entry["preview_scene"] = ps
@@ -197,8 +197,8 @@ def _build_shape_overlay_entry_fields(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _shape_overlay_pair_from_visual_item(
-    item: dict[str, Any],
-) -> tuple[str, dict[str, Any]] | None:
+    item: dict[str, object],
+) -> tuple[str, dict[str, object]] | None:
     if str(item.get("kind", "")) != "shape":
         return None
     nid = str(item.get("id") or "")
@@ -211,13 +211,13 @@ def _shape_overlay_pair_from_visual_item(
 
 
 def _shape_visual_overlay_by_node_id(
-    visual: dict[str, Any],
-) -> dict[str, dict[str, Any]]:
+    visual: dict[str, object],
+) -> dict[str, dict[str, object]]:
     """Wire 노드(kind=shape)의 PNG URL·scene·alt를 React 노드 id 기준으로 묶는다."""
     vn = visual.get("nodes")
     if not isinstance(vn, list):
         return {}
-    out: dict[str, dict[str, Any]] = {}
+    out: dict[str, dict[str, object]] = {}
     for item in vn:
         if not isinstance(item, dict):
             continue
@@ -230,16 +230,16 @@ def _shape_visual_overlay_by_node_id(
 
 
 def _merge_preview_into_react_node(
-    n: dict[str, Any],
-    overlay_by_id: dict[str, dict[str, Any]],
-) -> dict[str, Any]:
+    n: dict[str, object],
+    overlay_by_id: dict[str, dict[str, object]],
+) -> dict[str, object]:
     nid = str(n.get("id") or "")
     ntype = str(n.get("type") or "")
     if nid not in overlay_by_id or ntype not in ("shape", "intermediate", "output"):
         return n
     overlay = overlay_by_id[nid]
     data_raw = n.get("data")
-    merged: dict[str, Any] = dict(data_raw) if isinstance(data_raw, dict) else {}
+    merged: dict[str, object] = dict(data_raw) if isinstance(data_raw, dict) else {}
     if "preview_scene" in overlay:
         merged["preview_scene"] = overlay["preview_scene"]
     if "preview_image_url" in overlay:
@@ -256,12 +256,12 @@ def _merge_preview_into_react_node(
 
 
 def enrich_react_flow_with_macro_visual_previews(
-    react_flow: dict[str, Any],
-    graph_doc: dict[str, Any],
+    react_flow: dict[str, object],
+    graph_doc: dict[str, object],
     *,
     preview_renderer: GraphPreviewRenderer,
-    macro_visual: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+    macro_visual: dict[str, object] | None = None,
+) -> dict[str, object]:
     """React Flow 스냅샷에 macro visual 미리보기(PNG URL, preview_scene, alt)를 합친다."""
     nodes = react_flow.get("nodes")
     if not isinstance(nodes, list):
@@ -272,7 +272,7 @@ def enrich_react_flow_with_macro_visual_previews(
     overlay_by_id = _shape_visual_overlay_by_node_id(visual)
     if not overlay_by_id:
         return react_flow
-    new_nodes: list[Any] = []
+    new_nodes: list[object] = []
     for n in nodes:
         if not isinstance(n, dict):
             new_nodes.append(n)

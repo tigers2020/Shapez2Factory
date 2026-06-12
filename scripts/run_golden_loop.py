@@ -20,7 +20,6 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 _REPO = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = _REPO / "var" / "experiments" / "golden_loop"
@@ -33,7 +32,7 @@ class GoldenLoopRunConfig:
     speed_tier: int = 1
 
 
-def _gene_seeds_entry_count(seeds: Any) -> int:
+def _gene_seeds_entry_count(seeds: object) -> int:
     entries = getattr(seeds, "entries", None)
     if isinstance(entries, (list, tuple)):
         return len(entries)
@@ -57,7 +56,7 @@ def build_config_grid(
     )
 
 
-def _eval_record_dict(result: Any) -> dict[str, Any]:
+def _eval_record_dict(result: object) -> dict[str, object]:
     payload = asdict(result)
     payload["diagnostics"] = list(result.diagnostics)
     return payload
@@ -67,7 +66,7 @@ def _load_genetic_sample_seeds_for_loop(
     gene_seeds_source: str,
     *,
     gene_seeds_db_scope: str = "admin",
-) -> tuple[Any, dict[str, object] | None]:
+) -> tuple[object, dict[str, object] | None]:
     if gene_seeds_source == "fixture":
         from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures import (
             load_genetic_sample_seeds,
@@ -106,7 +105,7 @@ def run_golden_loop(
     gene_seeds_source: str = "fixture",
     gene_seeds_db_scope: str = "admin",
     now_fn: Callable[[], datetime] | None = None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Run the golden fixture loop and write JSON artifacts under ``out_dir``."""
 
     sys.path.insert(0, str(_REPO))
@@ -159,11 +158,11 @@ def run_golden_loop(
     runs_path = out / "runs.jsonl"
     failure_patterns: dict[str, int] = {}
     best_valid_score = float("-inf")
-    best_valid_record: dict[str, Any] | None = None
-    best_valid_artifacts: Any | None = None
+    best_valid_record: dict[str, object] | None = None
+    best_valid_artifacts: object | None = None
     best_any_score = float("-inf")
-    best_any_record: dict[str, Any] | None = None
-    run_records: list[dict[str, Any]] = []
+    best_any_record: dict[str, object] | None = None
+    run_records: list[dict[str, object]] = []
 
     with runs_path.open("w", encoding="utf-8") as runs_file:
         for loop_config in grid:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from django_apps.shapez_core.domain.shape_catalog import (
     COLOR_KINDS,
@@ -31,8 +30,8 @@ def get_color_catalog_rows() -> list[ColorKind]:
     return sorted(COLOR_KINDS.values(), key=lambda color_kind: (color_kind.empty, color_kind.code))
 
 
-def build_demo_parse_rows(try_code: str, fixed_samples: tuple[str, ...]) -> list[dict[str, Any]]:
-    parse_rows: list[dict[str, Any]] = []
+def build_demo_parse_rows(try_code: str, fixed_samples: tuple[str, ...]) -> list[dict[str, object]]:
+    parse_rows: list[dict[str, object]] = []
     if try_code:
         parse_rows.append(build_demo_parse_row(try_code))
 
@@ -43,7 +42,7 @@ def build_demo_parse_rows(try_code: str, fixed_samples: tuple[str, ...]) -> list
     return parse_rows
 
 
-def build_shape_preview_response(code: str) -> tuple[dict[str, Any], int]:
+def build_shape_preview_response(code: str) -> tuple[dict[str, object], int]:
     stripped_code = code.strip()
     if not stripped_code:
         return (
@@ -71,7 +70,7 @@ def build_shape_preview_response(code: str) -> tuple[dict[str, Any], int]:
         )
 
     warnings: list[str] = []
-    patterns_payload: list[dict[str, Any]] = []
+    patterns_payload: list[dict[str, object]] = []
     for pattern in row["patterns"]:
         if pattern["raw_code"] != pattern["normalized_code"]:
             warnings.append(
@@ -91,10 +90,10 @@ def build_shape_preview_response(code: str) -> tuple[dict[str, Any], int]:
     )
 
 
-def build_demo_parse_row(code: str) -> dict[str, Any]:
+def build_demo_parse_row(code: str) -> dict[str, object]:
     try:
         patterns = parse_shape_code_list(code)
-        pattern_rows: list[dict[str, Any]] = []
+        pattern_rows: list[dict[str, object]] = []
         for pattern in patterns:
             scene = build_shape_render_scene(pattern)
             serialized_scene = serialize_render_scene(scene)
@@ -120,7 +119,7 @@ def build_demo_parse_row(code: str) -> dict[str, Any]:
         }
 
 
-def _serialize_pattern(pattern: NormalizedShapePattern) -> dict[str, Any]:
+def _serialize_pattern(pattern: NormalizedShapePattern) -> dict[str, object]:
     return {
         "raw_code": pattern.raw_code,
         "normalized_code": pattern.normalized_code,

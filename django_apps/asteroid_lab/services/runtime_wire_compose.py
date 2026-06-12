@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
@@ -63,7 +62,7 @@ class RuntimeWireLoadResult:
     ok: bool
     degraded_reason: str | None
     diagnostic_severity: str
-    document: dict[str, Any] | None
+    document: dict[str, object] | None
     bundle: RuntimeWiresProjectionBundle | None
 
 
@@ -85,13 +84,13 @@ def _resolve_artifact_path(root: Path, relpath: str) -> Path | None:
 
 
 def _truncate_layers_for_projection(
-    document: dict[str, Any],
-) -> tuple[dict[str, Any], str | None]:
+    document: dict[str, object],
+) -> tuple[dict[str, object], str | None]:
     layers_raw = document.get("layers")
     if not isinstance(layers_raw, dict):
         return document, None
 
-    truncated_layers: dict[str, Any] = {}
+    truncated_layers: dict[str, object] = {}
     diagnostic_reason: str | None = None
     for slug in _LAYER_SLUGS_IN_ORDER:
         layer_wire = layers_raw.get(slug)
@@ -114,7 +113,7 @@ def _truncate_layers_for_projection(
     return {**document, "layers": truncated_layers}, diagnostic_reason
 
 
-def _deserialize_truncated_bundle(document: dict[str, Any]) -> RuntimeWiresProjectionBundle:
+def _deserialize_truncated_bundle(document: dict[str, object]) -> RuntimeWiresProjectionBundle:
     layers = document.get("layers")
     if not isinstance(layers, dict):
         return RuntimeWiresProjectionBundle(
@@ -124,7 +123,7 @@ def _deserialize_truncated_bundle(document: dict[str, Any]) -> RuntimeWiresProje
             route_plan=None,
         )
 
-    exterior_plan_wire: dict[str, Any] | None = None
+    exterior_plan_wire: dict[str, object] | None = None
     l2 = layers.get(LAYER_02_EXTERIOR_TRANSPORT)
     if isinstance(l2, dict):
         plan = l2.get("exterior_connector_plan")
@@ -257,11 +256,11 @@ def load_and_validate_runtime_wires(
 def compose_lab_replay_frames_from_runtime_wires(
     *,
     complete_map: ReconstructionCompleteMap,
-    wires_doc: dict[str, Any],
+    wires_doc: dict[str, object],
     bundle: RuntimeWiresProjectionBundle,
     diagnostic_reason: str | None = None,
     diagnostic_severity: str = "none",
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Project validated runtime wires via assembler (no solver layer execution)."""
 
     transport_summary = wires_doc.get("transport_summary")
@@ -303,7 +302,7 @@ def compose_lab_replay_frames_from_runtime_wires(
     return frames
 
 
-def wire_content_hash_from_document(document: dict[str, Any]) -> str | None:
+def wire_content_hash_from_document(document: dict[str, object]) -> str | None:
     import hashlib
 
     try:

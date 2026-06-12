@@ -2,32 +2,45 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.asteroid_lab.replay.effective_cell_view import (
     effective_cell_to_wire,
     merge_effective_cell_view,
 )
+from django_apps.asteroid_lab.replay.effective_cell_wire import EffectiveCellWire
+from django_apps.asteroid_lab.typing_boundary import JsonObject
 
 
-def _xy_match(row: Any, x: int, y: int) -> bool:
+def _row_int(value: object) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (float, str)):
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return 0
+    return 0
+
+
+def _xy_match(row: object, x: int, y: int) -> bool:
     if not isinstance(row, dict):
         return False
     try:
-        return int(row["x"]) == x and int(row["y"]) == y
-    except (KeyError, TypeError, ValueError):
+        return _row_int(row["x"]) == x and _row_int(row["y"]) == y
+    except KeyError:
         return False
 
 
-def _append_cells(out: list[dict[str, Any]], lst: Any) -> None:
+def _append_cells(out: list[JsonObject], lst: object) -> None:
     if not isinstance(lst, list):
         return
     for c in lst:
         if isinstance(c, dict):
-            out.append(c)
+            out.append(dict(c))
 
 
-def _push_from_blocks(out: list[dict[str, Any]], blocks: Any) -> None:
+def _push_from_blocks(out: list[JsonObject], blocks: object) -> None:
     if not isinstance(blocks, list):
         return
     for block in blocks:
@@ -37,11 +50,11 @@ def _push_from_blocks(out: list[dict[str, Any]], blocks: Any) -> None:
         if isinstance(cells, list):
             _append_cells(out, cells)
         elif block.get("x") is not None and block.get("y") is not None:
-            out.append(block)
+            out.append(dict(block))
 
 
-def _collect_overlay_cells(overlay: dict[str, Any]) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
+def _collect_overlay_cells(overlay: JsonObject) -> list[JsonObject]:
+    out: list[JsonObject] = []
     _append_cells(out, overlay.get("cells"))
     _append_cells(out, overlay.get("equipment_cells"))
     _append_cells(out, overlay.get("equipment"))
@@ -55,7 +68,7 @@ def _collect_overlay_cells(overlay: dict[str, Any]) -> list[dict[str, Any]]:
         if isinstance(cj, list):
             _append_cells(out, cj)
         elif main.get("x") is not None and main.get("y") is not None:
-            out.append(main)
+            out.append(dict(main))
     _append_cells(out, overlay.get("cleanup_candidate_cells"))
 
     handled = frozenset(
@@ -80,40 +93,40 @@ def _collect_overlay_cells(overlay: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-def _cells_at_xy(cells: list[dict[str, Any]], x: int, y: int) -> list[dict[str, Any]]:
+def _cells_at_xy(cells: list[JsonObject], x: int, y: int) -> list[JsonObject]:
     return [c for c in cells if _xy_match(c, x, y)]
 
 
-def _merge_layers(layers: list[dict[str, Any]]) -> dict[str, Any]:
-    merged: dict[str, Any] = {}
+def _merge_layers(layers: list[JsonObject]) -> JsonObject:
+    merged: JsonObject = {}
     for d in layers:
         merged.update(d)
     return merged
 
 
-def _bbox_blocks(ser: dict[str, Any]) -> list[dict[str, Any]]:
-    blocks: list[dict[str, Any]] = []
+def _bbox_blocks(ser: JsonObject) -> list[JsonObject]:
+    blocks: list[JsonObject] = []
     for key in ("summary", "metric_snapshot_json"):
         block = ser.get(key)
         if isinstance(block, dict):
             bb = block.get("bbox")
             if isinstance(bb, dict):
-                blocks.append(bb)
+                blocks.append(dict(bb))
     return blocks
 
 
-def _island_bbox_from_serialized(ser: dict[str, Any]) -> dict[str, int] | None:
+def _island_bbox_from_serialized(ser: JsonObject) -> dict[str, int] | None:
     """Island-local min/max x/y from replay frame bbox (PR-F preferred)."""
 
     for bb in _bbox_blocks(ser):
         try:
             return {
-                "min_x": int(bb["min_x"]),
-                "max_x": int(bb["max_x"]),
-                "min_y": int(bb["min_y"]),
-                "max_y": int(bb["max_y"]),
+                "min_x": _row_int(bb["min_x"]),
+                "max_x": _row_int(bb["max_x"]),
+                "min_y": _row_int(bb["min_y"]),
+                "max_y": _row_int(bb["max_y"]),
             }
-        except (KeyError, TypeError, ValueError):
+        except KeyError:
             continue
     return None
 
@@ -121,7 +134,7 @@ def _island_bbox_from_serialized(ser: dict[str, Any]) -> dict[str, int] | None:
 def _lab_empty_synthetic_cell(
     x: int,
     y: int,
-) -> dict[str, Any]:
+) -> JsonObject:
     return {
         "x": int(x),
         "y": int(y),
@@ -135,8 +148,8 @@ def _lab_empty_synthetic_cell(
 
 
 def _try_synthetic_lab_empty(
-    ser: dict[str, Any], x: int, y: int
-) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    ser: JsonObject, x: int, y: int
+) -> tuple[JsonObject | None, dict[str, object]]:
     """Lab UI only: slot inside frame bbox with no persisted row (not solver input)."""
 
     island_bb = _island_bbox_from_serialized(ser)
@@ -154,18 +167,18 @@ def _try_synthetic_lab_empty(
 
 
 def lookup_effective_cell_in_serialized_frame(
-    ser: dict[str, Any], x: int, y: int
-) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    ser: JsonObject, x: int, y: int
+) -> tuple[EffectiveCellWire | None, dict[str, object]]:
     """Merge full_map / diff / overlay into one EffectiveCellView wire payload."""
 
-    sources: dict[str, Any] = {}
-    full_cells: list[dict[str, Any]] = []
-    delta_cell: dict[str, Any] | None = None
-    overlay_matches: list[dict[str, Any]] = []
+    sources: dict[str, object] = {}
+    full_cells: list[JsonObject] = []
+    delta_cell: JsonObject | None = None
+    overlay_matches: list[JsonObject] = []
 
     ov2 = ser.get("cell_overlay_json")
     if isinstance(ov2, dict):
-        overlay_cells = _collect_overlay_cells(ov2)
+        overlay_cells = _collect_overlay_cells(dict(ov2))
         overlay_matches = [dict(m) for m in _cells_at_xy(overlay_cells, x, y)]
         if overlay_matches:
             sources["overlay_cells_matched"] = len(overlay_matches)
@@ -182,28 +195,39 @@ def lookup_effective_cell_in_serialized_frame(
 
         diff = ser.get("diff")
         if isinstance(diff, dict):
-            for c in diff.get("added") or []:
-                if isinstance(c, dict) and _xy_match(c, x, y):
-                    sources["diff_added"] = c
-                    delta_cell = dict(c)
-            for item in diff.get("changed") or []:
-                if isinstance(item, dict):
-                    after = item.get("after")
-                    if isinstance(after, dict) and _xy_match(after, x, y):
-                        sources["diff_changed_after"] = after
-                        delta_cell = dict(after)
-            for c in diff.get("removed") or []:
-                if isinstance(c, dict) and _xy_match(c, x, y):
-                    sources["diff_removed"] = c
-                    if delta_cell is None:
+            added = diff.get("added")
+            if isinstance(added, list):
+                for c in added:
+                    if isinstance(c, dict) and _xy_match(c, x, y):
+                        sources["diff_added"] = c
                         delta_cell = dict(c)
+            changed = diff.get("changed")
+            if isinstance(changed, list):
+                for item in changed:
+                    if isinstance(item, dict):
+                        after = item.get("after")
+                        if isinstance(after, dict) and _xy_match(after, x, y):
+                            sources["diff_changed_after"] = after
+                            delta_cell = dict(after)
+            removed = diff.get("removed")
+            if isinstance(removed, list):
+                for c in removed:
+                    if isinstance(c, dict) and _xy_match(c, x, y):
+                        sources["diff_removed"] = c
+                        if delta_cell is None:
+                            delta_cell = dict(c)
 
     frame_index_raw = ser.get("frame_index")
     frame_index: int | None
-    try:
-        frame_index = int(frame_index_raw) if frame_index_raw is not None else None
-    except (TypeError, ValueError):
+    if frame_index_raw is None:
         frame_index = None
+    elif isinstance(frame_index_raw, bool) or not isinstance(frame_index_raw, (int, str, float)):
+        frame_index = None
+    else:
+        try:
+            frame_index = int(frame_index_raw)
+        except (TypeError, ValueError):
+            frame_index = None
 
     view = None
     for full_cell in full_cells:
@@ -243,8 +267,8 @@ def lookup_effective_cell_in_serialized_frame(
 
 
 def lookup_cell_in_serialized_frame(
-    ser: dict[str, Any], x: int, y: int
-) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    ser: JsonObject, x: int, y: int
+) -> tuple[JsonObject | None, dict[str, object]]:
     """Deprecated flat merge; prefer ``lookup_effective_cell_in_serialized_frame``."""
 
     effective, sources = lookup_effective_cell_in_serialized_frame(ser, x, y)
@@ -262,7 +286,7 @@ def lookup_cell_in_serialized_frame(
             tile = block.get("tile_type") or block.get("sprite_identifier")
             if tile:
                 raw_tile_type = str(tile)
-    flat: dict[str, Any] = {
+    flat: JsonObject = {
         "x": effective["coord"]["x"],
         "y": effective["coord"]["y"],
         "layer": effective["coord"]["layer"],

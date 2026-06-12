@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-from typing import Any
 
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
@@ -25,6 +24,25 @@ LAYER02_EVENT_TYPE = ReplayEventType.EXTERIOR_TRANSPORT_COMPLETED
 LAYER02_INSPECTOR_STEP = "layer_02_exterior_transport"
 
 
+def _row_coord(value: object) -> int:
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (float, str)):
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return 0
+    return 0
+
+
+def _as_object_dict(value: object) -> dict[str, object]:
+    if isinstance(value, dict):
+        return dict(value)
+    return {}
+
+
 def map_view_from_complete_map(complete_map: ReconstructionCompleteMap) -> ReplayMapView:
     rows = _display_rows_from_complete_map(complete_map)
     return replay_map_view_from_json_dict(
@@ -41,7 +59,7 @@ def map_view_from_complete_map(complete_map: ReconstructionCompleteMap) -> Repla
 
 def _display_rows_from_complete_map(
     complete_map: ReconstructionCompleteMap,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     if complete_map.cells:
         return [_decoded_cell_to_row(cell) for cell in complete_map.cells]
     return [
@@ -57,7 +75,7 @@ def _display_rows_from_complete_map(
     ]
 
 
-def _decoded_cell_to_row(cell: DecodedCellDTO) -> dict[str, Any]:
+def _decoded_cell_to_row(cell: DecodedCellDTO) -> dict[str, object]:
     return {
         "x": int(cell.x),
         "y": int(cell.y),
@@ -68,9 +86,9 @@ def _decoded_cell_to_row(cell: DecodedCellDTO) -> dict[str, Any]:
     }
 
 
-def _bbox_from_rows(rows: list[dict[str, Any]]) -> dict[str, int]:
-    xs = [int(r["x"]) for r in rows if "x" in r]
-    ys = [int(r["y"]) for r in rows if "y" in r]
+def _bbox_from_rows(rows: list[dict[str, object]]) -> dict[str, int]:
+    xs = [_row_coord(r["x"]) for r in rows if "x" in r]
+    ys = [_row_coord(r["y"]) for r in rows if "y" in r]
     if not xs:
         return {"min_x": 0, "min_y": 0, "max_x": 0, "max_y": 0}
     return {"min_x": min(xs), "min_y": min(ys), "max_x": max(xs), "max_y": max(ys)}
@@ -79,16 +97,19 @@ def _bbox_from_rows(rows: list[dict[str, Any]]) -> dict[str, int]:
 def build_layer02_timeline_frame_wire_dict(
     *,
     plan_wire: dict[str, object],
-    source_frame: dict[str, Any] | None,
+    source_frame: dict[str, object] | None,
     complete_map: ReconstructionCompleteMap | None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Wire dict for one L2 append milestone (L1 full map + connector overlay)."""
 
     planned_overlay = planned_connector_overlays_from_wire(plan_wire)
     if source_frame is not None:
         base = copy.deepcopy(source_frame)
-        map_view = copy.deepcopy(base.get("map_view") or {})
-        full_cells = list(map_view.get("full_cells") or [])
+        map_view: dict[str, object] = copy.deepcopy(_as_object_dict(base.get("map_view")))
+        full_cells_raw = map_view.get("full_cells")
+        full_cells: list[dict[str, object]] = []
+        if isinstance(full_cells_raw, list):
+            full_cells = [dict(row) for row in full_cells_raw if isinstance(row, dict)]
         if not full_cells and complete_map is not None:
             full_cells = _display_rows_from_complete_map(complete_map)
             map_view["full_cells"] = full_cells
@@ -109,16 +130,19 @@ def build_layer02_timeline_frame_wire_dict(
         raise ValueError(msg)
 
     connector_coords = _connector_coord_keys(plan_wire)
+    overlay_raw = map_view.get("overlay_cells")
+    overlay_source = overlay_raw if isinstance(overlay_raw, list) else []
     overlay = [
         row
-        for row in (map_view.get("overlay_cells") or [])
+        for row in overlay_source
         if not (isinstance(row, dict) and row.get("overlay_role") == OVERLAY_ROLE)
     ]
     overlay = _overlay_without_connector_coord_duplicates(overlay, connector_coords)
     overlay.extend(planned_overlay)
     map_view["overlay_cells"] = overlay
 
-    metrics = dict(base.get("metrics") or {})
+    metrics_raw = base.get("metrics")
+    metrics: dict[str, object] = dict(metrics_raw) if isinstance(metrics_raw, dict) else {}
     metrics[METRICS_KEY] = plan_wire
 
     planned_count = plan_wire.get("planned_connector_count")
@@ -150,7 +174,7 @@ def build_layer02_timeline_frame_wire_dict(
 def build_layer02_exterior_transport_frame(
     *,
     plan_wire: dict[str, object],
-    source_frame: dict[str, Any] | None,
+    source_frame: dict[str, object] | None,
     complete_map: ReconstructionCompleteMap | None,
 ) -> ReplayTimelineFrame:
     wire = build_layer02_timeline_frame_wire_dict(

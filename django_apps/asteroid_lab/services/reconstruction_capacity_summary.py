@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
     acceptance_topology_from_complete_map,
@@ -32,7 +31,7 @@ def build_reconstruction_capacity_summary(
     *,
     complete_map: ReconstructionCompleteMap,
     resource_kind: str,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Terrain upper bound; platform count from complete map field cells only."""
 
     rule = get_active_rule(resource_kind)
@@ -54,7 +53,7 @@ def build_reconstruction_capacity_summary(
 def build_reconstruction_capacity_envelope(
     *,
     complete_map: ReconstructionCompleteMap,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     by_resource = count_asteroid_field_cells_by_resource(complete_map)
     present = detect_present_resource_kinds(complete_map)
     return {
@@ -79,11 +78,11 @@ def build_reconstruction_observability(
     *,
     recon: ReconstructionResult,
     complete_map: ReconstructionCompleteMap,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     topo = acceptance_topology_from_complete_map(complete_map)
     field_total = len(complete_map.field_cells)
     rim_cell_count = len(field_rim_cells(complete_map.field_cells))
-    obs: dict[str, Any] = {
+    obs: dict[str, object] = {
         "cell_count": len(recon.cells),
         "display_cell_count": len(complete_map.cells),
         "rim_cell_count": rim_cell_count,

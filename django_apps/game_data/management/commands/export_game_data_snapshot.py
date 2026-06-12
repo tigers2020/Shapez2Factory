@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 
@@ -24,7 +23,7 @@ class Command(BaseCommand):
             help="Output path for the snapshot JSON file.",
         )
 
-    def handle(self, *args: Any, **options: Any) -> None:
+    def handle(self, *args: object, **options: object) -> None:
         out_path = Path(options["out"])
         try:
             payload = build_game_data_snapshot_payload()

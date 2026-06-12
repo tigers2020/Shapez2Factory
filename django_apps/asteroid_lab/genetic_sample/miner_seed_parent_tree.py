@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import Any
 
 from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
 
@@ -17,10 +16,10 @@ ISLAND_DIRS: tuple[tuple[str, int, int], ...] = (
     ("w", -1, 0),
 )
 
-EquipmentNodes = dict[tuple[int, int], dict[str, Any]]
+EquipmentNodes = dict[tuple[int, int], dict[str, object]]
 
 
-def entries(root: dict[str, Any]) -> list[dict[str, Any]]:
+def entries(root: dict[str, object]) -> list[dict[str, object]]:
     bp = root.get("BP")
     if not isinstance(bp, dict):
         return []
@@ -28,7 +27,7 @@ def entries(root: dict[str, Any]) -> list[dict[str, Any]]:
     return [e for e in raw if isinstance(e, dict)] if isinstance(raw, list) else []
 
 
-def equipment_nodes(root: dict[str, Any]) -> tuple[tuple[int, int], EquipmentNodes]:
+def equipment_nodes(root: dict[str, object]) -> tuple[tuple[int, int], EquipmentNodes]:
     """Return (miner_xy, nodes) for miner + extensions; belts excluded."""
 
     miner_xy: tuple[int, int] | None = None

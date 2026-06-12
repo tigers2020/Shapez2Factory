@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Literal
 
 from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
     encode_official_copy_string,
@@ -51,7 +52,7 @@ def abstract_grid_to_raw_xy(gx: int, gy: int) -> tuple[int, int]:
     return (rx, gy)
 
 
-def assert_blueprint_entries_raw_x_nonzero(entries: list[dict[str, Any]]) -> None:
+def assert_blueprint_entries_raw_x_nonzero(entries: list[dict[str, object]]) -> None:
     """Fail fast if any top-level entry would use forbidden raw ``X == 0``."""
 
     for row in entries:
@@ -78,9 +79,9 @@ class GeneratedSampleGene:
     extension_count: int
     nodes: tuple[SampleGeneNode, ...]
     transport_cells: tuple[GridCoord, ...]
-    layout_json: dict[str, Any]
+    layout_json: dict[str, object]
     encoded_copy_string: str
-    metadata: dict[str, Any]
+    metadata: dict[str, object]
 
 
 @dataclass
@@ -108,7 +109,7 @@ def canonical_gene_key(
     return json.dumps(payload, separators=(",", ":"), sort_keys=True)
 
 
-def _enumerate_extension_placements(k: int) -> Any:
+def _enumerate_extension_placements(k: int) -> Iterator[list[dict[str, object]]]:
     """Yield lists of extension dicts (id, coord, parent_id, parent_coord, attach_dir)."""
 
     if k < 0:
@@ -119,7 +120,7 @@ def _enumerate_extension_placements(k: int) -> Any:
 
     occupied_base: set[GridCoord] = {EXTRACTOR_GRID, OUTPUT_TRANSPORT_GRID}
 
-    def rec(exts: list[dict[str, Any]]) -> Any:
+    def rec(exts: list[dict[str, object]]) -> Iterator[list[dict[str, object]]]:
         if len(exts) == k:
             yield list(exts)
             return
@@ -151,7 +152,7 @@ def _enumerate_extension_placements(k: int) -> Any:
     yield from rec([])
 
 
-def _edges_from_exts(exts: list[dict[str, Any]]) -> list[tuple[GridCoord, GridCoord, AttachDir]]:
+def _edges_from_exts(exts: list[dict[str, object]]) -> list[tuple[GridCoord, GridCoord, AttachDir]]:
     out: list[tuple[GridCoord, GridCoord, AttachDir]] = []
     for e in exts:
         pa = tuple(e["parent_coord"])
@@ -220,7 +221,7 @@ def _extension_cell_kind(transport_kind: TransportKind) -> str:
 
 
 def compute_extension_rotations_by_parent(
-    exts: list[dict[str, Any]],
+    exts: list[dict[str, object]],
     *,
     transport_kind: TransportKind,
 ) -> dict[str, int]:
@@ -258,7 +259,7 @@ def compute_extension_rotations_by_parent(
     return ext_rot
 
 
-def _build_nodes(exts: list[dict[str, Any]]) -> tuple[SampleGeneNode, ...]:
+def _build_nodes(exts: list[dict[str, object]]) -> tuple[SampleGeneNode, ...]:
     nodes: list[SampleGeneNode] = [
         SampleGeneNode("E0", "extractor", EXTRACTOR_GRID, None, None),
     ]
@@ -276,8 +277,8 @@ def _build_nodes(exts: list[dict[str, Any]]) -> tuple[SampleGeneNode, ...]:
 
 
 def build_layout_root(
-    *, transport_kind: TransportKind, exts: list[dict[str, Any]]
-) -> dict[str, Any]:
+    *, transport_kind: TransportKind, exts: list[dict[str, object]]
+) -> dict[str, object]:
     if transport_kind == "belt":
         miner_t = "Layout_ShapeMiner"
         ext_t = "Layout_ShapeMinerExtension"
@@ -287,7 +288,7 @@ def build_layout_root(
         ext_t = "Layout_FluidMinerExtension"
         transport_t = "SpacePipe_Forward"
 
-    entries: list[dict[str, Any]] = []
+    entries: list[dict[str, object]] = []
     rx, ry = abstract_grid_to_raw_xy(*EXTRACTOR_GRID)
     entries.append({"X": rx, "Y": ry, "R": 0, "T": miner_t})
     ext_rots = compute_extension_rotations_by_parent(exts, transport_kind=transport_kind)
@@ -302,7 +303,7 @@ def build_layout_root(
     return {"V": 1, "BP": {"$type": "Island", "Entries": entries}}
 
 
-def encode_layout_with_suffix(layout: dict[str, Any]) -> str:
+def encode_layout_with_suffix(layout: dict[str, object]) -> str:
     return encode_official_copy_string(to_official_island_root(layout)) + "$"
 
 
@@ -316,7 +317,7 @@ def build_metadata(
     transport_kind: TransportKind,
     extension_count: int,
     gene_key: str,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     return {
         "generator": generator_version,
         "output_dir": "R",

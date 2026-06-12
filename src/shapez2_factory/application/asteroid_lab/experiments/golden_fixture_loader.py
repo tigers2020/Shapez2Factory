@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.cell_classifier import classify_blueprint_entry
 from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string
@@ -17,6 +16,7 @@ from shapez2_factory.domain.asteroid_lab.copy_json_coords import (
 )
 from shapez2_factory.domain.asteroid_lab.normalization import normalize_decoded_blueprint
 from shapez2_factory.domain.asteroid_lab.service_dtos import NormalizedBlueprintDTO
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_dict, wire_int, wire_list
 
 _EXTRACTOR_TILES = frozenset({"Layout_ShapeMiner", "Layout_FluidMiner", "Layout_ProMiner"})
 _EXTENSION_TILES = frozenset(
@@ -46,17 +46,17 @@ def load_shapez_copy_string(path: Path | str) -> str:
     return line.removesuffix("$")
 
 
-def normalize_blueprint_entries(bp_root: dict[str, Any]) -> NormalizedBlueprintDTO:
+def normalize_blueprint_entries(bp_root: dict[str, object]) -> NormalizedBlueprintDTO:
     from shapez2_factory.domain.asteroid_lab.service_dtos import RawDecodedBlueprintDTO
 
     return normalize_decoded_blueprint(RawDecodedBlueprintDTO(root=bp_root))
 
 
-def summarize_blueprint(bp_root: dict[str, Any]) -> dict[str, Any]:
+def summarize_blueprint(bp_root: dict[str, object]) -> dict[str, object]:
     """Return summary dict including per-tile-type counts and bbox list."""
 
     norm = normalize_blueprint_entries(bp_root)
-    summary = dict(norm.decoded_json.get("_asteroid_lab_summary") or {})
+    summary = wire_dict(norm.decoded_json.get("_asteroid_lab_summary", {}))
     entries = iter_entry_dicts(norm.decoded_json)
     type_counts: dict[str, int] = {}
     layout_miner_count = 0
@@ -71,24 +71,24 @@ def summarize_blueprint(bp_root: dict[str, Any]) -> dict[str, Any]:
             layout_extension_count += 1
         if t.startswith(_BELT_PREFIX) or "SpaceBelt" in t:
             belt_count += 1
-    bbox = summary.get("bbox") or {}
+    bbox = wire_dict(summary.get("bbox", {}))
     return {
-        "entry_count": int(summary.get("entry_count") or len(entries)),
+        "entry_count": wire_int(summary.get("entry_count", len(entries))),
         "layout_miner_count": layout_miner_count,
         "layout_extension_count": layout_extension_count,
         "belt_count": belt_count,
         "bbox": [
-            int(bbox.get("min_x", 0)),
-            int(bbox.get("max_x", 0)),
-            int(bbox.get("min_y", 0)),
-            int(bbox.get("max_y", 0)),
+            wire_int(bbox.get("min_x", 0)),
+            wire_int(bbox.get("max_x", 0)),
+            wire_int(bbox.get("min_y", 0)),
+            wire_int(bbox.get("max_y", 0)),
         ],
         "type_counts": type_counts,
     }
 
 
 def _extractor_anchor_export_xy(
-    rows: list[dict[str, Any]],
+    rows: list[dict[str, object]],
     *,
     has_explicit_raw_x_zero: bool,
 ) -> tuple[int, int] | None:
@@ -134,7 +134,7 @@ def _belt_adjacency_edges(
     return frozenset(edges)
 
 
-def build_golden_oracle(golden_bp: dict[str, Any]) -> GoldenOracle:
+def build_golden_oracle(golden_bp: dict[str, object]) -> GoldenOracle:
     entries = iter_entry_dicts(golden_bp)
     has_zero = entries_have_explicit_raw_x_zero(entries)
     summary = summarize_blueprint(golden_bp)
@@ -168,22 +168,27 @@ def build_golden_oracle(golden_bp: dict[str, Any]) -> GoldenOracle:
 
     extractors_normalized = _normalize_coords(frozenset(extractors_direct), anchor=anchor)
     belt_edges = _belt_adjacency_edges(frozenset(belt_cells))
-    bbox_list = summary["bbox"]
+    bbox_list = wire_list(summary["bbox"], field="bbox")
     return GoldenOracle(
         extractor_anchors_direct=frozenset(extractors_direct),
         extractor_anchors_normalized=extractors_normalized,
         extension_cells=frozenset(extensions),
         belt_edges=belt_edges,
-        layout_miner_count=int(summary["layout_miner_count"]),
-        layout_extension_count=int(summary["layout_extension_count"]),
-        belt_count=int(summary["belt_count"]),
-        entry_count=int(summary["entry_count"]),
-        bbox=(bbox_list[0], bbox_list[1], bbox_list[2], bbox_list[3]),
+        layout_miner_count=wire_int(summary["layout_miner_count"]),
+        layout_extension_count=wire_int(summary["layout_extension_count"]),
+        belt_count=wire_int(summary["belt_count"]),
+        entry_count=wire_int(summary["entry_count"]),
+        bbox=(
+            wire_int(bbox_list[0]),
+            wire_int(bbox_list[1]),
+            wire_int(bbox_list[2]),
+            wire_int(bbox_list[3]),
+        ),
     )
 
 
-def load_golden_fixture_summary(path: Path | str) -> dict[str, Any]:
-    payload: dict[str, Any] = json.loads(Path(path).read_text(encoding="utf-8"))
+def load_golden_fixture_summary(path: Path | str) -> dict[str, object]:
+    payload: dict[str, object] = json.loads(Path(path).read_text(encoding="utf-8"))
     return payload
 
 

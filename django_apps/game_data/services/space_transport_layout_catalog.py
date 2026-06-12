@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any
 
 from django_apps.game_data.models.space_transport_layout import SpaceTransportLayoutRegistry
 from shapez2_factory.adapters.asteroid_lab.space_transport_catalog_snapshot import (
@@ -33,12 +32,12 @@ def _allowed_rotations_list(raw: str) -> list[int]:
     return [int(part) for part in parts]
 
 
-def _layout_row_to_catalog_entry(row: dict[str, Any]) -> dict[str, Any]:
+def _layout_row_to_catalog_entry(row: dict[str, object]) -> dict[str, object]:
     tile_id = str(row.get("tile_id", "")).strip()
     if not tile_id:
         msg = "space_transport_layout row missing tile_id"
         raise ValueError(msg)
-    entry: dict[str, Any] = {
+    entry: dict[str, object] = {
         "tile_id": tile_id,
         "transport_kind": str(row.get("transport_kind", "")),
         "group_id": str(row.get("group_id", "")),
@@ -67,10 +66,10 @@ def _layout_row_to_catalog_entry(row: dict[str, Any]) -> dict[str, Any]:
 
 def _finalize_catalog_payload(
     *,
-    entries: list[dict[str, Any]],
+    entries: list[dict[str, object]],
     source_batch_id: str,
     game_version: str = "",
-) -> dict[str, Any]:
+) -> dict[str, object]:
     provenance = hashlib.sha256(json.dumps(entries, sort_keys=True).encode()).hexdigest()[:16]
     return {
         "schema_version": CURRENT_SCHEMA_VERSION,
@@ -82,7 +81,7 @@ def _finalize_catalog_payload(
     }
 
 
-def build_space_transport_catalog_payload_from_orm() -> dict[str, Any] | None:
+def build_space_transport_catalog_payload_from_orm() -> dict[str, object] | None:
     """Return catalog payload from ``SpaceTransportLayoutRegistry``, or None when empty."""
 
     rows = list(SpaceTransportLayoutRegistry.objects.order_by("source_row_index", "tile_id"))
@@ -94,8 +93,8 @@ def build_space_transport_catalog_payload_from_orm() -> dict[str, Any] | None:
 
 
 def build_space_transport_catalog_payload_from_snapshot_layouts(
-    layouts: list[dict[str, Any]],
-) -> dict[str, Any]:
+    layouts: list[dict[str, object]],
+) -> dict[str, object]:
     if len(layouts) != EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT:
         msg = (
             f"expected {EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT} space_transport_layouts, "
@@ -109,12 +108,12 @@ def build_space_transport_catalog_payload_from_snapshot_layouts(
     )
 
 
-def space_transport_layout_snapshot_rows() -> list[dict[str, Any]]:
+def space_transport_layout_snapshot_rows() -> list[dict[str, object]]:
     """ORM rows for ``game_data_snapshot`` export."""
 
-    rows: list[dict[str, Any]] = []
+    rows: list[dict[str, object]] = []
     for row in SpaceTransportLayoutRegistry.objects.order_by("source_row_index", "tile_id"):
-        item: dict[str, Any] = {
+        item: dict[str, object] = {
             "tile_id": row.tile_id,
             "transport_kind": row.transport_kind,
             "layout_suffix": row.layout_suffix,
@@ -131,7 +130,7 @@ def space_transport_layout_snapshot_rows() -> list[dict[str, Any]]:
     return rows
 
 
-def _orm_row_to_catalog_entry(row: SpaceTransportLayoutRegistry) -> dict[str, Any]:
+def _orm_row_to_catalog_entry(row: SpaceTransportLayoutRegistry) -> dict[str, object]:
     return _layout_row_to_catalog_entry(
         {
             "tile_id": row.tile_id,

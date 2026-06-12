@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
 
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.typing_boundary import JsonValue
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,10 +91,10 @@ class ReplayTimelineFrame:
     title: str
     description: str
     map_view: ReplayMapView
-    inspector: Mapping[str, Any] = field(default_factory=dict)
-    metrics: Mapping[str, Any] = field(default_factory=dict)
-    cell_overlay_json: Mapping[str, Any] = field(default_factory=dict)
-    diff: Mapping[str, Any] | None = None
+    inspector: Mapping[str, JsonValue] = field(default_factory=dict)
+    metrics: Mapping[str, JsonValue] = field(default_factory=dict)
+    cell_overlay_json: Mapping[str, JsonValue] = field(default_factory=dict)
+    diff: Mapping[str, JsonValue] | None = None
 
 
 def replay_map_view_is_renderable(map_view: ReplayMapView) -> bool:

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.asteroid_lab.reconstruction.complete_map import ReconstructionCompleteMap
 from django_apps.asteroid_lab.replay.layer02_segment import (
     LAYER02_EVENT_TYPE,
@@ -20,7 +18,7 @@ from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
 
 
 def resolve_l2_complete_frame_index(
-    frames: list[dict[str, Any]],
+    frames: list[dict[str, object]],
     *,
     explicit_index: int | None = None,
 ) -> int | None:
@@ -37,9 +35,9 @@ def resolve_l2_complete_frame_index(
 def build_layer02_timeline_frame_dict(
     *,
     plan_wire: dict[str, object],
-    source_frame: dict[str, Any] | None,
+    source_frame: dict[str, object] | None,
     complete_map: ReconstructionCompleteMap | None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """One append-stack milestone: L1 full map + L2 planned connector overlay only."""
 
     return build_layer02_timeline_frame_wire_dict(
@@ -52,9 +50,9 @@ def build_layer02_timeline_frame_dict(
 def build_layer02_runtime_replay_frames(
     *,
     plan_wire: dict[str, object],
-    lab_frames_before_append: list[dict[str, Any]],
+    lab_frames_before_append: list[dict[str, object]],
     complete_map: ReconstructionCompleteMap,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Deprecated: use ``replay.solver_runtime_assembler.build_solver_runtime_replay_frames``."""
 
     return build_solver_runtime_replay_frames(

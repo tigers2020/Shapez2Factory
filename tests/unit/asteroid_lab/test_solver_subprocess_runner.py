@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Any
 
 import pytest
 from django.test import override_settings
@@ -74,9 +73,9 @@ def test_run_solver_subprocess_invokes_tee_with_safe_arguments(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    calls: list[dict[str, Any]] = []
+    calls: list[dict[str, object]] = []
 
-    def fake_run_subprocess_with_tee(*args: Any, **kwargs: Any) -> SubprocessTeeResult:
+    def fake_run_subprocess_with_tee(*args: object, **kwargs: object) -> SubprocessTeeResult:
         calls.append({"args": args, "kwargs": kwargs})
         artifact_dir = tmp_path / "runs" / "run-1"
         artifact_dir.mkdir(parents=True)
@@ -114,7 +113,7 @@ def test_run_solver_subprocess_timeout_raises_solver_subprocess_error(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fake_run_subprocess_with_tee(*_args: Any, **_kwargs: Any) -> SubprocessTeeResult:
+    def fake_run_subprocess_with_tee(*_args: object, **_kwargs: object) -> SubprocessTeeResult:
         raise subprocess.TimeoutExpired(cmd=["python"], timeout=3)
 
     monkeypatch.setattr(runner, "run_subprocess_with_tee", fake_run_subprocess_with_tee)

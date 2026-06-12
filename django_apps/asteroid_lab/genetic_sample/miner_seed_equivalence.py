@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any
 
 from django_apps.asteroid_lab.genetic_sample.miner_seed_parent_tree import (
     ISLAND_DIRS,
@@ -45,7 +44,7 @@ def _island_direction_from_a_to_b(ax: int, ay: int, bx: int, by: int) -> str | N
     return None
 
 
-def _equipment_nodes(root: dict[str, Any]) -> tuple[tuple[int, int], EquipmentNodes]:
+def _equipment_nodes(root: dict[str, object]) -> tuple[tuple[int, int], EquipmentNodes]:
     try:
         return equipment_nodes(root)
     except ValueError as exc:
@@ -93,7 +92,7 @@ def _d4_canonical_edges(
     return tuple(variants)
 
 
-def equivalence_signature_from_decoded_root(root: dict[str, Any]) -> str:
+def equivalence_signature_from_decoded_root(root: dict[str, object]) -> str:
     """Catalog dedupe key: extension_count + D₄-canonical directed parent edges."""
 
     from django_apps.asteroid_lab.genetic_sample.miner_seed_topology import count_extensions
@@ -110,7 +109,10 @@ def equivalence_signature_from_decoded_root(root: dict[str, Any]) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
-def _assert_extension_faces_parent(entry: dict[str, Any], parent_entry: dict[str, Any]) -> None:
+def _assert_extension_faces_parent(
+    entry: dict[str, object],
+    parent_entry: dict[str, object],
+) -> None:
     child_xy = entry_island_raw_coord(entry)
     parent_xy = entry_island_raw_coord(parent_entry)
     child_kind, _ = classify_blueprint_entry(str(entry.get("T")))
@@ -126,7 +128,7 @@ def _assert_extension_faces_parent(entry: dict[str, Any], parent_entry: dict[str
         raise MinerSeedLayoutValidationError(msg)
 
 
-def assert_miner_seed_layout_strict(root: dict[str, Any]) -> None:
+def assert_miner_seed_layout_strict(root: dict[str, object]) -> None:
     """Validate §5 strict rules; raise MinerSeedLayoutValidationError on failure."""
 
     miner_xy, nodes = _equipment_nodes(root)

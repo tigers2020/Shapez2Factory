@@ -5,6 +5,8 @@ Design spec: [`docs/superpowers/specs/2026-06-11-any-boundary-typing-design.md`]
 
 **Canon path for this manual:** `documents/ai/manuals/typing_contracts.md` (not `documents/knowledge/raw/...`).
 
+**Layer guide (Any vs object vs TypedDict vs dataclass):** [`typing_boundary_layers.md`](typing_boundary_layers.md)
+
 Related (legacy mirror paths until migrated):
 
 - [`django.md`](../../knowledge/raw/ai/manuals/django.md) — Django app ownership

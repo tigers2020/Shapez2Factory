@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
 
 
 class GeneTemplateSourceKind(StrEnum):
@@ -35,8 +34,8 @@ class GeneTemplateSourceMetadata:
     export_error_codes: tuple[str, ...] = field(default_factory=tuple)
     gene_key_filter: tuple[str, ...] | None = None
 
-    def to_json_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {
+    def to_json_dict(self) -> dict[str, object]:
+        d: dict[str, object] = {
             "source": self.source.value,
             "gene_count": self.gene_count,
             "generator_version": self.generator_version,

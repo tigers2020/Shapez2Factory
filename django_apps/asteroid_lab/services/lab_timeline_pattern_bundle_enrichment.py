@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from typing import Any
 
 from django_apps.asteroid_lab.replay.pattern_bundle_highlight import (
     METRICS_KEY,
@@ -14,7 +13,7 @@ from django_apps.asteroid_lab.services.lab_timeline_rim_enrichment import frame_
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
 
-def _pattern_bundle_wire_is_usable(metrics: Mapping[str, Any]) -> bool:
+def _pattern_bundle_wire_is_usable(metrics: Mapping[str, object]) -> bool:
     wire = metrics.get(METRICS_KEY)
     if not isinstance(wire, dict):
         return False
@@ -22,7 +21,7 @@ def _pattern_bundle_wire_is_usable(metrics: Mapping[str, Any]) -> bool:
     return isinstance(bundles, list) and len(bundles) > 0
 
 
-def _cell_overlay_from_frame(frame: Mapping[str, Any]) -> dict[str, Any] | None:
+def _cell_overlay_from_frame(frame: Mapping[str, object]) -> dict[str, object] | None:
     overlay = frame.get("cell_overlay_json")
     if isinstance(overlay, dict):
         return overlay
@@ -34,7 +33,7 @@ def _cell_overlay_from_frame(frame: Mapping[str, Any]) -> dict[str, Any] | None:
     return None
 
 
-def _wire_from_equipment_bundles(bundles: list[Any]) -> dict[str, object]:
+def _wire_from_equipment_bundles(bundles: list[object]) -> dict[str, object]:
     entries: list[tuple[str, frozenset[Coord], str | None]] = []
     for block in bundles:
         if not isinstance(block, dict):
@@ -59,14 +58,15 @@ def _wire_from_equipment_bundles(bundles: list[Any]) -> dict[str, object]:
 
 
 def enrich_lab_timeline_frames_with_pattern_bundle_highlights(
-    frames: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
+    frames: list[dict[str, object]],
+) -> list[dict[str, object]]:
     """Return frames with ``metrics.pattern_bundle_highlights`` when equipment bundles exist."""
 
-    out: list[dict[str, Any]] = []
+    out: list[dict[str, object]] = []
     for frame in frames:
         fr_copy = copy.deepcopy(frame)
-        metrics = dict(fr_copy.get("metrics") or {})
+        metrics_raw = fr_copy.get("metrics")
+        metrics: dict[str, object] = dict(metrics_raw) if isinstance(metrics_raw, dict) else {}
         if _pattern_bundle_wire_is_usable(metrics):
             fr_copy["metrics"] = metrics
             out.append(fr_copy)

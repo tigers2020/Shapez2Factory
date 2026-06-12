@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, cast
+from typing import cast
 
 import pytest
 
@@ -82,8 +82,8 @@ def test_shape_render_scene_is_immutable() -> None:
 
     assert dataclasses.is_dataclass(scene)
     assert dataclasses.is_dataclass(scene.cells[0])
-    mutable_scene = cast(Any, scene)
-    mutable_cell = cast(Any, scene.cells[0])
+    mutable_scene = cast(object, scene)
+    mutable_cell = cast(object, scene.cells[0])
     with pytest.raises(dataclasses.FrozenInstanceError):
         mutable_scene.normalized_code = "CuCuCuCu"
     with pytest.raises(dataclasses.FrozenInstanceError):

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
@@ -39,7 +38,7 @@ from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment
 from django_apps.asteroid_lab.snapshots.existing_layout_inspection import inspect_existing_layout
 
 
-def _cell_overlay_with_equipment_bundles(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def _cell_overlay_with_equipment_bundles(rows: list[dict[str, object]]) -> dict[str, object]:
     return {"cells": rows, "equipment_bundles": build_equipment_bundles(rows)}
 
 
@@ -195,12 +194,12 @@ def persist_existing_layout_inspection_snapshot(
         msg = "map_input.project_id does not match project_id"
         raise ValueError(msg)
 
-    overlay: dict[str, Any] = {
+    overlay: dict[str, object] = {
         "schema": "asteroid_lab_existing_layout_inspection_v1",
         "summary_json": dict(inspection.summary_json),
         "hints_json": dict(inspection.hints_json),
     }
-    grid: dict[str, Any] = {
+    grid: dict[str, object] = {
         "inspection": asdict(inspection),
     }
     row = m.AsteroidCellSnapshot.objects.create(

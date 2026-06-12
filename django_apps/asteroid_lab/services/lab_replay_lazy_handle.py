@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Literal
 
 from django.conf import settings
 from django.urls import reverse
@@ -36,7 +36,7 @@ class LabReplayLazyHandle:
     mode: LabReplayPayloadMode
     frame_count: int
     preview_frame_index: int
-    preview_frame: Mapping[str, Any] | None
+    preview_frame: Mapping[str, object] | None
     fetch_url: str | None
     replay_payload_version: int
 
@@ -46,11 +46,11 @@ def lab_replay_payload_mode() -> LabReplayPayloadMode:
     return "inline" if raw == "inline" else "lazy"
 
 
-def _map_view_cell_rows(frame: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+def _map_view_cell_rows(frame: Mapping[str, object]) -> list[Mapping[str, object]]:
     map_view = frame.get("map_view")
     if not isinstance(map_view, dict):
         return []
-    rows: list[Mapping[str, Any]] = []
+    rows: list[Mapping[str, object]] = []
     for key in ("full_cells", "overlay_cells"):
         cells = map_view.get(key)
         if isinstance(cells, list):
@@ -58,7 +58,7 @@ def _map_view_cell_rows(frame: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     return rows
 
 
-def frame_has_sprite_layout_cells(frame: Mapping[str, Any]) -> bool:
+def frame_has_sprite_layout_cells(frame: Mapping[str, object]) -> bool:
     """True when a timeline frame still carries equipment sprites (not terrain-only)."""
 
     for cell in _map_view_cell_rows(frame):
@@ -72,7 +72,7 @@ def frame_has_sprite_layout_cells(frame: Mapping[str, Any]) -> bool:
     return False
 
 
-def preview_frame_index_for_lab_replay(frames: Sequence[Mapping[str, Any]]) -> int:
+def preview_frame_index_for_lab_replay(frames: Sequence[Mapping[str, object]]) -> int:
     """Prefer the latest frame that still shows equipment; fall back to the last slot."""
 
     count = len(frames)
@@ -99,7 +99,7 @@ def _lab_replay_fetch_url(
     )
 
 
-def _replay_payload_version_from_summary(manifest_summary: Mapping[str, Any]) -> int:
+def _replay_payload_version_from_summary(manifest_summary: Mapping[str, object]) -> int:
     raw = manifest_summary.get("replay_payload_version", LAB_REPLAY_PAYLOAD_VERSION)
     try:
         return int(raw)
@@ -110,7 +110,7 @@ def _replay_payload_version_from_summary(manifest_summary: Mapping[str, Any]) ->
 def build_lab_replay_lazy_handle(
     *,
     mode: LabReplayPayloadMode,
-    frames: list[dict[str, Any]],
+    frames: list[dict[str, object]],
     project_slug: str,
     solver_run_id: int | None,
 ) -> LabReplayLazyHandle:
@@ -137,7 +137,7 @@ def build_lab_replay_lazy_handle_from_summary(
     *,
     project_slug: str,
     solver_run_id: int | None,
-    manifest_summary: Mapping[str, Any],
+    manifest_summary: Mapping[str, object],
 ) -> LabReplayLazyHandle:
     """Build lazy handle from persisted manifest summary (no composed frame list)."""
 
@@ -171,8 +171,8 @@ def build_lab_replay_lazy_handle_from_summary(
 def lab_replay_manifest_json_dict(
     *,
     handle: LabReplayLazyHandle,
-    replay_track_metrics: dict[str, Any],
-) -> dict[str, Any]:
+    replay_track_metrics: dict[str, object],
+) -> dict[str, object]:
     preview = handle.preview_frame
     return {
         "mode": handle.mode,

@@ -13,9 +13,9 @@ import base64
 import binascii
 import gzip
 import json
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.service_dtos import RawDecodedBlueprintDTO
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_dict, wire_list
 
 SHAPEZ2_COPY_PREFIX_V4 = "SHAPEZ2-4-"
 _GZIP_MAGIC = b"\x1f\x8b"
@@ -78,19 +78,20 @@ def decode_copy_string(copy_code: str) -> RawDecodedBlueprintDTO:
     return RawDecodedBlueprintDTO(root=data)
 
 
-def _validate_blueprint_shape(data: dict[str, Any]) -> None:
+def _validate_blueprint_shape(data: dict[str, object]) -> None:
     if "V" not in data:
         raise AsteroidLabCopyDecodeError("missing top-level key 'V'")
     if not isinstance(data.get("BP"), dict):
         raise AsteroidLabCopyDecodeError("missing or invalid 'BP' object")
-    bp = data["BP"]
+    bp = wire_dict(data.get("BP"), field="BP")
     if "$type" not in bp:
         raise AsteroidLabCopyDecodeError("missing BP['$type']")
-    if not isinstance(bp["$type"], str):
+    if not isinstance(bp.get("$type"), str):
         raise AsteroidLabCopyDecodeError("BP['$type'] must be a string")
     entries = bp.get("Entries")
     if not isinstance(entries, list):
         raise AsteroidLabCopyDecodeError("missing or invalid BP['Entries'] list")
+    _ = wire_list(entries, field="BP.Entries")
 
 
 def _trim_trailing_non_base64(payload: str) -> str:
@@ -105,7 +106,7 @@ def _pad_base64(data: str) -> str:
     return data + ("=" * missing)
 
 
-def encode_copy_string(root: dict[str, Any]) -> str:
+def encode_copy_string(root: dict[str, object]) -> str:
     """Encode a blueprint root dict to a ``SHAPEZ2-4-`` copy string (gzip + base64)."""
 
     _validate_blueprint_shape(root)

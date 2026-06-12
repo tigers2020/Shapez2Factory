@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 import pytest
 
@@ -26,12 +26,12 @@ _FIXTURE = (
 
 
 @pytest.fixture(scope="module")
-def scenarios() -> dict[str, Any]:
+def scenarios() -> dict[str, object]:
     raw = _FIXTURE.read_text(encoding="utf-8")
-    return cast(dict[str, Any], json.loads(raw))
+    return cast(dict[str, object], json.loads(raw))
 
 
-def test_fixture_required_input_and_carriers(scenarios: dict[str, Any]) -> None:
+def test_fixture_required_input_and_carriers(scenarios: dict[str, object]) -> None:
     for row in scenarios["required_input_and_carriers"]:
         op_type = OperationType(str(row["op_type"]))
         op_node = dict(row.get("op_node") or {})
@@ -43,15 +43,15 @@ def test_fixture_required_input_and_carriers(scenarios: dict[str, Any]) -> None:
         assert got_carriers == want_carriers, row["id"]
 
 
-def test_fixture_input_edge_sort(scenarios: dict[str, Any]) -> None:
+def test_fixture_input_edge_sort(scenarios: dict[str, object]) -> None:
     for row in scenarios["input_edge_sort"]:
-        node_by_id: dict[str, dict[str, Any]] = {}
+        node_by_id: dict[str, dict[str, object]] = {}
         for n in row["shape_nodes"]:
             nid = str(n["id"])
             node_by_id[nid] = {"id": nid, "kind": str(n["kind"])}
-        input_edges: list[dict[str, Any]] = []
+        input_edges: list[dict[str, object]] = []
         for e in row["input_edges"]:
-            edge: dict[str, Any] = {"from": str(e["from"]), "to": str(e["to"])}
+            edge: dict[str, object] = {"from": str(e["from"]), "to": str(e["to"])}
             if "slot" in e and e["slot"] is not None:
                 edge["slot"] = e["slot"]
             input_edges.append(edge)

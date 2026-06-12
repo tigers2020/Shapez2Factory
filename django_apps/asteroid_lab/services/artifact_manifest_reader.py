@@ -6,7 +6,6 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 MANIFEST_FILENAME = "manifest.json"
 MANIFEST_SCHEMA_VERSION = 1
@@ -28,23 +27,23 @@ class ArtifactManifestRecord:
     core_build_id: str
     content_hashes: dict[str, str] = field(default_factory=dict)
     paths: dict[str, str] = field(default_factory=dict)
-    game_data_provenance: dict[str, Any] = field(default_factory=dict)
+    game_data_provenance: dict[str, object] = field(default_factory=dict)
     error_code: str | None = None
 
 
-def _object_payload(value: Any, *, field_name: str) -> dict[str, Any]:
+def _object_payload(value: object, *, field_name: str) -> dict[str, object]:
     if not isinstance(value, dict):
         raise ArtifactManifestReadError(f"{field_name} must be an object")
     return dict(value)
 
 
-def _string_payload(value: Any, *, field_name: str) -> str:
+def _string_payload(value: object, *, field_name: str) -> str:
     if not isinstance(value, str) or not value:
         raise ArtifactManifestReadError(f"{field_name} must be a non-empty string")
     return value
 
 
-def parse_artifact_manifest_payload(payload: Any) -> ArtifactManifestRecord:
+def parse_artifact_manifest_payload(payload: object) -> ArtifactManifestRecord:
     """Parse manifest payload with fail-closed schema and lifecycle checks."""
 
     if not isinstance(payload, dict):

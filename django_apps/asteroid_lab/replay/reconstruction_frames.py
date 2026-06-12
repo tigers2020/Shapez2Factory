@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Sequence
-from typing import Any
 
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.reconstruction.display_map import merge_reconstruction_display_rows
@@ -30,6 +29,7 @@ from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_RECONSTRUCTION_SHELL_DETECTED,
 )
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
+    FullMapRow,
     cell_key_xy_layer,
     decoded_cell_to_full_map_row,
     diff_maps,
@@ -43,11 +43,11 @@ __all__ = [
 ]
 
 
-def _sort_rows(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+def _sort_rows(rows: Sequence[FullMapRow]) -> list[FullMapRow]:
     return sorted(rows, key=lambda r: cell_key_xy_layer(r))
 
 
-def _trace_marker_row(x: int, y: int, layer: int | None) -> dict[str, Any]:
+def _trace_marker_row(x: int, y: int, layer: int | None) -> FullMapRow:
     return {
         "x": x,
         "y": y,
@@ -88,12 +88,12 @@ def _title_for_trace(tt: str) -> str:
 
 def build_reconstruction_replay_events(
     *,
-    structural_rows: list[dict[str, Any]],
+    structural_rows: list[FullMapRow],
     cleanup: CleanupResult,
     recon: ReconstructionResult,
     trace_events: Sequence[ReconstructionTraceEvent],
-    recon_summary: dict[str, Any],
-    hints: dict[str, Any],
+    recon_summary: dict[str, object],
+    hints: dict[str, object],
 ) -> list[SnapshotEventDTO]:
     """Convert trace events into persisted replay frames (full_map + diff per step).
 
@@ -102,7 +102,7 @@ def build_reconstruction_replay_events(
     """
 
     default_layer: int | None = cleanup.cleaned_cells[0].layer if cleanup.cleaned_cells else None
-    merged: dict[tuple[int, int, int | None], dict[str, Any]] = {}
+    merged: dict[tuple[int, int, int | None], FullMapRow] = {}
     for r in structural_rows:
         if not isinstance(r, dict):
             continue
@@ -116,10 +116,10 @@ def build_reconstruction_replay_events(
     }
     prev_display = _sort_rows(list(merged.values()))
     out: list[SnapshotEventDTO] = []
-    final_full_map_snapshot: list[dict[str, Any]] | None = None
-    final_frame_summary: dict[str, Any] | None = None
-    final_frame_metrics: dict[str, Any] | None = None
-    final_diff_payload: dict[str, Any] | None = None
+    final_full_map_snapshot: list[FullMapRow] | None = None
+    final_frame_summary: dict[str, object] | None = None
+    final_frame_metrics: dict[str, object] | None = None
+    final_diff_payload: dict[str, object] | None = None
 
     marker_trace_types = frozenset(
         {
@@ -178,10 +178,12 @@ def build_reconstruction_replay_events(
         if tt in marker_trace_types:
             markers = [_trace_marker_row(x, y, default_layer) for x, y in sorted(ev.coords)]
             empty_diff = diff_maps(prev_display, prev_display)
-            diff_payload: dict[str, Any] = {
+            empty_removed = empty_diff.get("removed")
+            empty_changed = empty_diff.get("changed")
+            diff_payload: dict[str, object] = {
                 "added": markers,
-                "removed": list(empty_diff.get("removed") or []),
-                "changed": list(empty_diff.get("changed") or []),
+                "removed": list(empty_removed) if isinstance(empty_removed, list) else [],
+                "changed": list(empty_changed) if isinstance(empty_changed, list) else [],
             }
         elif tt == "fill_commit":
             diff_payload = diff_maps(prev_display, next_display)
@@ -190,19 +192,19 @@ def build_reconstruction_replay_events(
 
         summary_row = snapshot_summary_from_rows(next_display)
         if tt == "reconstruction_final":
-            summary_out: dict[str, Any] = {**dict(recon_summary), **dict(summary_row)}
+            summary_out: dict[str, object] = {**dict(recon_summary), **dict(summary_row)}
         else:
             summary_out = dict(summary_row)
 
         trace_meta = {k: v for k, v in ev.summary_json.items() if k != "event_key"}
-        metrics: dict[str, Any] = {
+        metrics: dict[str, object] = {
             **dict(recon_summary),
             **dict(summary_row),
             "trace_event_type": tt,
             **trace_meta,
         }
 
-        overlay: dict[str, Any] = {"cells": next_display}
+        overlay: dict[str, object] = {"cells": next_display}
         dto = SnapshotEventDTO(
             event_key=ek,
             phase="reconstruction",
@@ -234,7 +236,7 @@ def build_reconstruction_replay_events(
         and final_diff_payload is not None
     ):
         complete_display = copy.deepcopy(final_full_map_snapshot)
-        overlay_complete: dict[str, Any] = {"cells": complete_display}
+        overlay_complete: dict[str, object] = {"cells": complete_display}
         complete_diff = copy.deepcopy(final_diff_payload)
         complete_dto = SnapshotEventDTO(
             event_key="step4_10_asteroid_map_complete",

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.asteroid_lab.services.dto import (
     DecodedBlueprintSnapshotDTO,
     DecodedCellDTO,
@@ -34,8 +32,8 @@ def _equipment_id(cell: DecodedCellDTO) -> str:
     return f"{cell.x},{cell.y},{layer_s}"
 
 
-def _overlay_cell(cell: DecodedCellDTO, **extra: Any) -> dict[str, Any]:
-    row: dict[str, Any] = {
+def _overlay_cell(cell: DecodedCellDTO, **extra: object) -> dict[str, object]:
+    row: dict[str, object] = {
         "x": cell.x,
         "y": cell.y,
         "layer": cell.layer,
@@ -48,14 +46,14 @@ def _overlay_cell(cell: DecodedCellDTO, **extra: Any) -> dict[str, Any]:
     return row
 
 
-def _bbox_of_cells(cells: list[DecodedCellDTO]) -> dict[str, Any]:
+def _bbox_of_cells(cells: list[DecodedCellDTO]) -> dict[str, object]:
     if not cells:
         return {"min_x": 0, "max_x": 0, "min_y": 0, "max_y": 0, "width": 0, "height": 0}
     xs = [c.x for c in cells]
     ys = [c.y for c in cells]
     mn_x, mx_x = min(xs), max(xs)
     mn_y, mx_y = min(ys), max(ys)
-    out: dict[str, Any] = {
+    out: dict[str, object] = {
         "min_x": mn_x,
         "max_x": mx_x,
         "min_y": mn_y,
@@ -66,7 +64,7 @@ def _bbox_of_cells(cells: list[DecodedCellDTO]) -> dict[str, Any]:
     return out
 
 
-def _touches_snapshot_bbox(cell: DecodedCellDTO, bbox: dict[str, Any]) -> bool:
+def _touches_snapshot_bbox(cell: DecodedCellDTO, bbox: dict[str, object]) -> bool:
     mn_x = int(bbox["min_x"])
     mx_x = int(bbox["max_x"])
     mn_y = int(bbox["min_y"])
@@ -84,7 +82,7 @@ def _expected_neighbor_tile_kind(equipment_cell_kind: str) -> str | None:
 
 def _index_transport_components(
     cells: tuple[DecodedCellDTO, ...],
-    snapshot_bbox: dict[str, Any],
+    snapshot_bbox: dict[str, object],
 ) -> tuple[list[ExistingTransportComponentDTO], dict[tuple[int, int, int | None], int]]:
     """Return transport DTO rows and transport cell ??component id map.
 
@@ -219,7 +217,7 @@ def inspect_existing_layout(
     attachments: list[EquipmentAttachmentDTO] = []
 
     for eq in equipment:
-        adj_transport: list[dict[str, Any]] = []
+        adj_transport: list[dict[str, object]] = []
         comp_ids: set[int] = set()
         matching_neighbor = False
         main_touch = False
@@ -231,7 +229,7 @@ def inspect_existing_layout(
             if not is_transport_tile(nb):
                 continue
             cid = pos_to_component.get((nx, ny, nl))
-            extra: dict[str, Any] = {}
+            extra: dict[str, object] = {}
             if cid is not None:
                 extra["component_id"] = cid
                 extra["component_role"] = role_by_cid.get(cid, "unknown")
@@ -257,12 +255,12 @@ def inspect_existing_layout(
             )
         )
 
-    cleanup_cells: list[dict[str, Any]] = []
+    cleanup_cells: list[dict[str, object]] = []
     for comp in transport_dtos_final:
         if role_by_cid.get(comp.component_id) == "orphan":
             cleanup_cells.extend(comp.cells_json)
 
-    hints_main: dict[str, Any] = {}
+    hints_main: dict[str, object] = {}
     for tk in ("space_pipe", "space_belt"):
         mid = main_by_kind.get(tk)
         if mid is None:
@@ -278,12 +276,12 @@ def inspect_existing_layout(
             "cell_kind": main_comp.cell_kind,
         }
 
-    hints_json: dict[str, Any] = {
+    hints_json: dict[str, object] = {
         "main_component_candidate": hints_main,
         "cleanup_candidate_cells": cleanup_cells,
     }
 
-    summary_json: dict[str, Any] = {
+    summary_json: dict[str, object] = {
         "project_id": snapshot.project_id,
         "map_input_id": snapshot.map_input_id,
         "transport_component_count": len(transport_dtos_final),

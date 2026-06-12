@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from argparse import ArgumentParser
-from typing import Any
 
 from django.core.management.base import BaseCommand
 
@@ -39,7 +38,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             help="Process at most N variants (after enumeration / skip filter).",
         )
 
-    def handle(self, *args: object, **options: Any) -> None:
+    def handle(self, *args: object, **options: object) -> None:
         renderer_version: str = options["renderer_version"]
         dry_run: bool = options["dry_run"]
         skip_existing: bool = options["skip_existing"]

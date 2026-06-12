@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 from django.test import override_settings
 
@@ -27,7 +25,7 @@ def _minimal_copy() -> str:
     return "SHAPEZ2-4-e30="
 
 
-def _minimal_snapshot_payload() -> dict[str, Any]:
+def _minimal_snapshot_payload() -> dict[str, object]:
     return {"schema_version": "game_data_snapshot_v1"}
 
 
@@ -61,9 +59,9 @@ def test_run_solver_injects_db_gene_catalog_into_request(
     m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
     _seed_one_sample(exhaustive_genes_ext0_belt)
 
-    calls: list[dict[str, Any]] = []
+    calls: list[dict[str, object]] = []
 
-    def fake_run_solver_subprocess(request: Any, **kwargs: Any) -> SolverSubprocessResult:
+    def fake_run_solver_subprocess(request: object, **kwargs: object) -> SolverSubprocessResult:
         calls.append({"request": request, **kwargs})
         return SolverSubprocessResult(
             run_key=request.run_key,
@@ -78,7 +76,7 @@ def test_run_solver_injects_db_gene_catalog_into_request(
             ),
         )
 
-    def fake_ingest_artifact_for_project(**kwargs: Any) -> ArtifactIngestResult:
+    def fake_ingest_artifact_for_project(**kwargs: object) -> ArtifactIngestResult:
         run = m.SolverRun.objects.create(
             project=proj,
             run_key="gene-catalog-run",

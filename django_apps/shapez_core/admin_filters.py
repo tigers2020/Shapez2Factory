@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest
@@ -23,7 +21,7 @@ class GameIdentifierCategoryKeyFilter(_DropdownSimpleListFilter):
     title = _("Category key")
     parameter_name = "category_key"
 
-    def lookups(self, request: HttpRequest, model_admin: admin.ModelAdmin) -> list[tuple[Any, str]]:
+    def lookups(self, request: HttpRequest, model_admin: admin.ModelAdmin) -> list[tuple[str, str]]:
         return [(k, k) for k in sorted(IDENTIFIER_JSON_KEYS)]
 
     def queryset(self, request: HttpRequest, queryset: QuerySet) -> QuerySet:
@@ -36,7 +34,7 @@ class GameIdentifierReleaseVersionFilter(_DropdownSimpleListFilter):
     title = _("Release (version)")
     parameter_name = "release_version"
 
-    def lookups(self, request: HttpRequest, model_admin: admin.ModelAdmin) -> list[tuple[Any, str]]:
+    def lookups(self, request: HttpRequest, model_admin: admin.ModelAdmin) -> list[tuple[str, str]]:
         versions = (
             ShapezBasedataRelease.objects.filter(game_identifiers__isnull=False)
             .order_by("-game_version")

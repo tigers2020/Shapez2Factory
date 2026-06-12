@@ -1,5 +1,3 @@
-from typing import Any
-
 import pytest
 
 from django_apps.shapez_solver.domain.operations import OperationType
@@ -19,7 +17,7 @@ from django_apps.shapez_solver.services.recipe_graph_recompute import (
 )
 
 
-def _rotate_doc() -> dict[str, Any]:
+def _rotate_doc() -> dict[str, object]:
     return {
         "schema_version": 1,
         "nodes": [

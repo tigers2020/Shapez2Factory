@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from django_apps.shapez_solver.domain.operations import OperationType
 
@@ -19,7 +19,7 @@ _TWO_INPUT_OPS = frozenset(
 )
 
 
-def required_input_count(op_type: OperationType, op_node: dict[str, Any]) -> int:
+def required_input_count(op_type: OperationType, op_node: dict[str, object]) -> int:
     """Aligns with ``_required_input_count_for_recompute`` in ``recipe_graph_recompute``."""
 
     if op_type == OperationType.PAINTER:
@@ -33,7 +33,7 @@ def required_input_count(op_type: OperationType, op_node: dict[str, Any]) -> int
 
 def expected_input_carriers(
     op_type: OperationType,
-    op_node: dict[str, Any],
+    op_node: dict[str, object],
 ) -> tuple[Carrier, Carrier]:
     """Per logical input index after ``sorted_shape_input_edges_to_operation`` order.
 
@@ -57,12 +57,12 @@ def expected_input_carriers(
 
 
 def sorted_shape_input_edges_to_operation(
-    input_edges: list[dict[str, Any]],
-    node_by_id: dict[str, dict[str, Any]],
-) -> list[dict[str, Any]]:
+    input_edges: list[dict[str, object]],
+    node_by_id: dict[str, dict[str, object]],
+) -> list[dict[str, object]]:
     """Same ordering as ``_sorted_input_codes_for_operation`` (slot edges before unsorted)."""
 
-    rows: list[tuple[tuple[bool, str, str], dict[str, Any]]] = []
+    rows: list[tuple[tuple[bool, str, str], dict[str, object]]] = []
     for e in input_edges:
         sid = str(e.get("from", ""))
         shape = node_by_id.get(sid)
@@ -77,7 +77,7 @@ def sorted_shape_input_edges_to_operation(
     return [t[1] for t in rows]
 
 
-def shape_node_is_fluid(shape: dict[str, Any]) -> bool:
+def shape_node_is_fluid(shape: dict[str, object]) -> bool:
     return str(shape.get("source_carrier", "")).strip() == "fluid"
 
 
@@ -87,8 +87,8 @@ def operation_output_lane_carrier(op_type: OperationType, lane: int) -> Carrier:
     return "material"
 
 
-def _index_nodes_by_id(nodes: list[Any]) -> dict[str, dict[str, Any]]:
-    by_id: dict[str, dict[str, Any]] = {}
+def _index_nodes_by_id(nodes: list[object]) -> dict[str, dict[str, object]]:
+    by_id: dict[str, dict[str, object]] = {}
     for n in nodes:
         if isinstance(n, dict) and n.get("id") is not None:
             by_id[str(n["id"])] = n
@@ -96,11 +96,11 @@ def _index_nodes_by_id(nodes: list[Any]) -> dict[str, dict[str, Any]]:
 
 
 def _group_input_and_output_edges(
-    edges: list[Any],
-) -> dict[str, list[dict[str, Any]]]:
+    edges: list[object],
+) -> dict[str, list[dict[str, object]]]:
     """Map operation node id → incoming input edges (``kind`` == ``input``)."""
 
-    input_by_to: dict[str, list[dict[str, Any]]] = {}
+    input_by_to: dict[str, list[dict[str, object]]] = {}
     for e in edges:
         if not isinstance(e, dict):
             continue
@@ -111,7 +111,7 @@ def _group_input_and_output_edges(
     return input_by_to
 
 
-def _parse_output_lane(slot_raw: Any) -> int:
+def _parse_output_lane(slot_raw: object) -> int:
     if isinstance(slot_raw, str) and slot_raw.strip().isdigit():
         return int(slot_raw.strip())
     return 0
@@ -139,8 +139,8 @@ def _raise_output_carrier_mismatch(
 
 
 def _validate_output_edge_carriers(
-    edges: list[Any],
-    by_id: dict[str, dict[str, Any]],
+    edges: list[object],
+    by_id: dict[str, dict[str, object]],
 ) -> None:
     for i, e in enumerate(edges):
         if not isinstance(e, dict) or str(e.get("kind", "")) != "output":
@@ -191,8 +191,8 @@ def _raise_if_input_carrier_wrong(
     expected: tuple[Carrier, Carrier],
     need: int,
     idx: int,
-    edge: dict[str, Any],
-    by_id: dict[str, dict[str, Any]],
+    edge: dict[str, object],
+    by_id: dict[str, dict[str, object]],
 ) -> None:
     slot_raw = edge.get("slot")
     slot = str(slot_raw).strip() if isinstance(slot_raw, str) else ""
@@ -211,8 +211,8 @@ def _raise_if_input_carrier_wrong(
 
 
 def _validate_operation_inputs(
-    by_id: dict[str, dict[str, Any]],
-    input_by_to: dict[str, list[dict[str, Any]]],
+    by_id: dict[str, dict[str, object]],
+    input_by_to: dict[str, list[dict[str, object]]],
 ) -> None:
     for op_id, op_n in by_id.items():
         if op_n.get("kind") != "operation":
@@ -231,7 +231,7 @@ def _validate_operation_inputs(
             _raise_if_input_carrier_wrong(op_id, op_key, op_type, expected, need, idx, edge, by_id)
 
 
-def assert_input_output_carriers_for_document(doc: dict[str, Any]) -> None:
+def assert_input_output_carriers_for_document(doc: dict[str, object]) -> None:
     """Raise ``ValueError`` if any input/output edge violates material/fluid rules."""
 
     nodes = doc.get("nodes")

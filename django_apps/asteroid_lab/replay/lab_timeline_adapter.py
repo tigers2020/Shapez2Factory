@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from typing import Any
 
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_DECODE_NORMALIZED,
@@ -33,12 +32,16 @@ from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayTimelineFrame,
     replay_map_view_is_renderable,
 )
-from django_apps.asteroid_lab.replay.timeline_serialization import replay_overlay_cell_from_wire
+from django_apps.asteroid_lab.replay.timeline_serialization import (
+    _mapping,
+    replay_overlay_cell_from_wire,
+)
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO, SnapshotEventDTO
 from django_apps.asteroid_lab.snapshots.equipment_bundles import (
     cell_overlay_json_for_bundle_highlight,
     equipment_bundle_overlay_from_rows,
 )
+from django_apps.asteroid_lab.typing_boundary import JsonObject, JsonValue
 
 LAB_PHASE_DECODE = "decode"
 LAB_PHASE_RECONSTRUCTION = "reconstruction"
@@ -74,6 +77,33 @@ class LabTimelineAdapterError(ValueError):
     """Raised when a Lab replay frame cannot be conservatively wrapped for 9B."""
 
 
+def _row_int(value: object, *, default: int | None = None) -> int:
+    if isinstance(value, bool):
+        if default is not None:
+            return default
+        raise LabTimelineAdapterError("row field must be int")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (float, str)):
+        try:
+            return int(value)
+        except (ValueError, TypeError) as exc:
+            if default is not None:
+                return default
+            raise LabTimelineAdapterError("row field must be int") from exc
+    if default is not None:
+        return default
+    raise LabTimelineAdapterError("row field must be int")
+
+
+def _full_map_row_sequence(full_map: list[object]) -> Sequence[Mapping[str, object]]:
+    out: list[Mapping[str, object]] = []
+    for raw in full_map:
+        if isinstance(raw, dict):
+            out.append(raw)
+    return out
+
+
 def _lab_phase_to_timeline(phase: str) -> ReplayPhase:
     try:
         return LAB_PHASE_TO_TIMELINE[phase]
@@ -93,19 +123,19 @@ def _lab_event_type_to_timeline(event_type: str) -> ReplayEventType:
     return timeline_event
 
 
-def _cell_from_row(row: Mapping[str, Any]) -> ReplayCell:
+def _cell_from_row(row: Mapping[str, object]) -> ReplayCell:
     return ReplayCell(
-        x=int(row["x"]),
-        y=int(row["y"]),
+        x=_row_int(row["x"]),
+        y=_row_int(row["y"]),
         kind=str(row.get("cell_kind") or row.get("kind") or ""),
         transport=str(row.get("transport_kind") or row.get("transport") or ""),
         tile_type=str(row.get("tile_type") or row.get("sprite_identifier") or ""),
-        rotation=int(row.get("rotation") or 0),
+        rotation=_row_int(row.get("rotation"), default=0),
         layer=wire_explicit_height_layer(row),
     )
 
 
-def _overlay_from_row(row: Mapping[str, Any]) -> ReplayOverlayCell:
+def _overlay_from_row(row: Mapping[str, object]) -> ReplayOverlayCell:
     if not isinstance(row, dict) or "x" not in row or "y" not in row:
         msg = "overlay row must be a dict with x and y"
         raise LabTimelineAdapterError(msg)
@@ -129,7 +159,7 @@ def _bbox_from_cells(
     return ReplayBBox(min_x=min(xs), min_y=min(ys), max_x=max(xs), max_y=max(ys))
 
 
-def _rows_to_full_cells(rows: list[Any]) -> tuple[ReplayCell, ...]:
+def _rows_to_full_cells(rows: list[object]) -> tuple[ReplayCell, ...]:
     out: list[ReplayCell] = []
     for raw in rows:
         if not isinstance(raw, dict) or "x" not in raw or "y" not in raw:
@@ -138,7 +168,7 @@ def _rows_to_full_cells(rows: list[Any]) -> tuple[ReplayCell, ...]:
     return tuple(out)
 
 
-def _overlay_rows_from_json(overlay_json: Mapping[str, Any]) -> tuple[ReplayOverlayCell, ...]:
+def _overlay_rows_from_json(overlay_json: Mapping[str, object]) -> tuple[ReplayOverlayCell, ...]:
     cells = overlay_json.get("cells")
     if not isinstance(cells, list):
         return ()
@@ -150,7 +180,7 @@ def _overlay_rows_from_json(overlay_json: Mapping[str, Any]) -> tuple[ReplayOver
     return tuple(out)
 
 
-def _normalize_lab_diff(diff: Mapping[str, Any] | None) -> dict[str, Any] | None:
+def _normalize_lab_diff(diff: Mapping[str, object] | None) -> JsonObject | None:
     if not isinstance(diff, dict):
         return None
     added = diff.get("added")
@@ -168,7 +198,9 @@ def _normalize_lab_diff(diff: Mapping[str, Any] | None) -> dict[str, Any] | None
     }
 
 
-def _trace_overlay_cells_from_diff(diff: Mapping[str, Any] | None) -> tuple[ReplayOverlayCell, ...]:
+def _trace_overlay_cells_from_diff(
+    diff: Mapping[str, object] | None,
+) -> tuple[ReplayOverlayCell, ...]:
     if not isinstance(diff, dict):
         return ()
     added = diff.get("added")
@@ -200,9 +232,9 @@ def _merge_overlay_cells(
 
 def _build_map_view(
     *,
-    full_map: list[Any],
-    cell_overlay_json: Mapping[str, Any],
-    diff: Mapping[str, Any] | None = None,
+    full_map: list[object],
+    cell_overlay_json: Mapping[str, object],
+    diff: Mapping[str, object] | None = None,
 ) -> ReplayMapView:
     full_cells = _rows_to_full_cells(full_map)
     persisted_overlay = _overlay_rows_from_json(cell_overlay_json)
@@ -221,17 +253,21 @@ def _build_map_view(
 
 
 def _cell_overlay_json_for_timeline_lab_frame(
-    overlay_json: Mapping[str, Any],
+    overlay_json: Mapping[str, object],
     *,
-    full_map: list[Any],
+    full_map: list[object],
     map_view: ReplayMapView,
-) -> dict[str, Any]:
+) -> JsonObject:
     """Wire overlay for bundle highlight: persisted bundles, else rebuild from map cells."""
 
-    overlay = cell_overlay_json_for_bundle_highlight(overlay_json, full_map=full_map)
+    map_rows = _full_map_row_sequence(full_map)
+    overlay = cell_overlay_json_for_bundle_highlight(
+        overlay_json,
+        full_map=map_rows or None,
+    )
     if overlay.get("equipment_bundles"):
-        return overlay
-    rows: list[dict[str, Any]] = []
+        return _mapping(overlay)
+    rows: list[dict[str, object]] = []
     seen: set[tuple[int, int]] = set()
 
     def _append_map_cell(cell: ReplayCell | ReplayOverlayCell) -> None:
@@ -254,7 +290,7 @@ def _cell_overlay_json_for_timeline_lab_frame(
         _append_map_cell(full_cell)
     for overlay_cell in map_view.overlay_cells:
         _append_map_cell(overlay_cell)
-    return equipment_bundle_overlay_from_rows(rows) or overlay
+    return _mapping(equipment_bundle_overlay_from_rows(rows) or overlay)
 
 
 def _inspector_from_lab(
@@ -263,7 +299,7 @@ def _inspector_from_lab(
     lab_phase: str,
     lab_phase_step: str,
     lab_event_type: str,
-) -> dict[str, Any]:
+) -> dict[str, JsonValue]:
     return {
         "event_key": event_key,
         "lab_phase": lab_phase,
@@ -286,10 +322,9 @@ def lab_snapshot_event_to_timeline_frame(
     diff_norm = _normalize_lab_diff(event.diff)
     map_view = _build_map_view(
         full_map=list(event.full_map),
-        cell_overlay_json=dict(event.cell_overlay_json or {}),
+        cell_overlay_json=_mapping(event.cell_overlay_json or {}),
         diff=diff_norm,
     )
-    overlay_json = dict(event.cell_overlay_json or {})
     return ReplayTimelineFrame(
         frame_index=int(frame_index),
         phase=_lab_phase_to_timeline(phase),
@@ -303,9 +338,9 @@ def lab_snapshot_event_to_timeline_frame(
             lab_phase_step=str(event.phase_step),
             lab_event_type=event_type,
         ),
-        metrics=dict(event.metrics_json or {}),
+        metrics=_mapping(event.metrics_json or {}),
         cell_overlay_json=_cell_overlay_json_for_timeline_lab_frame(
-            overlay_json,
+            _mapping(event.cell_overlay_json or {}),
             full_map=list(event.full_map),
             map_view=map_view,
         ),
@@ -314,8 +349,8 @@ def lab_snapshot_event_to_timeline_frame(
 
 
 def _snapshot_fields_from_payload(
-    payload: Mapping[str, Any],
-) -> tuple[str, str, str, str, list[Any]]:
+    payload: Mapping[str, object],
+) -> tuple[str, str, str, str, list[object]]:
     phase = str(payload.get("phase") or "")
     event_type = str(payload.get("event_type") or "")
     if not event_type:
@@ -339,9 +374,10 @@ def lab_replay_row_to_timeline_frame(row: ReplayFrameRowDTO) -> ReplayTimelineFr
     phase, event_type, event_key, phase_step, full_map = _snapshot_fields_from_payload(payload)
     _lab_phase_to_timeline(phase)
     timeline_event = _lab_event_type_to_timeline(event_type)
-    overlay_json = row.cell_overlay_json if isinstance(row.cell_overlay_json, dict) else {}
-    if not overlay_json and isinstance(payload.get("cell_overlay_json"), dict):
-        overlay_json = dict(payload["cell_overlay_json"])
+    overlay_json = _mapping(row.cell_overlay_json)
+    payload_overlay = payload.get("cell_overlay_json")
+    if not overlay_json and isinstance(payload_overlay, dict):
+        overlay_json = _mapping(payload_overlay)
     raw_diff = payload.get("diff")
     diff_norm = _normalize_lab_diff(raw_diff if isinstance(raw_diff, dict) else None)
     map_view = _build_map_view(
@@ -349,12 +385,10 @@ def lab_replay_row_to_timeline_frame(row: ReplayFrameRowDTO) -> ReplayTimelineFr
         cell_overlay_json=overlay_json,
         diff=diff_norm,
     )
-    metrics: dict[str, Any] = {}
-    if isinstance(row.metric_snapshot_json, dict):
-        metrics.update(row.metric_snapshot_json)
+    metrics = _mapping(row.metric_snapshot_json)
     payload_metrics = payload.get("metrics_json")
     if isinstance(payload_metrics, dict):
-        metrics.update(payload_metrics)
+        metrics.update(_mapping(payload_metrics))
     inspector = _inspector_from_lab(
         event_key=event_key,
         lab_phase=phase,
@@ -380,7 +414,7 @@ def lab_replay_row_to_timeline_frame(row: ReplayFrameRowDTO) -> ReplayTimelineFr
     )
 
 
-def lab_snapshot_event_payload_copy(event: SnapshotEventDTO) -> dict[str, Any]:
+def lab_snapshot_event_payload_copy(event: SnapshotEventDTO) -> dict[str, object]:
     """Deep copy of snapshot fields for immutability tests (not part of public API)."""
 
     return deepcopy(

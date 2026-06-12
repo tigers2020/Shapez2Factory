@@ -7,7 +7,7 @@ Mask-derived subsets are diagnostic-only in ``summary_json``.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from shapez2_factory.domain.asteroid_lab.cleanup.result import CleanupResult
@@ -25,6 +25,7 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.evidence import (
 )
 from shapez2_factory.domain.asteroid_lab.reconstruction.result import ReconstructionResult
 from shapez2_factory.domain.asteroid_lab.service_dtos import DecodedCellDTO
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_float, wire_int
 
 QUALITY_TIER_CONFIDENT = "CONFIDENT_RECONSTRUCTION"
 QUALITY_TIER_PARTIAL = "PARTIAL"
@@ -157,8 +158,8 @@ def reconstruction_acceptance_ok(result: ReconstructionResult) -> bool:
     summary = result.summary_json
     return (
         bool(summary.get("hard_evidence_preserved", True))
-        and int(summary.get("constraint_violation_count", 0)) == 0
-        and float(summary.get("ambiguous_ratio", 1.0)) <= _AMBIGUOUS_RATIO_MAX
+        and wire_int(summary.get("constraint_violation_count", 0)) == 0
+        and wire_float(summary.get("ambiguous_ratio", 1.0)) <= _AMBIGUOUS_RATIO_MAX
         and result.confidence_score >= _CONFIDENCE_SCORE_MIN
         and result.quality_tier == QUALITY_TIER_CONFIDENT
     )
@@ -283,10 +284,10 @@ _PERSIST_SUMMARY_KEYS = (
 )
 
 
-def reconstruction_persist_summary(result: ReconstructionResult) -> dict[str, Any]:
+def reconstruction_persist_summary(result: ReconstructionResult) -> dict[str, object]:
     """Blueprint ``_asteroid_lab_reconstruction.summary_json`` (no per-cell scores)."""
 
-    out: dict[str, Any] = {
+    out: dict[str, object] = {
         k: result.summary_json[k] for k in _PERSIST_SUMMARY_KEYS if k in result.summary_json
     }
     out["reconstruction_acceptance_ok"] = reconstruction_acceptance_ok(result)

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import copy
 from pathlib import Path
-from typing import Any
 
 from django.conf import settings
 from django.db import transaction
@@ -43,7 +42,7 @@ def replay_compose_cache_enabled() -> bool:
     return str(raw).strip().lower() not in {"0", "false", "no", "off"}
 
 
-def _is_stale_thin_artifact_l3_cache(frames: list[dict[str, Any]]) -> bool:
+def _is_stale_thin_artifact_l3_cache(frames: list[dict[str, object]]) -> bool:
     """True when cached L3 complete used replay_core only (no committed overlays)."""
 
     for frame in frames:
@@ -76,7 +75,7 @@ def _artifact_has_runtime_wires(artifact_root: str) -> bool:
     return (root / relpath).is_file()
 
 
-def _cached_replay_source(frames: list[dict[str, Any]]) -> str | None:
+def _cached_replay_source(frames: list[dict[str, object]]) -> str | None:
     for frame in frames:
         inspector = frame.get("inspector")
         if isinstance(inspector, dict):
@@ -87,9 +86,9 @@ def _cached_replay_source(frames: list[dict[str, Any]]) -> str | None:
 
 
 def _is_stale_composed_replay_cache(
-    frames: list[dict[str, Any]],
+    frames: list[dict[str, object]],
     *,
-    summary: dict[str, Any] | None,
+    summary: dict[str, object] | None,
     artifact_root: str | None,
 ) -> bool:
     if _is_stale_thin_artifact_l3_cache(frames):
@@ -114,13 +113,13 @@ def _is_stale_composed_replay_cache(
 
 def build_manifest_summary_from_compose(
     *,
-    frames: list[dict[str, Any]],
-    metrics: dict[str, Any],
-) -> dict[str, Any]:
+    frames: list[dict[str, object]],
+    metrics: dict[str, object],
+) -> dict[str, object]:
     count = len(frames)
     preview_index = preview_frame_index_for_lab_replay(frames)
     preview = dict(frames[preview_index]) if count else None
-    summary: dict[str, Any] = {
+    summary: dict[str, object] = {
         "replay_payload_version": LAB_REPLAY_PAYLOAD_VERSION,
         "lab_replay_cache_schema_version": CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION,
         "frame_count": count,
@@ -134,7 +133,7 @@ def build_manifest_summary_from_compose(
     return summary
 
 
-def is_artifact_replay_source_summary(summary: dict[str, Any] | None) -> bool:
+def is_artifact_replay_source_summary(summary: dict[str, object] | None) -> bool:
     """True when ``replay_core.jsonl`` is indexed (compose source, not display cache)."""
 
     if not summary or not isinstance(summary, dict):
@@ -146,7 +145,7 @@ def is_artifact_replay_source_summary(summary: dict[str, Any] | None) -> bool:
     return False
 
 
-def _artifact_replay_source_snapshot(summary: dict[str, Any] | None) -> dict[str, Any] | None:
+def _artifact_replay_source_snapshot(summary: dict[str, object] | None) -> dict[str, object] | None:
     """Return artifact index summary to preserve across composed-cache writes."""
 
     if not summary or not isinstance(summary, dict):
@@ -159,7 +158,7 @@ def _artifact_replay_source_snapshot(summary: dict[str, Any] | None) -> dict[str
     return None
 
 
-def is_cache_summary_valid(summary: dict[str, Any] | None) -> bool:
+def is_cache_summary_valid(summary: dict[str, object] | None) -> bool:
     if not summary or not isinstance(summary, dict):
         return False
     try:
@@ -169,11 +168,11 @@ def is_cache_summary_valid(summary: dict[str, Any] | None) -> bool:
     return version == CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION
 
 
-def _dict_or_none(raw: Any) -> dict[str, Any] | None:
+def _dict_or_none(raw: object) -> dict[str, object] | None:
     return dict(raw) if isinstance(raw, dict) else None
 
 
-def load_manifest_summary_for_run_id(run_id: int) -> dict[str, Any] | None:
+def load_manifest_summary_for_run_id(run_id: int) -> dict[str, object] | None:
     """Load manifest summary from artifact/index fields before legacy config fallback."""
 
     direct = (
@@ -194,7 +193,7 @@ def load_manifest_summary_for_run_id(run_id: int) -> dict[str, Any] | None:
     return _dict_or_none(raw)
 
 
-def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
+def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, object]] | None:
     """Load replay frames artifact-first, then dedicated DB cache, then legacy config."""
 
     if not replay_compose_cache_enabled():
@@ -262,8 +261,8 @@ def load_composed_frames_for_run_id(run_id: int) -> list[dict[str, Any]] | None:
 def persist_composed_replay_for_run_id(
     run_id: int,
     *,
-    frames: list[dict[str, Any]],
-    metrics: dict[str, Any],
+    frames: list[dict[str, object]],
+    metrics: dict[str, object],
 ) -> None:
     """Fresh read-merge-write; preserve unrelated ``config_json`` keys (§4.8)."""
 

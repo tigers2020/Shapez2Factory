@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.cell_classifier import classify_blueprint_entry
 from shapez2_factory.domain.asteroid_lab.copy_json_coords import entry_island_raw_coord
@@ -15,36 +14,18 @@ from shapez2_factory.domain.asteroid_lab.service_dtos import (
     DecodedBlueprintSnapshotDTO,
     DecodedCellDTO,
 )
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_int
+
+_as_int = wire_int
 
 
-def _as_int(val: Any) -> int:
-    """Coerce blueprint scalars; ``None`` → ``0`` (same as entry ``get('X', 0)`` style).
-
-    **Caveat:** missing ``X`` on a blueprint dict row becomes ``raw_x == 0`` on
-    :class:`DecodedCellDTO`, which is **not** a valid asteroid world column (there is no
-    ``x == 0``). Prefer explicit ``X`` in JSON or treat ``raw_x == 0`` as a decode/validation
-    signal.
-    """
-
-    if val is None:
-        return 0
-    if isinstance(val, bool):
-        return int(val)
-    if isinstance(val, int):
-        return val
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return 0
-
-
-def _nested_b_summary(b: Any) -> tuple[int, dict[str, int], bool]:
+def _nested_b_summary(b: object) -> tuple[int, dict[str, int], bool]:
     """Summarize ``B.Entries`` only; do not unfold into world cells."""
 
     if not isinstance(b, dict):
         return (0, {}, False)
     entries = b.get("Entries")
-    nested_list: list[Any] = entries if isinstance(entries, list) else []
+    nested_list: list[object] = entries if isinstance(entries, list) else []
     counts: Counter[str] = Counter()
     for item in nested_list:
         if not isinstance(item, dict):
@@ -60,7 +41,7 @@ def _nested_b_summary(b: Any) -> tuple[int, dict[str, int], bool]:
     return (nested_count, dict(counts), has_nested)
 
 
-def _extract_layer(entry: dict[str, Any]) -> int | None:
+def _extract_layer(entry: dict[str, object]) -> int | None:
     if "L" in entry:
         v = entry.get("L")
         if v is None:
@@ -75,7 +56,7 @@ def _extract_layer(entry: dict[str, Any]) -> int | None:
 
 
 def build_decoded_blueprint_snapshot(
-    decoded_json: dict[str, Any],
+    decoded_json: dict[str, object],
     *,
     project_id: int | None = None,
     map_input_id: int | None = None,
@@ -92,7 +73,7 @@ def build_decoded_blueprint_snapshot(
     if not isinstance(bp, dict):
         bp = {}
     entries_raw = bp.get("Entries")
-    entries: list[Any] = entries_raw if isinstance(entries_raw, list) else []
+    entries: list[object] = entries_raw if isinstance(entries_raw, list) else []
 
     blueprint_type = str(bp.get("$type", "")) if bp.get("$type") is not None else ""
     binary_version = _as_int(decoded_json.get("V"))
@@ -121,7 +102,7 @@ def build_decoded_blueprint_snapshot(
         rot = _as_int(item.get("R"))
         layer = _extract_layer(item)
 
-        raw_entry: dict[str, Any] = dict(item)
+        raw_entry: dict[str, object] = dict(item)
 
         cells.append(
             DecodedCellDTO(
@@ -142,7 +123,7 @@ def build_decoded_blueprint_snapshot(
     if xs and ys:
         min_x, max_x = min(xs), max(xs)
         min_y, max_y = min(ys), max(ys)
-        bbox: dict[str, Any] = {
+        bbox: dict[str, object] = {
             "min_x": min_x,
             "max_x": max_x,
             "min_y": min_y,
@@ -167,7 +148,7 @@ def build_decoded_blueprint_snapshot(
         transport_kind_counts[c.transport_kind] = transport_kind_counts.get(c.transport_kind, 0) + 1
 
     summary_src = decoded_json.get("_asteroid_lab_summary")
-    summary_json: dict[str, Any] = dict(summary_src) if isinstance(summary_src, dict) else {}
+    summary_json: dict[str, object] = dict(summary_src) if isinstance(summary_src, dict) else {}
 
     dto = DecodedBlueprintSnapshotDTO(
         project_id=project_id,
@@ -200,4 +181,4 @@ def build_decoded_blueprint_snapshot(
     return dto
 
 
-__all__ = ["build_decoded_blueprint_snapshot"]
+__all__ = ["_as_int", "build_decoded_blueprint_snapshot"]

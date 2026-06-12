@@ -7,7 +7,6 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
 SOURCE = REPO / "documents" / "game_data"
@@ -62,7 +61,7 @@ class PathStat:
     unity_types: Counter[str] = field(default_factory=Counter)
     max_list_len: int = 0
 
-    def observe(self, value: Any) -> None:
+    def observe(self, value: object) -> None:
         if value is None:
             self.value_types["null"] += 1
         elif isinstance(value, bool):
@@ -93,7 +92,7 @@ class SchemaNode:
     dollar_type: Counter[str] = field(default_factory=Counter)
     pruned: bool = False
 
-    def merge_value(self, value: Any, depth: int) -> None:
+    def merge_value(self, value: object, depth: int) -> None:
         if depth > MAX_DEPTH or self.pruned:
             self.scalars.add("…")
             return
@@ -139,7 +138,7 @@ def _should_prune_segment(segment: str) -> bool:
     return segment in CLR_PRUNE_SEGMENTS
 
 
-def _walk_paths(value: Any, prefix: str, stats: dict[str, PathStat], depth: int) -> None:
+def _walk_paths(value: object, prefix: str, stats: dict[str, PathStat], depth: int) -> None:
     if depth > MAX_DEPTH:
         return
     norm = _norm_path(prefix) if prefix else "<root>"
@@ -202,7 +201,7 @@ def _render_schema(node: SchemaNode, indent: int = 0) -> list[str]:
     return lines
 
 
-def _envelope_stats(rows: list[dict[str, Any]]) -> list[str]:
+def _envelope_stats(rows: list[dict[str, object]]) -> list[str]:
     key_counts: Counter[str] = Counter()
     for row in rows:
         key_counts.update(row.keys())
@@ -225,7 +224,7 @@ def _write_paths_tsv(path: Path, stats: dict[str, PathStat], row_total: int) -> 
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def _write_detail_md(stem: str, meta: dict[str, Any], stats: dict[str, PathStat]) -> None:
+def _write_detail_md(stem: str, meta: dict[str, object], stats: dict[str, PathStat]) -> None:
     lines = [
         f"# `{meta['name']}` — deep structure",
         "",
@@ -264,7 +263,7 @@ def _write_detail_md(stem: str, meta: dict[str, Any], stats: dict[str, PathStat]
     (OUT_DIR / f"{stem}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def analyze_file(json_path: Path) -> dict[str, Any]:
+def analyze_file(json_path: Path) -> dict[str, object]:
     data = json.loads(json_path.read_text(encoding="utf-8-sig"))
     path_stats: dict[str, PathStat] = {}
     root_schema = SchemaNode()
@@ -313,7 +312,7 @@ def analyze_file(json_path: Path) -> dict[str, Any]:
     return meta
 
 
-def _write_readme(summaries: list[dict[str, Any]]) -> None:
+def _write_readme(summaries: list[dict[str, object]]) -> None:
     lines = [
         "# game_data JSON — deep structure appendix",
         "",
@@ -350,7 +349,7 @@ def _write_readme(summaries: list[dict[str, Any]]) -> None:
     (OUT_DIR / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def _patch_main_structure_doc(summaries: list[dict[str, Any]]) -> None:
+def _patch_main_structure_doc(summaries: list[dict[str, object]]) -> None:
     main = REPO / "docs" / "domain" / "game_data_json_structure.md"
     if not main.is_file():
         return
@@ -398,7 +397,7 @@ def _patch_main_structure_doc(summaries: list[dict[str, Any]]) -> None:
 
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    summaries: list[dict[str, Any]] = []
+    summaries: list[dict[str, object]] = []
     for path in sorted(SOURCE.glob("*.json")):
         print(f"analyze {path.name}...", flush=True)
         summaries.append(analyze_file(path))

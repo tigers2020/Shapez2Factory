@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.shapez_core.services.shape_code_parser import (
     ShapeCodeParseError,
     parse_shape_code_list,
@@ -22,7 +20,7 @@ def _issue(
     message: str,
     *,
     node_ids: tuple[str, ...] = (),
-) -> dict[str, Any]:
+) -> dict[str, object]:
     return {
         "severity": severity,
         "code": code,
@@ -57,14 +55,14 @@ def validate_recipe_graph_context(
     *,
     family_signature: str,
     family_allow_rotation: bool,
-    graph_document: dict[str, Any],
-) -> list[dict[str, Any]]:
+    graph_document: dict[str, object],
+) -> list[dict[str, object]]:
     """
     graph_document(재계산 후 등)을 레시피 패밀리 맥락에서 검사한다.
 
     severity: ``error`` | ``warning`` | ``info``.
     """
-    issues: list[dict[str, Any]] = []
+    issues: list[dict[str, object]] = []
     fam_sig = (family_signature or "").strip()
     nodes = graph_document.get("nodes")
     if not isinstance(nodes, list):
@@ -207,8 +205,8 @@ def validate_recipe_graph_context(
 
 
 def annotate_visual_graph_with_issues(
-    visual_graph: dict[str, Any],
-    issues: list[dict[str, Any]],
+    visual_graph: dict[str, object],
+    issues: list[dict[str, object]],
 ) -> None:
     """``visual_graph.nodes`` 항목에 ``validation_severity``를 붙인다 (graph_markup 소비)."""
     rank = {"error": 3, "warning": 2}

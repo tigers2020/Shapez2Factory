@@ -8,7 +8,6 @@ import tempfile
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Any
 
 from django.conf import settings
 from django.urls import reverse
@@ -58,7 +57,7 @@ class _GraphPreviewCache:
 
     def build_target(
         self,
-        preview_scene: dict[str, Any],
+        preview_scene: dict[str, object],
         *,
         version: str,
         preset: str,
@@ -79,7 +78,7 @@ class _GraphPreviewCache:
 
     def cache_key(
         self,
-        preview_scene: dict[str, Any],
+        preview_scene: dict[str, object],
         *,
         version: str,
         preset: str,
@@ -110,7 +109,7 @@ class _PlaywrightPrerenderer:
 
     def render_png(
         self,
-        preview_scene: dict[str, Any],
+        preview_scene: dict[str, object],
         cache_path: Path,
         *,
         json_parent: Path | None = None,
@@ -192,7 +191,7 @@ class PlaywrightPngGraphPreviewRenderer:
         )
         self._generation_disabled = False
 
-    def render_cached_only(self, preview_scene: dict[str, Any]) -> GraphPreview:
+    def render_cached_only(self, preview_scene: dict[str, object]) -> GraphPreview:
         """Return PNG URL only when DB/filesystem already has a valid image (no Playwright)."""
         target = self._cache.build_target(
             preview_scene,
@@ -212,7 +211,7 @@ class PlaywrightPngGraphPreviewRenderer:
 
         return GraphPreview(alt_text=target.alt_text)
 
-    def render(self, preview_scene: dict[str, Any]) -> GraphPreview:
+    def render(self, preview_scene: dict[str, object]) -> GraphPreview:
         cached = self.render_cached_only(preview_scene)
         if cached.image_url:
             return cached
@@ -234,7 +233,7 @@ class PlaywrightPngGraphPreviewRenderer:
         self._generation_disabled = True
         return GraphPreview(alt_text=target.alt_text)
 
-    def cache_key(self, preview_scene: dict[str, Any]) -> str:
+    def cache_key(self, preview_scene: dict[str, object]) -> str:
         return self._cache.cache_key(
             preview_scene,
             version=self.VERSION,
@@ -250,7 +249,7 @@ class PlaywrightPngGraphPreviewRenderer:
 
     def _generate_and_store(
         self,
-        preview_scene: dict[str, Any],
+        preview_scene: dict[str, object],
         target: _RenderTarget,
         *,
         use_db: bool,
@@ -288,14 +287,14 @@ class PlaywrightPngGraphPreviewRenderer:
 class NoopGraphPreviewRenderer:
     """Skip server-side PNG generation (Playwright). Use on hosts without node/Chromium."""
 
-    def render_cached_only(self, preview_scene: dict[str, Any]) -> GraphPreview:
+    def render_cached_only(self, preview_scene: dict[str, object]) -> GraphPreview:
         alt = f"Graph preview for {preview_scene.get('normalized_code', 'shape preview')}"
         return GraphPreview(alt_text=alt, image_url=None)
 
-    def render(self, preview_scene: dict[str, Any]) -> GraphPreview:
+    def render(self, preview_scene: dict[str, object]) -> GraphPreview:
         return self.render_cached_only(preview_scene)
 
-    def cache_key(self, preview_scene: dict[str, Any]) -> str:
+    def cache_key(self, preview_scene: dict[str, object]) -> str:
         return _GraphPreviewCache(
             Path(settings.SOLVER_GRAPH_PREVIEW_CACHE_DIR),
             PlaywrightPngGraphPreviewRenderer.BROKEN_PNG_SHA256,

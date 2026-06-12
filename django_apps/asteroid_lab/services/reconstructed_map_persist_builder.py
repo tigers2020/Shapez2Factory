@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import Any
 
 from django_apps.asteroid_lab.adapters.reconstruction_blueprint_export import (
     build_reconstructed_normalized_dto,
@@ -24,9 +23,9 @@ class ReconstructedMapPersistPayload:
     """ORM-ready payload: original snapshot + full_map reconstruction (no replay reads)."""
 
     original_copy_code: str
-    original_decoded_json: dict[str, Any]
+    original_decoded_json: dict[str, object]
     copy_code: str
-    decoded_json: dict[str, Any]
+    decoded_json: dict[str, object]
 
 
 def build_reconstructed_map_persist_payload(
@@ -36,8 +35,8 @@ def build_reconstructed_map_persist_payload(
     recon: ReconstructionResult,
     cleanup: CleanupResult | None = None,
     original_copy_code: str = "",
-    original_decoded_json: dict[str, Any] | None = None,
-    source_decoded_json: dict[str, Any] | None = None,
+    original_decoded_json: dict[str, object] | None = None,
+    source_decoded_json: dict[str, object] | None = None,
 ) -> ReconstructedMapPersistPayload:
     """Assemble full_map lab copy + JSON from reconstruction/cleanup (no replay I/O)."""
 

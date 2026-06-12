@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.db import transaction
 
 from django_apps.asteroid_lab import models as m
@@ -60,7 +58,7 @@ def persist_reconstructed_asteroid_map(
     run_key: str,
     recon: ReconstructionResult,
     cleanup: CleanupResult | None = None,
-    cleanup_summary: dict[str, Any] | None = None,
+    cleanup_summary: dict[str, object] | None = None,
     solver_run_id: int | None = None,
 ) -> int:
     """Write or update ``ReconstructedAsteroidMap`` for ``(map_input, run_key)``."""

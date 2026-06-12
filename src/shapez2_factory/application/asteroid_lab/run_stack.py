@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 from functools import partial
-from typing import Any
 
 from shapez2_factory.adapters.asteroid_lab.complete_map_serializer import serialize_complete_map
 from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
@@ -23,6 +22,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer05_route imp
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget import (
     LayerBudgetContext,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_post_summary import (
+    LayerPostSummaryRecord,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_02_EXTERIOR_TRANSPORT,
     LAYER_03_RIM_GREEDY_PLACEMENT,
@@ -32,6 +34,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
     IntegratedRimGreedyResult,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.stack_result import (
+    StackRunResult as CoreStackRunResult,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.run import (
     run_layer_02_exterior_transport,
@@ -78,10 +83,10 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.topology_contract import
 class StackRunResult:
     ok: bool = False
     error_code: str | None = None
-    replay_core_lines: tuple[dict[str, Any], ...] = ()
-    solver_summary: dict[str, Any] = field(default_factory=dict)
-    complete_map_json: dict[str, Any] = field(default_factory=dict)
-    stack_result_json: dict[str, Any] = field(default_factory=dict)
+    replay_core_lines: tuple[dict[str, object], ...] = ()
+    solver_summary: dict[str, object] = field(default_factory=dict)
+    complete_map_json: dict[str, object] = field(default_factory=dict)
+    stack_result_json: dict[str, object] = field(default_factory=dict)
     exterior_plan: ExteriorConnectionPlan | None = None
     rim_greedy: IntegratedRimGreedyResult | None = None
     inner_fill: Layer04InnerFillResult | None = None
@@ -97,7 +102,7 @@ def _capacity_summary(
     resource_kind: str,
     platform_count: int,
     rules: GameDataRulesPort,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     rule = rules.mining_extraction_rule(resource_kind=resource_kind)
     return build_terrain_capacity_summary_row(
         resource_kind=resource_kind,
@@ -114,7 +119,7 @@ def _capacity_envelope(
     *,
     complete_map: ReconstructionCompleteMap,
     rules: GameDataRulesPort,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     shape_field_cell_count = complete_map.shape_field_cell_count
     fluid_field_cell_count = complete_map.fluid_field_cell_count
     primary = detect_primary_resource_kind(complete_map)
@@ -142,7 +147,7 @@ def _capacity_envelope(
     }
 
 
-def _stack_result_to_json(stack_result: Any) -> dict[str, Any]:
+def _stack_result_to_json(stack_result: CoreStackRunResult) -> dict[str, object]:
     diagnostic = stack_result.diagnostic_snapshot
     return {
         "status": stack_result.status.value,
@@ -160,7 +165,7 @@ def _stack_result_to_json(stack_result: Any) -> dict[str, Any]:
     }
 
 
-def _layer_summary_to_json(record: Any) -> dict[str, Any]:
+def _layer_summary_to_json(record: LayerPostSummaryRecord) -> dict[str, object]:
     return {
         "layer_slug": record.layer_slug,
         "layer_index": record.layer_index,
@@ -225,7 +230,7 @@ class RunStackUseCase:
         stack_result_json = _stack_result_to_json(core_result.stack_result)
         layer_summaries = [_layer_summary_to_json(record) for record in core_result.layer_summaries]
         run_ok = core_result.stack_result.failed_layer_slug is None
-        solver_summary = {
+        solver_summary: dict[str, object] = {
             "run_success": run_ok,
             "validation_passed": run_ok,
             "stack_run_status": core_result.stack_result.status.value,

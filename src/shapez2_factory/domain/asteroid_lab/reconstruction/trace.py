@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.reconstruction.grid import Coord
 
@@ -15,7 +14,7 @@ class ReconstructionTraceEvent:
     phase: str
     trace_event_type: str
     coords: frozenset[Coord]
-    summary_json: dict[str, Any]
+    summary_json: dict[str, object]
 
 
 class ReconstructionTraceCollector:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Literal
 
 type GraphNodeKind = Literal["shape", "operation"]
 type ShapeNodeRole = Literal["source", "intermediate", "target"]
@@ -15,7 +15,7 @@ class SolverShapeNode:
     role: ShapeNodeRole
     shape_code: str
     label: str
-    preview_scene: dict[str, Any] | None = None
+    preview_scene: dict[str, object] | None = None
     reused_count: int = 0
     quantity: int = 1
     produced_state: ShapeProducedState | None = None

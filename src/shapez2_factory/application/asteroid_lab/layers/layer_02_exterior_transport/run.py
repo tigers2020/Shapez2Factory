@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
-from typing import Any
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
@@ -22,23 +21,24 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
 from shapez2_factory.domain.asteroid_lab.reconstruction.resource_kinds import (
     detect_present_resource_kinds,
 )
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_dict, wire_str
 
 
 def execute_layer_02_exterior_transport_plan(
     *,
     complete_map: ReconstructionCompleteMap,
-    capacity_envelope: dict[str, Any],
+    capacity_envelope: dict[str, object],
     throughput_target_percent: int,
     speed_tier: int = 1,
     rules: GameDataRulesPort,
 ) -> ExteriorConnectionPlan:
     """Run Layer 02 planning (pure; no I/O)."""
 
-    primary = str(capacity_envelope.get("primary_resource_kind") or "shape")
-    by_resource = dict(capacity_envelope.get("by_resource") or {})
+    primary = wire_str(capacity_envelope.get("primary_resource_kind"), default="shape")
+    by_resource = wire_dict(capacity_envelope.get("by_resource", {}))
     envelope_present = capacity_envelope.get("present_resource_kinds")
     if isinstance(envelope_present, (list, tuple)) and envelope_present:
-        resource_kinds = tuple(str(kind) for kind in envelope_present)
+        resource_kinds = tuple(wire_str(kind) for kind in envelope_present)
     else:
         resource_kinds = detect_present_resource_kinds(complete_map)
     if not resource_kinds:
@@ -46,7 +46,7 @@ def execute_layer_02_exterior_transport_plan(
 
     plans: list[ExteriorConnectionPlan] = []
     for resource_kind in resource_kinds:
-        resource_row = dict(by_resource.get(resource_kind) or {})
+        resource_row = wire_dict(by_resource.get(resource_kind, {}))
         terrain_raw = resource_row.get("max_throughput_per_min", "0")
         try:
             terrain_upper_bound = Decimal(str(terrain_raw))
@@ -73,7 +73,7 @@ def run_layer_02_exterior_transport(
     *,
     complete_map: ReconstructionCompleteMap,
     budget_ctx: LayerBudgetContext,
-    capacity_envelope: dict[str, Any] | None = None,
+    capacity_envelope: dict[str, object] | None = None,
     throughput_target_percent: int | None = None,
     speed_tier: int = 1,
     rules: GameDataRulesPort,

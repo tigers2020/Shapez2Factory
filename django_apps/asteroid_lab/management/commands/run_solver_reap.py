@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.core.management.base import BaseCommand
 
 from django_apps.asteroid_lab.services.solver_run_reconcile import reconcile_running_solver_runs
@@ -12,7 +10,7 @@ from django_apps.asteroid_lab.services.solver_run_reconcile import reconcile_run
 class Command(BaseCommand):
     help = "Reconcile all RUNNING SolverRun rows (manifest ARTIFACT_WRITTEN → ingest)."
 
-    def handle(self, *args: Any, **options: Any) -> None:
+    def handle(self, *args: object, **options: object) -> None:
         del args, options
         results = reconcile_running_solver_runs()
         if not results:

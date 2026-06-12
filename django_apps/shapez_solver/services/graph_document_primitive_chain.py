@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.shapez_solver.domain.operations import OperationType
 
 
-def try_linear_operation_sequence(graph_document: dict[str, Any]) -> list[str] | None:
+def try_linear_operation_sequence(graph_document: dict[str, object]) -> list[str] | None:
     """
     분기 없이 연산 노드가 0~1개일 때만 operation 문자열 시퀀스를 반환한다.
 

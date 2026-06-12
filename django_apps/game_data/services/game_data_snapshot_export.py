@@ -10,7 +10,6 @@ from __future__ import annotations
 import hashlib
 import json
 from enum import StrEnum
-from typing import Any
 
 from django_apps.game_data.models.exterior_transport_capacity import (
     ExteriorFluidTransportCapacity,
@@ -83,8 +82,8 @@ def _assert_required_snapshot_rows() -> None:
         )
 
 
-def _exterior_transport_capacity_rows() -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
+def _exterior_transport_capacity_rows() -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
     for shape_row in ExteriorShapeTransportCapacity.objects.filter(is_active=True).order_by(
         "speed_tier"
     ):
@@ -110,8 +109,8 @@ def _exterior_transport_capacity_rows() -> list[dict[str, Any]]:
     return rows
 
 
-def _mining_extraction_rule_rows() -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
+def _mining_extraction_rule_rows() -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
     for rule in MiningExtractionRule.objects.filter(is_active=True).order_by("resource_kind"):
         rows.append(
             {
@@ -127,9 +126,9 @@ def _mining_extraction_rule_rows() -> list[dict[str, Any]]:
 
 def _dump_hash(
     *,
-    exterior_rows: list[dict[str, Any]],
-    mining_rows: list[dict[str, Any]],
-    layout_rows: list[dict[str, Any]],
+    exterior_rows: list[dict[str, object]],
+    mining_rows: list[dict[str, object]],
+    layout_rows: list[dict[str, object]],
 ) -> str:
     blob = json.dumps(
         {
@@ -144,7 +143,7 @@ def _dump_hash(
     return f"sha256:{digest}"
 
 
-def build_game_data_snapshot_payload() -> dict[str, Any]:
+def build_game_data_snapshot_payload() -> dict[str, object]:
     """ORM → snapshot payload (resolver output only; capacity formula stays in game_data)."""
 
     _assert_required_snapshot_rows()

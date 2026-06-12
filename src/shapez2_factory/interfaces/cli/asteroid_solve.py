@@ -238,14 +238,16 @@ def _run_artifact(
         genetic_sample_seeds=genetic_sample_seeds,
     )
     if verbose or verbose_logging_enabled():
-        for record in result.solver_summary.get("layer_summaries", []):
-            if not isinstance(record, dict):
-                continue
-            emit_cli_line(
-                "layer_done",
-                layer_slug=record.get("layer_slug"),
-                elapsed_ms=record.get("elapsed_ms"),
-            )
+        layer_summaries_raw = result.solver_summary.get("layer_summaries", [])
+        if isinstance(layer_summaries_raw, list):
+            for record in layer_summaries_raw:
+                if not isinstance(record, dict):
+                    continue
+                emit_cli_line(
+                    "layer_done",
+                    layer_slug=record.get("layer_slug"),
+                    elapsed_ms=record.get("elapsed_ms"),
+                )
 
     replay_stream = StringIO()
     write_replay_core_jsonl(replay_stream, result.replay_core_lines, run_key=run_key)

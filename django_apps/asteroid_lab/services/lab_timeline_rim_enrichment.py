@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping, Sequence
-from typing import Any
 
 from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
     acceptance_topology_from_decoded_cells,
@@ -24,7 +23,7 @@ LAB_PHASE_RECONSTRUCTION = "reconstruction"
 METRICS_KEY = "terrain_rim_highlight"
 
 
-def frame_has_renderable_map(frame: dict[str, Any]) -> bool:
+def frame_has_renderable_map(frame: dict[str, object]) -> bool:
     mv = frame.get("map_view")
     if not isinstance(mv, dict):
         return False
@@ -46,14 +45,38 @@ _COMPLETE_EVENT_TYPES = frozenset(
 )
 
 
-def _decoded_from_replay_row(row: Mapping[str, Any]) -> DecodedCellDTO:
+def _row_int(value: object, *, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (float, str)):
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return default
+    return default
+
+
+def _optional_layer(value: object) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, str, float)):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _decoded_from_replay_row(row: Mapping[str, object]) -> DecodedCellDTO:
     layer_raw = row.get("layer")
-    layer = int(layer_raw) if layer_raw is not None else None
+    layer = _optional_layer(layer_raw)
     return DecodedCellDTO(
-        x=int(row["x"]),
-        y=int(row["y"]),
+        x=_row_int(row["x"]),
+        y=_row_int(row["y"]),
         layer=layer,
-        rotation=int(row.get("rotation") or 0),
+        rotation=_row_int(row.get("rotation"), default=0),
         tile_type=str(row.get("tile_type") or ""),
         cell_kind=str(row.get("cell_kind") or row.get("kind") or ""),
         transport_kind=str(row.get("transport_kind") or row.get("transport") or "none"),
@@ -64,7 +87,7 @@ def _decoded_from_replay_row(row: Mapping[str, Any]) -> DecodedCellDTO:
     )
 
 
-def _full_cell_rows_from_frame(frame: Mapping[str, Any]) -> list[dict[str, Any]]:
+def _full_cell_rows_from_frame(frame: Mapping[str, object]) -> list[dict[str, object]]:
     map_view = frame.get("map_view")
     if not isinstance(map_view, dict):
         return []
@@ -75,7 +98,7 @@ def _full_cell_rows_from_frame(frame: Mapping[str, Any]) -> list[dict[str, Any]]
 
 
 def _topology_from_renderable_rows(
-    rows: Sequence[Mapping[str, Any]],
+    rows: Sequence[Mapping[str, object]],
     *,
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW,
 ) -> tuple[frozenset[Coord], frozenset[Coord]]:
@@ -94,7 +117,7 @@ def _topology_from_renderable_rows(
 
 
 def _highlight_wire_from_frame_rows(
-    rows: Sequence[Mapping[str, Any]],
+    rows: Sequence[Mapping[str, object]],
     *,
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW,
 ) -> dict[str, object]:
@@ -107,7 +130,7 @@ def _highlight_wire_from_frame_rows(
     return terrain_rim_highlight_to_metrics_dict(dto)
 
 
-def _is_complete_frame(frame: Mapping[str, Any]) -> bool:
+def _is_complete_frame(frame: Mapping[str, object]) -> bool:
     event_type = str(frame.get("event_type") or "")
     if event_type in _COMPLETE_EVENT_TYPES:
         return True
@@ -120,15 +143,16 @@ def _is_complete_frame(frame: Mapping[str, Any]) -> bool:
 
 
 def enrich_lab_timeline_frames_with_terrain_rim(
-    frames: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], dict[str, object] | None]:
+    frames: list[dict[str, object]],
+) -> tuple[list[dict[str, object]], dict[str, object] | None]:
     """Return enriched frames and optional frozen complete-map rim wire."""
 
     frozen_wire: dict[str, object] | None = None
-    out: list[dict[str, Any]] = []
+    out: list[dict[str, object]] = []
     for frame in frames:
         fr_copy = copy.deepcopy(frame)
-        metrics = dict(fr_copy.get("metrics") or {})
+        metrics_raw = fr_copy.get("metrics")
+        metrics: dict[str, object] = dict(metrics_raw) if isinstance(metrics_raw, dict) else {}
         if METRICS_KEY in metrics:
             del metrics[METRICS_KEY]
         if not frame_has_renderable_map(fr_copy):

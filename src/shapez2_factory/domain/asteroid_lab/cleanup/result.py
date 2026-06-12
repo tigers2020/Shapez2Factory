@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.decoded_cell import DecodedCellDTO
 from shapez2_factory.domain.asteroid_lab.reconstruction.grid import Coord
@@ -28,4 +27,4 @@ class CleanupResult:
     wall_coords: frozenset[Coord]
     bbox_bounds: BBoxBounds | None
     original_cells: tuple[DecodedCellDTO, ...]
-    summary_json: dict[str, Any] = field(default_factory=dict)
+    summary_json: dict[str, object] = field(default_factory=dict)

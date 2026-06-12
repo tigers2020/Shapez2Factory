@@ -8,7 +8,6 @@ re-exported here for back-compat. Row-dict shaping (``rows_from_cells`` etc.) st
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
 
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     cell_key_xy_layer,
@@ -28,12 +27,12 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.result import Reconstruc
 
 
 def merge_reconstruction_display_rows(
-    structural_rows: Sequence[dict[str, Any]],
+    structural_rows: Sequence[dict[str, object]],
     recon_cells: Sequence[DecodedCellDTO],
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Row dict merge for replay (structural full_map rows + recon overlay)."""
 
-    merged: dict[tuple[int, int, int | None], dict[str, Any]] = {}
+    merged: dict[tuple[int, int, int | None], dict[str, object]] = {}
     for r in structural_rows:
         if not isinstance(r, dict):
             continue
@@ -51,7 +50,7 @@ def merge_reconstruction_display_rows(
 def full_map_rows_from_reconstruction(
     cleanup: CleanupResult,
     recon: ReconstructionResult,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Full_map row list equivalent to replay ``reconstruction_complete``."""
 
     return rows_from_cells(merged_display_cells_from_reconstruction(cleanup, recon))
@@ -60,14 +59,14 @@ def full_map_rows_from_reconstruction(
 _RECON_META_KEY = "_asteroid_lab_reconstruction"
 
 
-def reconstruction_meta_from_decoded_json(decoded_json: dict[str, Any]) -> dict[str, Any]:
+def reconstruction_meta_from_decoded_json(decoded_json: dict[str, object]) -> dict[str, object]:
     """``_asteroid_lab_reconstruction`` block from persisted ``decoded_json``."""
 
     meta = decoded_json.get(_RECON_META_KEY)
     return dict(meta) if isinstance(meta, dict) else {}
 
 
-def reconstruction_summary_from_decoded_json(decoded_json: dict[str, Any]) -> dict[str, Any]:
+def reconstruction_summary_from_decoded_json(decoded_json: dict[str, object]) -> dict[str, object]:
     """Persisted confidence / reconstruction counters (if present)."""
 
     meta = reconstruction_meta_from_decoded_json(decoded_json)
@@ -75,7 +74,9 @@ def reconstruction_summary_from_decoded_json(decoded_json: dict[str, Any]) -> di
     return dict(summary) if isinstance(summary, dict) else {}
 
 
-def full_map_island_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict[str, int] | None:
+def full_map_island_bbox_from_decoded_json(
+    decoded_json: dict[str, object],
+) -> dict[str, int] | None:
     """Topology extent from persist (island-local; PR-F Wave C)."""
 
     from django_apps.asteroid_lab.snapshots.island_bbox import (

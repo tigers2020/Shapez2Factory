@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.core.management.base import BaseCommand, CommandError
 
 from django_apps.asteroid_lab import models as m
@@ -15,12 +13,12 @@ from django_apps.asteroid_lab.services.reconstructed_map_thumbnail_service impor
 class Command(BaseCommand):  # type: ignore[misc]
     help = "Regenerate admin_list_thumbnail for ReconstructedAsteroidMap rows."
 
-    def add_arguments(self, parser: Any) -> None:
+    def add_arguments(self, parser: object) -> None:
         parser.add_argument("--pk", type=int, action="append", default=[])
         parser.add_argument("--all", action="store_true")
         parser.add_argument("--force", action="store_true")
 
-    def handle(self, *args: Any, **options: Any) -> None:
+    def handle(self, *args: object, **options: object) -> None:
         qs = m.ReconstructedAsteroidMap.objects.all()
         pks: list[int] = list(options["pk"] or [])
         if pks:

@@ -5,14 +5,13 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
 
 
 class ArtifactReplayLoadError(Exception):
     """Raised when an artifact replay JSONL stream is malformed."""
 
 
-def iter_replay_core_frames(path: Path) -> Iterator[dict[str, Any]]:
+def iter_replay_core_frames(path: Path) -> Iterator[dict[str, object]]:
     """Yield replay frame records line-by-line without materializing the JSONL file."""
 
     previous_frame_index: int | None = None

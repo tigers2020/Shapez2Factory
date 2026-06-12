@@ -13,7 +13,6 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 from django.conf import settings
 from django.utils import timezone
@@ -32,7 +31,7 @@ _STAGE_FILES: tuple[tuple[str, str], ...] = (
 )
 
 
-def _json_safe(value: Any) -> Any:
+def _json_safe(value: object) -> object:
     if value is None or isinstance(value, (bool, int, float, str)):
         return value
     if isinstance(value, Enum):
@@ -123,8 +122,8 @@ class AsteroidLabTraceLogger:
         stage: str,
         event: str,
         severity: str = "debug",
-        source: Mapping[str, Any] | None = None,
-        **payload: Any,
+        source: Mapping[str, object] | None = None,
+        **payload: object,
     ) -> None:
         """???대깽?몃? stage蹂?JSONL ?뚯씪??append?쒕떎."""
 
@@ -172,7 +171,7 @@ class AsteroidLabTraceLogger:
                 return name
         return "99_misc.jsonl"
 
-    def _write_event(self, row: Mapping[str, Any]) -> None:
+    def _write_event(self, row: Mapping[str, object]) -> None:
         data = json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
         size = len(data.encode("utf-8"))
         if self._event_count >= self.max_events or self._byte_count + size > self.max_bytes:
@@ -302,7 +301,7 @@ def record_decoded_snapshot_trace(
 
 def record_reconstruction_trace_events(
     trace_logger: AsteroidLabTraceLogger | None,
-    trace_events: Sequence[Any],
+    trace_events: Sequence[object],
 ) -> None:
     """湲곗〈 reconstruction trace collector ?대깽?몃? JSONL?먮룄 蹂듭궗?쒕떎."""
 

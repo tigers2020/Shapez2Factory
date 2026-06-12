@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from django.templatetags.static import static
 
 from django_apps.shapez_core.services.shape_code_parser import parse_shape_code_list
@@ -25,7 +23,7 @@ from django_apps.shapez_solver.services.fluid_carrier_render_scene import (
 def serialize_solver_graph(
     graph: SolverGraph,
     preview_renderer: GraphPreviewRenderer,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     return {
         "layout": {
             "direction": graph.direction,
@@ -42,7 +40,7 @@ def _serialize_solver_shape_node(
     preview_renderer: GraphPreviewRenderer,
     *,
     sync_png: bool,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     preview_scene = node.preview_scene or build_preview_scene(
         node.shape_code,
         source_carrier=node.source_carrier,
@@ -52,7 +50,7 @@ def _serialize_solver_shape_node(
         if sync_png
         else preview_renderer.render_cached_only(preview_scene)
     )
-    payload: dict[str, Any] = {
+    payload: dict[str, object] = {
         "id": node.id,
         "kind": node.kind,
         "role": node.role,
@@ -76,8 +74,8 @@ def _serialize_solver_shape_node(
     return payload
 
 
-def _serialize_solver_operation_node(node: SolverOperationNode) -> dict[str, Any]:
-    payload: dict[str, Any] = {
+def _serialize_solver_operation_node(node: SolverOperationNode) -> dict[str, object]:
+    payload: dict[str, object] = {
         "id": node.id,
         "kind": node.kind,
         "operation": {
@@ -101,7 +99,7 @@ def serialize_graph_node(
     preview_renderer: GraphPreviewRenderer,
     *,
     sync_png: bool = True,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     if isinstance(node, SolverShapeNode):
         return _serialize_solver_shape_node(node, preview_renderer, sync_png=sync_png)
     if isinstance(node, SolverOperationNode):
@@ -120,7 +118,7 @@ def serialize_graph_edge(edge: SolverGraphEdge) -> dict[str, str | int | None]:
     }
 
 
-def build_preview_scene(shape_code: str, *, source_carrier: str | None = None) -> dict[str, Any]:
+def build_preview_scene(shape_code: str, *, source_carrier: str | None = None) -> dict[str, object]:
     pattern = parse_shape_code_list(shape_code)[0]
     if source_carrier == "fluid":
         scene = build_fluid_carrier_preview_scene(pattern)

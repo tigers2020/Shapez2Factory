@@ -5,10 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
 
 
-def load_json(path: Path) -> Any:
+def load_json(path: Path) -> object:
     text = path.read_text(encoding="utf-8-sig")
     return json.loads(text)
 

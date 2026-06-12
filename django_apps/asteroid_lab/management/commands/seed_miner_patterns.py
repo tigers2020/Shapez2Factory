@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -51,7 +50,7 @@ class _ParsedSeed:
     catalog_rank: int
     pattern_id: str
     code: str
-    root: dict[str, Any]
+    root: dict[str, object]
     equivalence_signature: str
     topology_signature: str
     extension_count: int
@@ -65,7 +64,7 @@ class Command(BaseCommand):  # type: ignore[misc]
         "(solver falls back to in-memory exhaustive catalog when only miner_seed_* exist)."
     )
 
-    def add_arguments(self, parser: Any) -> None:
+    def add_arguments(self, parser: object) -> None:
         parser.add_argument(
             "--file",
             default=_DEFAULT_BOOTSTRAP_PATH,
@@ -102,7 +101,7 @@ class Command(BaseCommand):  # type: ignore[misc]
         )
 
     @transaction.atomic
-    def handle(self, *args: Any, **options: Any) -> None:
+    def handle(self, *args: object, **options: object) -> None:
         path = Path(str(options["file"]))
         if not path.is_file():
             raise CommandError(f"bootstrap file not found: {path}")
@@ -242,7 +241,7 @@ class Command(BaseCommand):  # type: ignore[misc]
         difficulty: IntrinsicDifficultyResult,
         difficulty_rank: int,
         intrinsic_priority_rank: int,
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         ext = seed.extension_count
         priority_score = intrinsic_priority_score(difficulty)
         return {

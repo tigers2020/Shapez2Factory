@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.game_data.coverage.disposition import Disposition
 from django_apps.game_data.coverage.simulation_paths import classify_norm_path
 from django_apps.game_data.importers.base import ImportContext
@@ -26,7 +24,7 @@ def sync_definition_snapshot_coverage_audit(
     ctx: ImportContext,
     *,
     owner_key: str,
-    definition_snapshot: dict[str, Any] | None,
+    definition_snapshot: dict[str, object] | None,
 ) -> int:
     if not isinstance(definition_snapshot, dict):
         return 0

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -15,11 +14,11 @@ _FIXTURE_ROOT = _TESTS_ROOT / "fixtures" / "asteroid_lab" / "inner_quad_template
 _MANIFEST_PATH = _FIXTURE_ROOT / "manifest.json"
 
 
-def _load_manifest() -> dict[str, Any]:
+def _load_manifest() -> dict[str, object]:
     return json.loads(_MANIFEST_PATH.read_text(encoding="utf-8"))
 
 
-def _classify_entries(entries: list[dict[str, Any]]) -> tuple[int, int, int, set[str]]:
+def _classify_entries(entries: list[dict[str, object]]) -> tuple[int, int, int, set[str]]:
     miner_count = 0
     extension_count = 0
     transport_count = 0

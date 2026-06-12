@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from typing import Any, TextIO
+from typing import TextIO
 
 REPLAY_CORE_SCHEMA_VERSION = 1
 
@@ -17,7 +17,7 @@ class ReplayCoreFrameOrderError(ValueError):
     """Raised when replay frames are missing or violate monotonic frame order."""
 
 
-def _frame_index(frame: dict[str, Any]) -> int:
+def _frame_index(frame: dict[str, object]) -> int:
     try:
         raw_value = frame["frame_index"]
     except KeyError as exc:
@@ -27,14 +27,14 @@ def _frame_index(frame: dict[str, Any]) -> int:
     return raw_value
 
 
-def _write_json_line(stream: TextIO, payload: dict[str, Any]) -> None:
+def _write_json_line(stream: TextIO, payload: dict[str, object]) -> None:
     stream.write(json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
     stream.write("\n")
 
 
 def write_replay_core_jsonl(
     stream: TextIO,
-    frames: Iterable[dict[str, Any]],
+    frames: Iterable[dict[str, object]],
     *,
     run_key: str,
 ) -> None:

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import sys
 import uuid
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, cast
 
 from django.conf import settings
 from django.utils import timezone
@@ -54,7 +54,7 @@ from django_apps.asteroid_lab.services.solver_subprocess_runner import (
 )
 
 
-def _empty_replay_track_metrics(*, reason: str | None = None) -> dict[str, Any]:
+def _empty_replay_track_metrics(*, reason: str | None = None) -> dict[str, object]:
     return {
         "frame_count": 0,
         "replay_truncated": False,
@@ -78,8 +78,8 @@ def _run_subprocess_runtime_for_project(
     inp: m.AsteroidMapInput,
     run_key: str | None,
     replace_existing_run: bool,
-    config: dict[str, Any] | None,
-    game_data_snapshot: Any | None,
+    config: dict[str, object] | None,
+    game_data_snapshot: object | None,
 ) -> SolverRuntimeEntryResult:
     resolved_run_key = (run_key or "").strip() or f"asteroid-{project_id}-{uuid.uuid4().hex}"
     artifact_root = default_artifact_root()
@@ -137,8 +137,8 @@ def _build_subprocess_request(
     inp: m.AsteroidMapInput,
     artifact_root: Path,
     replace_existing_run: bool,
-    config: dict[str, Any] | None,
-    game_data_snapshot: dict[str, Any],
+    config: dict[str, object] | None,
+    game_data_snapshot: dict[str, object],
 ) -> SolverSubprocessRequest:
     runtime_config = config or {}
     verbose = bool(
@@ -173,9 +173,9 @@ def enqueue_solver_run_for_project(
     *,
     run_key: str | None = None,
     replace_existing_run: bool = False,
-    config: dict[str, Any] | None = None,
-    game_data_snapshot: Any | None = None,
-    status_url_builder: Any | None = None,
+    config: dict[str, object] | None = None,
+    game_data_snapshot: object | None = None,
+    status_url_builder: Callable[[int], str] | None = None,
 ) -> SolverEnqueueResult:
     """Spawn a detached CLI subprocess and return immediately (HTTP 202 path)."""
 
@@ -297,11 +297,11 @@ def run_solver_runtime_for_project(
     *,
     run_key: str | None = None,
     replace_existing_run: bool = False,
-    config: dict[str, Any] | None = None,
+    config: dict[str, object] | None = None,
     generator_version: str = "exhaustive_sample_gene_v1",
-    game_data_snapshot: Any | None = None,
-    game_data_provenance: Any | None = None,
-    catalog_slice: Any | None = None,
+    game_data_snapshot: object | None = None,
+    game_data_provenance: object | None = None,
+    catalog_slice: object | None = None,
 ) -> SolverRuntimeEntryResult:
     """Run the solver through the pure CLI subprocess path only."""
 
@@ -340,17 +340,17 @@ def run_solver_runtime_for_project(
     )
 
 
-def _normalize_milestone_track_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
+def _normalize_milestone_track_metrics(metrics: dict[str, object]) -> dict[str, object]:
     if metrics.get("frame_count") is not None:
         return dict(metrics)
-    return cast(dict[str, Any], empty_milestone_track_metrics())
+    return dict(empty_milestone_track_metrics())
 
 
 def entry_result_to_json_dict(
     result: SolverRuntimeEntryResult,
     *,
     project_slug: str | None = None,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     frames = list(result.lab_replay_frames_json)
     milestone_frames = list(result.lab_optimization_milestone_frames_json)
     mode = lab_replay_payload_mode()
@@ -360,7 +360,7 @@ def entry_result_to_json_dict(
         loaded_frames = load_composed_frames_for_run_id(int(run_id))
         if loaded_frames is not None:
             frames = loaded_frames
-    manifest_summary: dict[str, Any] | None = None
+    manifest_summary: dict[str, object] | None = None
     if mode == "lazy" and run_id is not None:
         manifest_summary = load_manifest_summary_for_run_id(int(run_id))
 
@@ -392,7 +392,7 @@ def entry_result_to_json_dict(
         replay_track_metrics = dict(result.replay_track_metrics)
         lab_replay_frame_count = len(frames) if mode == "inline" else int(handle.frame_count)
 
-    body: dict[str, Any] = {
+    body: dict[str, object] = {
         "ok": result.ok,
         "solver_run_id": run_id,
         "lab_replay_frame_count": lab_replay_frame_count,

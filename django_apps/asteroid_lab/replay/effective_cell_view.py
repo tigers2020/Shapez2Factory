@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any
 
 from django_apps.asteroid_lab.replay.effective_cell_wire import (
     EffectiveCellWire,
     effective_cell_to_wire,
 )  # re-exported in __all__
+from django_apps.asteroid_lab.typing_boundary import JsonObject
 
 _LEGACY_SHAPE_OUTPUT_TOKENS = frozenset({"shape_belt", "belt", "shape"})
 _LEGACY_FLUID_OUTPUT_TOKENS = frozenset({"fluid_pipe", "pipe", "fluid"})
@@ -54,7 +54,7 @@ class EffectiveCellView:
     transport_tile_id: str | None
     simulation: str | None
     output_transport_kind: str
-    sources: dict[str, Any] = field(default_factory=dict)
+    sources: dict[str, object] = field(default_factory=dict)
 
 
 def normalize_project_transport_kind(raw: object) -> str:
@@ -80,21 +80,21 @@ def simulation_for_tile_id(tile_id: str | None) -> str | None:
     return None
 
 
-def _wire_cell_kind(cell: dict[str, Any]) -> str:
+def _wire_cell_kind(cell: JsonObject) -> str:
     raw = cell.get("kind")
     if raw is None:
         raw = cell.get("cell_kind")
     return str(raw or "").strip()
 
 
-def _wire_transport_raw(cell: dict[str, Any]) -> str:
+def _wire_transport_raw(cell: JsonObject) -> str:
     raw = cell.get("transport")
     if raw is None:
         raw = cell.get("transport_kind")
     return str(raw or "").strip()
 
 
-def _wire_output_transport_kind(cell: dict[str, Any]) -> str:
+def _wire_output_transport_kind(cell: JsonObject) -> str:
     raw = cell.get("output_transport_kind")
     if raw is not None and str(raw).strip():
         normalized = normalize_project_transport_kind(raw)
@@ -106,27 +106,33 @@ def _wire_output_transport_kind(cell: dict[str, Any]) -> str:
     return "none"
 
 
-def _wire_tile_type(cell: dict[str, Any]) -> str:
+def _wire_tile_type(cell: JsonObject) -> str:
     raw = cell.get("tile_type")
     if raw is None:
         raw = cell.get("sprite_identifier")
     return str(raw or "").strip()
 
 
-def _wire_rotation(cell: dict[str, Any]) -> int | None:
-    if cell.get("rotation") is None:
+def _wire_rotation(cell: JsonObject) -> int | None:
+    raw = cell.get("rotation")
+    if raw is None:
+        return None
+    if not isinstance(raw, (int, str, float, bool)):
         return None
     try:
-        return int(cell["rotation"])
+        return int(raw)
     except (TypeError, ValueError):
         return None
 
 
-def _wire_layer(cell: dict[str, Any], *, default: int = 0) -> int:
-    if cell.get("layer") is None:
+def _wire_layer(cell: JsonObject, *, default: int = 0) -> int:
+    raw = cell.get("layer")
+    if raw is None:
+        return default
+    if not isinstance(raw, (int, str, float, bool)):
         return default
     try:
-        return int(cell["layer"])
+        return int(raw)
     except (TypeError, ValueError):
         return default
 
@@ -154,9 +160,9 @@ def merge_effective_cell_view(
     x: int,
     y: int,
     frame_index: int | None = None,
-    full_cell: dict[str, Any] | None = None,
-    delta_cell: dict[str, Any] | None = None,
-    overlay_cells: list[dict[str, Any]] | None = None,
+    full_cell: JsonObject | None = None,
+    delta_cell: JsonObject | None = None,
+    overlay_cells: list[JsonObject] | None = None,
 ) -> EffectiveCellView | None:
     """Merge map_view sources into one EffectiveCellView for ``(x, y)``."""
 
@@ -164,7 +170,7 @@ def merge_effective_cell_view(
     if base is None and not overlay_cells:
         return None
 
-    sources: dict[str, Any] = {}
+    sources: dict[str, object] = {}
     if full_cell is not None:
         sources["full_cell"] = full_cell
     if delta_cell is not None:
@@ -255,7 +261,7 @@ def merge_effective_cell_view(
     )
 
 
-def effective_cell_view_as_dict(view: EffectiveCellView) -> dict[str, Any]:
+def effective_cell_view_as_dict(view: EffectiveCellView) -> dict[str, object]:
     return asdict(view)
 
 

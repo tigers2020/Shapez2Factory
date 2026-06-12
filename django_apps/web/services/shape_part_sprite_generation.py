@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TextIO
+from typing import TextIO
 
 from django.conf import settings
 from django.core.cache import cache
@@ -37,7 +37,7 @@ def job_cache_key(job_id: str) -> str:
     return f"{JOB_CACHE_PREFIX}{job_id}"
 
 
-def merge_job_state(cache_key: str, updates: dict[str, Any]) -> None:
+def merge_job_state(cache_key: str, updates: dict[str, object]) -> None:
     """Merge ``updates`` into an existing job dict (admin progress polling)."""
     cur = cache.get(cache_key)
     if cur is None:
@@ -296,7 +296,7 @@ def _check_sprite_renderer_prerequisites(
     return None
 
 
-def _import_pillow_image(stderr: TextIO | None) -> Any:
+def _import_pillow_image(stderr: TextIO | None) -> object:
     try:
         from PIL import Image  # noqa: PLC0415
     except ImportError as exc:
@@ -311,7 +311,7 @@ def _sprite_key_and_scene_for_spec(
     material_key: str,
     quadrant_index: int,
     renderer_version: str,
-) -> tuple[str, dict[str, Any]]:
+) -> tuple[str, dict[str, object]]:
     if mesh_key == PEDESTAL_ONLY_MESH_KEY:
         return (
             make_pedestal_sprite_key(renderer_version),
@@ -334,7 +334,7 @@ def _run_node_scene_to_png_bytes(
     *,
     node_bin: str,
     script_path: Path,
-    scene: dict[str, Any],
+    scene: dict[str, object],
     env: dict[str, str],
     base_dir: Path,
 ) -> bytes:
@@ -380,7 +380,7 @@ def _persist_sprite_variant_row(
     renderer_version: str,
     sprite_key: str,
     png_bytes: bytes,
-    pil_image: Any,
+    pil_image: object,
 ) -> None:
     with pil_image.open(io.BytesIO(png_bytes)) as im:
         w, h = im.size

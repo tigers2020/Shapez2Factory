@@ -321,7 +321,7 @@ def _observability_events(
     committed: tuple[CommittedRimSeedPlacement, ...],
     rim_anchor_count: int,
 ) -> tuple[RimGreedyObservationEvent, ...]:
-    payload = {
+    payload: dict[str, object] = {
         "rim_anchor_count": rim_anchor_count,
         "committed_placement_count": len(committed),
     }

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from allauth.account.adapter import get_adapter as get_account_adapter
 from allauth.socialaccount.forms import SignupForm as AllauthSocialSignupForm
 from django import forms
@@ -19,7 +17,7 @@ class SocialSignupForm(AllauthSocialSignupForm):
     deals with the fields that actually need attention (typically email).
     """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
 
         username_init = (self.initial.get("username") or "").strip()

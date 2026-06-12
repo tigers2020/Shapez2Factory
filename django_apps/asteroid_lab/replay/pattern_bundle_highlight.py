@@ -6,10 +6,13 @@ Must not be imported by solver placement, routing, validation, or optimization i
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Protocol
+from typing import Protocol
 
 from django_apps.asteroid_lab.reconstruction.cell_hull_outline import (
     build_cell_hull_outline_loops,
+)
+from django_apps.asteroid_lab.replay.pattern_bundle_highlight_wire import (
+    PatternBundleHighlightEntryWire,
 )
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
@@ -101,12 +104,12 @@ def build_pattern_bundle_highlights_wire(
         return {}
 
     color_indices = assign_bundle_color_indices(tuple(occ for _key, occ, _gene in active))
-    bundles: list[dict[str, Any]] = []
+    bundles: list[PatternBundleHighlightEntryWire] = []
     for i, (bundle_key, occupied, gene_key) in enumerate(active):
         loops = build_cell_hull_outline_loops(occupied)
         if not loops:
             continue
-        entry: dict[str, Any] = {
+        entry: PatternBundleHighlightEntryWire = {
             "bundle_key": bundle_key,
             "color_index": color_indices[i],
             "outline_loops": [[[int(x), int(y)] for x, y in loop] for loop in loops],

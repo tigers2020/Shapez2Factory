@@ -8,8 +8,6 @@ inputs to optimization logic.
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.db import transaction
 from django.db.models import Max
 
@@ -166,7 +164,7 @@ def update_playback_session(track_id: int, patch: PlaybackPatchDTO) -> PlaybackS
         session.selected_bundle_id = patch.selected_bundle_id
         updates.append("selected_bundle_id")
     if patch.ui_state_json is not None:
-        merged: dict[str, Any] = {**dict(session.ui_state_json or {}), **patch.ui_state_json}
+        merged: dict[str, object] = {**dict(session.ui_state_json or {}), **patch.ui_state_json}
         session.ui_state_json = merged
         updates.append("ui_state_json")
 

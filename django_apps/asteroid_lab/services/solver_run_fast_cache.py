@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.asteroid_lab.models import SolverRun
 from django_apps.asteroid_lab.services.lab_replay_lazy_handle import LAB_REPLAY_PAYLOAD_VERSION
 from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
@@ -26,7 +24,7 @@ _FAST_CACHE_UPDATE_FIELDS = (
 )
 
 
-def empty_lab_replay_manifest_summary() -> dict[str, Any]:
+def empty_lab_replay_manifest_summary() -> dict[str, object]:
     return {
         "replay_payload_version": LAB_REPLAY_PAYLOAD_VERSION,
         "lab_replay_cache_schema_version": CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION,
@@ -37,7 +35,7 @@ def empty_lab_replay_manifest_summary() -> dict[str, Any]:
     }
 
 
-def empty_solver_run_fast_cache_kwargs() -> dict[str, Any]:
+def empty_solver_run_fast_cache_kwargs() -> dict[str, object]:
     """Keyword args for ``SolverRun.objects.create`` / ``create_solver_run``."""
 
     return {
@@ -48,11 +46,11 @@ def empty_solver_run_fast_cache_kwargs() -> dict[str, Any]:
     }
 
 
-def _dict_or_empty(raw: Any) -> dict[str, Any]:
+def _dict_or_empty(raw: object) -> dict[str, object]:
     return dict(raw) if isinstance(raw, dict) else {}
 
 
-def _list_or_empty(raw: Any) -> list[Any]:
+def _list_or_empty(raw: object) -> list[object]:
     if not isinstance(raw, list):
         return []
     return list(raw)

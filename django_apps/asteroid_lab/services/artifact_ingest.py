@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from django.db import transaction
 from django.utils import timezone
@@ -44,7 +43,7 @@ class ArtifactIngestResult:
 
     solver_run: m.SolverRun
     manifest: ArtifactManifestRecord
-    solver_summary: dict[str, Any]
+    solver_summary: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,7 +60,7 @@ STATUS_RECONCILE_INGEST_OPTIONS = ArtifactIngestOptions(
 )
 
 
-def _dict_json_file(path: Path) -> dict[str, Any]:
+def _dict_json_file(path: Path) -> dict[str, object]:
     if not path.is_file():
         return {}
     try:
@@ -91,7 +90,7 @@ def _lab_replay_manifest_summary(
     artifact_dir: Path,
     manifest: ArtifactManifestRecord,
     summarize_replay_frames: bool = True,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     replay_path = _manifest_path(artifact_dir, manifest, "replay_core")
     frame_count = 0
     preview_frame_index = 0

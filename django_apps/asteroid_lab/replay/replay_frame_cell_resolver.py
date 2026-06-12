@@ -179,13 +179,14 @@ def lookup_effective_cell_in_serialized_frame(
         if not overlay_matches:
             mv_overlay = map_view_raw.get("overlay_cells")
             if isinstance(mv_overlay, list):
-                overlay_matches = [dict(m) for m in _cells_at_xy(mv_overlay, x, y)]
+                overlay_rows: list[JsonObject] = [
+                    dict(m) for m in mv_overlay if isinstance(m, dict)
+                ]
+                overlay_matches = _cells_at_xy(overlay_rows, x, y)
                 if overlay_matches:
                     sources["overlay_cells_matched"] = len(overlay_matches)
                     sources["overlay_cells"] = (
-                        overlay_matches
-                        if len(overlay_matches) > 1
-                        else overlay_matches[0]
+                        overlay_matches if len(overlay_matches) > 1 else overlay_matches[0]
                     )
         if delta_cell is None:
             mv_delta = map_view_raw.get("cell_delta")

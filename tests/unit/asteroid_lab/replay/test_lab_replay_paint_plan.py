@@ -10,7 +10,9 @@ Python ↔ JS field mapping (Slice 2):
 from django_apps.asteroid_lab.replay.effective_cell_view import merge_effective_cell_view
 from django_apps.asteroid_lab.replay.effective_cell_wire import effective_cell_to_wire
 from django_apps.asteroid_lab.replay.replay_cell_index import cell_key
-from django_apps.asteroid_lab.replay.replay_wire_read_sanitize import sanitize_replay_wire_cell_for_read
+from django_apps.asteroid_lab.replay.replay_wire_read_sanitize import (
+    sanitize_replay_wire_cell_for_read,
+)
 from tests.support.lab_replay_paint_fixtures import frame_38_candidate_miner_fixture
 from tests.support.lab_replay_paint_plan import (
     BACKGROUND_FILL,

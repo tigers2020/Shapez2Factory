@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from tests.support.lab_replay_paint_fixtures import frame_38_candidate_miner_fixture
 from tests.support.lab_replay_spatial_layout import (
-    collect_replay_spatial_coords_for_layout,
     compute_replay_grid_layout_from_frames,
     harvest_spatial_coord_keys,
     layout_spatial_coord_keys,

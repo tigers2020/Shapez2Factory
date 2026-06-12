@@ -38,9 +38,13 @@ def test_golden_transport_complete_frame_paint_layers_have_belt_sprites() -> Non
         assert layers["transport"] is None
 
 
+def _sprite_entry_sort_key(row: dict[str, object]) -> tuple[object, ...]:
+    return (row["x"], row["y"], row["rel"], row["rotation"])
+
+
 def test_sprite_entries_paint_plan_authority_golden_transport() -> None:
     """Paint-plan sprite rows for golden transport replay (legacy harvest parity retired)."""
-    sort_key = lambda r: (r["x"], r["y"], r["rel"], r["rotation"])
+    sort_key = _sprite_entry_sort_key
     for frame in golden_transport_replay_frames():
         entries = sprite_entries_from_paint_plan_frame(frame)
         assert sorted(entries, key=sort_key) == sorted(

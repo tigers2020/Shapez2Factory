@@ -247,8 +247,12 @@ def test_lab_js_dom_paint_v2_wiring_in_token_and_render() -> None:
     assert "function createDomPlanResolverForFrame(" in src
     assert "function labDomPaintOptionsFromContext(" in src
     assert "LabReplayPaintPlan.buildDomPlanResolverForFrame" in src
-    token_body = src.split("function labPaintTokenForCell(", 1)[1].split("function frameCellIndexMap(", 1)[0]
-    render_body = src.split("function renderFullMapCells(", 1)[1].split("function renderDiffOverlays(", 1)[0]
+    token_body = src.split("function labPaintTokenForCell(", 1)[1].split(
+        "function frameCellIndexMap(", 1
+    )[0]
+    render_body = src.split("function renderFullMapCells(", 1)[1].split(
+        "function renderDiffOverlays(", 1
+    )[0]
     assert "resolveDomPlan" in token_body or "domPlan" in token_body
     assert "createDomPlanResolverForFrame" in render_body
     assert render_body.index("createDomPlanResolverForFrame") < render_body.index("for (let i = 0")

@@ -54,7 +54,9 @@ def test_sprite_src_write_is_guarded() -> None:
 
 def test_v2_dom_plan_included_in_render_token_when_enabled() -> None:
     src = JS.read_text(encoding="utf-8")
-    token_body = src.split("function labPaintTokenForCell(", 1)[1].split("function frameCellIndexMap(", 1)[0]
+    token_body = src.split("function labPaintTokenForCell(", 1)[1].split(
+        "function frameCellIndexMap(", 1
+    )[0]
     assert "domPlan" in token_body or "resolveDomPlan" in token_body
     replay_branch = token_body.split("if (resolveDomPlan)", 1)[1]
     assert "return null" in replay_branch[:900]
@@ -63,5 +65,7 @@ def test_v2_dom_plan_included_in_render_token_when_enabled() -> None:
 
 def test_cell_render_token_has_no_harvest_sprite_step_6_6() -> None:
     src = JS.read_text(encoding="utf-8")
-    body = src.split("function cellRenderToken(", 1)[1].split("function labPaintTokenForCell(", 1)[0]
+    body = src.split("function cellRenderToken(", 1)[1].split("function labPaintTokenForCell(", 1)[
+        0
+    ]
     assert "labSpriteRelpathForCell" not in body

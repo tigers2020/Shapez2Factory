@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Mapping
+from collections.abc import Mapping
 
 from tests.support.lab_replay_sprite_wire import (
     cell_overlay_json_from_frame,
@@ -68,7 +68,9 @@ def _diff_paint_cells(frame: Mapping[str, object]) -> list[dict[str, object]]:
     return out
 
 
-def collect_replay_spatial_coords_for_layout(frame: Mapping[str, object]) -> list[dict[str, object]]:
+def collect_replay_spatial_coords_for_layout(
+    frame: Mapping[str, object],
+) -> list[dict[str, object]]:
     """Coord-only layout universe — superset of legacy harvest spatial targets."""
     out: list[dict[str, object]] = []
     out.extend(full_map_cells_from_frame(frame))

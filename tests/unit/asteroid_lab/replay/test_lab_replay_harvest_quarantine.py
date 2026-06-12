@@ -167,7 +167,9 @@ def test_candidate_observation_kind_still_includes_candidate_miner_step_6_6() ->
 
 def test_cell_render_token_has_no_harvest_sprite_step_6_6() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
-    body = src.split("function cellRenderToken(", 1)[1].split("function labPaintTokenForCell(", 1)[0]
+    body = src.split("function cellRenderToken(", 1)[1].split("function labPaintTokenForCell(", 1)[
+        0
+    ]
     assert "labSpriteRelpathForCell" not in body
     assert '"||"' in body
 

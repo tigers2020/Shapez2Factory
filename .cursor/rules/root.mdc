@@ -20,6 +20,7 @@ Route when relevant:
 - Code search (graph exists): `graphify.mdc`
 - UI/browser verification: `playwright.mdc`
 - Git hygiene: `git-worktree.mdc`
+- Delivery safety: `workflow-safety.mdc` (`workflow-safety.md`)
 - Style: `caveman.mdc`
 
-Do not claim done without evidence. Do not commit/push/PR unless user asks.
+Do not claim done without evidence. Do not commit/push/PR/branch unless user asks (`workflow-safety.mdc`).

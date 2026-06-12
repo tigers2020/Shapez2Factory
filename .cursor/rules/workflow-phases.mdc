@@ -43,4 +43,4 @@ Ambiguous features: `/grill-me-shapez2` before contract (`grill-me-shapez2` skil
 
 ## Kanban
 
-Normal+ tasks: one `.devtool/features/` card per thread; update on phase change (`kanban-tracking.mdc`).
+Every task/chat: one `.devtool/features/` card; create at session start if none linked; update on phase change (`kanban-tracking.mdc`).

@@ -8,7 +8,7 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 
 | Tree | Role |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | Agent operating contract — Spec-first · Small PR · Test-gated; **not** the path map SoT |
+| [`AGENTS.md`](AGENTS.md) | DOX rail — agent operating contract; child `AGENTS.md` per major tree; **not** the path map SoT |
 | [`structure.md`](structure.md) | **Repository map SoT** — paths, apps, URLs, tests, commands |
 | [`docs/`](docs/) | Domain, architecture, runbook, ADR summaries (agent-friendly) |
 | [`documents/`](documents/README.md) | Canonical body text, CANON, plans, research |
@@ -18,7 +18,7 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 
 | Path | Purpose |
 |---|---|
-| `AGENTS.md` | Agent/contributor operating contract, quality gates, manual routing |
+| `AGENTS.md` | DOX rail — root agent contract + Child DOX Index; see also `docs/`, `django_apps/`, `src/`, `documents/`, `.cursor/`, `tests/`, `frontend/` child `AGENTS.md` |
 | `structure.md` | Repository map SoT (this document) |
 | `docs/` | Domain, architecture, runbook, ADR summaries |
 | `config/` | Django settings, root URLs, WSGI/ASGI, runtime flags |

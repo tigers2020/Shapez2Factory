@@ -3,9 +3,10 @@ name: improve-codebase-architecture
 description: >-
   Review-only architecture improvement: find scattered, shallow, temporally
   decomposed, overexposed, or conjoined code; propose deeper modules behind
-  simpler interfaces (Ousterhout). Use for /improve-codebase-architecture,
-  refactor opportunities, complexity reduction, or seam identification. No
-  implementation without explicit user approval.
+  simpler interfaces (Ousterhout). Writes report/spec/plan to
+  docs/architecture/<slug>/ and links from kanban card. Use for
+  /improve-codebase-architecture, refactor opportunities, complexity reduction,
+  or seam identification. No implementation without explicit user approval.
 disable-model-invocation: false
 metadata:
   owner: project
@@ -27,8 +28,8 @@ Do **not** edit code, create files, rewrite modules, or open PRs unless the user
 
 1. **No implementation without approval.**
 
-   * First run produces an architecture report only.
-   * Implementation requires a separate explicit user request.
+   * First run produces an architecture report as **`docs/architecture/<slug>/report.md`** and links it on the kanban card.
+   * Implementation requires a separate explicit user request and an approved **`plan.md`** (linked on the same card).
 
 2. **Small strategic improvements only.**
 
@@ -54,9 +55,89 @@ Do **not** edit code, create files, rewrite modules, or open PRs unless the user
    * It is acceptable for the proposed module implementation to become slightly more complex if the caller-facing interface becomes meaningfully simpler.
    * Pull complexity downward into the module when doing so reduces caller knowledge, repeated policy, or special-case handling.
 
+7. **Durable docs + kanban links — not chat-only reports.**
+
+   * Write review/contract/plan content to markdown under `docs/architecture/<thread-slug>/`.
+   * Link every artifact from the **single feature-thread** kanban card (`.devtool/features/`).
+   * Append **Progress** on the card; do not spawn sibling cards or `done` early (`kanban-tracking.md`).
+
 ---
 
-## Purpose
+## Kanban and document artifacts
+
+Architecture work is tracked on **one kanban card per feature thread**. Review content lives in **linked markdown files** — chat summaries point to paths; they do not replace files.
+
+### Kanban (mandatory)
+
+| Rule | Detail |
+|------|--------|
+| Card | `.devtool/features/<thread-slug>.md` — reuse across review passes and implementation steps |
+| Session start | Link existing card or create one; set `status` to current phase (`align` … `verify`) |
+| Sub-steps | Append **Progress**; tick **Acceptance**; stay off `done` until epic Acceptance complete |
+| No siblings | Do not create `-r2`, `-step2`, or per-chat duplicate cards for the same thread |
+
+Router: `docs/agent-workflows/kanban-tracking.md`, `.cursor/rules/kanban-tracking.mdc`.
+
+### Artifact paths
+
+All files under `docs/architecture/<thread-slug>/` (see `docs/architecture/README.md`):
+
+| File | Phase | Contents |
+|------|-------|----------|
+| `report.md` | Review complete (`align` → `slice`) | Full **Architecture Improvement Report** (format below) |
+| `spec.md` | Contract locked (`contract`) | Scope, non-goals, decisions, invariants, boundaries, forbidden merges |
+| `plan.md` | Implementation approved (`slice` → `implement`) | Minimal change plan, ordered steps, stop conditions, validation commands |
+
+**Slug:** kebab-case from scope (e.g. `replay-cell-semantics`). One directory per thread.
+
+### Workflow
+
+```text
+align     → kanban card + docs/architecture/<slug>/; explore; draft report.md
+contract  → spec.md (decisions); card status contract; link Artifacts
+slice     → plan.md (steps); card status slice; link Artifacts
+implement → execute plan steps; append Progress + tick Acceptance (same card)
+verify    → validation evidence in Progress; plan.md step status if useful
+done      → only when full Acceptance met; then archive card
+```
+
+**Review-only minimum:** write `report.md`, link on card, append Progress. Add `spec.md` / `plan.md` when those phases complete or user locks contract/plan.
+
+**Implementation slices:** update `plan.md` step checkboxes when a step lands; append card Progress with evidence — do not mark card `done` until all required Acceptance items pass.
+
+### Kanban card body (required sections)
+
+```markdown
+## Scope
+<one short paragraph — pointer to spec.md for detail>
+
+## Acceptance
+<epic checkboxes>
+
+## Artifacts
+
+| Kind | Path | Updated |
+|------|------|---------|
+| report | docs/architecture/<slug>/report.md | YYYY-MM-DD |
+| spec | docs/architecture/<slug>/spec.md | YYYY-MM-DD |
+| plan | docs/architecture/<slug>/plan.md | YYYY-MM-DD |
+
+## Progress
+<timestamped bullets>
+```
+
+Keep long-form analysis in artifact files. Card holds WIP state, Acceptance, and **links**.
+
+### Phase 0 additions
+
+After scope is defined:
+
+1. Choose `<thread-slug>`.
+2. Create or update kanban card; add **Artifacts** table (create rows as files appear).
+3. `mkdir -p docs/architecture/<thread-slug>/` if missing.
+4. If resuming a thread, **read linked artifacts first** before re-exploring.
+
+---
 
 Use this skill to repeatedly improve a codebase through small, reusable architecture reviews.
 
@@ -629,10 +710,18 @@ Use multiple PRs only when needed, for example:
 
 End review-only runs with:
 
+1. Write the full report to `docs/architecture/<thread-slug>/report.md`.
+2. Update kanban card **Artifacts** (report row + date), **Progress**, and `modified`.
+3. Emit in chat:
+
 ```text
 STOPPED_AT_ARCHITECTURE_REVIEW
-No code changes made.
+Report: docs/architecture/<thread-slug>/report.md
+Card: .devtool/features/<thread-slug>.md
+No production code changes made.
 ```
+
+When contract or plan is locked in the same session, also write `spec.md` / `plan.md` and extend **Artifacts** — still review-only if no production edits.
 
 ---
 
@@ -650,14 +739,14 @@ Proceed with the refactor.
 
 When implementing:
 
-1. confirm repository state
+1. confirm repository state; read kanban card + linked `spec.md` / `plan.md`
 2. preserve unrelated dirty work
 3. create or update tests first when practical
 4. add the deep module with a narrow public interface
 5. migrate one call path at a time
 6. keep compatibility shims only when necessary
 7. remove shims in a later phase if risky
-8. update docs only for public contract changes
+8. update `plan.md` step status + kanban **Progress** / **Acceptance** after each approved slice (same card)
 9. run the smallest meaningful validation first
 10. then run broader validation
 
@@ -702,7 +791,9 @@ For review-only runs:
 
 ```text
 STOPPED_AT_ARCHITECTURE_REVIEW
-No code changes made.
+Report: docs/architecture/<slug>/report.md
+Card: .devtool/features/<slug>.md
+No production code changes made.
 ```
 
 For implementation runs:
@@ -711,6 +802,8 @@ For implementation runs:
 Final Report
 - Changed:
 - Tests:
+- Card: .devtool/features/<slug>.md
+- Plan: docs/architecture/<slug>/plan.md
 - Remaining risk:
 - Follow-up:
 ```

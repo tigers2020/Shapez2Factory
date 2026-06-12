@@ -40,13 +40,16 @@ Forbidden without explicit user request: product `django_apps/**`, `src/**`, `te
 var/plan-run/**
 .worktrees/**
 plans/**
+documents/**
+docs/**
+.devtool/**
 ```
 
 Also never `git clean` target: `.env`, `.env.*` local secrets.
 
 ## Ignored cleanup
 
-- **Never** auto-run `git clean -fdX` or `git clean -fd`.
+- **Never** auto-run any `git clean` variant (`-fd`, `-fdX`, `-fxd`, …). See `workflow-safety.mdc`.
 - Preview only: `/clean-root clear-ignored` with protected excludes (`clean-root` skill).
 - `/clean-root auto` must not delete ignored workflow state.
 

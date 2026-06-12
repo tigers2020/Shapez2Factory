@@ -22,6 +22,9 @@ Never auto-delete or plain `git clean` target:
 var/plan-run/**
 .worktrees/**
 plans/**
+documents/**
+docs/**
+.devtool/**
 ```
 
 Incident context: plain `git clean -fdX` deleted `var/plan-run/active.md` — excluded paths are mandatory for any ignored cleanup.

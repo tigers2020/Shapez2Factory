@@ -1,7 +1,49 @@
 # AGENTS.md
 
 ## Mission
+
 shapez2 Factory Planner governance: short rules, strict contracts, small safe changes, fast verification, no stale-doc authority.
+
+## DOX framework
+
+DOX is the performant `AGENTS.md` hierarchy. Follow DOX across any edit.
+
+### Core Contract
+
+- `AGENTS.md` files are binding work contracts for their subtrees.
+- Work products, source materials, instructions, records, assets, and durable docs must stay understandable from the nearest applicable `AGENTS.md` plus every parent above it.
+
+### Read Before Editing
+
+1. Read root `AGENTS.md`.
+2. Identify every file or folder you expect to touch.
+3. Walk from repository root to each target path.
+4. Read every `AGENTS.md` found along each route.
+5. If a parent lists a child `AGENTS.md` whose scope contains the path, read that child and continue from there.
+6. Nearest `AGENTS.md` = local contract; parents = repo-wide rules.
+7. Conflicts: closer doc controls local details; no child may weaken DOX.
+
+Re-read the applicable DOX chain in the current session before editing. Do not rely on memory.
+
+### Update After Editing
+
+Every meaningful change requires a DOX pass before done. Update the closest owning `AGENTS.md` when a change affects purpose, scope, ownership, structure, contracts, workflows, I/O, permissions, artifacts, user preferences, or index contents. Update parents when parent-level structure or child index changes; update children when parent changes alter local rules. Remove stale text immediately. Small non-contract edits may leave docs unchanged, but the DOX pass still must happen.
+
+### Hierarchy
+
+- Root `AGENTS.md` = DOX rail: project-wide rules and Child DOX Index.
+- Child `AGENTS.md` files own domain-specific instructions and their own Child DOX Index.
+- Closer doc = more specific and practical.
+
+Default child section order: Purpose · Ownership · Local Contracts · Work Guidance · Verification · Child DOX Index.
+
+### Style
+
+Concise, current, operational. Stable contracts only — not diary entries. Broad rules in parents; concrete details in children. Delete stale notes; trim obvious repetition.
+
+### Closeout
+
+Re-check changed paths against the DOX chain · update nearest owning docs and affected parents/children · refresh Child DOX Index · remove contradictions · run verification when relevant · report docs intentionally left unchanged and why.
 
 ## Authority split
 
@@ -14,99 +56,48 @@ shapez2 Factory Planner governance: short rules, strict contracts, small safe ch
 
 Process and domain authority do not override each other across category.
 
-## Session phases (Normal+)
+## Child DOX Index
 
-```text
-align → contract → slice → implement → verify → STOPPED_AT_APPROVED_SCOPE
-```
+| Child `AGENTS.md` | Owns |
+|-------------------|------|
+| [`docs/AGENTS.md`](docs/AGENTS.md) | Session phases, kanban, workflow strictness, default workflow, validation, communication, delivery safety |
+| [`django_apps/AGENTS.md`](django_apps/AGENTS.md) | Django apps layer (`shapez_core`, `shapez_solver`, `asteroid_lab`, `game_data`, `web`) |
+| [`src/AGENTS.md`](src/AGENTS.md) | Hexagonal solver core, CLI boundary, SDD/testing for `shapez2_factory` |
+| [`documents/AGENTS.md`](documents/AGENTS.md) | Canonical documents, plans, research, knowledge base |
+| [`.cursor/AGENTS.md`](.cursor/AGENTS.md) | Cursor rules and skills |
+| [`tests/AGENTS.md`](tests/AGENTS.md) | Test layout, golden, architecture boundary tests |
+| [`frontend/AGENTS.md`](frontend/AGENTS.md) | Recipe graph editor, graph layout, Tailwind CSS source |
 
-HITL: ambiguous alignment, contract changes, slice review, merge/taste decisions. AFK: implement/verify only when scope, acceptance, and stop are explicit. Ambiguous features: `grill-me-shapez2` before planning. Detail: `docs/agent-workflows/workflow-phases.md`.
+Path map SoT (not DOX): [`structure.md`](structure.md).
 
-## Kanban tracking (Normal+)
+## Workflow (summary)
 
-Link each feature/task chat to one card in `.devtool/features/`. On start and each phase change: update `status` + append **Progress** (what doing, evidence). Before unrelated work: if a WIP card exists, emit `LEFTOVER_WIP:` with unfinished acceptance — do not silently abandon; user must park (`blocked`/`backlog` + note) or finish. Read-only/Tiny: optional. Detail: `kanban-tracking.mdc`, `docs/agent-workflows/kanban-tracking.md`.
+Normal+ pipeline: `align → contract → slice → implement → verify → STOPPED_AT_APPROVED_SCOPE`. Classify strictness first. Every task/chat: one kanban card in `.devtool/features/`. Full workflow, validation commands, delivery safety modes: [`docs/AGENTS.md`](docs/AGENTS.md).
 
-## Context hygiene
+## Shapez2 (summary)
 
-Prefer new session/subagent over compact when reasoning degrades. Keep always-on rules small; exploration via graphify/subagents. Detail: `documents/knowledge/raw/ai/manuals/cursor_usage.md`.
+Solver/Asteroid Lab domain authority wins. Glob match → `asteroid-lab-invariants.mdc`. Cross-module boundaries → `graphify.mdc` when graph exists. Detail: [`src/AGENTS.md`](src/AGENTS.md), [`django_apps/AGENTS.md`](django_apps/AGENTS.md).
 
-## Task routing
+## Scope / Permissions
 
-| Kind | Path |
-|------|------|
-| Question / read-only | domain canon + code; graphify only for cross-module architecture |
-| Docs-only | contract clear → edit → no runtime claims |
-| Regression | repro → minimal fix → regression gate |
-| Implementation | ICE → contract → plan → acceptance → small change → gate |
-| Alignment / ambiguous feature | `grill-me-shapez2` → contract → vertical slice review |
-| Slice planning | reject horizontal phase plans unless explicitly infra-only |
-| Review after implementation | new session/subagent → `quality-check` / Bugbot policy |
-| Ops / recovery | git/PR/CI/state inventory → safe recovery → verify → STOP (`ops-recovery.mdc`) |
-
-**ICE:** Intent · Context · Expectations — three layers, not full spec (Normal / High-risk).
-
-## Workflow strictness
-
-Classify risk **first** — do not apply full gates to every request. Detail: `docs/agent-workflows/workflow-strictness.md`.
-
-| Mode | When | Gates |
-|------|------|-------|
-| Read-only | Q&A, code reading | no clean git or validation |
-| Tiny | typo, copy, 1-file localized fix | 3-line contract; touched-file checks |
-| Normal | feature, bug, docs contract | default workflow below |
-| High-risk | solver, replay, validation, DTO, migrations | full SDD + strict tiers |
-| Ops / recovery | git, PR, CI, plan-run | `ops-recovery.mdc` |
-
-All modes: scope boundaries + verification evidence when claiming done.
-
-## Default workflow
-
-Applies to **Normal** and **High-risk** (Tiny uses 3-line contract; Read-only skips edits).
-
-```text
-Classify strictness → authority split → matching gates → evidence → STOPPED_AT_APPROVED_SCOPE
-```
-
-1. **Authority:** split process vs domain (`Authority split` above).
-2. **Code search:** graphify for architecture / unknown location — skip exact file/function/stacktrace or `GRAPH_STALE` (`graphify.mdc`).
-3. **Contract:** full contract before production edit; Tiny: Problem / Change / Validation only (`workflow.mdc`).
-4. **Git:** Normal/High-risk: clean tree; Tiny: disjoint dirty OK with `DIRTY_ALLOWED_REASON`; Ops: recovery whitelist (`git-worktree.mdc`).
-5. **Scope:** closed-world (`agent_scope.mdc`). Stop: `STOPPED_AT_APPROVED_SCOPE`.
-6. **Verify:** command + exit code + summary; tier matches strictness (`validation-routine.md`).
-7. **Delivery:** one PR-sized purpose; no commit/push/PR unless user asks.
-
-Read when domain authority missing: `structure.md` → `documents/knowledge/wiki/Index.md` → canon/spec → code/tests. Wiki maintenance: `docs/agent-workflows/dream-sequence.md`.
-
-## Shapez2
-
-Solver/Asteroid Lab: domain authority wins. Glob match → `asteroid-lab-invariants.mdc`. Cross-module boundaries → `graphify.mdc` when graph exists.
-
-## SDD / Testing
-
-Tests verify contracts, not agent guesses. Acceptance: Given/When/Then, regression, golden, invariant, schema, API. No weak tests; never relax or skip to force green. Regression: failing repro before fix unless impossible. Solver/replay: preserve invariants in rules and canon.
+Allowed: source, tests, docs, governance. Ask before `.env`, secrets, CI/deploy, security config, large delete/rename. Do not invent commands, tools, MCP behavior, or unverified pass claims.
 
 ## Validation
 
 ```bash
 python manage.py check
 powershell -File scripts/test_fast.ps1
-ruff check .
 mypy django_apps config src
-black --check .
 ```
 
-When to run: `docs/agent-workflows/validation-routine.md`. PR/full: `scripts/test_full.ps1`. Solver smoke: `python manage.py run_solver --slug <slug>`.
-
-## Communication
-
-English for work. Korean summary, compressed (`caveman.mdc`).
-
-## Scope / Permissions
-
-Allowed: source, tests, docs, governance. Ask before `.env`, secrets, CI/deploy, security config, large delete/rename. Do not invent commands, tools, MCP behavior, or unverified pass claims.
+Tiers and full commands: [`docs/AGENTS.md`](docs/AGENTS.md) § Verification.
 
 ## Governance
 
-Root `AGENTS.md` target ~75 lines; split before 120. Nested `AGENTS.md` ≤150. `.cursor/rules/*.mdc` ≤75; detail in `docs/agent-workflows/`. WARN non-blocking. Check: `scripts/check_governance.ps1`.
+Root `AGENTS.md` target ~75 lines, max 120 before split. Nested `AGENTS.md` ≤150. `.cursor/rules/*.mdc` ≤75; detail in `docs/agent-workflows/`. Check: `scripts/check_governance.ps1`.
 
 When blocked: `BLOCKED:` + context, risk, fixes tried, next step.
+
+## User Preferences
+
+Durable behavior changes: record here or in the relevant child `AGENTS.md`.

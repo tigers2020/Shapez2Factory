@@ -21,8 +21,8 @@ Dirty means any of:
 ## Before first edit
 
 1. `git status --short` (and `git worktree list` when using worktrees).
-2. If dirty and not explicitly in scope: **stop** — do not edit production files.
-3. Report what is dirty; propose one path: commit to the right branch, stash, discard, or spawn a clean worktree.
+2. If dirty and not explicitly in scope: **stop** — do not edit production files (`workflow-safety.mdc`).
+3. Report what is dirty; ask user: narrow scope, review-only, or explicit approval. **Do not** auto stash/clean/checkout to "fix" dirty root.
 
 ## Allowed exceptions
 
@@ -37,7 +37,7 @@ Dirty means any of:
 |------|------------|
 | Read-only | OK — no edits |
 | Tiny | OK if user explicit **and** edit paths disjoint from dirty — log `DIRTY_ALLOWED_REASON` |
-| Normal / High-risk | BLOCKED — stop or clean first |
+| Normal / High-risk | BLOCKED — stop; user decides (no auto clean/stash) |
 | Ops / recovery | inventory OK; whitelist edits only |
 
 `DIRTY_ALLOWED_REASON` (required when editing on dirty tree):
@@ -48,10 +48,10 @@ Dirty means any of:
 - recovery-mode whitelist only
 ```
 
-Recovery deadlock example: dirty root blocks plan-run → route ops/recovery, not implementation. Use `/clean-root` — never plain `git clean -fdX` on protected paths (`var/plan-run/**`, `.worktrees/**`, `plans/**`).
+Recovery deadlock: dirty root blocks plan-run → ops/recovery, not implementation. Never any `git clean` variant without user approval (`workflow-safety.mdc`).
 
-## Clean worktree preference
+## Branch / worktree policy
 
-For non-trivial or risky work, prefer an isolated worktree or feature branch with a clean surface over piling edits onto unrelated local changes.
+Do **not** create branch or worktree by default (`workflow-safety.mdc`). Mode 1–2: current branch or one `work/*` branch when user scoped. Isolated worktree or new branch only on explicit user request or Mode 3.
 
-Detail: `docs/agent-workflows/git-worktree-routine.md` (when present); else this router is authority.
+Detail: `docs/agent-workflows/git-worktree-routine.md`, `workflow-safety.md`.

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transport_route_domain import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transport_route_domain import (  # noqa: E501
     WeightedTransportRouteDomain,
 )
 from shapez2_factory.domain.asteroid_lab.grid_contract import BBox, Coord, bbox_from_coords

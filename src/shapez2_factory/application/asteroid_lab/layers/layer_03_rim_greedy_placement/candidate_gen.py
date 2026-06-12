@@ -50,13 +50,13 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer03_observabi
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_03_RIM_MINING_BUNDLES,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snapshot_builder import (  # noqa: E501
+    RouteDomainSnapshotBuilder,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import (
     ResourceKind,
     TransportKind,
     map_resource_kind_to_transport_kind,
-)
-from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snapshot_builder import (
-    RouteDomainSnapshotBuilder,
 )
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.footprint_transform import (  # noqa: E501
     Cell,

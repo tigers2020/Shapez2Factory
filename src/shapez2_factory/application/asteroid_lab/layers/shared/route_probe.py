@@ -13,20 +13,19 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import
     RouteProbeResult,
     RouteProbeStatus,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snapshot_builder import (  # noqa: E501
+    RouteDomainSnapshotBuilder,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.route_goal import RouteGoal
 from shapez2_factory.application.asteroid_lab.layers.contracts.route_probe_diagnostic import (
     classify_exterior_goal_unreachable,
 )
-from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snapshot_builder import (
-    RouteDomainSnapshotBuilder,
-)
-from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transport_route_domain import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transport_route_domain import (  # noqa: E501
     WeightedTransportRouteDomain,
 )
 from shapez2_factory.domain.asteroid_lab.grid_contract import (
     BBox,
     Coord,
-    bbox_from_coords,
     neighbors4,
 )
 

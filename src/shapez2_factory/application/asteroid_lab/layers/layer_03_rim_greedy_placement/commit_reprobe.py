@@ -11,14 +11,14 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snapshot_builder import (  # noqa: E501
+    RouteDomainSnapshotBuilder,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.route_goal import (
     RouteGoal,
     build_layer03_route_goals,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import TransportKind
-from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snapshot_builder import (
-    RouteDomainSnapshotBuilder,
-)
 from shapez2_factory.application.asteroid_lab.layers.shared.route_probe import (
     RouteProbeLimits,
     resolve_layer03_route_probe_limits,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snapshot_builder import (
+from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snapshot_builder import (  # noqa: E501
     RouteDomainSnapshotBuilder,
 )
 from shapez2_factory.domain.asteroid_lab.grid_contract import bbox_from_coords

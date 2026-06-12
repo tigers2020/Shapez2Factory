@@ -5,12 +5,11 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab.replay.effective_cell_view import (
-    EffectiveCellView,
-    effective_cell_to_wire,
     merge_effective_cell_view,
     normalize_project_transport_kind,
     simulation_for_tile_id,
 )
+from django_apps.asteroid_lab.replay.effective_cell_wire import effective_cell_to_wire
 
 
 def test_normalize_maps_legacy_shape_belt_to_space_belt() -> None:

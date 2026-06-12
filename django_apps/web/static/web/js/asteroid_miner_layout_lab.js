@@ -410,6 +410,7 @@
     return null;
   }
 
+  /** @deprecated HARVEST_PAINT — Slice 5 quarantine. Must not decide occupant/transport/candidate paint semantics. */
   function labSpriteRelpathForCell(cell, frame) {
     if (!cell || typeof cell !== "object") return null;
     if (isNonSpriteOverlayCell(cell, frame)) return null;
@@ -1192,6 +1193,7 @@
     return out;
   }
 
+  /** @deprecated HARVEST_PAINT — Slice 5 quarantine. Must not decide occupant/transport/candidate paint semantics. */
   function collectFrameSpatialTargets(frame) {
     const out = [];
     pushCellList(out, fullMapCellsFromFrame(frame), "");
@@ -1869,6 +1871,7 @@
     return cellRenderToken(cell, frame, ck, tone, candidateObs);
   }
 
+  /** @deprecated HARVEST_PAINT — Slice 5 quarantine. Must not decide occupant/transport/candidate paint semantics. */
   function frameCellIndexMap(frame, resolveCellIndex) {
     const map = new Map();
     const targets = collectFrameSpatialTargets(frame);
@@ -3581,6 +3584,7 @@
       const overlays = [];
       const sprites = [];
       const byIdx = new Map();
+      /** @deprecated HARVEST_PAINT — Slice 5 quarantine. Must not decide occupant/transport/candidate paint semantics. */
       function stageCell(cell, role, sourceFrame) {
         if (!cell || typeof cell !== "object") return;
         if (!cellPassesMapZFilter(cell)) return;

@@ -32,7 +32,7 @@ class GoldenLoopRunConfig:
     speed_tier: int = 1
 
 
-def _gene_seeds_entry_count(seeds: Any) -> int:
+def _gene_seeds_entry_count(seeds: object) -> int:
     entries = getattr(seeds, "entries", None)
     if isinstance(entries, (list, tuple)):
         return len(entries)
@@ -66,7 +66,7 @@ def _load_genetic_sample_seeds_for_loop(
     gene_seeds_source: str,
     *,
     gene_seeds_db_scope: str = "admin",
-) -> tuple[Any, dict[str, object] | None]:
+) -> tuple[object, dict[str, object] | None]:
     if gene_seeds_source == "fixture":
         from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_fixtures import (
             load_genetic_sample_seeds,

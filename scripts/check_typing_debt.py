@@ -11,7 +11,7 @@ from pathlib import Path
 BASELINE = {
     "any_token_total": 0,
     "files_with_any": 0,
-    "dict_str_object_production_files": 122,
+    "dict_str_object_production_files": 123,
 }
 
 PRODUCTION_PREFIXES = (

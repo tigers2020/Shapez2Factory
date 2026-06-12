@@ -169,9 +169,7 @@ def test_timeline_frame_round_trip_unchanged_after_wire_module() -> None:
         map_view=ReplayMapView(
             bbox=ReplayBBox(min_x=0, min_y=0, max_x=3, max_y=3),
             full_cells=(ReplayCell(x=1, y=1, kind="asteroid_shape_field"),),
-            cell_delta=(
-                ReplayCellDelta(x=2, y=2, kind="space_belt", transport="shape_belt"),
-            ),
+            cell_delta=(ReplayCellDelta(x=2, y=2, kind="space_belt", transport="shape_belt"),),
         ),
     )
     before = replay_timeline_frame_to_json_dict(frame)

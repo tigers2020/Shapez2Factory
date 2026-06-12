@@ -37,7 +37,7 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 | `documents/` | Current document authority, plans, research, reports — [`documents/README.md`](documents/README.md) |
 | `protocols/` | Multi-step pipeline ([`protocols/README.md`](protocols/README.md)) |
 | `persona/` | Position lenses (domain routing — not roleplay) ([`persona/README.md`](persona/README.md)) |
-| `documents/ai/templates/` | Contract brief + PR plan templates |
+| `documents/knowledge/raw/ai/templates/` | Contract brief + PR plan templates |
 | `.cursor/` | Cursor rules, skills, editor guidance |
 | `assets/css/` | Tailwind input CSS source |
 | `frontend/recipe_graph_editor/` | Vite + React Flow editor source |
@@ -117,7 +117,7 @@ Internationalized routes (`i18n_patterns`, default language without prefix) incl
 - [`documents/README.md`](documents/README.md): canonical current document index.
 - [`documents/index/document_lifecycle.md`](documents/index/document_lifecycle.md): current-only lifecycle definitions.
 - [`documents/index/document_inventory.md`](documents/index/document_inventory.md): current authority inventory.
-- [`documents/ai/`](documents/ai/README.md): current plan, context notes, checklist, manuals, active AI plans.
+- [`documents/knowledge/raw/ai/`](documents/knowledge/raw/ai/README.md): current plan, context notes, checklist, manuals, active AI plans.
 - [`documents/Algorithm/README.md`](documents/Algorithm/README.md): algorithm document slots (no canonical mining solver content at present).
 - [`documents/plans/`](documents/plans/): active or not-yet-confirmed implementation plans.
 - [`documents/research/`](documents/research/): active research and domain evidence.

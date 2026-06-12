@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from django_apps.asteroid_lab.models import SolverRun
 from django_apps.asteroid_lab.observability.lab_perf_trace import perf_span
@@ -57,7 +56,7 @@ _LAYER_PHASE: dict[str, ReplayPhase] = {
 REPLAY_COMPOSE_META_INSPECTOR_KEY = "replay_compose_meta"
 
 
-def lab_replay_frames_are_renderable(frames: list[dict[str, Any]]) -> bool:
+def lab_replay_frames_are_renderable(frames: list[dict[str, object]]) -> bool:
     """True when frames carry a Lab ``map_view`` (not raw replay_core records)."""
 
     if not frames:
@@ -69,7 +68,7 @@ def lab_replay_frames_are_renderable(frames: list[dict[str, Any]]) -> bool:
     return bool(map_view.get("full_cells") or map_view.get("base_ref"))
 
 
-def extract_replay_compose_meta(frames: list[dict[str, Any]]) -> dict[str, Any] | None:
+def extract_replay_compose_meta(frames: list[dict[str, object]]) -> dict[str, object] | None:
     if not frames:
         return None
     inspector = frames[0].get("inspector")
@@ -105,7 +104,7 @@ def _load_complete_map(path: Path) -> ReconstructionCompleteMap:
 
 
 def _timeline_frame_from_core_record(
-    record: dict[str, Any],
+    record: dict[str, object],
     *,
     complete_map: ReconstructionCompleteMap,
 ) -> ReplayTimelineFrame:
@@ -113,14 +112,16 @@ def _timeline_frame_from_core_record(
     event_type = _LAYER_EVENT_TYPE.get(layer_slug, ReplayEventType.RESULT_LAYOUT)
     phase = _LAYER_PHASE.get(layer_slug, ReplayPhase.INCREMENTAL_COMMIT)
     elapsed_ms = record.get("elapsed_ms")
-    metrics: dict[str, Any] = {}
+    metrics: dict[str, object] = {}
     if isinstance(elapsed_ms, int):
         metrics["elapsed_ms"] = elapsed_ms
     outcome = record.get("outcome")
     if isinstance(outcome, str) and outcome:
         metrics["layer_outcome"] = outcome
+    frame_index_raw = record.get("frame_index")
+    frame_index = int(frame_index_raw) if isinstance(frame_index_raw, int) else 0
     return ReplayTimelineFrame(
-        frame_index=int(record["frame_index"]),
+        frame_index=frame_index,
         phase=phase,
         event_type=event_type,
         title=layer_slug,
@@ -132,7 +133,7 @@ def _timeline_frame_from_core_record(
 
 
 def _stamp_degraded_compose_meta(
-    frames: list[dict[str, Any]],
+    frames: list[dict[str, object]],
     *,
     diagnostic_reason: str | None,
 ) -> None:
@@ -152,9 +153,9 @@ def _stamp_degraded_compose_meta(
 def _compose_degraded_terrain_frames(
     complete_map: ReconstructionCompleteMap,
     *,
-    replay_core_records: list[dict[str, Any]] | None,
+    replay_core_records: list[dict[str, object]] | None,
     diagnostic_reason: str | None,
-) -> list[dict[str, Any]] | None:
+) -> list[dict[str, object]] | None:
     if replay_core_records:
         frames = [
             replay_timeline_frame_to_json_dict(
@@ -182,7 +183,7 @@ def _compose_degraded_terrain_frames(
     return frames
 
 
-def compose_lab_replay_frames_from_artifact_run(run: SolverRun) -> list[dict[str, Any]] | None:
+def compose_lab_replay_frames_from_artifact_run(run: SolverRun) -> list[dict[str, object]] | None:
     """Build renderable Lab frames from indexed artifact files; never algorithm input."""
 
     artifact_root = str(run.artifact_root or "").strip()
@@ -209,7 +210,7 @@ def compose_lab_replay_frames_from_artifact_run(run: SolverRun) -> list[dict[str
         except (OSError, json.JSONDecodeError, ValueError):
             return None
 
-    core_records: list[dict[str, Any]] | None = None
+    core_records: list[dict[str, object]] | None = None
     if replay_core_path is not None and replay_core_path.is_file():
         with perf_span("replay_core_parse_ms"):
             try:

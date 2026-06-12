@@ -421,6 +421,7 @@
   function resolveSpriteRelForStandaloneOverlayCell(cell, frame) {
     if (!cell || typeof cell !== "object") return null;
     const ck = overlayCellKind(cell);
+    if (isCandidateMinerOverlayKind(ck)) return null;
     if (isRouteOverlayCellKind(ck) || isNonSpriteOverlayCell(cell, frame)) return null;
     const fieldRel = ck ? LAB_SPRITE_CELL_KIND_STATIC_RELPATH[ck] : null;
     if (fieldRel) return fieldRel;
@@ -434,11 +435,6 @@
       if (inferred) rel = labSpriteRelpathFromTileType(inferred);
     }
     return rel;
-  }
-
-  /** @deprecated Step 6.5 — shim to resolveSpriteRelForStandaloneOverlayCell; delete in 6.6. */
-  function labSpriteRelpathForCell(cell, frame) {
-    return resolveSpriteRelForStandaloneOverlayCell(cell, frame);
   }
 
   function attachLabSpriteImgNoDrag(img) {
@@ -654,11 +650,6 @@
       return;
     }
     applyLabCellSpriteFromRel(el, rel, cell.rotation);
-  }
-
-  /** @deprecated Step 6.5 — standalone overlay paths only; not replay full-map DOM. */
-  function applyLabCellSprite(el, cell, frame) {
-    applyLabCellStandaloneSprite(el, cell, frame);
   }
 
   function readJsonScript(id) {
@@ -1396,7 +1387,6 @@
 
   /** L3 pool probe window (+ legacy wire on that frame): tint-only overlays (no belt/pipe sprites). */
   var NON_SPRITE_OVERLAY_CELL_KINDS = {
-    candidate_miner: true,
     candidate_transport_stub: true,
     candidate_route_path: true,
     route_path: true,
@@ -1751,6 +1741,7 @@
 
   function isCandidateObservationOverlayKind(cellKind) {
     const ck = String(cellKind || "");
+    if (isCandidateMinerOverlayKind(ck)) return true;
     if (NON_SPRITE_OVERLAY_CELL_KINDS[ck] === true) return true;
     return LEGACY_L3_POOL_OVERLAY_CELL_KINDS[ck] === true;
   }
@@ -1857,9 +1848,8 @@
   function cellRenderToken(cell, frame, ck, tone, candidateObs) {
     const rot = cell.rotation != null ? String(cell.rotation) : "";
     const role = cell.overlay_role != null ? String(cell.overlay_role) : "";
-    const sprite = labSpriteRelpathForCell(cell, frame) || "";
     const cand = candidateObs ? "1" : "0";
-    return ck + "|" + role + "|" + rot + "|" + sprite + "|" + tone + "|" + cand;
+    return ck + "|" + role + "|" + rot + "||" + tone + "|" + cand;
   }
 
   function labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan) {
@@ -1878,7 +1868,7 @@
         const domCand = domPlan.candidateObservation ? "1" : "0";
         return ck + "|" + role + "|" + rot + "|" + domSprite + "|" + domTone + "|" + domCand + "|v2";
       }
-      const candidateObs = isNonSpriteOverlayCell(cell, frame);
+      const candidateObs = isCandidateObservationOverlayKind(ck);
       if (candidateObs && shouldSkipCandidateObservationOnSpriteCell(frame, ck, el)) {
         return null;
       }
@@ -1890,7 +1880,7 @@
       }
       return null;
     }
-    const candidateObs = isNonSpriteOverlayCell(cell, frame);
+    const candidateObs = isCandidateObservationOverlayKind(ck);
     if (candidateObs && shouldSkipCandidateObservationOnSpriteCell(frame, ck, el)) {
       return null;
     }

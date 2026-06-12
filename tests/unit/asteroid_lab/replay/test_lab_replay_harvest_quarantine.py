@@ -1,8 +1,10 @@
-"""Slice 5 harvest paint quarantine audit — v2 isolation + deprecation markers."""
+"""Slice 5 harvest paint quarantine audit — v2 isolation + Task 6 cleanup contracts."""
 
 from __future__ import annotations
 
 from pathlib import Path
+
+from tests.support.lab_replay_sprite_wire import NON_SPRITE_OVERLAY_CELL_KINDS
 
 REPO = Path(__file__).resolve().parents[4]
 LAB_JS = REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
@@ -22,16 +24,12 @@ def test_build_canvas_paint_plan_delegates_to_paint_plan_only() -> None:
     assert "const overlays = []" not in fn
 
 
-def test_harvest_sprite_helper_still_quarantined() -> None:
+def test_harvest_paint_helpers_removed_step_6_6() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
-    idx = src.find("function labSpriteRelpathForCell(")
-    assert idx >= 0
-    window = src[max(0, idx - 400) : idx]
-    assert (
-        "HARVEST" in window or "deprecated" in window.lower() or "@deprecated" in window
-    )
     assert "function stageCell(" not in src
     assert "function collectFrameSpatialTargets(" not in src
+    assert "function labSpriteRelpathForCell(" not in src
+    assert "function applyLabCellSprite(" not in src
 
 
 def test_frame_cell_index_map_always_delegates_to_paint_plan() -> None:
@@ -131,19 +129,44 @@ def test_standalone_paths_use_resolver_not_full_map_loader_step_6_5() -> None:
         assert "applyLabCellSprite(" not in body, name
 
 
-def test_resolver_shim_and_standalone_wrapper_step_6_5() -> None:
+def test_non_sprite_candidate_miner_removed_step_6_6() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    non_sprite = src.split("var NON_SPRITE_OVERLAY_CELL_KINDS = {", 1)[1].split("};", 1)[0]
+    assert "candidate_miner" not in non_sprite
+    assert "candidate_transport_stub: true" in non_sprite
+    assert "candidate_route_path: true" in non_sprite
+    assert "route_path: true" in non_sprite
+
+
+def test_standalone_resolver_blocks_candidate_miner_step_6_6() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
     resolver_body = src.split("function resolveSpriteRelForStandaloneOverlayCell(", 1)[1].split(
-        "function labSpriteRelpathForCell(", 1
-    )[0]
-    assert "isNonSpriteOverlayCell" in resolver_body
-    assert "isRouteOverlayCellKind" in resolver_body
-    shim_body = src.split("function labSpriteRelpathForCell(", 1)[1].split(
         "function attachLabSpriteImgNoDrag(", 1
     )[0]
-    assert "resolveSpriteRelForStandaloneOverlayCell" in shim_body
-    standalone_body = src.split("function applyLabCellStandaloneSprite(", 1)[1].split(
-        "function applyLabCellSprite(", 1
+    assert "isCandidateMinerOverlayKind(ck)" in resolver_body
+    assert "return null" in resolver_body.split("isCandidateMinerOverlayKind(ck)", 1)[1][:80]
+    assert "isNonSpriteOverlayCell(cell, frame)" in resolver_body
+    assert "isRouteOverlayCellKind" in resolver_body
+
+
+def test_candidate_observation_kind_still_includes_candidate_miner_step_6_6() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    body = src.split("function isCandidateObservationOverlayKind(", 1)[1].split(
+        "function toneForRouteOverlayKind(", 1
     )[0]
-    assert "resolveSpriteRelForStandaloneOverlayCell" in standalone_body
-    assert "applyLabCellSpriteFromRel" in standalone_body
+    assert "isCandidateMinerOverlayKind(ck)" in body
+    assert "return true" in body.split("isCandidateMinerOverlayKind(ck)", 1)[1][:120]
+
+
+def test_cell_render_token_has_no_harvest_sprite_step_6_6() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    body = src.split("function cellRenderToken(", 1)[1].split("function labPaintTokenForCell(", 1)[0]
+    assert "labSpriteRelpathForCell" not in body
+    assert '"||"' in body
+
+
+def test_python_non_sprite_mirror_no_candidate_miner_step_6_6() -> None:
+    assert "candidate_miner" not in NON_SPRITE_OVERLAY_CELL_KINDS
+    assert "candidate_transport_stub" in NON_SPRITE_OVERLAY_CELL_KINDS
+    assert "candidate_route_path" in NON_SPRITE_OVERLAY_CELL_KINDS
+    assert "route_path" in NON_SPRITE_OVERLAY_CELL_KINDS

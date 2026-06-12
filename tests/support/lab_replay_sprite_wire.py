@@ -15,7 +15,6 @@ TERRAIN_KINDS = frozenset(
 
 NON_SPRITE_OVERLAY_CELL_KINDS = frozenset(
     {
-        "candidate_miner",
         "candidate_transport_stub",
         "candidate_route_path",
         "route_path",
@@ -113,9 +112,11 @@ def is_non_sprite_overlay_cell(cell: Mapping[str, object]) -> bool:
 def lab_sprite_relpath_for_cell(cell: Mapping[str, object]) -> str | None:
     if not cell:
         return None
+    ck = overlay_cell_kind(cell)
+    if ck in {"candidate_miner", "miner"}:
+        return None
     if is_non_sprite_overlay_cell(cell):
         return None
-    ck = overlay_cell_kind(cell)
     if ck in ROUTE_OVERLAY_CELL_KINDS:
         return None
     static = CELL_KIND_STATIC_RELPATH.get(ck)

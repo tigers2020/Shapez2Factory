@@ -211,7 +211,7 @@ def test_lab_js_paint_d_prime_flag_contract_step_6_1() -> None:
     assert 'ds.labPaintV2 === "0"' in legacy_body
     enabled_body = src.split("function labPaintV2Enabled(", 1)[1][:160]
     assert "!labPaintLegacyOptIn()" in enabled_body.replace(" ", "")
-    assert "function labSpriteRelpathForCell(" in src
+    assert "function resolveSpriteRelForStandaloneOverlayCell(" in src
     render_body = src.split("function renderFullMapCells(", 1)[1].split(
         "function renderDiffOverlays(", 1
     )[0]
@@ -287,14 +287,19 @@ def test_warmup_sprite_collect_uses_paint_plan() -> None:
     assert "collectReplaySpatialCoordsForLayout" not in body
 
 
-def test_lab_js_non_sprite_policy_retained_until_step_6_6() -> None:
+def test_lab_js_non_sprite_policy_step_6_6() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
     resolver_body = src.split("function resolveSpriteRelForStandaloneOverlayCell(", 1)[1].split(
-        "function labSpriteRelpathForCell(", 1
+        "function attachLabSpriteImgNoDrag(", 1
     )[0]
-    assert "isNonSpriteOverlayCell(cell, frame)" in resolver_body
+    assert "isCandidateMinerOverlayKind(ck)" in resolver_body
     assert "lab-overlay-candidate-miner" in src
     non_sprite = src.split("var NON_SPRITE_OVERLAY_CELL_KINDS = {", 1)[1].split("};", 1)[0]
-    assert "candidate_miner: true" in non_sprite
+    assert "candidate_miner" not in non_sprite
     assert "candidate_transport_stub: true" in non_sprite
+    assert "candidate_route_path: true" in non_sprite
     assert "route_path: true" in non_sprite
+    obs_body = src.split("function isCandidateObservationOverlayKind(", 1)[1].split(
+        "function toneForRouteOverlayKind(", 1
+    )[0]
+    assert "isCandidateMinerOverlayKind(ck)" in obs_body

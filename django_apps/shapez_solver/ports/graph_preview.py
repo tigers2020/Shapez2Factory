@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Any, Protocol
+from typing import Protocol
 
 __all__ = [
     "GraphPreviewResult",
@@ -25,23 +25,23 @@ class GraphPreviewResult:
 class GraphPreviewRenderer(Protocol):
     """PNG/cache implementations live in the web app's ``graph_preview`` service."""
 
-    def render(self, preview_scene: dict[str, Any]) -> Any: ...
+    def render(self, preview_scene: dict[str, object]) -> GraphPreviewResult: ...
 
-    def render_cached_only(self, preview_scene: dict[str, Any]) -> Any: ...
+    def render_cached_only(self, preview_scene: dict[str, object]) -> GraphPreviewResult: ...
 
-    def cache_key(self, preview_scene: dict[str, Any]) -> str: ...
+    def cache_key(self, preview_scene: dict[str, object]) -> str: ...
 
 
 class NoopGraphPreviewRenderer:
     """No server-side PNG; for tests and hosts without Playwright. Not settings-coupled."""
 
-    def render_cached_only(self, preview_scene: dict[str, Any]) -> GraphPreviewResult:
+    def render_cached_only(self, preview_scene: dict[str, object]) -> GraphPreviewResult:
         alt = f"Graph preview for {preview_scene.get('normalized_code', 'shape preview')}"
         return GraphPreviewResult(alt_text=alt, image_url=None)
 
-    def render(self, preview_scene: dict[str, Any]) -> GraphPreviewResult:
+    def render(self, preview_scene: dict[str, object]) -> GraphPreviewResult:
         return self.render_cached_only(preview_scene)
 
-    def cache_key(self, preview_scene: dict[str, Any]) -> str:
+    def cache_key(self, preview_scene: dict[str, object]) -> str:
         payload = json.dumps(preview_scene, sort_keys=True, separators=(",", ":"))
         return sha256(payload.encode()).hexdigest()[:24]

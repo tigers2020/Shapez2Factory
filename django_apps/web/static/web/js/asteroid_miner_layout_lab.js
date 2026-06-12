@@ -104,6 +104,22 @@
   /** Set in ``init`` from ``#lab-root`` ``data-lab-sprite-base`` (Django ``{% static %}``). */
   let labSpriteBaseUrl = "";
 
+  /** CSS viewport zoom on ``#lab-replay-grid-stage``; canvas backing catches up after wheel idle. */
+  let labReplayViewportZoom = 1;
+  /** Last settled hi-res canvas backing scale; lags CSS zoom during interactive wheel zoom. */
+  let labReplayCanvasViewportZoom = 1;
+
+  function labCanvasBackingViewportScale(zoom) {
+    const z = Number(zoom);
+    if (!Number.isFinite(z) || z <= 0) {
+      return 1;
+    }
+    const capped = Math.min(z, LAB_CANVAS_VIEWPORT_SCALE_MAX);
+    const stepped =
+      Math.round(capped / LAB_CANVAS_VIEWPORT_SCALE_STEP) * LAB_CANVAS_VIEWPORT_SCALE_STEP;
+    return Math.max(1, stepped);
+  }
+
   const labRootForTotals = document.getElementById("lab-root");
   const rawTotal = labRootForTotals
     ? Number(labRootForTotals.dataset.labTotalFrames)
@@ -211,7 +227,7 @@
     });
   }
 
-  function syncLabTerrainCanvasLayer(cells, layout, cellPx, gapPx) {
+  function syncLabTerrainCanvasLayer(cells, layout, cellPx, gapPx, viewportScale) {
     if (!labTerrainCanvasEnabled() || !layout) {
       return;
     }
@@ -224,7 +240,14 @@
       return;
     }
     const visibleCells = cells.filter(cellPassesMapZFilter);
-    window.LabReplayCanvas.drawTerrainLayer(ctx, visibleCells, layout, cellPx, gapPx);
+    window.LabReplayCanvas.drawTerrainLayer(
+      ctx,
+      visibleCells,
+      layout,
+      cellPx,
+      gapPx,
+      viewportScale,
+    );
     canvas.hidden = visibleCells.length === 0;
   }
 
@@ -310,6 +333,11 @@
   const LAB_VIEWPORT_MIN_SCALE = 0.35;
   const LAB_VIEWPORT_MAX_SCALE = 7;
   const LAB_VIEWPORT_DRAG_THRESHOLD_PX = 6;
+  /** Canvas backing-store zoom cap/step; applied only after wheel/pinch settles (interactive zoom is CSS-only). */
+  const LAB_CANVAS_VIEWPORT_SCALE_MAX = LAB_VIEWPORT_MAX_SCALE;
+  const LAB_CANVAS_VIEWPORT_SCALE_STEP = 0.5;
+  /** Wheel idle before hi-res canvas redraw (interactive zoom uses CSS scale only). */
+  const LAB_CANVAS_ZOOM_SETTLE_MS = 150;
 
   let labViewportInteractionsBound = false;
 
@@ -2648,7 +2676,13 @@
     if (fm.length) {
       resetForFrame();
       if (labTerrainCanvasEnabled() && !useIncremental && rimDrawCtx) {
-        syncLabTerrainCanvasLayer(fm, rimDrawCtx.layout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+        syncLabTerrainCanvasLayer(
+          fm,
+          rimDrawCtx.layout,
+          rimDrawCtx.cellPx,
+          rimDrawCtx.gapPx,
+          labReplayViewportZoom,
+        );
       }
       renderFullMapReplayFrame(
         frame,
@@ -3058,10 +3092,12 @@
       gridStage.style.transformOrigin = "0 0";
       gridStage.style.transform =
         "translate3d(" + tx + "px, " + ty + "px, 0) scale(" + zoom + ")";
+      labReplayViewportZoom = zoom;
     }
 
     function applyLabGridLayoutForZoom() {
       let cellPx = null;
+      let gapPx = null;
       if (hasServerReplay && replayLayout) {
         const gw = replayLayout.gridW;
         const gh = replayLayout.gridH;
@@ -3075,19 +3111,28 @@
       }
       if (cellPx != null) {
         /* ~0.25rem at ~20px cells in CSS; gap scales with stage ``scale()`` via world cell size. */
-        const gapPx = Math.max(0, Math.round(cellPx * 0.2));
+        gapPx = Math.max(0, Math.round(cellPx * 0.2));
         gridEl.style.setProperty("--lab-cell-gap", gapPx + "px");
         const radiusPx = Math.max(2, Math.min(7, Math.round(cellPx * 0.14)));
         gridEl.style.setProperty("--lab-cell-radius", radiusPx + "px");
       }
       refreshLabLayoutCache();
       applyLabViewportTransform();
-      refreshLabCanvasAfterLayoutChange();
+      if (cellPx != null && gapPx != null) {
+        const nextKey = labCanvasLayoutKey(cellPx, gapPx);
+        if (nextKey !== labLastCanvasLayoutKey) {
+          labLastCanvasLayoutKey = nextKey;
+          refreshLabCanvasAfterLayoutChange();
+        }
+      }
     }
 
     function resetLabViewportTransform() {
       labViewportTransform = { zoom: 1, tx: 0, ty: 0 };
+      labReplayCanvasViewportZoom = 1;
+      cancelLabCanvasZoomRefresh();
       applyLabGridLayoutForZoom();
+      refreshLabCanvasAfterLayoutChange();
     }
 
     let resolveCellIndex = function (cell) {
@@ -3101,6 +3146,11 @@
 
     /** PR-RENDER-5 hybrid canvas renderer (must init before surface mount — TDZ). */
     let labCanvasRenderer = null;
+    let labCanvasZoomRefreshTimer = null;
+    let labCanvasZoomRefreshRaf = null;
+    let labReplayGridSizingTimer = null;
+    let labCanvasRefreshActive = false;
+    let labLastCanvasLayoutKey = "";
 
     function initializeServerReplaySurface(framesArr) {
       const neutralClass = LAB_CELL_BASE;
@@ -3149,6 +3199,16 @@
         applyLabGridLayoutForZoom();
       }
 
+      function scheduleReplayGridSizing() {
+        if (labReplayGridSizingTimer) {
+          clearTimeout(labReplayGridSizingTimer);
+        }
+        labReplayGridSizingTimer = setTimeout(function () {
+          labReplayGridSizingTimer = null;
+          applyReplayGridSizing();
+        }, 50);
+      }
+
       function labReplayViewportOnWindowResize() {
         applyReplayGridSizing();
         resetLabViewportTransform();
@@ -3164,6 +3224,7 @@
             replayLayout,
             terrainSizing.cellPx,
             terrainSizing.gapPx,
+            labReplayViewportZoom,
           );
         }
       } else {
@@ -3179,7 +3240,7 @@
          * retrigger the observer; ``applyReplayGridSizing`` already calls
          * ``applyLabGridLayoutForZoom`` with the current ``labViewportTransform``. */
         resizeObserver = new ResizeObserver(function () {
-          applyReplayGridSizing();
+          scheduleReplayGridSizing();
         });
         resizeObserver.observe(gridViewport);
         replayResizeMode = "observer";
@@ -3190,6 +3251,10 @@
 
       return function cleanupReplaySurface() {
         destroyLabCanvasRenderer();
+        if (labReplayGridSizingTimer) {
+          clearTimeout(labReplayGridSizingTimer);
+          labReplayGridSizingTimer = null;
+        }
         if (gridEl) {
           gridEl.classList.remove("lab-replay-grid--canvas-mode");
         }
@@ -3459,6 +3524,7 @@
     }
 
     function destroyLabCanvasRenderer() {
+      cancelLabCanvasZoomRefresh();
       if (labCanvasRenderer && labCanvasRenderer.destroy) {
         labCanvasRenderer.destroy();
       }
@@ -3470,8 +3536,15 @@
         typeof LabReplayPaintPlan !== "undefined" &&
         typeof LabReplayPaintPlan.collectSpriteRelsFromPaintPlanFrames === "function"
       ) {
+        const warmupFrames = [];
+        const current = getCurrentReplayFrame();
+        if (current) {
+          warmupFrames.push(current);
+        } else if (Array.isArray(framesArr) && framesArr.length) {
+          warmupFrames.push(framesArr[framesArr.length - 1]);
+        }
         return LabReplayPaintPlan.collectSpriteRelsFromPaintPlanFrames(
-          framesArr,
+          warmupFrames,
           resolveCellIndex,
           { replayFrames: framesArr, hasServerReplay: hasServerReplay },
         );
@@ -3528,30 +3601,78 @@
       return { overlays: [], sprites: [] };
     }
 
-    function refreshLabCanvasAfterLayoutChange() {
+    function labCanvasLayoutKey(cellPx, gapPx) {
+      return String(cellPx) + ":" + String(gapPx);
+    }
+
+    function cancelLabCanvasZoomRefresh() {
+      if (labCanvasZoomRefreshTimer) {
+        clearTimeout(labCanvasZoomRefreshTimer);
+        labCanvasZoomRefreshTimer = null;
+      }
+      if (labCanvasZoomRefreshRaf) {
+        cancelAnimationFrame(labCanvasZoomRefreshRaf);
+        labCanvasZoomRefreshRaf = null;
+      }
+    }
+
+    /** Interactive zoom: CSS scale only while wheeling; hi-res canvas once after ``LAB_CANVAS_ZOOM_SETTLE_MS`` idle. */
+    function scheduleLabCanvasZoomRefresh() {
       if (!labCanvasRenderer || !hasServerReplay) {
         return;
       }
-      const rimDrawCtx = getLabRimDrawCtx();
-      if (rimDrawCtx) {
-        labCanvasRenderer.syncSize(replayLayout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
-        const fr = getCurrentReplayFrame();
-        if (fr) {
-          const fm = fullMapCellsFromFrame(fr);
-          if (fm.length) {
-            syncLabTerrainCanvasLayer(
-              filterTerrainCellsForPaintV2(fm, fr, resolveCellIndex, {
-                replayArrayIndex: replayArrayIndex,
-                replayFrames: replayFrames,
-                hasServerReplay: hasServerReplay,
-              }),
-              rimDrawCtx.layout,
-              rimDrawCtx.cellPx,
-              rimDrawCtx.gapPx,
-            );
+      cancelLabCanvasZoomRefresh();
+      labCanvasZoomRefreshTimer = setTimeout(function () {
+        labCanvasZoomRefreshTimer = null;
+        labCanvasZoomRefreshRaf = requestAnimationFrame(function () {
+          labCanvasZoomRefreshRaf = null;
+          refreshLabCanvasAfterLayoutChange();
+          applyLabViewportTransform();
+        });
+      }, LAB_CANVAS_ZOOM_SETTLE_MS);
+    }
+
+    function labCanvasViewportScale() {
+      return labReplayCanvasViewportZoom;
+    }
+
+    function refreshLabCanvasAfterLayoutChange() {
+      if (labCanvasRefreshActive || !labCanvasRenderer || !hasServerReplay) {
+        return;
+      }
+      labCanvasRefreshActive = true;
+      try {
+        const rimDrawCtx = getLabRimDrawCtx();
+        const viewportScale = labCanvasBackingViewportScale(labReplayViewportZoom);
+        labReplayCanvasViewportZoom = viewportScale;
+        if (rimDrawCtx) {
+          labCanvasRenderer.syncSize(
+            replayLayout,
+            rimDrawCtx.cellPx,
+            rimDrawCtx.gapPx,
+            viewportScale,
+          );
+          const fr = getCurrentReplayFrame();
+          if (fr) {
+            const fm = fullMapCellsFromFrame(fr);
+            if (fm.length) {
+              syncLabTerrainCanvasLayer(
+                filterTerrainCellsForPaintV2(fm, fr, resolveCellIndex, {
+                  replayArrayIndex: replayArrayIndex,
+                  replayFrames: replayFrames,
+                  hasServerReplay: hasServerReplay,
+                }),
+                rimDrawCtx.layout,
+                rimDrawCtx.cellPx,
+                rimDrawCtx.gapPx,
+                viewportScale,
+              );
+            }
+            labCanvasRenderer.drawFrame(buildCanvasPaintPlan(fr));
           }
-          labCanvasRenderer.drawFrame(buildCanvasPaintPlan(fr));
         }
+      } finally {
+        labCanvasRefreshActive = false;
       }
     }
 
@@ -3577,6 +3698,7 @@
         cellPx: sizing.cellPx,
         gapPx: sizing.gapPx,
         spriteBaseUrl: labSpriteBaseUrl,
+        viewportScale: labReplayViewportZoom,
       });
       if (gridEl) {
         gridEl.classList.add("lab-replay-grid--canvas-mode");
@@ -3607,6 +3729,7 @@
             rimDrawCtx.layout,
             rimDrawCtx.cellPx,
             rimDrawCtx.gapPx,
+            labCanvasViewportScale(),
           );
         }
       } else if (paintedIndices && paintedIndices.length) {
@@ -3620,7 +3743,12 @@
         applyLabCanvasHitLayer(paintedIndices);
       }
       if (rimDrawCtx) {
-        labCanvasRenderer.syncSize(replayLayout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+        labCanvasRenderer.syncSize(
+          replayLayout,
+          rimDrawCtx.cellPx,
+          rimDrawCtx.gapPx,
+          labCanvasViewportScale(),
+        );
       }
       labCanvasRenderer.drawFrame(buildCanvasPaintPlan(fr));
       applyLabOverlayHighlights(fr, replayTrackMetrics, rimDrawCtx);
@@ -4871,6 +4999,7 @@
       labViewportTransform.tx = vx - (z1 / z0) * (vx - tx0);
       labViewportTransform.ty = vy - (z1 / z0) * (vy - ty0);
       applyLabViewportTransform();
+      scheduleLabCanvasZoomRefresh();
       updateLabGridHudFromPoint(event.clientX, event.clientY);
     }
 
@@ -5839,6 +5968,9 @@
     };
 
     applyLabGridLayoutForZoom();
+    if (labCanvasRenderer && hasServerReplay) {
+      refreshLabCanvasAfterLayoutChange();
+    }
     updateLabGridHudEmpty();
     bindLabViewportInteractions();
 

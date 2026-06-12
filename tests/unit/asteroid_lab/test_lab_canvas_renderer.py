@@ -26,6 +26,30 @@ def test_canvas_renderer_module_contract() -> None:
     assert "overlayFillForKind" in src
     assert "let layout = opts.layout" in src
     assert "const layout = opts.layout" not in src
+    assert "viewportScale" in src
+    assert "devicePixelRatio" in src
+
+
+def test_canvas_viewport_zoom_backing_store_contract() -> None:
+    terrain = (JS_DIR / "lab_replay_canvas_terrain.js").read_text(encoding="utf-8")
+    lab = LAB_JS.read_text(encoding="utf-8-sig")
+    assert "viewportScale" in terrain
+    assert "labReplayViewportZoom" in lab
+    assert "labCanvasBackingViewportScale" in lab
+    assert "LAB_CANVAS_VIEWPORT_SCALE_MAX = LAB_VIEWPORT_MAX_SCALE" in lab
+    assert "LAB_CANVAS_ZOOM_SETTLE_MS" in lab
+    assert "scheduleLabCanvasZoomRefresh" in lab
+    wheel_block = lab.split("function handleLabViewportWheel(", 1)[1].split(
+        "function labPointerShouldStartViewportPan", 1
+    )[0]
+    assert "scheduleLabCanvasZoomRefresh" in wheel_block
+    assert "refreshLabCanvasAfterLayoutChange" not in wheel_block
+    settle_block = lab.split("function scheduleLabCanvasZoomRefresh(", 1)[1].split(
+        "function labCanvasViewportScale", 1
+    )[0]
+    assert "LAB_CANVAS_ZOOM_SETTLE_MS" in settle_block
+    assert "refreshLabCanvasAfterLayoutChange" in settle_block
+    assert "labReplayViewportZoom = zoom" in lab
 
 
 def test_template_has_overlay_and_sprite_canvases() -> None:

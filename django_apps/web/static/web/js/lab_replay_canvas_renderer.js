@@ -38,7 +38,7 @@
     return normalizeQuarterTurns(q) * 90;
   }
 
-  function syncCanvasDimensions(canvas, layout, cellPx, gapPx) {
+  function syncCanvasDimensions(canvas, layout, cellPx, gapPx, viewportScale) {
     if (!canvas || !layout) return { w: 0, h: 0, cellPx: 0, gapPx: 0, step: 0 };
     const px = Math.max(4, Math.round(Number(cellPx) || 20));
     const gap = Math.max(0, Math.round(Number(gapPx) || 0));
@@ -47,12 +47,14 @@
     const gh = layout.gridH;
     const w = gw * px + Math.max(0, gw - 1) * gap;
     const h = gh * px + Math.max(0, gh - 1) * gap;
-    const dpr = global.devicePixelRatio || 1;
+    const zoom = Number(viewportScale);
+    const viewport = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+    const dpr = (global.devicePixelRatio || 1) * viewport;
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     canvas.width = Math.max(1, Math.round(w * dpr));
     canvas.height = Math.max(1, Math.round(h * dpr));
-    return { w: w, h: h, cellPx: px, gapPx: gap, step: step, dpr: dpr };
+    return { w: w, h: h, cellPx: px, gapPx: gap, step: step, dpr: dpr, viewportScale: viewport };
   }
 
   function applyCanvasTransform(ctx, dims) {
@@ -83,11 +85,19 @@
     const spriteBaseUrl = String(opts.spriteBaseUrl || "").replace(/\/?$/, "/");
     const overlayCtx = overlayCanvas ? overlayCanvas.getContext("2d") : null;
     const spriteCtx = spriteCanvas ? spriteCanvas.getContext("2d") : null;
+    if (spriteCtx) {
+      spriteCtx.imageSmoothingEnabled = true;
+      spriteCtx.imageSmoothingQuality = "high";
+    }
     const imgCache = new Map();
-    let dims = { w: 0, h: 0, step: 0, cellPx: 0, gapPx: 0, dpr: 1 };
+    let dims = { w: 0, h: 0, step: 0, cellPx: 0, gapPx: 0, dpr: 1, viewportScale: 1 };
+    let viewportScale =
+      opts.viewportScale != null && Number(opts.viewportScale) > 0
+        ? Number(opts.viewportScale)
+        : 1;
     let spriteDrawGeneration = 0;
 
-    function syncSize(nextLayout, nextCellPx, nextGapPx) {
+    function syncSize(nextLayout, nextCellPx, nextGapPx, nextViewportScale) {
       if (nextLayout) {
         layout = nextLayout;
       }
@@ -97,13 +107,29 @@
       if (nextGapPx != null) {
         gapPx = nextGapPx;
       }
+      if (nextViewportScale != null) {
+        const z = Number(nextViewportScale);
+        viewportScale = Number.isFinite(z) && z > 0 ? z : 1;
+      }
       if (!layout) return dims;
       if (overlayCanvas && overlayCtx) {
-        dims = syncCanvasDimensions(overlayCanvas, layout, cellPx, gapPx);
+        dims = syncCanvasDimensions(
+          overlayCanvas,
+          layout,
+          cellPx,
+          gapPx,
+          viewportScale,
+        );
         applyCanvasTransform(overlayCtx, dims);
       }
       if (spriteCanvas && spriteCtx) {
-        const sd = syncCanvasDimensions(spriteCanvas, layout, cellPx, gapPx);
+        const sd = syncCanvasDimensions(
+          spriteCanvas,
+          layout,
+          cellPx,
+          gapPx,
+          viewportScale,
+        );
         applyCanvasTransform(spriteCtx, sd);
       }
       return dims;

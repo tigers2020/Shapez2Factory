@@ -35,6 +35,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
     LAYER_04_INNER_PATTERN_FILL,
     LAYER_05_TRANSPORT_ROUTING,
 )
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_finalize import (
+    rebuild_append_result_from_committed,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
     CommittedRimSeedPlacement,
     IntegratedRimGreedyResult,
@@ -178,6 +181,7 @@ def deserialize_l3_wire(wire: dict[str, object]) -> IntegratedRimGreedyResult:
     return replace(
         base,
         committed_placements=placements,
+        append_result=rebuild_append_result_from_committed(placements, reserved_route),
         occupied_equipment_cells=occupied_equipment,
         reserved_route_cells=reserved_route,
         winning_variant_id=winning_variant_id,

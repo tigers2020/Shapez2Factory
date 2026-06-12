@@ -36,9 +36,13 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import
     RimGreedyObservationPhase,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy_append import (
+    LAYER_03_APPEND_SOURCE,
     AppendCellKind,
     AppendedPlacementCell,
     Layer03AppendResult,
+)
+from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_finalize import (
+    rebuild_append_result_from_committed,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import (
     TransportKind,
@@ -273,45 +277,90 @@ def _replay_overlay_from_append(
     return tuple(overlay)
 
 
+def _effective_append_result(result: IntegratedRimGreedyResult) -> Layer03AppendResult:
+    if result.append_result.cells:
+        return result.append_result
+    if not result.committed_placements:
+        return result.append_result
+    return rebuild_append_result_from_committed(
+        result.committed_placements,
+        result.reserved_route_cells,
+    )
+
+
 def _transient_overlay_for_greedy_result(
     result: IntegratedRimGreedyResult,
     *,
     placements: tuple[CommittedRimSeedPlacement, ...],
     equipment_wire: GreedyReplayEquipmentWire = "observation",
 ) -> tuple[ReplayOverlayCell, ...]:
-    if result.append_result.cells:
+    append_result = _effective_append_result(result)
+    if append_result.cells:
         placement_ids = frozenset(p.placement_id for p in placements)
         return _replay_overlay_from_append(
-            result.append_result,
+            append_result,
             placements=result.committed_placements,
             placement_ids=placement_ids,
             equipment_wire=equipment_wire,
         )
-    return _combined_overlay_for_placements(placements)
+    return _combined_overlay_for_placements(placements, equipment_wire=equipment_wire)
 
 
 def _combined_overlay_for_placements(
     placements: tuple[CommittedRimSeedPlacement, ...],
+    *,
+    equipment_wire: GreedyReplayEquipmentWire = "observation",
 ) -> tuple[ReplayOverlayCell, ...]:
     combined: list[ReplayOverlayCell] = []
     for placement in placements:
-        combined.extend(_overlay_for_committed(placement))
+        combined.extend(_overlay_for_committed(placement, equipment_wire=equipment_wire))
     return tuple(combined)
 
 
 def _overlay_for_committed(
     placement: CommittedRimSeedPlacement,
+    *,
+    equipment_wire: GreedyReplayEquipmentWire = "observation",
 ) -> tuple[ReplayOverlayCell, ...]:
+    kind_map = (
+        _APPEND_TO_REPLAY_KIND_COMMITTED
+        if equipment_wire == "committed"
+        else _APPEND_TO_REPLAY_KIND_OBSERVATION
+    )
     transport = _transport_wire()
     overlay: list[ReplayOverlayCell] = []
-    equipment = sorted(placement.miner_cells | placement.extension_cells)
-    for x, y in equipment:
+    for x, y in sorted(placement.miner_cells):
+        cell = AppendedPlacementCell(
+            coord=(x, y),
+            kind=AppendCellKind.MINER,
+            placement_id=placement.placement_id,
+            variant_id=placement.variant_id,
+            source_layer=LAYER_03_APPEND_SOURCE,
+        )
         overlay.append(
             ReplayOverlayCell(
                 x=x,
                 y=y,
-                kind=OVERLAY_KIND_CANDIDATE_MINER,
+                kind=kind_map[AppendCellKind.MINER],
                 transport=transport,
+                rotation=_rotation_for_append_cell(cell, placement),
+            )
+        )
+    for x, y in sorted(placement.extension_cells):
+        cell = AppendedPlacementCell(
+            coord=(x, y),
+            kind=AppendCellKind.EXTENSION,
+            placement_id=placement.placement_id,
+            variant_id=placement.variant_id,
+            source_layer=LAYER_03_APPEND_SOURCE,
+        )
+        overlay.append(
+            ReplayOverlayCell(
+                x=x,
+                y=y,
+                kind=kind_map[AppendCellKind.EXTENSION],
+                transport=transport,
+                rotation=_rotation_for_append_cell(cell, placement),
             )
         )
     for x, y in sorted({placement.m_output_stub}):
@@ -319,7 +368,7 @@ def _overlay_for_committed(
             ReplayOverlayCell(
                 x=x,
                 y=y,
-                kind=OVERLAY_KIND_CANDIDATE_TRANSPORT_STUB,
+                kind=kind_map[AppendCellKind.OUTPUT_STUB],
                 transport=transport,
             )
         )
@@ -328,7 +377,7 @@ def _overlay_for_committed(
             ReplayOverlayCell(
                 x=x,
                 y=y,
-                kind=OVERLAY_KIND_CANDIDATE_ROUTE_PATH,
+                kind=kind_map[AppendCellKind.ROUTE_RESERVED],
                 transport=transport,
             )
         )

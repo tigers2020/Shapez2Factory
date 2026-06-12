@@ -270,6 +270,15 @@ def _append_cell(
     )
 
 
+def rebuild_append_result_from_committed(
+    committed: tuple[CommittedRimSeedPlacement, ...],
+    reserved_route: frozenset[Coord],
+) -> Layer03AppendResult:
+    """Rebuild append cells when only committed placements survived wire round-trip."""
+
+    return _build_append_result(committed, reserved_route)
+
+
 def build_integrated_rim_greedy_result(
     *,
     finalize: FinalizeResult,
@@ -354,4 +363,5 @@ __all__ = [
     "FinalizeResult",
     "build_integrated_rim_greedy_result",
     "finalize_selection",
+    "rebuild_append_result_from_committed",
 ]

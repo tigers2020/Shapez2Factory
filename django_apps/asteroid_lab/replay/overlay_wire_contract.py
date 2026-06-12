@@ -39,12 +39,21 @@ _BANNED_CANDIDATE_OCCUPANCY_TRANSPORT = frozenset(
 _ALLOWED_PROFILE_TRANSPORT = frozenset({"none", "space_belt", "space_pipe"})
 
 
+_PLAN_RESOURCE_TO_OUTPUT = {
+    "shape": "space_belt",
+    "fluid": "space_pipe",
+}
+
+
 def profile_to_output_transport_kind(profile: str) -> str:
-    """Map L3 transport profile tokens to replay output transport family."""
+    """Map L3/L5 plan tokens (resource or transport) to replay output transport family."""
 
     value = str(profile or "").strip().lower()
     if not value or value == "none":
         return OUTPUT_TRANSPORT_NONE
+    mapped = _PLAN_RESOURCE_TO_OUTPUT.get(value)
+    if mapped is not None:
+        return mapped
     if value in _ALLOWED_PROFILE_TRANSPORT:
         return value
     msg = (

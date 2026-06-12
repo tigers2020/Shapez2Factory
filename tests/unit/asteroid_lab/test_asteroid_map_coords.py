@@ -76,6 +76,6 @@ def test_transport_bfs_connects_across_seam() -> None:
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
-    fluid = [c for c in ins.transport_components if c.transport_kind == "fluid_pipe"]
+    fluid = [c for c in ins.transport_components if c.transport_kind == "space_pipe"]
     assert len(fluid) == 1
     assert fluid[0].cell_count == 2

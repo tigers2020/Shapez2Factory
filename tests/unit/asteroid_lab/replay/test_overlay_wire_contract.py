@@ -128,6 +128,20 @@ def test_effective_cell_view_merges_legacy_and_new_wire_same_result() -> None:
     assert "shape_belt" not in str(new_wire)
 
 
+@pytest.mark.parametrize(
+    ("plan_token", "expected"),
+    [
+        ("shape", "space_belt"),
+        ("fluid", "space_pipe"),
+    ],
+)
+def test_profile_to_output_transport_kind_maps_plan_resource_tokens(
+    plan_token: str,
+    expected: str,
+) -> None:
+    assert profile_to_output_transport_kind(plan_token) == expected
+
+
 @pytest.mark.parametrize("legacy_profile", ["shape_belt", "fluid_pipe", "belt", "pipe"])
 def test_profile_to_output_transport_kind_rejects_legacy_tokens(legacy_profile: str) -> None:
     with pytest.raises(ValueError, match="legacy tokens must not reach overlay builders"):

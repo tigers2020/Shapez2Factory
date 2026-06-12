@@ -54,14 +54,11 @@ def _resolve_json_source_dir() -> Path | None:
 
 
 def _load_catalog_from_db() -> SpaceTransportTileCatalog | None:
-    from django_apps.game_data.services.space_transport_layout_catalog import (
-        build_space_transport_catalog_payload_from_orm,
+    from django_apps.asteroid_lab.adapters.space_transport_catalog_orm import (
+        try_load_space_transport_catalog_from_orm,
     )
 
-    payload = build_space_transport_catalog_payload_from_orm()
-    if payload is None:
-        return None
-    return SpaceTransportTileCatalog.from_payload(payload)
+    return try_load_space_transport_catalog_from_orm()
 
 
 def _load_catalog_from_json(*, source_dir: Path) -> SpaceTransportTileCatalog:
@@ -120,15 +117,11 @@ def try_load_space_transport_catalog_from_snapshot(
     layouts = payload.get("space_transport_layouts")
     if not isinstance(layouts, list) or not layouts:
         return None
-    from django_apps.game_data.services.space_transport_layout_catalog import (
-        build_space_transport_catalog_payload_from_snapshot_layouts,
+    from django_apps.asteroid_lab.adapters.space_transport_catalog_orm import (
+        try_load_space_transport_catalog_from_snapshot_layouts,
     )
 
-    try:
-        catalog_payload = build_space_transport_catalog_payload_from_snapshot_layouts(layouts)
-    except ValueError:
-        return None
-    return SpaceTransportTileCatalog.from_payload(catalog_payload)
+    return try_load_space_transport_catalog_from_snapshot_layouts(layouts)
 
 
 def try_load_default_space_transport_catalog() -> SpaceTransportTileCatalog | None:

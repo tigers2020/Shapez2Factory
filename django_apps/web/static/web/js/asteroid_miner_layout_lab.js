@@ -15,7 +15,7 @@
 (function () {
   "use strict";
 
-  const LAB_COORD_FRAME_BUILD = "map_l_picker_v6";
+  const LAB_COORD_FRAME_BUILD = "effective_cell_v1";
 
   const GRID_W = 23;
   const GRID_H = 15;

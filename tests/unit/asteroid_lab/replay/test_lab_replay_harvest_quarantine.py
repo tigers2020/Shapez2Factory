@@ -8,12 +8,25 @@ REPO = Path(__file__).resolve().parents[4]
 LAB_JS = REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
 
 
-def test_build_canvas_paint_plan_v2_branch_does_not_call_stage_cell() -> None:
+def test_build_canvas_paint_plan_v2_has_no_stage_cell() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
     fn = src.split("function buildCanvasPaintPlan(", 1)[1]
-    v2_region = fn.split("labPaintV2Enabled()", 1)[1].split("const overlays = []", 1)[0]
-    assert "stageCell" not in v2_region
-    assert "collectFrameSpatialTargets" not in v2_region
+    v2_region = fn.split("labPaintV2Enabled()", 1)[1]
+    legacy_start = v2_region.find("const overlays = []")
+    assert legacy_start >= 0
+    assert "stageCell" not in v2_region[:legacy_start]
+    assert "collectFrameSpatialTargets" not in v2_region[:legacy_start]
+
+
+def test_legacy_canvas_harvest_still_present_when_flag_off() -> None:
+    """Policy (A): legacy harvest branch retained until Slice 5 Task 6 HITL delete."""
+    src = LAB_JS.read_text(encoding="utf-8")
+    fn = src.split("function buildCanvasPaintPlan(", 1)[1]
+    assert "const overlays = []" in fn
+    legacy = fn.split("const overlays = []", 1)[1]
+    assert "function stageCell(" in legacy
+    assert "collectFrameSpatialTargets" in legacy
+    assert "labSpriteRelpathForCell" in legacy
 
 
 def test_harvest_functions_marked_deprecated() -> None:

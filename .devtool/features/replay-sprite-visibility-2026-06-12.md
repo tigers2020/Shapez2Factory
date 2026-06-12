@@ -1,12 +1,12 @@
 ---
 id: "replay-sprite-visibility-2026-06-12"
-status: "align"
+status: "implement"
 priority: "high"
 assignee: null
 epic: null
 dueDate: null
 created: "2026-06-12T00:00:00.000Z"
-modified: "2026-06-12T22:30:00.000Z"
+modified: "2026-06-12T23:45:00.000Z"
 labels: ["asteroid-lab", "replay", "sprites", "ui"]
 order: "a0"
 ---
@@ -32,6 +32,7 @@ Replay map에서 sprite 일부 미표시·흐림(faded overlay 대체), legacy `
 | plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-2.md | 2026-06-12 |
 | plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-3.md | 2026-06-12 |
 | plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-4.md | 2026-06-12 |
+| plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-5.md | 2026-06-12 |
 
 ## Progress
 
@@ -50,4 +51,9 @@ Replay map에서 sprite 일부 미표시·흐림(faded overlay 대체), legacy `
 - 2026-06-12 — **implement** — Slice 3 Task 4: `filterTerrainCellsForPaintV2` excludes field_sprite indices from terrain canvas when v2; wired in `refreshLabCanvasAfterLayoutChange` + `applyLabCanvasServerReplayFrame`; `test_lab_js_filter_terrain_cells_for_paint_v2_exists`
 - 2026-06-12 — **verify** — Slice 3 complete (Tasks 1–5): canvas adapter + `buildLabPaintPlanFromFrame` + `labPaintV2Enabled` delegate + terrain anti-fade; gate 26/26 paint/canvas + 16/16 Slice 1 regression pytest green; manual smoke frame 38 (10,7) sharp miner + ring; commit `f099e7f4`
 - 2026-06-12 — **align** — Slice 4 plan drafted + reviewer amendments (frame-cached resolver, occupant-only DOM sprite, exact class tokens); approved Subagent-Driven Tasks 1→5
-- 2026-06-12 — **verify** — Slice 4 complete (Tasks 1–5, Task 7 skipped): Python/JS `domPlanFromPaintLayers`, `buildDomPlanResolverForFrame` (index once per frame), v2 DOM chrome in `renderFullMapCells`; legacy + detail lookup preserved; gate 42/42 Slice 4 + 16/16 Slice 1 regression; commits `d9cdd73e`→`de21d642`
+- 2026-06-12 — **verify** — Slice 4 complete (Tasks 1–5, Task 7 skipped): Python/JS `domPlanFromPaintLayers`, `buildDomPlanResolverForFrame` (index once per frame), v2 DOM chrome in `renderFullMapCells`; legacy + detail lookup preserved; gate 42/42 Slice 4 + 16/16 Slice 1 regression; commits `d9cdd73e`→`de21d642`; plan doc `3a0d60ee`
+- 2026-06-12 — **verify** — workflow gate: re-ran 58 passed (10.20s); commit graph `d9cdd73e..3a0d60ee` (5 Slice 4 commits); `buildDomPlanForCell` absent; `createDomPlanResolverForFrame` before loop — **Slice 4 closed**
+- 2026-06-12 — **align** — Slice 5 plan drafted (harvest quarantine/delete); Task 7 NON_SPRITE cleanup deferred to post-Slice-5 HITL subtask
+- 2026-06-12 — **align** — Slice 5 plan review APPROVED WITH AMENDMENTS: Task 5 default policy (A) soft quarantine; hard delete + NON_SPRITE → Task 6 HITL; no tag until requested
+- 2026-06-12 — **implement** — Slice 5 Task 2: `buildCellByGridIndexFromFrame` + v2 `frameCellIndexMap` delegate; legacy harvest when flag off; 27/27 pytest green; commit `8d9acf4b`
+- 2026-06-12 — **verify** — Slice 5 Task 5 policy (A) soft quarantine: v2 early-return clean; `test_build_canvas_paint_plan_v2_has_no_stage_cell` + `test_legacy_canvas_harvest_still_present_when_flag_off`; legacy `stageCell` + `const overlays` retained; Slice 5 gate green

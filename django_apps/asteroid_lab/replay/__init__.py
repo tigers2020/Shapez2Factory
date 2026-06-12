@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from importlib import import_module
-from typing import Any
 
 __all__ = [
     "DEFERRED_POST_9B",
@@ -78,7 +77,7 @@ _EXPORT_MODULES = {
 }
 
 
-def __getattr__(name: str) -> Any:
+def __getattr__(name: str) -> object:
     if name in _EXPORT_MODULES:
         module = import_module(_EXPORT_MODULES[name])
         return getattr(module, name)

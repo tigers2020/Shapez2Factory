@@ -59,3 +59,17 @@ Append-only chronological record. Newest entries at the bottom.
 - **Wiki:** `graphify-architecture-map.md` expanded (include/exclude tables, cutoff)
 - **Filters:** `.graphifyignore` + `tests/**`; header points to routine
 - **Uncertainty:** graphify tool has no per-symbol `_` toggle yet — policy is agent scope discipline
+
+## [2026-06-12] dream-sequence | raw:3 ingested, pages:2 created, contradictions:0
+
+- **Input:** `/llm-wiki` after PR #285 merge
+- **Scan:** 5 untracked raw files in `raw/`; `Processed.md` had 4 prior rows
+- **Ingested:**
+  - `raw/no more prompt but loop design.md` → `concepts/agent-loop-design.md`
+  - Pocock talk cluster (EN + KO raw) → `concepts/software-fundamentals-ai-era-pocock-2026.md`
+  - Canon update: typing-zero complete → `concepts/asteroid-lab-wire-typing.md` Phase 5 row
+- **Skipped / deferred:** `general_workflow_and_skill.md` (duplicate, prior skip); Ousterhout PDF (deferred)
+- **Index:** 15 → 17 pages; +2 concepts, +2 queries
+- **Contradictions:** none — Pocock anti-specs-to-code complements (does not override) repo `AGENTS.md` contract workflow
+- **Uncertainty:** repo-mapping bullets in new pages marked inference
+- **Remaining:** `building-variants`, `island-mechanics`, `transport-capacity`; Ousterhout PDF summary

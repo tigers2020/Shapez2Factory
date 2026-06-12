@@ -1,0 +1,1029 @@
+인트로 — 왜 이 발표가 41만 뷰인가
+0:00
+코드는 더 이상 비싸지 않다. 요즘
+0:01
+AI 업계 분위기가 이거였거든요.
+0:03
+근데 한 사람이 무대에 올라와서 정
+0:04
+반대로 외쳤습니다. 코드는 싸지
+0:06
+않다. 오히려 나쁜 코드는 그 어느
+0:07
+때보다 비싸다.이 한마디로 일주일
+0:09
+만에 40만 명을 끌어 모았어요. 그
+0:10
+사람이 정리한 AI 시대 여섯 가지
+0:12
+함정과 여섯 가지 처방 18분짜리
+0:13
+발표를 핵심만 추려서 정리해
+0:15
+드립니다. 특히 클로드 코드 쓰시는
+0:16
+분들한테 와닿을 한 마디가 있어요.
+0:17
+발표자가 이런 말을 했거든요. AI는
+0:19
+자기가 만든 미로에서 자기가 길을
+0:21
+잃는다. 이게 무슨 말인지 영상
+0:22
+중반에 풀어 드릴게요. 먼저 한 가지
+0:24
+미리 알려 드릴게요.이 영상에는
+0:25
+중간중간 발표자 본인 영상이 1분에서
+0:27
+2분 정도씩 그대로 들어갑니다. 한국
+0:29
+자막도 같이 띄울테니까 부담없이
+0:30
+보세요. 꼭이라 분이 2026년 4월
+0:32
+AI 엔지니어 컨퍼런스에서 발표한
+0:34
+소프트웨어 펀더멘터스 메터모어 덴
+0:36
+에버 18분짜리 발표해요. 오늘은
+0:38
+그걸 제 관점에서 풀어 드리는
+0:39
+해설입니다. 근데이 사람이 누구냐?
+0:41
+타입스크립트 커뮤니티에서는 그냥
+0:42
+타입스크립트 그 사람으로 통합니다.
+0:43
+토탈 타입스크립트라는 강의로 유명해진
+0:45
+분이에요. 이전에는 버셀에서 디벨로퍼
+0:47
+애드보 했고 그 전에는 X스테이트
+0:48
+코어팀에서 일했고요. 근데 여기까진
+0:50
+그냥 잘 나가는 TS 강사고 진짜
+0:52
+흥미로운 건 최근 1년이에요.이
+0:53
+사람이 타입스크립트에서 AI
+0:54
+엔지니어링으로 방향을 완전히
+0:56
+틀었거든요. AI 히어로라는 학습
+0:57
+플랫폼 만들고 클로드 코드 포리얼
+0:59
+엔지니어스라는 강의를 운영 중이에요.
+1:01
+이번 발표는 그 강의 만들면서 정리한
+1:03
+결론이에요. 한마디로 이런 발표예요.
+1:04
+타입스크립트로 유명해진 사람이 AI
+1:06
+엔지니어링으로 피보하면서 근데 알고
+1:08
+보니 옛날 펀더멘탈이 더 중요하더라고
+1:09
+결론된 발표. 그래서 40일만이 몰린
+1:11
+거고요.이 발표의 출발점부터 봐야
+1:13
+해요. 요즘 AI 업계에 스펙스투
+1:14
+코드 운동이라는게 있어요.
+1:15
+들어보셨어요? 한마디로 스펙만 잘
+1:17
+쓰면 AI가 코드 다 짜 준다. 문제
+1:19
+생기면 스펙만 고치고 컴파일러 다시
+1:20
+돌려라. 코드는 안 봐도 된다. 이런
+1:22
+흐름이에요. 근데 포코이 직접 해
+1:23
+봤대요. 결과가 어땠을까요?
+1:25
+컴파일러를 돌릴 때마다 코드가 더
+1:26
+망가졌어요. 한 번 돌리면 좀 별로,
+1:28
+두 번 돌리면 더 별로. 계속
+1:29
+돌렸더니 결국 갑이지. 그냥 쓰레기.
+1:31
+왜 이렇게 되냐? 프리그메틱
+1:32
+프로그래머라는 옛날 책에 나오는
+1:33
+소프트웨어 엔트로피라는 개념
+1:35
+때문이에요. 부분만 고치고 전체
+1:36
+설계를 안 보면 시스템은 점점
+1:38
+무너진다. 근데 스펙스투 코드가
+1:39
+정확히 그걸 하고 있었던 거예요.
+1:40
+부분만 고치고 컴파일로 돌리고 부분만
+1:42
+고치고 컴파일로 돌리고 그래서 폭이
+1:44
+무대에서 결론을 이렇게 내렸어요.
+1:45
+코드는 싸지 않다. 오히려 나쁜
+1:47
+코드는 그 어느 때보다 비싸다.
+1:48
+왜냐면 좋은 코드 베이스에서 AI가
+1:50
+진짜 빛나거든요. 변경하기 어려운
+1:51
+코드는 AI한테 줘봐야 AI도 못
+1:53
+살려요. 결국 AI 시대일수록
+1:54
+펀더멘탈이 더 중요해진다는게이 발표의
+1:56
+핵심 명제입니다. 자, 이걸 무대에서
+1:57
+본인이 어떻게 던졌는지 본인 발표를
+1:59
+잠깐 보시죠. Raise your
+핵심 명제 — Code is not cheap (Pocock 발표)
+2:01
+hand if you've heard
+2:01
+that phrase before
+2:02
+that code is cheap.
+2:03
+Yeah.
+2:05
+Well, I don't think
+2:06
+this is right. I
+2:08
+think code is not
+2:09
+cheap. In fact, bad
+2:11
+code is the most
+2:12
+expensive it's ever
+2:13
+been. Because if you
+2:14
+have a codebase
+2:15
+that's hard to
+2:16
+change, you're not
+2:17
+able to take all of
+2:18
+the bounty that AI
+2:19
+can offer. AI in a
+2:21
+good codebase
+2:22
+actually does really
+2:24
+well.
+2:25
+And this means good
+2:26
+codebases matter
+2:27
+more than ever means
+2:29
+software
+2:29
+fundamentals matter
+2:30
+ever.
+2:32
+명제 위에 여섯 가지 함정과 여섯
+2:34
+가지 처방이 올라옵니다. 여섯 개 다
+함정 #1 — AI가 의도와 다른 걸 만든다 + Grill Me 스킬 (Pocock 발표)
+2:36
+옛날 책 더하기 자기가 직접 만든
+2:38
+클로드 코드 스킬인데이 중 한 스킬은
+2:40
+기터브에서 별일만 3,000개를
+2:41
+받았어요. 지금부터 여섯 개 차례로
+2:43
+갑니다. 첫 번째 함정 AI가
+2:44
+머릿속에 있던 그 아이디어랑 완전히
+2:46
+다른 걸 만들어요. 본인이 머리에
+2:47
+그렸던 거랑 결과물이 어긋나는 거.
+2:48
+클로드 코드 좀 써 본 분들은
+2:50
+100% 겪어 봤을 거예요. 포콕의
+2:51
+진단은 이래요. 프레드릭 브룩스라는
+2:53
+거장이 디자인 컨셉이라는 개념을
+2:54
+얘기했거든요. 두 사람이 뭔가를 같이
+2:56
+만들 때 둘 사이에 떠다니는 보이지
+2:57
+않는 이걸 만들고 있다는 감각이
+2:59
+있대요. 마크다운에 적을 수가 없는
+3:00
+거. 근데 그게 사람이랑 AI
+3:01
+사이에서는 절대 공유가 안 되고
+3:03
+있다는 거죠. 처방이 그라는
+3:04
+스킬이에요. 신문해 줘라는 뜻이죠.
+3:06
+본체는 단 두 줄이에요.이 계획의
+3:08
+모든 측면을 끝까지 신문해라. 우리가
+3:09
+같은 이해에 도달할 때까지. 이거 한
+3:11
+줄 넣오면 AI가 사용자한테 40개,
+3:13
+60개, 많을 땐 100개 질문을
+3:14
+던져요.이 스킬이 기터부에서 별일만
+3:16
+3,000개를 받았어요. 그냥
+3:17
+바이럴됐어요. 포콕 본인은 클로드
+3:19
+코드 기본 플랜 모드보다 이게 낫다고
+3:21
+단언합니다. 플랜 모드는 너무 빨리
+3:22
+결과물부터 만들려고 한다고. 같은
+3:24
+이해에 도달하는게 먼저라는 거예요.
+3:25
+자, 본인이 무대에서이 스킬을 어떻게
+3:26
+풀어서 설명했는지 본인 입으로
+3:28
+들어볼게요. 두 번째 함정.
+3:29
+skill. The skill is
+3:31
+very very simple.
+3:32
+It's called Grill Me
+3:33
+and it looks like
+3:34
+this. Interview me
+3:36
+relentlessly about
+3:37
+every aspect of this
+3:39
+plan until we reach
+3:40
+a shared
+3:41
+understanding. Walk
+3:42
+down each branch of
+3:43
+the design tree,
+3:44
+which is another
+3:44
+thing from Frederic
+3:45
+P. Brooks, resolving
+3:46
+dependencies between
+3:47
+decisions one by
+3:48
+one. This skill is
+3:50
+like uh the repo
+3:51
+containing this
+3:52
+skill has like
+3:52
+13,000 stars or
+3:53
+something. Like it
+3:54
+just went nuts, went
+3:55
+viral. People love
+3:56
+this thing. it.
+3:57
+These couple of
+3:58
+lines means the AI
+3:59
+asks you like 40
+4:01
+questions, 60
+4:02
+questions. I've had
+4:03
+it ask people 100
+4:05
+questions before
+4:06
+it's satisfied.
+4:06
+They've reached a
+4:07
+shared understanding
+4:08
+and it means it
+4:09
+turns the AI into a
+4:10
+kind of adversary
+4:12
+where it's just
+4:12
+continually pinging
+4:13
+you ideas and trying
+4:14
+to reach a shared
+4:15
+understanding. And
+4:17
+that means that the
+4:17
+conversation that
+4:18
+you then generate,
+4:20
+you can take that
+4:21
+and turn it into a
+4:22
+product requirements
+4:23
+document or
+4:23
+something. or if
+4:24
+it's a small change,
+4:26
+you can just uh do
+4:28
+uh turn it directly
+4:29
+into issues
+4:30
+and then your AFK
+4:31
+agent will then pick
+4:32
+it up. And don't add
+4:34
+me on this, but I
+4:35
+personally believe
+4:36
+this is better than
+4:37
+the default plan
+4:38
+mode in the tool
+4:41
+that I use, which is
+4:42
+claw code. Plan mode
+4:44
+is extremely eager
+4:45
+to create an asset.
+4:59
+AI가 너무 장황해요. 같은 걸 자꾸
+5:01
+다른 단어로 풀어 말하는 거. 분명히
+5:03
+같은 뜻인데 매번 표현이 달라요.
+함정 #2~3 — 모호한 PRD / 코드 리뷰의 죽음
+5:05
+이거 왜 이러는 줄 아세요? 포코의
+5:06
+비유가 진짜 좋아요. 옛날에 도메인
+5:08
+전문가랑 일해 본 적 있는 개발자라면
+5:09
+알 거예요. 마이크로칩 회사
+5:11
+클라이언트랑 일하는데 전문 용어가 안
+5:12
+맞으면 코드 자체가 어긋나잖아요.
+5:14
+그게 지금 AI랑 나 사이에서 똑같이
+5:15
+일어나고 있다는 거예요. 같은 언어로
+5:17
+말 안 하고 있는 거죠. 처방은
+5:18
+도메인 드리븐 디자인에 유비
+5:19
+Qu쿼터스 랭귀지라는 개념을 가져오는
+5:21
+거예요. 유비 쿼터스 언어 어디서나
+5:22
+통하는 언어 코드 베이스를 한번
+5:24
+스캔해서 거기서 쓰는 용어들을 다
+5:25
+추출해요. 그리고 마크다운 사전을
+5:27
+만들어요. 사람도 보고 AI도 보는
+5:28
+공통 단어집이죠. 이걸 항상 띄워놓고
+5:30
+AI랑 같이 쓴다는 거예요. 포코이
+5:32
+이거 도입하고 나서 AI가 생각하는
+5:33
+방식 자체가 덜 벌보스해졌다고 해요.
+5:35
+결국 사람이랑 같은 단어를 써야 같은
+5:37
+결과가 나오는 거죠. 세 번째 함정
+5:38
+AI가 의도대로 만들었는데 안
+5:40
+돌아가요. 코드는 그럴 듯하게 짰는데
+5:41
+실행하면 터져요. 이것도 익숙하시죠?
+5:43
+피드백 루프가 있긴 해요. 타입,
+5:45
+체커, 테스트, 브라우저 접근. 근데
+5:46
+LLM이이 도구들을 잘 못 써요. 한
+5:48
+번에 너무 많이 만들어 놓고 그제서야
+5:49
+어, 이거 타입 체크해야겠네. 늦게
+5:51
+깨달아요. 이미 망가진 다음에 보는
+5:52
+거예요. 여기서 포코이 인용한 비유가
+5:54
+진짜 인상적이에요. 프레그메틱
+5:55
+프로그래머에 나오는 아웃러닝
+5:57
+헤드라이트. 헤드라이트가 비추는
+5:58
+거리보다 빨리 달리면 사고 난다는
+5:59
+뜻이에요. 피드백의 속도가 곧 너의
+6:01
+속도 제한이다. 사람이 운전할 때도
+6:03
+마찬가지지만 AI한테 코딩시킬 때도
+6:04
+똑같다는 거예요. 그래서 처방이
+6:06
+뭐냐? TDD 테스트 주도
+6:07
+개발이에요. 옛날 방법인데 이게
+6:09
+LM한테 더 중요해요. 왜냐?
+6:10
+테스트를 먼저 쓰면 AI가 강제로
+6:12
+작은 단위로 움직이게 되거든요. 큰
+6:13
+거 한 번에 못 만들어요. 한 단계씩
+6:15
+가야 돼요. 헤드라이트 안 추월하게
+6:16
+되는 거죠. 근데 여기서 또 함정이
+6:17
+있어요. td 하려고 보니까 테스트
+6:19
+자체가 어려워요. 어떤 단위로
+6:20
+자를지, 뭘 모기할지, 어떤 동작을
+6:22
+검증할지 결정해야 할게 너무 많아요.
+6:24
+그래서 폭기 통차를 던져요. 좋은
+6:26
+코드 베이스는 테스트하기 쉬운 코드
+6:27
+베이스다. 결국 또 펀더멘탈 문제로
+6:29
+돌아온 거예요. 이걸 풀어주는 책이
+6:30
+존 오스터 하우이라는 분이 쓴
+6:31
+필로소피 오브 소프트웨어
+6:32
+디자인이에요. 거기 나오는 핵심 개념
+6:34
+두 개. 섀우 모듈, 대딥 모듈.
+6:36
+섀우 모듈은 작은 모듈, 잔뜩,
+6:37
+인터페이스도 복잡. 미로 같은
+6:39
+거예요. 어디 들어가야 할지 모르겠는
+6:40
+딥 모듈은 반대예요. 큰 기능을
+6:42
+단순한 인터페이스 뒤에 숨겨 놨어요.
+6:43
+입구는 간단한데 안쪽이 깊은 거.
+6:45
+근데 여기서 진짜 충격적인게 있어요.
+6:46
+AI가 자기가 만든 섀우 모듈을
+6:48
+미로해서 자기가 길을 잃어요. 그래서
+6:50
+처음 AI가 자기 미로에 갇힌다고
+6:51
+말씀드린 거예요. 이게 무슨 말이냐면
+6:53
+AI한테 그냥 코드자라고 하면 AI는
+6:54
+작은 모듈을 잔뜩 만들어요. 디폴트가
+6:56
+섀우예요. 근데 다음번에 AI가 그
+6:58
+코드를 다시 읽으려고 하면 자기가
+6:59
+만든 미로인데 자기가 못 찾아요.
+7:01
+의존성도 못 따라가고 어떤 모듈이 뭐
+7:03
+하는 건지도 모르고 결국 잘못된 모듈
+7:04
+고치고 다른 데서 터지는 거죠.이
+7:05
+이정에서 빠져나온 처방이 포코의 또
+7:07
+다른 스킬이에요. 인프루브 코드
+7:08
+베이스 아키텍처 관련된 코드들을
+7:10
+묶어서 하나의 뒷 모듈로 변환해요.
+7:12
+입구는 단순하고 안쪽은 깊은 구조로이
+7:14
+변환을 반복 가능한 단계로 만들어
+7:15
+놨다고 합니다.이 부분이 발표에서
+7:17
+가장 강력한 진단이라서 포코의 발표를
+7:19
+그대로 한번 보시죠. 슬라이드
+7:20
+다이어그램까지 같이 보시면 진짜 잘
+7:21
+와닿 거예요.
+함정 #4 — Deep vs Shallow Modules (Pocock 발표)
+7:28
+Lots of
+7:28
+functionality hidden
+7:29
+behind a simple
+7:30
+interface hiding the
+7:31
+complexity
+7:33
+inside the deep
+7:34
+module if you want
+7:34
+to but you don't
+7:35
+need to. You can
+7:35
+just use the
+7:36
+interface shallow
+7:37
+modules not much
+7:38
+functionality
+7:39
+complex interface
+7:41
+and I just wait if
+7:43
+you did take the
+7:44
+photos.
+7:46
+Shallow modules in a
+7:46
+case can of look
+7:47
+like this where you
+7:48
+have a ton of
+7:50
+different tiny
+7:50
+little blobs that
+7:52
+the AI has to walk
+7:53
+through and
+7:53
+navigate. And this
+7:55
+is really hard for
+7:56
+the AI to explore
+7:57
+actually. And so
+7:58
+often what you'll
+7:59
+see is if you have a
+8:00
+codebase like this,
+8:01
+which AI is really
+8:01
+good at creating
+8:02
+code bases like
+8:03
+this, is that you'll
+8:05
+have a situation
+8:05
+where AI doesn't
+8:06
+understand what your
+8:07
+code is doing. it
+8:08
+will attempt to
+8:09
+explore the code,
+8:10
+but because it's
+8:11
+poorly laid out
+8:12
+filled with shallow
+8:13
+modules, it doesn't
+8:15
+maybe get to the
+8:15
+right module in time
+8:16
+or doesn't
+8:17
+understand all the
+8:17
+dependencies, all
+8:18
+that stuff. It
+8:19
+doesn't understand
+8:19
+your code. And so
+8:21
+what does a codebase
+8:23
+full of deep modules
+8:24
+look like? Well,
+8:25
+looks like this
+8:27
+where it's the same
+8:28
+code, but it's just
+8:30
+structured inside
+8:31
+boundaries where you
+8:32
+have these
+8:32
+interfaces on the
+8:34
+top.
+8:36
+And these interfaces
+8:37
+you should probably
+8:38
+have a lot of
+8:39
+control over them
+8:39
+and design them
+8:40
+really well.
+8:41
+Otherwise, you know,
+8:42
+AI might mess up the
+8:43
+design. But the
+8:44
+implementation, you
+8:45
+can kind of leave
+8:46
+that to the AI a
+8:47
+bit.
+8:48
+So, how do you turn
+8:50
+a codebase that
+8:51
+looks like this into
+8:53
+a codebase that
+8:54
+looks like that?
+8:56
+Well, I've got a
+8:57
+skill for that.
+8:58
+Improve codebase
+8:59
+architecture. Turns
+9:00
+out this is not it's
+9:02
+quite complicated to
+9:03
+do this, but it's a
+9:04
+like a set of steps
+9:05
+that you can
+9:06
+reusably do again
+9:07
+and again. You just
+9:08
+sort of explore the
+9:09
+code base, look for
+9:10
+opportunities where
+9:11
+there's code that's
+9:12
+kind of um related
+9:14
+and wrap all of that
+9:15
+in a deep module.
+9:23
+다섯 번째 함정. 이건 진짜 다들
+9:25
+공감할 거예요. AI 덕에 코드 양이
+함정 #5~6 — 의존성 관리 / 설계 부재
+9:27
+폭증하잖아요. 근데 사람 머리가 못
+9:28
+따라가요. 폭 본인도 무대에서
+9:30
+솔직하게 인정해요. 내 개발자
+9:31
+인생에서 역대급으로 피곤하다. 본인도
+9:33
+지친다고요. 처방이 그레이박스
+9:34
+전략이에요. 회색 상자 아니 안
+9:36
+보이는 상자란 뜻이죠. 아까 만든 딥
+9:38
+모질 있잖아요. 그걸 회색 상자로
+9:39
+취급하는 거예요. 인터페이스는 사람이
+9:41
+직접 설계하고 안쪽 구여은 AI한테
+9:44
+통째로 위임. 사람은 인터페이스
+9:45
+단위로만 검증하고요. 단, 금융처럼
+9:47
+크리티컬한 모듈은 예외예요. 그건
+9:49
+안쪽까지 다 봐야 하고요. 일반
+9:51
+비즈니스 로직은 회색 상자로
+9:52
+충분하다는 거죠. 한 줄로 정리하면
+9:54
+이거예요. 인터페이스를 설계하라.
+9:56
+구현은 위임하라. 이게 펀더멘터인
+9:58
+동시에 AI 시대 생존 전략이라는
+10:00
+거죠. 자, 그래서이 여섯 가지를
+10:01
+관통하는 한 줄이 뭐냐? 캔트백이라는
+10:03
+또 다른 거장이 한 말이에요. 매일
+10:04
+시스템 설계에 투자하라. 이게
+10:05
+핵심이에요. 근데 스펙스 2 코드는
+10:07
+정확히 그 반대를 해요. 디자인에
+10:08
+투자하는게 아니라 디자인에서
+10:09
+디스인베스트 하는 거예요. 그래서
+10:11
+망한다는 거죠. 그리고이 발표에서
+10:12
+진짜 와닿는 마지막 비유 하나.
+10:13
+AI는 현장의 병장. 너는 전략가.
+10:16
+무슨 말이냐면 AI는 코드 변경을
+10:17
+직접 만드는 현장 병장이에요. 전술
+10:19
+단위. 근데 그 위에 누군가 있어야
+10:21
+한다는 거예요. 전략 수준에서
+10:22
+생각하는 사람. 그게 바로 더고.
+10:23
+그리고 전략가의 무기는 새로 산
+10:25
+도구가 아니라 20년 동안 쌓인
+10:26
+펀더멘탈이라는 거죠. 이게 41만
+10:28
+뷰의 진짜 이유라고 봐요.이 한
+10:30
+마디는 본인 톤으로 들으셔야 와닿요.
+10:32
+포코 본인 발표를 그대로 보시죠.
+결론 — Kent Beck "매일 시스템 설계에 투자하라" (Pocock 발표)
+10:39
+And this is the core
+10:40
+of it, right?
+10:40
+Because specing
+10:44
+in the design of the
+10:44
+system we are
+10:45
+divesting from it.
+10:47
+We're getting rid of
+10:47
+that. Whereas this I
+10:49
+think is absolutely
+10:50
+key.
+10:53
+And so code is not
+10:55
+cheap. That's the
+10:56
+message I want you
+10:56
+to take away. Code
+10:57
+is important.
+11:00
+If we think about AI
+11:01
+as a really great on
+11:02
+the ground
+11:03
+programmer, a kind
+11:05
+of tactical
+11:05
+programmer, a
+11:06
+sergeant on the
+11:07
+ground making the
+11:08
+cochanges, you need
+11:10
+someone above that.
+11:12
+You need someone
+11:13
+thinking on the
+11:13
+strategic level and
+11:15
+that's
+11:16
+requires software를
+11:23
+다시 한 주씩만 회상해 볼게요. 1.
+11:26
+의도가 안 맞으면 그림 위로 100번
+11:28
+신무시켜라. 2. AI가 장황하면
+11:30
+유비코터스 랭귀지로 같은 단어를 쓰게
+11:32
+해라. 3. 안 돌아가면 TDD로
+11:34
+헤드라이트보다 빨리 달리지 마라.
+11:36
+4. 테스트가 어려우면 딥 모듈로
+11:37
+구조를 다시 자라. 5. 회가 못
+11:39
+따라가면 그레이 박스로 위임해라.
+11:41
+6. 그리고 관통하는 한 줄 매일
+11:43
+설계에 투자해라. 전부 새로운게
+11:45
+아니에요. 다 옛날 책에 있는
+11:46
+거예요. 근데 AI 시대일수록 더
+11:47
+강력해지는 거고요. 저는이 발표에서
+11:49
+가장 강력한 한 마디가 이거였어요.
+11:51
+새로운 도구가 너의 무기가 아니다.
+11:52
+20년 동안 쌓인 펀더멘탈이 너의
+11:54
+무기다. 이게 제가이 채널에서 계속
+11:55
+얘기하고 있는 그 메시지랑 정확히
+11:57
+일치해요. AI 시대 생존 가이드.
+11:58
+그 가이드의 핵심은 결국 옛날
+12:00
+펀더멘탈이라는 거. 근데 오늘 제가
+12:01
+해드린 건 핵심 정리예요. 폭 본인의
+12:03
+톤, 청중 반응. 그가 무대에서
+12:04
+보여준 슬라이드까지 다 포함해서
+12:06
+18분짜리 원본을 그대로 보시면 훨씬
+12:07
+좋습니다. 본문에 원본 링크
+12:09
+첨했어요. 포콕이 만든 여섯 가지
+12:10
+스킬도 기터브 매트 포시 스킬스에 다
+12:12
+올라와 있으니까 직접 가져다 쓰셔도
+12:14
+됩니다. 여러분은 여섯 가지 중에
+12:15
+어떤게 제일 와닿으셨나요? 댓글로
+12:17
+알려 주세요. 그리고 좋아요와 구독은
+12:18
+제가이 채널을 계속 운영할 수 있는
+12:19
+힘이 됩니다.

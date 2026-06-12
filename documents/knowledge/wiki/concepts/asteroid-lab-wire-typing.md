@@ -1,7 +1,7 @@
 ---
 title: Asteroid Lab Wire Typing (Any Boundary)
 created: 2026-06-11
-updated: 2026-06-11
+updated: 2026-06-12
 type: concept
 tags: [asteroid-lab, governance, architecture]
 sources: [documents/ai/manuals/typing_contracts.md, docs/superpowers/specs/2026-06-11-any-boundary-typing-design.md]
@@ -14,7 +14,7 @@ confidence: high
 
 ## Problem (source)
 
-~1,454 `typing.Any` uses — mostly `dict[str, Any]` in `django_apps` replay/UI/import, not solver core. Success metric: **contract drift reduction**, not raw `Any` count.
+Was ~1,454 `typing.Any` uses — mostly `dict[str, Any]` in `django_apps` replay/UI/import, not solver core. **Campaign complete:** `any_token_total=0` on `master@597cdaf2` (PR #284 slice-1 + PR #285 slices 2–37). Guard: `scripts/check_typing_debt.py`.
 
 ## Core invariants
 
@@ -56,7 +56,8 @@ Runtime wire **forbidden** as placement/routing/validation input.
 | 0 | `typing_boundary.py`, ban-test inventory | **merged** `master@223eabc5` (PR #280) |
 | 1 | Replay wire TypedDict + converters | **merged** #280 |
 | 4 | Remove `EffectiveCellView.to_wire()`; strict mypy on `django_apps/asteroid_lab/replay/`; CI gate `mypy src django_apps/asteroid_lab/replay` | **merged** `master@cc33840a` (PR #283) |
-| 2+ | Service DTOs, full `django_apps` strict | **deferred** — design spec |
+| 5 | Repo-wide `typing.Any` elimination; `wire_coerce.py` JSON narrowing; `dict[str, object]` repair | **merged** `master@597cdaf2` (PR #285) |
+| 2+ | Service DTOs, full `django_apps` strict beyond replay | **deferred** — design spec |
 
 ## Cross-References
 

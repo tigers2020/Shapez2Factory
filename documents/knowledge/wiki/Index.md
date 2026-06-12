@@ -1,7 +1,7 @@
 # Knowledge Index
 
 > Map of synthesized knowledge. Raw sources live in `../raw/` (immutable). Maintenance: `docs/agent-workflows/dream-sequence.md`.
-> Last updated: 2026-06-11 | Total pages: 15
+> Last updated: 2026-06-12 | Total pages: 17
 
 ## Concepts
 
@@ -20,8 +20,10 @@
 | Item Data Model | shapes.json gameplay subset (70 items) | [[item-data-model]] |
 | Research Unlocks | Island progression tree, ShapeHash catalog | [[research-unlocks]] |
 | Asteroid Lab Layers | L2–L5 solver stack, replay projection boundary | [[asteroid-lab-algorithm]] |
-| Wire Typing (Any Boundary) | TypedDict wire contracts, mypy phases 0/1/4 merged | [[asteroid-lab-wire-typing]] |
+| Wire Typing (Any Boundary) | TypedDict wire contracts; typing-zero complete @597cdaf2 | [[asteroid-lab-wire-typing]] |
 | Graphify Map | graph.json scope, stale check, module-level granularity | [[graphify-architecture-map]] |
+| Agent Loop Design | Destination + feedback + reroute; verifier split; memory 5-step | [[agent-loop-design]] |
+| Software Fundamentals (AI Era) | Pocock six traps; deep modules; grey-box; anti specs-to-code divest | [[software-fundamentals-ai-era-pocock-2026]] |
 
 ## Entities
 
@@ -43,6 +45,8 @@
 | Which MCP servers for Cursor? | GitHub + Context7 + search baseline; 3–5 servers max | [[mcp-servers-cursor-2026]] |
 | Where is replay wire typing authority? | frozen dataclass + named TypedDict + converters | [[asteroid-lab-wire-typing]] |
 | When to run graphify vs grep? | graphify first when graph fresh; scoped replay updates | [[graphify-architecture-map]] |
+| Prompt vs loop for agents? | Set done criteria + feedback loop; separate verifier | [[agent-loop-design]] |
+| Why fundamentals still matter with AI? | Shallow-module mazes; design interfaces; TDD headlight limit | [[software-fundamentals-ai-era-pocock-2026]] |
 
 ## Sources (external research)
 

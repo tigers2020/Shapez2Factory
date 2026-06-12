@@ -3491,6 +3491,17 @@
     }
 
     function collectSpriteRelpathsFromFrames(framesArr) {
+      if (
+        labPaintV2Enabled() &&
+        typeof LabReplayPaintPlan !== "undefined" &&
+        typeof LabReplayPaintPlan.collectSpriteRelsFromPaintPlanFrames === "function"
+      ) {
+        return LabReplayPaintPlan.collectSpriteRelsFromPaintPlanFrames(
+          framesArr,
+          resolveCellIndex,
+          { replayFrames: framesArr, hasServerReplay: hasServerReplay },
+        );
+      }
       if (!Array.isArray(framesArr) || !framesArr.length) {
         return [];
       }
@@ -3625,10 +3636,20 @@
           });
         }
       }
+      const paintPlan =
+        typeof LabReplayPaintPlan !== "undefined" ? LabReplayPaintPlan : null;
       const layoutFrame =
-        !frameHasSpriteCapableCells(frame) && hasServerReplay
-          ? lastFrameWithSpriteCapableCells(replayArrayIndex)
-          : null;
+        paintPlan &&
+        paintPlan.indexHasSpriteCapableCells &&
+        paintPlan.lastFrameWithSpriteCapableCells &&
+        !paintPlan.indexHasSpriteCapableCells(
+          paintPlan.buildEffectiveCellViewIndex(frame),
+        ) &&
+        hasServerReplay
+          ? paintPlan.lastFrameWithSpriteCapableCells(replayFrames, replayArrayIndex)
+          : !frameHasSpriteCapableCells(frame) && hasServerReplay
+            ? lastFrameWithSpriteCapableCells(replayArrayIndex)
+            : null;
       if (layoutFrame && layoutFrame !== frame) {
         const carryTargets = collectFrameSpatialTargets(layoutFrame);
         for (let c = 0; c < carryTargets.length; c++) {

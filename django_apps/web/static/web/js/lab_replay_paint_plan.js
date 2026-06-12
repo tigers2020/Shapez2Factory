@@ -779,6 +779,33 @@
     return { overlays: overlays, sprites: sprites };
   }
 
+  function collectSpriteRelsFromPaintPlanFrames(framesArr, resolveCellIndex, options) {
+    options = options || {};
+    if (!Array.isArray(framesArr) || !framesArr.length) {
+      return [];
+    }
+    var rels = new Set();
+    for (var fi = 0; fi < framesArr.length; fi++) {
+      var fr = framesArr[fi];
+      if (!fr || typeof fr !== "object") {
+        continue;
+      }
+      var frameOpts = Object.assign({}, options, {
+        replayArrayIndex: fi,
+        replayFrames: framesArr,
+      });
+      var plan = buildLabPaintPlanFromFrame(fr, resolveCellIndex, frameOpts);
+      var sprites = plan.sprites || [];
+      for (var si = 0; si < sprites.length; si++) {
+        var rel = sprites[si].rel;
+        if (rel) {
+          rels.add(rel);
+        }
+      }
+    }
+    return Array.from(rels);
+  }
+
   global.LabReplayPaintPlan = {
     BACKGROUND_FILL: BACKGROUND_FILL,
     VOID_FILL: VOID_FILL,
@@ -789,7 +816,10 @@
     buildDomPlanResolverForFrame: buildDomPlanResolverForFrame,
     buildLabPaintPlanFromFrame: buildLabPaintPlanFromFrame,
     canvasPlanFromPaintLayers: canvasPlanFromPaintLayers,
+    collectSpriteRelsFromPaintPlanFrames: collectSpriteRelsFromPaintPlanFrames,
     domPlanFromPaintLayers: domPlanFromPaintLayers,
+    indexHasSpriteCapableCells: indexHasSpriteCapableCells,
     labPaintLayersFromView: labPaintLayersFromView,
+    lastFrameWithSpriteCapableCells: lastFrameWithSpriteCapableCells,
   };
 })(typeof window !== "undefined" ? window : globalThis);

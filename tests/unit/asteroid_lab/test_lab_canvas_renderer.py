@@ -258,3 +258,10 @@ def test_lab_js_v2_dom_branch_gated_by_flag() -> None:
     )[0]
     assert "createDomPlanResolverForFrame" in render_body
     assert render_body.index("createDomPlanResolverForFrame") < render_body.index("for (let i = 0")
+
+
+def test_warmup_sprite_collect_uses_paint_plan_when_v2() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    body = src.split("function collectSpriteRelpathsFromFrames(", 1)[1][:700]
+    assert "collectSpriteRelsFromPaintPlanFrames" in body
+    assert "labPaintV2Enabled()" in body

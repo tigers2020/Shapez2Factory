@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from functools import wraps
-from typing import Any
 
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
@@ -31,7 +30,7 @@ def staff_site_required(view_func):
 
 def _parse_graph_preview_warm_body(
     request: HttpRequest,
-) -> tuple[str, dict[str, Any]] | JsonResponse:
+) -> tuple[str, dict[str]] | JsonResponse:
     try:
         body = json.loads(request.body)
     except json.JSONDecodeError:

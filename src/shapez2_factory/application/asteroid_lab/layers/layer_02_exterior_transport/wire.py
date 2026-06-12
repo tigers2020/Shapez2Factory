@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from shapez2_factory.application.asteroid_lab.layers.contracts.cardinal_edge import CardinalEdge
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
@@ -20,7 +18,7 @@ _EDGES_ORDER: tuple[CardinalEdge, ...] = (
 )
 
 
-def exterior_connector_plan_to_metrics_dict(plan: ExteriorConnectionPlan) -> dict[str, Any]:
+def exterior_connector_plan_to_metrics_dict(plan: ExteriorConnectionPlan) -> dict[str]:
     counts_by_edge = {edge.value: 0 for edge in _EDGES_ORDER}
     for conn in plan.planned_connectors:
         counts_by_edge[conn.edge.value] += 1

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from django.apps import apps
 from django.contrib import admin
@@ -140,7 +140,7 @@ def resolve_model(model_label: str) -> type[Model]:
     return apps.get_model(app_label, model_name)
 
 
-def admin_inline_class_names(model_admin: ModelAdmin[Any]) -> frozenset[str]:
+def admin_inline_class_names(model_admin: ModelAdmin[Model]) -> frozenset[str]:
     names: list[str] = []
     for inline in model_admin.inlines:
         if isinstance(inline, type):
@@ -274,7 +274,7 @@ def build_browse_groups(*, site: AdminSite | None = None) -> tuple[BrowseNamespa
     return tuple(groups)
 
 
-def section_qs_sorted(namespace: Any) -> list[GameDataSection]:
+def section_qs_sorted(namespace: object) -> list[GameDataSection]:
     return list(namespace.sections.order_by("order", "code"))
 
 

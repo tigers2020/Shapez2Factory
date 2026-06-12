@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-from typing import Any
 
 import dj_database_url
 from dotenv import load_dotenv
@@ -314,7 +313,7 @@ SOCIALACCOUNT_ADAPTER = "django_apps.web.social_adapter.SocialAccountAdapter"
 # raises SocialApp.DoesNotExist.
 # Do not define the same provider twice (admin SocialApp + APP here): two apps
 # for one provider can break login (wrong client_id/secret or MultipleObjectsReturned).
-_social_providers: dict[str, dict[str, Any]] = {}
+_social_providers: dict[str, dict[str]] = {}
 _google_cid = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "").strip()
 _google_sec = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "").strip()
 if _google_cid and _google_sec:

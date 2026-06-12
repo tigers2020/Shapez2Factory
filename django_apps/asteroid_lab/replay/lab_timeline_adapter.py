@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
+
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_DECODE_NORMALIZED,
     EVENT_TYPE_DECODE_RAW_LOADED,

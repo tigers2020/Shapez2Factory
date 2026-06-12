@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from shapez2_factory.application.asteroid_lab.experiments.golden_fixture_eval import (
     GoldenEvalResult,
 )
@@ -82,7 +80,7 @@ def assert_master_valid_eval_result(result: GoldenEvalResult) -> None:
         raise AssertionError(msg)
 
 
-def assert_master_valid_loop_summary(summary: dict[str, Any]) -> None:
+def assert_master_valid_loop_summary(summary: dict[str]) -> None:
     if not summary.get("best_valid"):
         msg = f"best_valid=false summary={summary}"
         raise AssertionError(msg)
@@ -92,7 +90,7 @@ def assert_master_valid_loop_summary(summary: dict[str, Any]) -> None:
         raise AssertionError(msg)
 
 
-def assert_master_valid_diagnostics_payload(payload: dict[str, Any]) -> None:
+def assert_master_valid_diagnostics_payload(payload: dict[str]) -> None:
     if not payload.get("best_valid"):
         msg = f"best_valid=false payload={payload}"
         raise AssertionError(msg)

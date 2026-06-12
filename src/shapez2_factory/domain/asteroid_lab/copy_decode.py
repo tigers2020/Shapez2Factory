@@ -13,7 +13,6 @@ import base64
 import binascii
 import gzip
 import json
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.service_dtos import RawDecodedBlueprintDTO
 
@@ -78,7 +77,7 @@ def decode_copy_string(copy_code: str) -> RawDecodedBlueprintDTO:
     return RawDecodedBlueprintDTO(root=data)
 
 
-def _validate_blueprint_shape(data: dict[str, Any]) -> None:
+def _validate_blueprint_shape(data: dict[str]) -> None:
     if "V" not in data:
         raise AsteroidLabCopyDecodeError("missing top-level key 'V'")
     if not isinstance(data.get("BP"), dict):
@@ -105,7 +104,7 @@ def _pad_base64(data: str) -> str:
     return data + ("=" * missing)
 
 
-def encode_copy_string(root: dict[str, Any]) -> str:
+def encode_copy_string(root: dict[str]) -> str:
     """Encode a blueprint root dict to a ``SHAPEZ2-4-`` copy string (gzip + base64)."""
 
     _validate_blueprint_shape(root)

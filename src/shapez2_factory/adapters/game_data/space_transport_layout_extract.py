@@ -7,7 +7,6 @@ import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from shapez2_factory.adapters.asteroid_lab.space_transport_catalog_snapshot import (
     CURRENT_SCHEMA_VERSION,
@@ -88,15 +87,15 @@ def build_space_transport_catalog_payload(
     simulation_systems_path: str | Path,
     game_version: str = "",
     source_batch_id: str = "documents/game_data",
-) -> dict[str, Any]:
+) -> dict[str]:
     research_path = Path(research_unlocks_path)
     simulation_path = Path(simulation_systems_path)
     tile_ids = enumerate_space_transport_tile_ids(research_path)
     sim_keys = simulation_keys_by_tile(simulation_path)
-    entries: list[dict[str, Any]] = []
+    entries: list[dict[str]] = []
     for tile_id in tile_ids:
         transport_kind = transport_kind_for_tile_id(tile_id)
-        entry: dict[str, Any] = {
+        entry: dict[str] = {
             "tile_id": tile_id,
             "transport_kind": transport_kind,
             "group_id": group_id_for_transport_kind(transport_kind),

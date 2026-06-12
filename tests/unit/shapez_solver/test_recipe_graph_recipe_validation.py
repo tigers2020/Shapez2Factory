@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.shapez_solver.services.recipe_graph_recipe_validation import (
     annotate_visual_graph_with_issues,
     validate_recipe_graph_context,
@@ -309,7 +307,7 @@ def test_validate_multi_output_operation_warns_missing_edges() -> None:
 
 
 def test_annotate_visual_graph_marks_error_node() -> None:
-    visual: dict[str, Any] = {
+    visual: dict[str] = {
         "layout": {"direction": "horizontal"},
         "nodes": [
             {"id": "a", "kind": "shape", "role": "target"},

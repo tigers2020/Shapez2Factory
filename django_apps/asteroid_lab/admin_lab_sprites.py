@@ -13,7 +13,6 @@ Resolve both via :func:`lab_sprite_resolve`.
 from __future__ import annotations
 
 import math
-from typing import Any
 
 from django_apps.shapez_core.lab_sprite_path import resolve_sprite_static_relpath
 from django_apps.shapez_core.services.lab_sprite_identifier_service import (
@@ -29,7 +28,7 @@ LAB_SPRITE_CELL_KIND_FALLBACK: dict[str, str] = {
 }
 
 
-def normalize_lab_rotation_q(value: Any) -> int:
+def normalize_lab_rotation_q(value: object) -> int:
     """Mirror ``normalizeQuarterTurns`` in ``asteroid_miner_layout_lab.js`` (0..3)."""
 
     if value is None:
@@ -71,7 +70,7 @@ def lab_sprite_resolve(
     *,
     tile_type: str,
     cell_kind: str,
-    rotation: Any,
+    rotation: object,
 ) -> tuple[str | None, int]:
     """Return ``(sprite_static_relpath_or_none, display_rotation_quarters)``.
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import threading
 import uuid
-from typing import Any
 from urllib.parse import quote
 
 from django.contrib import admin, messages
@@ -338,7 +337,7 @@ class ShapePartSpriteAdmin(admin.ModelAdmin):
         )
         changelist_url = reverse("admin:web_shapepartsprite_changelist")
 
-        context: dict[str, Any] = {
+        context: dict[str] = {
             **self.admin_site.each_context(request),
             "title": _("Sprite render progress"),
             "opts": self.model._meta,

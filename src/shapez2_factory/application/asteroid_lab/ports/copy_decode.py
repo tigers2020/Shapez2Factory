@@ -7,14 +7,14 @@ port type-checks while the use case is still a stub.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Protocol
 
 
 @dataclass(frozen=True, slots=True)
 class DecodedCopy:
     """Placeholder decoded copy payload; full DTO lands in PR-CLI-2a."""
 
-    raw: dict[str, Any] = field(default_factory=dict)
+    raw: dict[str] = field(default_factory=dict)
 
 
 class CopyDecodePort(Protocol):

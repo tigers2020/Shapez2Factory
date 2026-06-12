@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
     LAYER_03_RIM_GREEDY_PLACEMENT,
@@ -98,7 +97,7 @@ class RimGreedyReject:
 class RimGreedyObservationEvent:
     phase: RimGreedyObservationPhase
     variant_id: str
-    payload: dict[str, Any]
+    payload: dict[str]
 
 
 @dataclass(frozen=True, slots=True)

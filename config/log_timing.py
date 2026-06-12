@@ -6,11 +6,10 @@ import logging
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any
 
 
 @contextmanager
-def log_timing(logger: logging.Logger, event: str, /, **extra: Any) -> Iterator[None]:
+def log_timing(logger: logging.Logger, event: str, /, **extra: object) -> Iterator[None]:
     """Log ``event`` with ``ms`` in extra after the block completes."""
     start = time.perf_counter()
     try:

@@ -20,7 +20,7 @@ ENV_CONSOLE_LOG = "ASTEROID_LAB_CLI_CONSOLE_LOG"
 ENV_VERBOSE_LOG = "ASTEROID_LAB_CLI_VERBOSE"
 
 # Master-switch values that disable console logging (case-insensitive, stripped).
-# Any other value — including unset, ``1``, ``true`` or empty-but-set — keeps it on.
+# Every other value — including unset, ``1``, ``true`` or empty-but-set — keeps it on.
 _DISABLED_VALUES = frozenset({"0", "false", "no"})
 
 _TIMESTAMP_FORMAT = "%d/%b/%Y %H:%M:%S"

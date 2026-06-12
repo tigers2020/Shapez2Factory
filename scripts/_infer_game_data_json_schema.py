@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Any
 
 SOURCE_DIR = Path(__file__).resolve().parents[1] / "documents" / "game_data"
 MAX_ARRAY_SAMPLES = 8
@@ -20,7 +19,7 @@ def merge_types(a: str, b: str) -> str:
     return " | ".join(parts)
 
 
-def infer(value: Any, depth: int = 0) -> str:
+def infer(value: object, depth: int = 0) -> str:
     if depth > MAX_DEPTH:
         return "…"
     if value is None:
@@ -55,7 +54,7 @@ def infer(value: Any, depth: int = 0) -> str:
     return type(value).__name__
 
 
-def root_kind(data: Any) -> str:
+def root_kind(data: object) -> str:
     if isinstance(data, list):
         return f"array[{len(data)}]"
     if isinstance(data, dict):
@@ -63,7 +62,7 @@ def root_kind(data: Any) -> str:
     return type(data).__name__
 
 
-def row_envelope_keys(rows: list[Any]) -> Counter[str]:
+def row_envelope_keys(rows: list[object]) -> Counter[str]:
     c: Counter[str] = Counter()
     for row in rows[:MAX_ARRAY_SAMPLES]:
         if isinstance(row, dict):

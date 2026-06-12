@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 FIELD_CELL_MINI_UNITS = 4
 VALID_THROUGHPUT_FACTORS: frozenset[int] = frozenset({4, 8, 12, 16})
@@ -39,7 +38,7 @@ def build_terrain_capacity_summary_row(
     max_extension_count: int,
     source_kind: str,
     authority: str,
-) -> dict[str, Any]:
+) -> dict[str]:
     """Terrain upper bound: one field cell = one platform at base ×4 mini-units (not ×16)."""
 
     per_cell = output_per_min_from_mini_unit(

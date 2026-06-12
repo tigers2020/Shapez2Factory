@@ -12,7 +12,6 @@ import os
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.observability.boundary_sink import (
     summarize_cell_kind_transitions as summarize_cell_kind_transitions,
@@ -55,7 +54,7 @@ def emit_boundary_jsonl(
     run_id: str,
     stage: str,
     boundary: str,
-    data: dict[str, Any],
+    data: dict[str],
 ) -> None:
     """Write one JSON object as a single line to ``{dir}/{run_id}.jsonl``."""
 
@@ -63,7 +62,7 @@ def emit_boundary_jsonl(
         return
 
     ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    record: dict[str, Any] = {
+    record: dict[str] = {
         "ts": ts,
         "run_id": run_id,
         "stage": stage,
@@ -92,7 +91,7 @@ class BoundaryJsonlSink:
         run_id: str,
         stage: str,
         boundary: str,
-        data: dict[str, Any],
+        data: dict[str],
     ) -> None:
         emit_boundary_jsonl(run_id=run_id, stage=stage, boundary=boundary, data=data)
 

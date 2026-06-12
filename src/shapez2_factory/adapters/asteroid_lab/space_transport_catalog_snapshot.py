@@ -6,7 +6,6 @@ import json
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
 
 CURRENT_SCHEMA_VERSION = "space_transport_catalog_v1"
 SUPPORTED_SCHEMA_VERSIONS = frozenset({CURRENT_SCHEMA_VERSION})
@@ -147,7 +146,7 @@ class SpaceTransportTileCatalog:
             )
         return entry
 
-    def to_payload(self) -> dict[str, Any]:
+    def to_payload(self) -> dict[str]:
         return {
             "schema_version": self.schema_version,
             "game_version": self.game_version,
@@ -222,8 +221,8 @@ def _parse_entry(raw: object) -> SpaceTransportTileCatalogEntry:
     )
 
 
-def _entry_to_dict(entry: SpaceTransportTileCatalogEntry) -> dict[str, Any]:
-    out: dict[str, Any] = {
+def _entry_to_dict(entry: SpaceTransportTileCatalogEntry) -> dict[str]:
+    out: dict[str] = {
         "tile_id": entry.tile_id,
         "transport_kind": entry.transport_kind,
         "group_id": entry.group_id,

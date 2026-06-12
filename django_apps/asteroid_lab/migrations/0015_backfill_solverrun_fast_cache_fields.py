@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.db import migrations
 
 # Inlined from solver_run_config_keys (migrations must not import app services).
@@ -14,17 +12,17 @@ _LAB_REPLAY_CACHE_SCHEMA_VERSION = 1
 _LAB_REPLAY_PAYLOAD_VERSION = 1
 
 
-def _dict_or_empty(raw: Any) -> dict:
+def _dict_or_empty(raw: object) -> dict:
     return dict(raw) if isinstance(raw, dict) else {}
 
 
-def _list_or_empty(raw: Any) -> list:
+def _list_or_empty(raw: object) -> list:
     if not isinstance(raw, list):
         return []
     return list(raw)
 
 
-def _empty_manifest_summary() -> dict[str, Any]:
+def _empty_manifest_summary() -> dict[str]:
     return {
         "replay_payload_version": _LAB_REPLAY_PAYLOAD_VERSION,
         "lab_replay_cache_schema_version": _LAB_REPLAY_CACHE_SCHEMA_VERSION,

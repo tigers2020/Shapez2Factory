@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
@@ -91,7 +91,7 @@ _LAYER_INDEX: dict[str, int] = {
 @dataclass(frozen=True, slots=True)
 class _LayerStackRunner:
     slug: str
-    run: Callable[..., Any]
+    run: Callable[...]
 
 
 # Backward-compatible alias (PR-3c).
@@ -130,7 +130,7 @@ def run_layers_02_to_06(
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
     genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
-    capacity_envelope: dict[str, Any] | None = None,
+    capacity_envelope: dict[str] | None = None,
     throughput_target_percent: int | None = None,
     transport_catalog: SpaceTransportTileCatalog | None = None,
 ) -> CoreStackRunResult:
@@ -263,7 +263,7 @@ def run_layers_02_to_05(
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
     genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
-    capacity_envelope: dict[str, Any] | None = None,
+    capacity_envelope: dict[str] | None = None,
     throughput_target_percent: int | None = None,
     transport_catalog: SpaceTransportTileCatalog | None = None,
 ) -> CoreStackRunResult:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import gzip
 import json
-from typing import Any, cast
+from typing import cast
 
 import pytest
 
@@ -39,7 +39,7 @@ def test_decode_whitespace_in_string() -> None:
 
 def test_rejects_non_string() -> None:
     with pytest.raises(ShapezCopyDecodeError, match="must be a string"):
-        decode_shapez2_copy(cast(Any, None))
+        decode_shapez2_copy(cast(object, None))
 
 
 def test_rejects_wrong_prefix() -> None:

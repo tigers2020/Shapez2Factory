@@ -9,8 +9,8 @@ from pathlib import Path
 
 # Baseline captured 2026-06-11 before typing-zero loop slice 1.
 BASELINE = {
-    "any_token_total": 300,
-    "files_with_any": 88,
+    "any_token_total": 0,
+    "files_with_any": 0,
     "dict_str_object_production_files": 122,
 }
 
@@ -49,11 +49,11 @@ def main() -> int:
     failures: list[str] = []
     if any_total > BASELINE["any_token_total"]:
         failures.append(
-            f"Any token count increased: {any_total} > baseline {BASELINE['any_token_total']}"
+            f"any_token_total increased: {any_total} > baseline {BASELINE['any_token_total']}"
         )
     if files_with_any > BASELINE["files_with_any"]:
         failures.append(
-            "Any-containing files increased: "
+            "files_with_any increased: "
             f"{files_with_any} > baseline {BASELINE['files_with_any']}"
         )
     if prod_object_files > BASELINE["dict_str_object_production_files"]:

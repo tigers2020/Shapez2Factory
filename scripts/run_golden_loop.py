@@ -19,7 +19,6 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 _REPO = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = _REPO / "var" / "experiments" / "golden_loop"
@@ -49,7 +48,7 @@ def build_config_grid(
     )
 
 
-def _eval_record_dict(result: Any) -> dict[str, Any]:
+def _eval_record_dict(result: object) -> dict[str]:
     payload = asdict(result)
     payload["diagnostics"] = list(result.diagnostics)
     return payload
@@ -62,7 +61,7 @@ def run_golden_loop(
     write_snapshots: bool = False,
     write_best_copy: bool = False,
     now_fn: Callable[[], datetime] | None = None,
-) -> dict[str, Any]:
+) -> dict[str]:
     """Run the golden fixture loop and write JSON artifacts under ``out_dir``."""
 
     sys.path.insert(0, str(_REPO))
@@ -107,11 +106,11 @@ def run_golden_loop(
     runs_path = out / "runs.jsonl"
     failure_patterns: dict[str, int] = {}
     best_valid_score = float("-inf")
-    best_valid_record: dict[str, Any] | None = None
-    best_valid_artifacts: Any | None = None
+    best_valid_record: dict[str] | None = None
+    best_valid_artifacts: object | None = None
     best_any_score = float("-inf")
-    best_any_record: dict[str, Any] | None = None
-    run_records: list[dict[str, Any]] = []
+    best_any_record: dict[str] | None = None
+    run_records: list[dict[str]] = []
 
     with runs_path.open("w", encoding="utf-8") as runs_file:
         for loop_config in grid:

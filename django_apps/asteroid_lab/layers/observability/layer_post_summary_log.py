@@ -8,7 +8,6 @@ import shutil
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 from django.conf import settings
 from django.utils import timezone
@@ -52,7 +51,7 @@ def _settings_int(name: str, default: int) -> int:
         return default
 
 
-def _json_safe(value: Any) -> Any:
+def _json_safe(value: object) -> object:
     if value is None or isinstance(value, (bool, int, float, str)):
         return value
     if isinstance(value, Enum):

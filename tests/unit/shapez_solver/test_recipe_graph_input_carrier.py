@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
 from django_apps.shapez_solver.domain.operations import OperationType
 from django_apps.shapez_solver.services.recipe_graph_recompute import validate_graph_document
 
 
-def _doc(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> dict[str, Any]:
+def _doc(nodes: list[dict[str]], edges: list[dict[str]]) -> dict[str]:
     return {"schema_version": 1, "nodes": nodes, "edges": edges}
 
 

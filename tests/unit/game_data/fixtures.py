@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
 
 import pytest
 from django.core.management import call_command
@@ -56,7 +55,7 @@ _FLUSH_SKIP_TABLES = frozenset(
 )
 
 
-def _flush_committed_game_data(django_db_blocker: Any) -> None:
+def _flush_committed_game_data(django_db_blocker: object) -> None:
     """Delete imported game_data rows (module teardown / pre-loaddata). Never global flush.
 
     CANON tables seeded by migration (MiningExtractionRule, Exterior*TransportCapacity)

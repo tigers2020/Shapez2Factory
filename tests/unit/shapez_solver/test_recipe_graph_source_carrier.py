@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
 from django_apps.shapez_solver.domain.operations import OperationType
@@ -9,9 +7,9 @@ from django_apps.shapez_solver.services.recipe_graph_recompute import validate_g
 
 
 def _minimal_doc(
-    nodes: list[dict[str, Any]],
-    edges: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
+    nodes: list[dict[str]],
+    edges: list[dict[str]] | None = None,
+) -> dict[str]:
     return {"schema_version": 1, "nodes": nodes, "edges": edges or []}
 
 

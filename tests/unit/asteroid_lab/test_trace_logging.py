@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from django_apps.asteroid_lab.services.trace_logging import AsteroidLabTraceLogger
 
 
-def _jsonl(path: Path) -> list[dict[str, Any]]:
+def _jsonl(path: Path) -> list[dict[str]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
 

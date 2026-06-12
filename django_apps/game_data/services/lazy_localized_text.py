@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 _BACKING_FIELD_SUFFIX = "k__BackingField"
 
@@ -27,7 +26,7 @@ class ParsedLazyLocalizedText:
     unknown_top_level_keys: tuple[str, ...]
 
 
-def _extract_message_key(id_block: Any) -> str:
+def _extract_message_key(id_block: object) -> str:
     if id_block is None:
         return ""
     if isinstance(id_block, str):
@@ -43,7 +42,7 @@ def _extract_message_key(id_block: Any) -> str:
     return ""
 
 
-def _parse_replacements(resolver: dict[str, Any]) -> tuple[LazyLocalizedReplacement, ...]:
+def _parse_replacements(resolver: dict[str]) -> tuple[LazyLocalizedReplacement, ...]:
     raw = resolver.get("Replacements")
     if not isinstance(raw, dict) or not raw:
         return ()
@@ -67,7 +66,7 @@ def _parse_replacements(resolver: dict[str, Any]) -> tuple[LazyLocalizedReplacem
     return tuple(out)
 
 
-def parse_lazy_localized_text(raw: Any) -> ParsedLazyLocalizedText | None:
+def parse_lazy_localized_text(raw: object) -> ParsedLazyLocalizedText | None:
     if raw is None:
         return None
     if isinstance(raw, str):

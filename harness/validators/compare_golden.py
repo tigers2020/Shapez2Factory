@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 GOLDEN_DIR = Path(__file__).resolve().parents[2] / "tests" / "golden"
 
@@ -15,14 +14,14 @@ def golden_path(name: str, *, kind: str) -> Path:
     return GOLDEN_DIR / f"{name}{suffix}"
 
 
-def load_golden_json(path: Path) -> Any:
+def load_golden_json(path: Path) -> object:
     with path.open(encoding="utf-8") as fh:
         return json.load(fh)
 
 
 def _diff_paths(
-    actual: Any,
-    expected: Any,
+    actual: object,
+    expected: object,
     prefix: str = "$",
 ) -> list[str]:
     if type(actual) is not type(expected):
@@ -51,12 +50,12 @@ def _diff_paths(
     return []
 
 
-def compare_json(actual: Any, expected: Any) -> tuple[bool, list[str]]:
+def compare_json(actual: object, expected: object) -> tuple[bool, list[str]]:
     diffs = _diff_paths(actual, expected)
     return (not diffs, diffs)
 
 
-def assert_golden_match(actual: Any, expected_path: Path) -> None:
+def assert_golden_match(actual: object, expected_path: Path) -> None:
     expected = load_golden_json(expected_path)
     ok, diffs = compare_json(actual, expected)
     if not ok:

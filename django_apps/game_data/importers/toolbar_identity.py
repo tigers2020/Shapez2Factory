@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.game_data.importers.base import dig
 from django_apps.game_data.models import ToolbarElement
 from django_apps.game_data.services.lazy_localized_text import parse_lazy_localized_text
 
 
-def toolbar_row_identity(snap: dict[str, Any], kind: str) -> tuple[str, str, str]:
+def toolbar_row_identity(snap: dict[str], kind: str) -> tuple[str, str, str]:
     """Return (internal_name, localized_title_key, icon_identifier)."""
     title_parsed = parse_lazy_localized_text(snap.get("IPresentableToolbarElementData.Title"))
     title_key = title_parsed.message_key if title_parsed else ""

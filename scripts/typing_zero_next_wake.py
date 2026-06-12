@@ -41,7 +41,7 @@ def main() -> int:
 
     if any_total == 0:
         prompt = (
-            f"typing-zero FINAL on PR #{PR} ({BRANCH}): Any count is 0. "
+            f"typing-zero FINAL on PR #{PR} ({BRANCH}): any_token_total is 0. "
             f"{AUTHORITY} "
             "Run full validation ONCE only: python manage.py check, "
             "powershell -File scripts/test_full.ps1, mypy django_apps config src, "
@@ -50,15 +50,15 @@ def main() -> int:
         )
     else:
         prompt = (
-            f"typing-zero chain on PR #{PR} ({BRANCH}): {any_total} Any remaining. "
+            f"typing-zero chain on PR #{PR} ({BRANCH}): {any_total} any_token(s) remaining. "
             f"{AUTHORITY} "
             "1) python scripts/typing_debt_inventory.py "
             "2) smallest safe bucket per checklist "
-            "3) convert: Any→remove; wire→TypedDict+converter; domain→dataclass; "
+            "3) convert: remove typing-import; wire→TypedDict+converter; domain→dataclass; "
             "raw→JsonValue/object then validator "
             "4) local gates only (ruff/black/mypy touched paths, targeted pytest, "
             "python scripts/check_typing_debt.py) "
-            "5) commit+push same PR. NO test_full, NO Bugbot wait until Any=0. "
+            "5) commit+push same PR. NO test_full, NO Bugbot wait until any_token_total=0. "
             "Immediately start next slice; re-arm: "
             "powershell -NoProfile -File .cursor/arm-typing-zero-loop.ps1"
         )

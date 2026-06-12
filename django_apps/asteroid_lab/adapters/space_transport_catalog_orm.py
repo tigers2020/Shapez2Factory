@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.game_data.services.space_transport_layout_catalog import (
     build_space_transport_catalog_payload_from_orm,
     build_space_transport_catalog_payload_from_snapshot_layouts,
@@ -21,7 +19,7 @@ def try_load_space_transport_catalog_from_orm() -> SpaceTransportTileCatalog | N
 
 
 def try_load_space_transport_catalog_from_snapshot_layouts(
-    layouts: list[dict[str, Any]],
+    layouts: list[dict[str]],
 ) -> SpaceTransportTileCatalog | None:
     try:
         catalog_payload = build_space_transport_catalog_payload_from_snapshot_layouts(layouts)

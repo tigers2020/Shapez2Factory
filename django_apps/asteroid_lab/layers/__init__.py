@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from importlib import import_module
-from typing import Any
 
 from django_apps.asteroid_lab.layers.contracts import (
     DiagnosticLayerSnapshot,
@@ -24,7 +23,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str) -> Any:
+def __getattr__(name: str) -> object:
     if name in {
         "LAYER_STACK_BUDGET_MS",
         "run_full_from_cleanup_recon",

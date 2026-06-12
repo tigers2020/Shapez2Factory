@@ -7,8 +7,6 @@ Adds the ORM-backed GameDataRulesPort default so existing Django callers keep wo
 
 from __future__ import annotations
 
-from typing import Any
-
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )
@@ -30,7 +28,7 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
 def execute_layer_02_exterior_transport_plan(
     *,
     complete_map: ReconstructionCompleteMap,
-    capacity_envelope: dict[str, Any],
+    capacity_envelope: dict[str],
     throughput_target_percent: int,
     speed_tier: int = 1,
     rules: GameDataRulesPort | None = None,
@@ -52,7 +50,7 @@ def run_layer_02_exterior_transport(
     *,
     complete_map: ReconstructionCompleteMap,
     budget_ctx: LayerBudgetContext,
-    capacity_envelope: dict[str, Any] | None = None,
+    capacity_envelope: dict[str] | None = None,
     throughput_target_percent: int | None = None,
     speed_tier: int = 1,
     rules: GameDataRulesPort | None = None,

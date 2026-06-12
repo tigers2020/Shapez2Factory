@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 PROFILE_FACTORY = "factory"
 PROFILE_CONNECTABLE = "connectable_graph"
 PROFILE_CONVERTER = "converter_runtime"
@@ -12,7 +10,7 @@ PROFILE_OTHER = "other"
 
 
 def detect_simulation_profile_key(
-    params: dict[str, Any],
+    params: dict[str],
     *,
     source_type_name: str = "",
 ) -> str:

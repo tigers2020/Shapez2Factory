@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django.core.management.base import BaseCommand
 from django.db import connection
 
@@ -14,7 +12,7 @@ class Command(BaseCommand):  # type: ignore[misc]
         "Does not print passwords."
     )
 
-    def handle(self, *_args: Any, **_options: Any) -> None:
+    def handle(self, *_args: object, **_options: object) -> None:
         connection.ensure_connection()
         vendor = connection.vendor
         cfg = connection.settings_dict

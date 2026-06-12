@@ -7,7 +7,7 @@ Mask-derived subsets are diagnostic-only in ``summary_json``.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from shapez2_factory.domain.asteroid_lab.cleanup.result import CleanupResult
@@ -283,10 +283,10 @@ _PERSIST_SUMMARY_KEYS = (
 )
 
 
-def reconstruction_persist_summary(result: ReconstructionResult) -> dict[str, Any]:
+def reconstruction_persist_summary(result: ReconstructionResult) -> dict[str]:
     """Blueprint ``_asteroid_lab_reconstruction.summary_json`` (no per-cell scores)."""
 
-    out: dict[str, Any] = {
+    out: dict[str] = {
         k: result.summary_json[k] for k in _PERSIST_SUMMARY_KEYS if k in result.summary_json
     }
     out["reconstruction_acceptance_ok"] = reconstruction_acceptance_ok(result)

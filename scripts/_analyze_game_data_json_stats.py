@@ -5,13 +5,12 @@ from __future__ import annotations
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Any
 
 SOURCE = Path(__file__).resolve().parents[1] / "documents" / "game_data"
 SAMPLE = 50
 
 
-def walk_types(obj: Any, path: str, out: Counter[str], depth: int = 0) -> None:
+def walk_types(obj: object, path: str, out: Counter[str], depth: int = 0) -> None:
     if depth > 12:
         return
     if isinstance(obj, dict):
@@ -27,7 +26,7 @@ def walk_types(obj: Any, path: str, out: Counter[str], depth: int = 0) -> None:
             walk_types(item, path + "[]", out, depth + 1)
 
 
-def row_keys(rows: list[dict[str, Any]]) -> dict[str, float]:
+def row_keys(rows: list[dict[str]]) -> dict[str, float]:
     total = min(SAMPLE, len(rows))
     counts: Counter[str] = Counter()
     for row in rows[:total]:
@@ -36,10 +35,10 @@ def row_keys(rows: list[dict[str, Any]]) -> dict[str, float]:
 
 
 def main() -> None:
-    report: dict[str, Any] = {}
+    report: dict[str] = {}
     for path in sorted(SOURCE.glob("*.json")):
         data = json.loads(path.read_text(encoding="utf-8-sig"))
-        entry: dict[str, Any] = {
+        entry: dict[str] = {
             "bytes": path.stat().st_size,
             "root": type(data).__name__,
         }

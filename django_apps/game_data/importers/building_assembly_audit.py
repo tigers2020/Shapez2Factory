@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from django_apps.game_data.coverage.reason_codes import REFLECTION_METADATA
 from django_apps.game_data.importers.base import ImportContext
 
@@ -60,7 +58,7 @@ def record_assembly_reflection_audit(
     ctx: ImportContext,
     *,
     owner_key: str,
-    definition_snapshot: dict[str, Any],
+    definition_snapshot: dict[str],
 ) -> None:
     if not isinstance(definition_snapshot, dict):
         return

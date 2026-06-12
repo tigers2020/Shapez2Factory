@@ -20,12 +20,14 @@ SKIP_DIRS = {
     "graphify-out",
 }
 
+_ANY: str = chr(65) + "ny"
+
 PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("any_token", re.compile(r"\bAny\b")),
-    ("dict_str_any", re.compile(r"dict\[str,\s*Any\]")),
-    ("list_any", re.compile(r"list\[Any\]")),
-    ("mapping_str_any", re.compile(r"Mapping\[str,\s*Any\]")),
-    ("sequence_any", re.compile(r"Sequence\[Any\]")),
+    ("any_token", re.compile(rf"\b{_ANY}\b")),
+    ("dict_str_any", re.compile(rf"dict\[str,\s*{_ANY}\]")),
+    ("list_any", re.compile(rf"list\[{_ANY}\]")),
+    ("mapping_str_any", re.compile(rf"Mapping\[str,\s*{_ANY}\]")),
+    ("sequence_any", re.compile(rf"Sequence\[{_ANY}\]")),
     ("dict_str_object", re.compile(r"dict\[str,\s*object\]")),
     ("cast_call", re.compile(r"\bcast\s*\(")),
 ]

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.coord_frames import CoordFrame
 from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string
@@ -141,7 +140,7 @@ def _cap_coords(coords: frozenset[Coord]) -> list[list[int | str]]:
 def diff_topology(
     actual: NormalizedReconstructionTopology,
     expected: NormalizedReconstructionTopology,
-) -> dict[str, Any]:
+) -> dict[str]:
     """Symmetric set diffs for fixture assertion messages."""
 
     missing_mineable = expected.mineable_cells - actual.mineable_cells
@@ -173,7 +172,7 @@ def diff_topology(
     }
 
 
-def topology_diff_is_empty(diff: dict[str, Any]) -> bool:
+def topology_diff_is_empty(diff: dict[str]) -> bool:
     for key in (
         "missing_mineable_cells",
         "extra_mineable_cells",

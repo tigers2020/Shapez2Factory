@@ -13,6 +13,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import
     RouteProbeResult,
     RouteProbeStatus,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snapshot_builder import (  # noqa: E501
+    RouteDomainSnapshotBuilder,
+)
 from shapez2_factory.application.asteroid_lab.layers.contracts.route_goal import RouteGoal
 from shapez2_factory.application.asteroid_lab.layers.contracts.route_probe_diagnostic import (
     classify_exterior_goal_unreachable,
@@ -23,7 +26,6 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transpor
 from shapez2_factory.domain.asteroid_lab.grid_contract import (
     BBox,
     Coord,
-    bbox_from_coords,
     neighbors4,
 )
 
@@ -271,12 +273,8 @@ def immediate_route_probe(
         if external_void_cells is not None
         else frozenset(cell for cell in placeable_cells)
     )
-    empty_bbox = bbox_from_coords(frozenset())
-    domain = WeightedTransportRouteDomain(
-        search_bbox=empty_bbox,
-        blocked_cells=frozenset(),
-        walkable_cells=placeable_cells,
-        field_cost_cells=frozenset(),
+    domain = RouteDomainSnapshotBuilder.build_immediate_probe_surface(
+        placeable_cells=placeable_cells,
     )
     if not matching:
         return _failed_probe(

@@ -9,10 +9,11 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _UI_JS_ROOT = _REPO_ROOT / "django_apps" / "web" / "static" / "web" / "js"
 _BANNED_TOKEN = "shape_belt"
 
-# Legacy normalizer is the sole UI file allowed to reference the deprecated token.
+# Legacy normalizer + read-path sanitizer may reference deprecated token for compat only.
 _ALLOWED_UI_FILES = frozenset(
     {
         _UI_JS_ROOT / "lab_effective_cell_view.js",
+        _UI_JS_ROOT / "lab_replay_wire_sanitize.js",
     }
 )
 
@@ -26,8 +27,10 @@ _L3_PRODUCER_PY_ROOTS = (
 _ALLOWED_SHAPE_BELT_PY_FILES = frozenset(
     {
         _REPO_ROOT / "django_apps" / "asteroid_lab" / "replay" / "effective_cell_view.py",
+        _REPO_ROOT / "django_apps" / "asteroid_lab" / "replay" / "replay_cell_semantics.py",
         _REPO_ROOT / "django_apps" / "asteroid_lab" / "replay" / "map_height_layer.py",
         _REPO_ROOT / "django_apps" / "asteroid_lab" / "replay" / "overlay_wire_contract.py",
+        _REPO_ROOT / "django_apps" / "asteroid_lab" / "replay" / "replay_wire_read_sanitize.py",
         _REPO_ROOT
         / "src"
         / "shapez2_factory"
@@ -37,6 +40,7 @@ _ALLOWED_SHAPE_BELT_PY_FILES = frozenset(
         / "transport_kind_normalization.py",
         Path(__file__).resolve(),
         _REPO_ROOT / "tests" / "unit" / "asteroid_lab" / "replay" / "test_effective_cell_view.py",
+        _REPO_ROOT / "tests" / "unit" / "asteroid_lab" / "replay" / "test_replay_cell_semantics.py",
         _REPO_ROOT / "tests" / "unit" / "asteroid_lab" / "replay" / "test_overlay_wire_contract.py",
         _REPO_ROOT / "tests" / "unit" / "asteroid_lab" / "replay" / "test_map_height_layer.py",
     }

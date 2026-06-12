@@ -1,7 +1,7 @@
 ---
 title: Game Data Manifest
 created: 2026-06-11
-updated: 2026-06-11
+updated: 2026-06-12
 type: concept
 tags: [game-data-dump, game-data-analysis]
 sources: [raw/game-data-docs/manifest.md, documents/game_data/manifest.json]
@@ -23,6 +23,20 @@ confidence: high
 
 ## 신뢰도 해시
 모든 game_data JSON은 manifest SHA256이 일치해야 유효. 변경 감지 기준: dump_schema_version, incomplete_sections — translations 등 일부 섹션 미완성 상태임.
+
+## Glossary count anchors (`file_hashes`)
+
+Wiki entity counts (67 groups, 131 variants, 1,170 shapes, etc.) are valid **only** for the manifest generation they were analyzed against. On reimport, re-verify:
+
+| Wiki concept | game_data file | Manifest field |
+|---|---|---|
+| [[building-groups]] / [[building-definitions]] | `building_groups.json`, `buildings.json` | `file_hashes` entry |
+| [[building-variants]] | `building_variants.json` | `file_hashes` entry |
+| [[shape-data-model]] | `shapes.json` | `file_hashes` entry |
+| [[prefabs]] | `prefabs.json` | `file_hashes` entry |
+| [[transport-system]] | `belts_pipes_transport.json` | `file_hashes` entry |
+
+If hash drifts, update wiki counts from fresh `raw/analysis/*/00_summary.md` — do not assume stale numbers.
 
 ## Cross-references
 - [[shape-data-model]] — shapes.json의 manifest hash 참고

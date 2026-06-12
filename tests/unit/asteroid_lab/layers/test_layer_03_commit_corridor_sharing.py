@@ -98,7 +98,7 @@ def test_commit_reprobe_hard_blockers_are_equipment_only() -> None:
     blockers_line = next(
         line for line in source.splitlines() if line.strip().startswith("blockers =")
     )
-    assert blockers_line.strip() == "blockers = state.occupied | set(own_equipment)"
+    assert blockers_line.strip() == "blockers = frozenset(state.occupied | set(own_equipment))"
     assert "state.corridor" not in blockers_line
 
 

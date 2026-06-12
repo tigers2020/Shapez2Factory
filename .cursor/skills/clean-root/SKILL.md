@@ -180,8 +180,22 @@ dist/**
 build/**
 coverage/**
 htmlcov/**
-graphify-out/**
+graphify-out/cost.json
+graphify-out/cache/**
+graphify-out/.graphify_detect.json
+graphify-out/2026-*/
+django_apps/graphify-out/**
+src/graphify-out/**
 graphify_out/**
+```
+
+`graphify-out/` is **not** globally junk. Never delete without explicit scope:
+
+```text
+graphify-out/graph.json
+graphify-out/GRAPH_REPORT.md
+graphify-out/manifest.json
+graphify-out/graph.html
 ```
 
 **Not junk — never delete via clean (even if under ignored `var/`):**

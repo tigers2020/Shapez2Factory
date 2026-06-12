@@ -1,6 +1,6 @@
 # Document Inventory
 
-As of: 2026-05-30
+As of: 2026-06-12
 Scope: Current document authority under `documents/` and `docs/`.
 
 Status enum follows [`document_lifecycle.md`](document_lifecycle.md). Deleted
@@ -40,8 +40,10 @@ deleted specs, and archive history are not authority.
 |---|---|---|
 | Runtime entry / Run Solver | `django_apps/asteroid_lab/services/solver_runtime_entry.py` | Fail-closed runtime |
 | Reconstruction topology | `django_apps/asteroid_lab/reconstruction/` | Coordinate and topology contract |
-| Replay timeline | [`asteroid_lab_09_replay_timeline.md`](../Algorithm/asteroid_lab_09_replay_timeline.md) | Product replay timeline |
-| Replay wiring | [`asteroid_lab_12_runtime_replay_wiring.md`](../Algorithm/asteroid_lab_12_runtime_replay_wiring.md) | Output-only replay |
+| Replay timeline | [`docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md`](../../../../docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md) + `django_apps/asteroid_lab/replay/timeline_dtos.py` | Product replay; former `asteroid_lab_09` → [`authority-redirect.md`](../algorithm/authority-redirect.md) |
+| Replay wiring | `django_apps/asteroid_lab/services/artifact_replay_viewer_compose.py` + CLI-first artifact spec | Output-only replay; former `asteroid_lab_12` → redirect ledger |
+| Algorithm doc routing | [`authority-redirect.md`](../algorithm/authority-redirect.md) + wiki `algorithm-doc-authority` | Replaces deleted `documents/Algorithm/` tree |
+| Terminology map | [`docs/ubiquitous-language.md`](../../../../docs/ubiquitous-language.md) | Canonical / alias / ambiguous terms |
 | Game data snapshot | `django_apps/asteroid_lab/contracts/game_data_snapshot*.py` + [`docs/domain/asteroid_game_data_snapshot.md`](../../docs/domain/asteroid_game_data_snapshot.md) | Boundary DTO contract |
 | `shapez_solver` | `django_apps/shapez_solver/` | Separate factory graph domain |
 
@@ -54,7 +56,9 @@ deleted specs, and archive history are not authority.
 | [`documents/reports/README.md`](../reports/README.md) | `REPORT` | report index | NO | Current report routing |
 | [`documents/debug/`](../debug/) | `REPORT` | debug report | NO | Current debug evidence |
 | [`documents/notes/`](../notes/) | `REPORT` | notes | NO | Current notes |
-| [`documents/Algorithm/README.md`](../Algorithm/README.md) | `CANON` | algorithm index | YES | Reconstruction-first index |
+| [`raw/algorithm/README.md`](../algorithm/README.md) | `ACTIVE` | algorithm index | YES | Current tree; only `asteroid_lab_11` ACTIVE — see redirect ledger |
+| [`raw/algorithm/authority-redirect.md`](../algorithm/authority-redirect.md) | `ACTIVE` | redirect ledger | YES | Stale `documents/Algorithm/` link recovery |
+| `documents/Algorithm/` (deleted) | `REMOVED` | — | NO | Git history only; do not cite |
 
 ## Removed Context Policy
 

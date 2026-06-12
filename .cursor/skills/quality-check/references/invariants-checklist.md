@@ -25,7 +25,7 @@
 
 Rule: [asteroid-lab-invariants.mdc](../../../rules/asteroid-lab-invariants.mdc)
 
-Algorithm index: `documents/Algorithm/asteroid_lab_*.md`
+Algorithm routing: `documents/knowledge/raw/algorithm/authority-redirect.md` · wiki `algorithm-doc-authority` · `docs/ubiquitous-language.md`
 
 ## Tests
 

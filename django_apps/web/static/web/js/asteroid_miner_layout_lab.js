@@ -175,6 +175,42 @@
     return [];
   }
 
+  /** Skip terrain rgba for cells that get field_sprite on sprite canvas (anti-fade). */
+  function filterTerrainCellsForPaintV2(cells, frame, resolveCellIndex, paintOptions) {
+    if (!Array.isArray(cells) || !cells.length || !frame) {
+      return cells;
+    }
+    if (
+      typeof LabReplayPaintPlan === "undefined" ||
+      !LabReplayPaintPlan.buildLabPaintPlanFromFrame ||
+      typeof resolveCellIndex !== "function"
+    ) {
+      return cells;
+    }
+    const plan = LabReplayPaintPlan.buildLabPaintPlanFromFrame(
+      frame,
+      resolveCellIndex,
+      paintOptions || {},
+    );
+    const fieldSpriteIdx = new Set();
+    const sprites = plan.sprites || [];
+    for (let i = 0; i < sprites.length; i++) {
+      const sp = sprites[i];
+      if (!sp || sp.idx == null) continue;
+      const rel = String(sp.rel || "");
+      if (rel === "AsteroidField_Fluid.svg" || rel === "AsteroidField_Shape.svg") {
+        fieldSpriteIdx.add(sp.idx);
+      }
+    }
+    if (!fieldSpriteIdx.size) {
+      return cells;
+    }
+    return cells.filter(function (cell) {
+      const idx = resolveCellIndex(cell);
+      return idx == null || !fieldSpriteIdx.has(idx);
+    });
+  }
+
   function syncLabTerrainCanvasLayer(cells, layout, cellPx, gapPx) {
     if (!labTerrainCanvasEnabled() || !layout) {
       return;
@@ -205,6 +241,57 @@
   }
 
   const LAB_CANVAS_HIT_CLASS = "lab-replay-canvas-hit-layer";
+
+  /** D′ (Task 6.1): v2 default-on; legacy rollback via explicit opt-in only. */
+  function labPaintLegacyOptIn() {
+    const root = document.getElementById("lab-root");
+    if (!root || !root.dataset) {
+      return false;
+    }
+    const ds = root.dataset;
+    return ds.labPaintLegacy === "1" || ds.labPaintV2 === "0";
+  }
+
+  function labPaintV2Enabled() {
+    return !labPaintLegacyOptIn();
+  }
+
+  /** Synced from init before each replay paint — same replay context as canvas v2. */
+  const labDomPaintContext = {
+    replayFrames: [],
+    replayArrayIndex: 0,
+    hasServerReplay: false,
+  };
+
+  function syncLabDomPaintContext(replayFrames, replayArrayIndex, hasServerReplay) {
+    labDomPaintContext.replayFrames = Array.isArray(replayFrames) ? replayFrames : [];
+    labDomPaintContext.replayArrayIndex =
+      replayArrayIndex != null && Number.isFinite(Number(replayArrayIndex))
+        ? Number(replayArrayIndex)
+        : 0;
+    labDomPaintContext.hasServerReplay = Boolean(hasServerReplay);
+  }
+
+  function labDomPaintOptionsFromContext(frame) {
+    return {
+      replayFrames: labDomPaintContext.replayFrames,
+      replayArrayIndex: labDomPaintContext.replayArrayIndex,
+      hasServerReplay: labDomPaintContext.hasServerReplay,
+    };
+  }
+
+  function createDomPlanResolverForFrame(frame) {
+    if (
+      typeof LabReplayPaintPlan === "undefined" ||
+      typeof LabReplayPaintPlan.buildDomPlanResolverForFrame !== "function"
+    ) {
+      return null;
+    }
+    return LabReplayPaintPlan.buildDomPlanResolverForFrame(
+      frame,
+      labDomPaintOptionsFromContext(frame),
+    );
+  }
 
   function labCanvasRendererEnabled() {
     const root = document.getElementById("lab-root");
@@ -330,13 +417,14 @@
     return null;
   }
 
-  function labSpriteRelpathForCell(cell, frame) {
+  /** Standalone overlay sprite resolve — diff/decoded/existing/connector only; not replay full-map paint. */
+  function resolveSpriteRelForStandaloneOverlayCell(cell, frame) {
     if (!cell || typeof cell !== "object") return null;
-    if (isNonSpriteOverlayCell(cell, frame)) return null;
     const ck = overlayCellKind(cell);
+    if (isCandidateMinerOverlayKind(ck)) return null;
+    if (isRouteOverlayCellKind(ck) || isNonSpriteOverlayCell(cell, frame)) return null;
     const fieldRel = ck ? LAB_SPRITE_CELL_KIND_STATIC_RELPATH[ck] : null;
     if (fieldRel) return fieldRel;
-    // sprite_identifier is the alias emitted alongside tile_type; prefer it so either field works.
     const tileKey = cell.sprite_identifier || cell.tile_type;
     let rel = labSpriteRelpathFromTileType(tileKey);
     if (!rel && ck) {
@@ -498,12 +586,12 @@
       if (role === "spare") {
         el.className = LAB_CELL_BASE + " lab-planned-exterior-connector-spare";
         applyLabCellHudAttributes(el, cell, "planned_exterior_connector");
-        applyLabCellSprite(el, cell);
+        applyLabCellStandaloneSprite(el, cell, frame);
         applyPlannedExteriorConnectorSpareHighlight(el);
       } else {
         el.className = LAB_CELL_BASE + " lab-planned-exterior-connector";
         applyLabCellHudAttributes(el, cell, "planned_exterior_connector");
-        applyLabCellSprite(el, cell);
+        applyLabCellStandaloneSprite(el, cell, frame);
         applyPlannedExteriorConnectorWhiteHighlight(el);
       }
     }
@@ -525,14 +613,11 @@
     el.removeAttribute("data-sprite-file");
   }
 
-  function applyLabCellSprite(el, cell, frame) {
-    if (!cell || typeof cell !== "object") return;
-    const ck = overlayCellKind(cell);
-    if (isRouteOverlayCellKind(ck) || isNonSpriteOverlayCell(cell, frame)) return;
+  function applyLabCellSpriteFromRel(el, spriteRel, rotation) {
+    if (!el || !spriteRel) return;
     clearLabCellSprite(el);
     if (!labSpriteBaseUrl) return;
-    const rel = labSpriteRelpathForCell(cell, frame);
-    if (!rel) return;
+    const rel = String(spriteRel);
     const layer = ensureLabCellSpriteLayer(el);
     const img = layer.querySelector("img.lab-cell-sprite");
     if (!img) return;
@@ -542,7 +627,7 @@
     if (img.getAttribute("src") !== nextSrc) {
       img.src = nextSrc;
     }
-    const logicalQ = normalizeQuarterTurns(cell.rotation);
+    const logicalQ = normalizeQuarterTurns(rotation);
     const deg = rotationToDeg(logicalQ);
     if (deg !== 0) {
       img.style.transform = "rotate(" + String(deg) + "deg)";
@@ -555,6 +640,16 @@
       el.setAttribute("data-r", String(logicalQ));
       el.setAttribute("data-sprite-file", rel);
     }
+  }
+
+  function applyLabCellStandaloneSprite(el, cell, frame) {
+    if (!cell || typeof cell !== "object") return;
+    const rel = resolveSpriteRelForStandaloneOverlayCell(cell, frame);
+    if (!rel) {
+      clearLabCellSprite(el);
+      return;
+    }
+    applyLabCellSpriteFromRel(el, rel, cell.rotation);
   }
 
   function readJsonScript(id) {
@@ -1112,11 +1207,13 @@
     return out;
   }
 
-  function collectFrameSpatialTargets(frame) {
+  /** Layout/bbox coordinate universe — not paint authority. */
+  function collectReplaySpatialCoordsForLayout(frame) {
     const out = [];
     pushCellList(out, fullMapCellsFromFrame(frame), "");
     const mapView = frame && frame.map_view;
     if (mapView && typeof mapView === "object") {
+      pushCellList(out, labCellsFromMapView(mapView), "");
       pushCellList(out, overlayCellsFromMapView(mapView), "");
       pushCellList(out, cellDeltaCellsFromMapView(mapView), "");
     }
@@ -1131,7 +1228,7 @@
   }
 
   function collectReplayFrameCellIndices(frame, resolveCellIndex) {
-    const targets = collectFrameSpatialTargets(frame);
+    const targets = collectReplaySpatialCoordsForLayout(frame);
     if (!targets.length) {
       return [];
     }
@@ -1249,7 +1346,7 @@
     for (let fi = 0; fi < replayFrames.length; fi++) {
       const fr = replayFrames[fi];
       if (!fr || typeof fr !== "object") continue;
-      const targets = collectFrameSpatialTargets(fr);
+      const targets = collectReplaySpatialCoordsForLayout(fr);
       for (let ti = 0; ti < targets.length; ti++) {
         const cell = targets[ti].cell;
         if (!cell || typeof cell !== "object") continue;
@@ -1290,7 +1387,6 @@
 
   /** L3 pool probe window (+ legacy wire on that frame): tint-only overlays (no belt/pipe sprites). */
   var NON_SPRITE_OVERLAY_CELL_KINDS = {
-    candidate_miner: true,
     candidate_transport_stub: true,
     candidate_route_path: true,
     route_path: true,
@@ -1645,6 +1741,7 @@
 
   function isCandidateObservationOverlayKind(cellKind) {
     const ck = String(cellKind || "");
+    if (isCandidateMinerOverlayKind(ck)) return true;
     if (NON_SPRITE_OVERLAY_CELL_KINDS[ck] === true) return true;
     return LEGACY_L3_POOL_OVERLAY_CELL_KINDS[ck] === true;
   }
@@ -1751,18 +1848,39 @@
   function cellRenderToken(cell, frame, ck, tone, candidateObs) {
     const rot = cell.rotation != null ? String(cell.rotation) : "";
     const role = cell.overlay_role != null ? String(cell.overlay_role) : "";
-    const sprite = labSpriteRelpathForCell(cell, frame) || "";
     const cand = candidateObs ? "1" : "0";
-    return ck + "|" + role + "|" + rot + "|" + sprite + "|" + tone + "|" + cand;
+    return ck + "|" + role + "|" + rot + "||" + tone + "|" + cand;
   }
 
-  function labPaintTokenForCell(cell, frame, domCells, idx) {
+  function labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan) {
     if (!cell || typeof cell !== "object") {
       return null;
     }
     const ck = overlayCellKind(cell);
     const el = domCells[idx];
-    const candidateObs = isNonSpriteOverlayCell(cell, frame);
+    if (resolveDomPlan) {
+      const domPlan = resolveDomPlan(cell);
+      if (domPlan) {
+        const rot = cell.rotation != null ? String(cell.rotation) : "";
+        const role = cell.overlay_role != null ? String(cell.overlay_role) : "";
+        const domTone = domPlan.toneClasses || "";
+        const domSprite = domPlan.spriteRel || "";
+        const domCand = domPlan.candidateObservation ? "1" : "0";
+        return ck + "|" + role + "|" + rot + "|" + domSprite + "|" + domTone + "|" + domCand + "|v2";
+      }
+      const candidateObs = isCandidateObservationOverlayKind(ck);
+      if (candidateObs && shouldSkipCandidateObservationOnSpriteCell(frame, ck, el)) {
+        return null;
+      }
+      if (candidateObs && isL3PoolProbeWindowFrame(frame)) {
+        const obsTone = candidateObservationToneClasses(ck, el);
+        if (!obsTone) {
+          return null;
+        }
+      }
+      return null;
+    }
+    const candidateObs = isCandidateObservationOverlayKind(ck);
     if (candidateObs && shouldSkipCandidateObservationOnSpriteCell(frame, ck, el)) {
       return null;
     }
@@ -1779,23 +1897,24 @@
   }
 
   function frameCellIndexMap(frame, resolveCellIndex) {
-    const map = new Map();
-    const targets = collectFrameSpatialTargets(frame);
-    for (let i = 0; i < targets.length; i++) {
-      const cell = targets[i].cell;
-      const idx = resolveCellIndex(cell);
-      if (idx == null || idx < 0) {
-        continue;
-      }
-      map.set(idx, cell);
+    if (
+      typeof LabReplayPaintPlan !== "undefined" &&
+      typeof LabReplayPaintPlan.buildCellByGridIndexFromFrame === "function"
+    ) {
+      return LabReplayPaintPlan.buildCellByGridIndexFromFrame(
+        frame,
+        resolveCellIndex,
+        labDomPaintOptionsFromContext(frame),
+      );
     }
-    return map;
+    return new Map();
   }
 
   function resetDomCellsAtIndicesForFrame(domCells, baseClasses, indices, frame, resolveCellIndex) {
     if (!indices || !indices.length) {
       return;
     }
+    const resolveDomPlan = createDomPlanResolverForFrame(frame);
     const cellByIndex =
       frame && typeof frame === "object" && resolveCellIndex
         ? frameCellIndexMap(frame, resolveCellIndex)
@@ -1805,7 +1924,7 @@
       if (cellByIndex) {
         const cell = cellByIndex.get(idx);
         if (cell) {
-          const token = labPaintTokenForCell(cell, frame, domCells, idx);
+          const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan);
           if (token != null && renderedTokenByKey.get(idx) === token) {
             continue;
           }
@@ -1817,6 +1936,7 @@
 
   function renderFullMapCells(baseClasses, domCells, cells, resolveCellIndex, frame) {
     if (!Array.isArray(cells)) return;
+    const resolveDomPlan = createDomPlanResolverForFrame(frame);
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (!cell || typeof cell !== "object") continue;
@@ -1826,8 +1946,7 @@
       const base = baseClasses[idx] || "";
       const ck = overlayCellKind(cell);
       const el = domCells[idx];
-      const candidateObs = isNonSpriteOverlayCell(cell, frame);
-      const token = labPaintTokenForCell(cell, frame, domCells, idx);
+      const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan);
       if (token == null) {
         continue;
       }
@@ -1842,32 +1961,32 @@
         }
         continue;
       }
-      let tone = toneForFullMapCell(cell, frame);
-      if (candidateObs) {
-        const obsTone = candidateObservationToneClasses(ck, el);
-        if (obsTone) {
-          tone = obsTone;
-        }
+      const domPlan = resolveDomPlan ? resolveDomPlan(cell) : null;
+      if (!domPlan) {
+        continue;
       }
+      const tone = domPlan.toneClasses || toneForFullMapCell(cell, frame);
       el.className = tone ? base + " " + tone : base;
       const hudRole =
         cell.overlay_role != null
           ? String(cell.overlay_role)
           : isRouteOverlayCellKind(ck)
             ? ck
-            : candidateObs
+            : domPlan.candidateObservation
               ? ck
               : "";
       applyLabCellHudAttributes(el, cell, hudRole);
-      if (candidateObs) {
+      if (domPlan.candidateObservation) {
         el.setAttribute("title", CANDIDATE_OBSERVATION_TITLE);
         el.setAttribute("data-lab-candidate-overlay", "1");
       } else {
         el.removeAttribute("title");
         el.removeAttribute("data-lab-candidate-overlay");
       }
-      if (!candidateObs) {
-        applyLabCellSprite(el, cell, frame);
+      if (domPlan.spriteRel) {
+        applyLabCellSpriteFromRel(el, domPlan.spriteRel, domPlan.spriteRotation);
+      } else {
+        clearLabCellSprite(el);
       }
       renderedTokenByKey.set(idx, token);
       if (labPerfDebugEnabled()) {
@@ -1889,7 +2008,7 @@
       const el = domCells[idx];
       el.className = base + " " + tone;
       applyLabCellHudAttributes(el, cell, role);
-      applyLabCellSprite(el, cell);
+      applyLabCellStandaloneSprite(el, cell, frame);
     }
   }
 
@@ -2336,7 +2455,7 @@
       const el = domCells[idx];
       el.className = base + " " + tone;
       applyLabCellHudAttributes(el, cell, role != null ? String(role) : "");
-      applyLabCellSprite(el, cell);
+      applyLabCellStandaloneSprite(el, cell);
     }
   }
 
@@ -2352,7 +2471,7 @@
       const el = domCells[idx];
       el.className = base + " " + tone;
       applyLabCellHudAttributes(el, cell, role != null ? String(role) : "");
-      applyLabCellSprite(el, cell);
+      applyLabCellStandaloneSprite(el, cell);
     }
   }
 
@@ -3346,20 +3465,17 @@
     }
 
     function collectSpriteRelpathsFromFrames(framesArr) {
-      if (!Array.isArray(framesArr) || !framesArr.length) {
-        return [];
+      if (
+        typeof LabReplayPaintPlan !== "undefined" &&
+        typeof LabReplayPaintPlan.collectSpriteRelsFromPaintPlanFrames === "function"
+      ) {
+        return LabReplayPaintPlan.collectSpriteRelsFromPaintPlanFrames(
+          framesArr,
+          resolveCellIndex,
+          { replayFrames: framesArr, hasServerReplay: hasServerReplay },
+        );
       }
-      const rels = new Set();
-      for (let fi = 0; fi < framesArr.length; fi++) {
-        const fr = framesArr[fi];
-        if (!fr || typeof fr !== "object") continue;
-        const targets = collectFrameSpatialTargets(fr);
-        for (let ti = 0; ti < targets.length; ti++) {
-          const rel = labSpriteRelpathForCell(targets[ti].cell, fr);
-          if (rel) rels.add(rel);
-        }
-      }
-      return Array.from(rels);
+      return [];
     }
 
     function warmupLabReplaySpriteCache(framesArr) {
@@ -3396,138 +3512,18 @@
       }
     }
 
-    function canvasOverlayFillForCell(cell, frame, role) {
-      if (window.LabReplayCanvas && window.LabReplayCanvas.overlayFillForKind) {
-        const ck = overlayCellKind(cell);
-        if (role === "diff_removed") {
-          return window.LabReplayCanvas.overlayFillForKind("diff_removed");
-        }
-        if (role === "diff_added") {
-          return window.LabReplayCanvas.overlayFillForKind("diff_added");
-        }
-        if (role === "diff_changed") {
-          return window.LabReplayCanvas.overlayFillForKind("diff_changed");
-        }
-        return window.LabReplayCanvas.overlayFillForKind(ck);
-      }
-      return null;
-    }
-
-    function frameHasSpriteCapableCells(fr) {
-      if (!fr || typeof fr !== "object") return false;
-      const targets = collectFrameSpatialTargets(fr);
-      for (let i = 0; i < targets.length; i++) {
-        if (labSpriteRelpathForCell(targets[i].cell, fr)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    function lastFrameWithSpriteCapableCells(upToArrayIndex) {
-      const cap = Math.min(upToArrayIndex, replayFrames.length - 1);
-      for (let i = cap; i >= 0; i--) {
-        const fr = replayFrames[i];
-        if (frameHasSpriteCapableCells(fr)) {
-          return fr;
-        }
-      }
-      return null;
-    }
-
     function buildCanvasPaintPlan(frame) {
-      const overlays = [];
-      const sprites = [];
-      const byIdx = new Map();
-      function stageCell(cell, role, sourceFrame) {
-        if (!cell || typeof cell !== "object") return;
-        if (!cellPassesMapZFilter(cell)) return;
-        const paintFrame = sourceFrame || frame;
-        const idx = resolveCellIndex(cell);
-        if (idx == null || idx < 0) return;
-        const rel = labSpriteRelpathForCell(cell, paintFrame);
-        const isTerrain = isLabStaticTerrainCell(cell, paintFrame);
-        const prev = byIdx.get(idx);
-        if (!prev) {
-          byIdx.set(idx, {
-            cell: cell,
-            role: role || "",
-            paintFrame: paintFrame,
-            rel: rel,
-            isTerrain: isTerrain,
-          });
-          return;
-        }
-        if (rel && !prev.rel) {
-          byIdx.set(idx, {
-            cell: cell,
-            role: role || "",
-            paintFrame: paintFrame,
-            rel: rel,
-            isTerrain: isTerrain,
-          });
-        }
-      }
-      const layoutFrame =
-        !frameHasSpriteCapableCells(frame) && hasServerReplay
-          ? lastFrameWithSpriteCapableCells(replayArrayIndex)
-          : null;
-      if (layoutFrame && layoutFrame !== frame) {
-        const carryTargets = collectFrameSpatialTargets(layoutFrame);
-        for (let c = 0; c < carryTargets.length; c++) {
-          const t = carryTargets[c];
-          if (!labSpriteRelpathForCell(t.cell, layoutFrame)) continue;
-          stageCell(t.cell, "", layoutFrame);
-        }
-      }
-      const targets = collectFrameSpatialTargets(frame);
-      for (let i = 0; i < targets.length; i++) {
-        stageCell(targets[i].cell, targets[i].role, frame);
-      }
-      byIdx.forEach(function (entry, idx) {
-        const cell = entry.cell;
-        const paintFrame = entry.paintFrame;
-        const rel = entry.rel;
-        const diffRole = entry.role || "";
-        if (entry.isTerrain) {
-          if (!rel) {
-            return;
-          }
-          sprites.push({ idx: idx, rel: rel, rotation: cell.rotation });
-          return;
-        }
-        if (rel) {
-          sprites.push({ idx: idx, rel: rel, rotation: cell.rotation });
-          return;
-        }
-        const ck = overlayCellKind(cell);
-        if (
-          diffRole === "diff_removed" ||
-          diffRole === "diff_added" ||
-          diffRole === "diff_changed"
-        ) {
-          overlays.push({
-            idx: idx,
-            kind: diffRole,
-            fill: canvasOverlayFillForCell(cell, frame, diffRole),
-          });
-          return;
-        }
-        if (isRouteOverlayCellKind(ck) || isNonSpriteOverlayCell(cell, paintFrame)) {
-          overlays.push({
-            idx: idx,
-            kind: ck,
-            fill: canvasOverlayFillForCell(cell, frame, ""),
-          });
-          return;
-        }
-        overlays.push({
-          idx: idx,
-          kind: ck,
-          fill: canvasOverlayFillForCell(cell, frame, ""),
+      if (
+        typeof LabReplayPaintPlan !== "undefined" &&
+        LabReplayPaintPlan.buildLabPaintPlanFromFrame
+      ) {
+        return LabReplayPaintPlan.buildLabPaintPlanFromFrame(frame, resolveCellIndex, {
+          replayArrayIndex: replayArrayIndex,
+          replayFrames: replayFrames,
+          hasServerReplay: hasServerReplay,
         });
-      });
-      return { overlays: overlays, sprites: sprites };
+      }
+      return { overlays: [], sprites: [] };
     }
 
     function refreshLabCanvasAfterLayoutChange() {
@@ -3541,7 +3537,16 @@
         if (fr) {
           const fm = fullMapCellsFromFrame(fr);
           if (fm.length) {
-            syncLabTerrainCanvasLayer(fm, rimDrawCtx.layout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+            syncLabTerrainCanvasLayer(
+              filterTerrainCellsForPaintV2(fm, fr, resolveCellIndex, {
+                replayArrayIndex: replayArrayIndex,
+                replayFrames: replayFrames,
+                hasServerReplay: hasServerReplay,
+              }),
+              rimDrawCtx.layout,
+              rimDrawCtx.cellPx,
+              rimDrawCtx.gapPx,
+            );
           }
           labCanvasRenderer.drawFrame(buildCanvasPaintPlan(fr));
         }
@@ -3591,7 +3596,16 @@
         applyLabCanvasHitLayer(null);
         const fm = fullMapCellsFromFrame(fr);
         if (fm.length && rimDrawCtx) {
-          syncLabTerrainCanvasLayer(fm, rimDrawCtx.layout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+          syncLabTerrainCanvasLayer(
+            filterTerrainCellsForPaintV2(fm, fr, resolveCellIndex, {
+              replayArrayIndex: replayArrayIndex,
+              replayFrames: replayFrames,
+              hasServerReplay: hasServerReplay,
+            }),
+            rimDrawCtx.layout,
+            rimDrawCtx.cellPx,
+            rimDrawCtx.gapPx,
+          );
         }
       } else if (paintedIndices && paintedIndices.length) {
         resetDomCellsAtIndicesForFrame(
@@ -3700,6 +3714,7 @@
         }
         if (!painted) {
           /* READ: rimDrawCtx from cached cell sizing. WRITE: renderReplayFrame (no layout read). */
+          syncLabDomPaintContext(replayFrames, replayArrayIndex, hasServerReplay);
           renderReplayFrame(
             paintFr,
             baseClasses,
@@ -5348,6 +5363,39 @@
       return out;
     }
 
+    function labEffectiveCellDetailSignature(wire) {
+      if (!wire || typeof wire !== "object") {
+        return "";
+      }
+      return JSON.stringify({
+        coord: wire.coord || null,
+        terrain: wire.terrain || null,
+        occupant: wire.occupant || null,
+        transport: wire.transport
+          ? {
+              kind: wire.transport.kind,
+              tile_id: wire.transport.tile_id,
+              simulation: wire.transport.simulation,
+            }
+          : null,
+        output: wire.output || null,
+      });
+    }
+
+    function labEffectiveCellWireMatches(a, b) {
+      return labEffectiveCellDetailSignature(a) === labEffectiveCellDetailSignature(b);
+    }
+
+    function sanitizeWireCellForMerge(cell) {
+      if (
+        typeof LabReplayWireSanitize !== "undefined" &&
+        typeof LabReplayWireSanitize.sanitizeReplayWireCellForRead === "function"
+      ) {
+        return LabReplayWireSanitize.sanitizeReplayWireCellForRead(cell);
+      }
+      return cell;
+    }
+
     function labCellDetailLookupInMapView(mapView, x, y) {
       if (!mapView || typeof mapView !== "object") {
         return { effective: null, sources: {} };
@@ -5392,14 +5440,19 @@
       if (!fullCell && !deltaCell && !overlayMatches.length) {
         return { effective: null, sources: sources };
       }
+      const mergeFullCell = fullCell != null ? sanitizeWireCellForMerge(fullCell) : null;
+      const mergeDeltaCell = deltaCell != null ? sanitizeWireCellForMerge(deltaCell) : null;
+      const mergeOverlayCells = overlayMatches.map(function (o) {
+        return sanitizeWireCellForMerge(o);
+      });
       const effective =
         typeof LabEffectiveCellView !== "undefined"
           ? LabEffectiveCellView.mergeEffectiveCellView({
               x: x,
               y: y,
-              fullCell: fullCell,
-              deltaCell: deltaCell,
-              overlayCells: overlayMatches,
+              fullCell: mergeFullCell,
+              deltaCell: mergeDeltaCell,
+              overlayCells: mergeOverlayCells,
             })
           : null;
       return { effective: effective, sources: sources };
@@ -5542,6 +5595,12 @@
       }
       if (data.frame_key !== undefined && data.frame_key !== null && String(data.frame_key) !== "") {
         parts.push("frame_key: " + String(data.frame_key));
+      }
+      if (data.detail_source) {
+        parts.push("source=" + String(data.detail_source));
+      }
+      if (data.canonical_mismatch) {
+        parts.push("canonical mismatch corrected");
       }
       if (!parts.length) {
         return "";
@@ -5707,7 +5766,9 @@
         if (frameOrmId == null) {
           openCellDetailModal();
           if (cellDetailBody) {
-            labCellDetailRenderSuccess(cellDetailBody, labCellDetailFromTimelineFrame(fr, xy.x, xy.y));
+            const clientPayload = labCellDetailFromTimelineFrame(fr, xy.x, xy.y);
+            clientPayload.detail_source = "map_view_client_only";
+            labCellDetailRenderSuccess(cellDetailBody, clientPayload);
           }
           setLabCellDetailUnavailableHint("cell detail from map_view (no persisted ReplayFrame)");
           return;
@@ -5725,10 +5786,12 @@
         if (projectSlug) {
           payload.project_slug = projectSlug;
         }
-        if (cellDetailBody) {
-          cellDetailBody.textContent = "Loading…";
-        }
         openCellDetailModal();
+        const clientPayload = labCellDetailFromTimelineFrame(fr, xy.x, xy.y);
+        clientPayload.detail_source = "client_fast_path";
+        if (cellDetailBody) {
+          labCellDetailRenderSuccess(cellDetailBody, clientPayload);
+        }
         fetch(cellUrl, {
           method: "POST",
           credentials: "same-origin",
@@ -5760,7 +5823,21 @@
               cellDetailBody.textContent = err;
               return;
             }
-            labCellDetailRenderSuccess(cellDetailBody, data);
+            const clientEffective = clientPayload.effective_cell;
+            const serverEffective = data.effective_cell;
+            if (!labEffectiveCellWireMatches(clientEffective, serverEffective)) {
+              data.detail_source = "server_canonical_fallback";
+              data.canonical_mismatch = true;
+              labCellDetailRenderSuccess(cellDetailBody, data);
+              return;
+            }
+            clientPayload.detail_source = "client_fast_path_confirmed";
+            clientPayload.frame_index =
+              data.frame_index != null ? data.frame_index : clientPayload.frame_index;
+            if (data.frame_key != null) {
+              clientPayload.frame_key = data.frame_key;
+            }
+            labCellDetailRenderSuccess(cellDetailBody, clientPayload);
           })
           .catch(function () {
             if (cellDetailBody) {
@@ -5795,6 +5872,7 @@
           replayPaintedCellIndices = collectReplayFrameCellIndices(fr, resolveCellIndex);
           return;
         }
+        syncLabDomPaintContext(replayFrames, replayArrayIndex, hasServerReplay);
         renderReplayFrame(
           fr,
           baseClasses,

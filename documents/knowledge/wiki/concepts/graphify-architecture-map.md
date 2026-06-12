@@ -1,7 +1,7 @@
 ---
 title: Graphify Architecture Map (Operating Notes)
 created: 2026-06-11
-updated: 2026-06-11
+updated: 2026-06-12
 type: concept
 tags: [architecture, agent-workflow]
 sources: [.cursor/rules/graphify.mdc, docs/agent-workflows/graphify-routine.md, graphify-out/graph.json]
@@ -16,7 +16,7 @@ confidence: high
 
 **No** — do not track every `_internal` / `_private` function repo-wide. Large graphs (>5k nodes) skip `graph.html` and produce Obsidian noise (`__init__.py_N`).
 
-`graphify-out/**` = **agent navigation cache**, not source of truth (clean-root: ignored/generated junk).
+`graphify-out/` is **not** globally junk. **Track** `graph.json`, `GRAPH_REPORT.md`, `manifest.json` (portable). **Ignore / safe clean:** `cost.json`, `cache/`, `.graphify_detect.json`, dated snapshots, wrong-CWD `*/graphify-out/`, generated `obsidian/` export, `.obsidian/` machine state. Navigation graph ≠ source of truth for domain contracts.
 
 ```text
 graphify is a navigation graph, not a complete call graph

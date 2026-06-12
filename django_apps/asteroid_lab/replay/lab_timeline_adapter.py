@@ -21,9 +21,13 @@ from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
     EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
 )
-from django_apps.asteroid_lab.replay.map_height_layer import wire_explicit_height_layer
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.replay_event_coverage import SUPPORTED_BY_9B_LAB_ADAPTER
+from django_apps.asteroid_lab.replay.replay_map_cell_wire import (
+    ReplayMapCellWireError,
+    replay_cell_from_wire,
+    replay_overlay_cell_from_wire,
+)
 from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayBBox,
     ReplayCell,
@@ -32,10 +36,7 @@ from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayTimelineFrame,
     replay_map_view_is_renderable,
 )
-from django_apps.asteroid_lab.replay.timeline_serialization import (
-    _mapping,
-    replay_overlay_cell_from_wire,
-)
+from django_apps.asteroid_lab.replay.timeline_serialization import _mapping
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO, SnapshotEventDTO
 from django_apps.asteroid_lab.snapshots.equipment_bundles import (
     cell_overlay_json_for_bundle_highlight,
@@ -77,25 +78,6 @@ class LabTimelineAdapterError(ValueError):
     """Raised when a Lab replay frame cannot be conservatively wrapped for 9B."""
 
 
-def _row_int(value: object, *, default: int | None = None) -> int:
-    if isinstance(value, bool):
-        if default is not None:
-            return default
-        raise LabTimelineAdapterError("row field must be int")
-    if isinstance(value, int):
-        return value
-    if isinstance(value, (float, str)):
-        try:
-            return int(value)
-        except (ValueError, TypeError) as exc:
-            if default is not None:
-                return default
-            raise LabTimelineAdapterError("row field must be int") from exc
-    if default is not None:
-        return default
-    raise LabTimelineAdapterError("row field must be int")
-
-
 def _full_map_row_sequence(full_map: list[object]) -> Sequence[Mapping[str, object]]:
     out: list[Mapping[str, object]] = []
     for raw in full_map:
@@ -123,16 +105,17 @@ def _lab_event_type_to_timeline(event_type: str) -> ReplayEventType:
     return timeline_event
 
 
+def _map_adapter_cell_wire_error(exc: ReplayMapCellWireError) -> LabTimelineAdapterError:
+    if "must be int" in str(exc):
+        return LabTimelineAdapterError("row field must be int")
+    return LabTimelineAdapterError(str(exc))
+
+
 def _cell_from_row(row: Mapping[str, object]) -> ReplayCell:
-    return ReplayCell(
-        x=_row_int(row["x"]),
-        y=_row_int(row["y"]),
-        kind=str(row.get("cell_kind") or row.get("kind") or ""),
-        transport=str(row.get("transport_kind") or row.get("transport") or ""),
-        tile_type=str(row.get("tile_type") or row.get("sprite_identifier") or ""),
-        rotation=_row_int(row.get("rotation"), default=0),
-        layer=wire_explicit_height_layer(row),
-    )
+    try:
+        return replay_cell_from_wire(row, field_prefix="", lenient_rotation=True)
+    except ReplayMapCellWireError as exc:
+        raise _map_adapter_cell_wire_error(exc) from exc
 
 
 def _overlay_from_row(row: Mapping[str, object]) -> ReplayOverlayCell:

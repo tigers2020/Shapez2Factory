@@ -90,20 +90,20 @@ If **behavior contracts change**, test updates are mandatory.
 
 ### Asteroid Lab (solver / optimization)
 
-Semantic canon: `documents/Algorithm/asteroid_lab_*.md` · [ADR-003](../../adr/ADR-003-final-validation-assertion-gate.md). For glob work, see [`.cursor/rules/asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc).
+Semantic canon: [`.cursor/rules/asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc) · [`documents/knowledge/raw/algorithm/authority-redirect.md`](../../knowledge/raw/algorithm/authority-redirect.md) (replaces deleted `documents/Algorithm/`) · [ADR-003](../../adr/ADR-003-final-validation-assertion-gate.md).
 
 | Invariant | Canon | Representative tests / planned names |
 |-----------|-------|----------------------------------------|
 | Replay / NDJSON / artifact / metrics **output-only** — **forbidden as solver/algorithm input** | current replay code and tests | `test_lab_page_context_*` |
-| Candidate: **no placement commit**; generate → local geometry → immediate route probe → reachable only in normal pool | [`asteroid_lab_03_candidate_generator.md`](../../Algorithm/asteroid_lab_03_candidate_generator.md) | generator-adjacent unit; Phase checklist |
-| Incremental commit: **commit-time latest `route_domain` re-probe**; candidate-phase reachable ≠ final proof | [`asteroid_lab_07_incremental_commit.md`](../../Algorithm/asteroid_lab_07_incremental_commit.md) | `test_incremental_commit_reprobes_latest_route_domain` (documented) |
-| Validation: **read-only assert**; **no** route/placement/topology **repair** | [`asteroid_lab_08_validation.md`](../../Algorithm/asteroid_lab_08_validation.md), ADR-003 | validation read-only checklist · pytest |
+| Candidate: **no placement commit**; generate → local geometry → immediate route probe → reachable only in normal pool | `candidate_gen.py`; redirect § `asteroid_lab_03` | generator-adjacent unit; Phase checklist |
+| Incremental commit: **commit-time latest `route_domain` re-probe** via `RouteDomainSnapshotBuilder`; candidate-phase reachable ≠ final proof | `commit_reprobe.py`; redirect § `asteroid_lab_07` | `test_incremental_commit_reprobes_latest_route_domain` (documented) |
+| Validation: **read-only assert**; **no** route/placement/topology **repair** | ADR-003; redirect § `asteroid_lab_08` | validation read-only checklist · pytest |
 | Lab replay timeline; global monotonic `frame_index`; every frame **2D map_view**; single play/scrubber | current replay code and tests | `test_lab_js_replay_wiring_smoke`; `test_lab_page_context_*` |
 | `failure_reason` · `event_type` · `issue_code` etc. are **enum/const** — no free-form strings | Phase DTO docs | `test_invalid_event_type_rejected`; replay contract tests |
 | Same seed **deterministic** (+ tie-break) | evolution docs | explicit tests where needed |
 | **Regression fixture** — add at bug recurrence | this manual | `tests/fixtures/asteroid_lab/`; corridor · starvation · replay · coord · UI sync first |
 | Replay truncation schema | current replay code and tests | `test_lab_replay_timeline_payload.py`, `test_timeline_composer.py` |
-| **Fitness vs commit survivability** — predictive penalties vs observed metrics; observed → solver input **forbidden** | [`asteroid_lab_05_genome_fitness.md`](../../Algorithm/asteroid_lab_05_genome_fitness.md) | `test_fitness_contracts.py` |
+| **Fitness vs commit survivability** — predictive penalties vs observed metrics; observed → solver input **forbidden** | invariants router; redirect § `asteroid_lab_05` | `test_fitness_contracts.py` |
 
 **Unimplemented** invariant tests listed in the table are in scope for a later **implementation PR**. This document only fixes requirements and what must be protected.
 

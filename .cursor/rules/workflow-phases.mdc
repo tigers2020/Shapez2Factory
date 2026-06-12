@@ -1,0 +1,46 @@
+---
+description: "HITL/AFK phase boundaries, vertical slicing, fresh-context review"
+alwaysApply: true
+---
+
+# Workflow Phases Router
+
+Canon: `AGENTS.md` § Session phases. Detail: `docs/agent-workflows/workflow-phases.md`.
+
+## Phase order (Normal+)
+
+```text
+align → contract → slice → implement → verify → STOPPED_AT_APPROVED_SCOPE
+```
+
+## HITL vs AFK
+
+**HITL:** ambiguous intent · contract create/amend · slice shape review · merge approval · taste/UX/domain judgment
+
+**AFK:** implement against explicit contract · bounded refactor · verification with explicit commands
+
+Do not convert HITL work into AFK because a plan file exists.
+
+## Vertical slice
+
+Prefer tracer-bullet slices over horizontal phases. Valid slice: crosses relevant boundary end-to-end · runnable feedback in same PR · independently reviewable.
+
+Reject or rewrite plans that are only schema-only, DTO-only, serializer-only, UI-only, or "foundation" without runnable feedback — unless user explicitly scoped **infra-only**.
+
+## Fresh-context review
+
+After Normal+ implementation: new session or review subagent. Re-read contract/acceptance · inspect diff · run smallest validation · escalate to `quality-check` / `bugbot-policy.mdc` for boundary risk.
+
+## plan-run metadata
+
+Plans should include `slice_type`, `afk_eligible`, `blocked_by` (see `plan-run` skill § Plan frontmatter contract).
+
+`plan-run auto` only when `afk_eligible: true`, clean worktree, explicit contract/acceptance/stop.
+
+## Alignment skill
+
+Ambiguous features: `/grill-me-shapez2` before contract (`grill-me-shapez2` skill).
+
+## Kanban
+
+Normal+ tasks: one `.devtool/features/` card per thread; update on phase change (`kanban-tracking.mdc`).

@@ -118,7 +118,7 @@ Internationalized routes (`i18n_patterns`, default language without prefix) incl
 - [`documents/index/document_lifecycle.md`](documents/index/document_lifecycle.md): current-only lifecycle definitions.
 - [`documents/index/document_inventory.md`](documents/index/document_inventory.md): current authority inventory.
 - [`documents/knowledge/raw/ai/`](documents/knowledge/raw/ai/README.md): current plan, context notes, checklist, manuals, active AI plans.
-- [`documents/Algorithm/README.md`](documents/Algorithm/README.md): algorithm document slots (no canonical mining solver content at present).
+- [`documents/knowledge/raw/algorithm/`](documents/knowledge/raw/algorithm/README.md): Asteroid Lab algorithm authority (`asteroid_lab_11` ACTIVE); stale `documents/Algorithm/` → [`authority-redirect.md`](documents/knowledge/raw/algorithm/authority-redirect.md).
 - [`documents/plans/`](documents/plans/): active or not-yet-confirmed implementation plans.
 - [`documents/research/`](documents/research/): active research and domain evidence.
 - [`documents/reports/`](documents/reports/README.md): observation/debug/audit reports, not canonical contracts.

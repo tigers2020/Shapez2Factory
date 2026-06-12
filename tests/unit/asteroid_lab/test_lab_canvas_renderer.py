@@ -8,6 +8,8 @@ REPO = Path(__file__).resolve().parents[3]
 JS_DIR = REPO / "django_apps" / "web" / "static" / "web" / "js"
 TPL = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
 LAB_JS = JS_DIR / "asteroid_miner_layout_lab.js"
+SANITIZE_JS = JS_DIR / "lab_replay_wire_sanitize.js"
+PAINT_JS = JS_DIR / "lab_replay_paint_plan.js"
 
 
 def test_canvas_renderer_module_contract() -> None:
@@ -36,7 +38,6 @@ def test_lab_js_wires_canvas_renderer() -> None:
     assert "function mountLabCanvasRenderer(" in src
     assert "function buildCanvasPaintPlan(" in src
     assert "function warmupLabReplaySpriteCache(" in src
-    assert "function lastFrameWithSpriteCapableCells(" in src
     assert "function applyLabCanvasServerReplayFrame(" in src
     assert "lab-replay-canvas-hit-layer" in src
     let_pos = src.index("let labCanvasRenderer = null")
@@ -76,12 +77,31 @@ def test_lab_map_z_layer_picker_contract() -> None:
     assert "labMapZSelectedLayer" in src
 
 
-def test_collect_frame_spatial_targets_includes_cell_overlay_json() -> None:
+def test_collect_replay_spatial_coords_includes_cell_overlay_json() -> None:
     src = LAB_JS.read_text(encoding="utf-8")
-    idx = src.find("function collectFrameSpatialTargets(frame)")
-    body = src[idx : idx + 900]
+    idx = src.find("function collectReplaySpatialCoordsForLayout(frame)")
+    assert idx >= 0
+    body = src[idx : idx + 950]
+    assert "fullMapCellsFromFrame(frame)" in body
+    assert "labCellsFromMapView(mapView)" in body
     assert "cellOverlayJsonFromFrame(frame)" in body
     assert "collectOverlayPaintTargets(overlayJson)" in body
+
+
+def test_js_sanitize_replay_wire_cell_for_read_exists() -> None:
+    src = SANITIZE_JS.read_text(encoding="utf-8")
+    assert "function sanitizeReplayWireCellForRead" in src
+    assert "function cellKey" in src
+    assert "LabReplayWireSanitize" in src
+
+
+def test_js_sanitizer_matches_python_candidate_compat_cases() -> None:
+    src = SANITIZE_JS.read_text(encoding="utf-8")
+    assert '"shape_belt"' in src  # legacy compat token handled in sanitizer
+    assert "output_transport_kind" in src
+    assert "candidate_miner" in src
+    assert "space_belt" in src
+    assert "function isCandidateOutputHintKind" in src
 
 
 def test_lab_sprite_path_handles_space_belt_transport_wire() -> None:
@@ -93,3 +113,197 @@ def test_lab_sprite_path_handles_space_belt_transport_wire() -> None:
         "overlayCellKind(cell)" in src.split("function inferTransportSpriteIdentifier(", 1)[1][:700]
     )
     assert "SpaceBelt_Forward" in src
+
+
+def test_js_lab_paint_layers_from_view_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function labPaintLayersFromView" in src
+    assert "function buildEffectiveCellViewIndex" in src
+    assert "LabReplayPaintPlan" in src
+
+
+def test_template_loads_lab_replay_paint_plan_js() -> None:
+    tpl = TPL.read_text(encoding="utf-8")
+    assert "lab_replay_paint_plan.js" in tpl
+    assert tpl.index("lab_effective_cell_view.js") < tpl.index("lab_replay_paint_plan.js")
+
+
+def test_js_paint_plan_contains_candidate_priority_guard() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "candidate_miner" in src
+    assert "candidate_ring" in src
+    transport_fn = src.split("function resolveTransport(", 1)[1]
+    candidate_idx = transport_fn.index("candidate_miner")
+    guard_region = transport_fn[candidate_idx : candidate_idx + 120]
+    assert "null" in guard_region
+
+
+def test_js_build_lab_paint_plan_from_frame_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function buildLabPaintPlanFromFrame" in src
+    assert "buildLabPaintPlanFromFrame:" in src
+    assert "lastFrameWithSpriteCapableCells" in src
+    assert "mergeCarriedIndexKeys" in src
+    assert "Layout carry" in src
+
+
+def test_js_canvas_plan_from_paint_layers_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function canvasPlanFromPaintLayers" in src
+    assert "canvasPlanFromPaintLayers:" in src
+    assert "CANDIDATE_RING_STROKE" in src
+    assert 'kind: "candidate_ring"' in src
+    assert "isRgbaFill" in src
+
+
+def test_js_dom_plan_from_paint_layers_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function domPlanFromPaintLayers" in src
+    assert "domPlanFromPaintLayers:" in src
+    assert "lab-overlay-candidate-miner-ring" in src
+    assert "skipFullFill" in src
+
+
+def test_js_build_dom_plan_resolver_for_frame_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function buildDomPlanResolverForFrame" in src
+    assert "buildDomPlanResolverForFrame:" in src
+    resolver_body = src.split("function buildDomPlanResolverForFrame", 1)[1][:900]
+    assert "buildEffectiveCellViewIndexWithCarry" in resolver_body
+    assert "return function" in resolver_body
+
+
+def test_js_build_cell_by_grid_index_from_frame_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function buildCellByGridIndexFromFrame" in src
+    assert "buildCellByGridIndexFromFrame:" in src
+
+
+def test_lab_js_lab_paint_v2_enabled_helper() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    assert "function labPaintLegacyOptIn(" in src
+    assert "function labPaintV2Enabled(" in src
+    legacy_body = src.split("function labPaintLegacyOptIn(", 1)[1][:320]
+    assert "lab-root" in legacy_body
+    assert 'ds.labPaintLegacy === "1"' in legacy_body
+    assert 'ds.labPaintV2 === "0"' in legacy_body
+    enabled_body = src.split("function labPaintV2Enabled(", 1)[1][:120]
+    assert "labPaintLegacyOptIn()" in enabled_body
+
+    plan_body = src.split("function buildCanvasPaintPlan(", 1)[1].split(
+        "function refreshLabCanvasAfterLayoutChange(", 1
+    )[0]
+    assert "labPaintV2Enabled()" not in plan_body
+    assert "LabReplayPaintPlan.buildLabPaintPlanFromFrame" in plan_body
+    assert "resolveCellIndex" in plan_body
+    assert "replayArrayIndex" in plan_body
+    assert "replayFrames" in plan_body
+    assert "hasServerReplay" in plan_body
+
+
+def test_lab_js_paint_d_prime_flag_contract_step_6_1() -> None:
+    """Step 6.1: D′ default v2; legacy opt-in retained for flag helper only post-6.4."""
+    src = LAB_JS.read_text(encoding="utf-8")
+    legacy_body = src.split("function labPaintLegacyOptIn(", 1)[1].split(
+        "function labPaintV2Enabled(", 1
+    )[0]
+    assert 'ds.labPaintLegacy === "1"' in legacy_body
+    assert 'ds.labPaintV2 === "0"' in legacy_body
+    enabled_body = src.split("function labPaintV2Enabled(", 1)[1][:160]
+    assert "!labPaintLegacyOptIn()" in enabled_body.replace(" ", "")
+    assert "function resolveSpriteRelForStandaloneOverlayCell(" in src
+    render_body = src.split("function renderFullMapCells(", 1)[1].split(
+        "function renderDiffOverlays(", 1
+    )[0]
+    assert "createDomPlanResolverForFrame" in render_body
+    assert "candidateObservationToneClasses" not in render_body
+    canvas_fn = src.split("function buildCanvasPaintPlan(", 1)[1].split(
+        "function refreshLabCanvasAfterLayoutChange(", 1
+    )[0]
+    assert "stageCell" not in canvas_fn
+    assert "const overlays = []" not in canvas_fn
+
+
+def test_lab_js_filter_terrain_cells_for_paint_v2_exists() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    assert "function filterTerrainCellsForPaintV2(" in src
+    filter_body = src.split("function filterTerrainCellsForPaintV2(", 1)[1].split(
+        "function syncLabTerrainCanvasLayer(", 1
+    )[0]
+    assert "labPaintV2Enabled()" not in filter_body
+    assert "LabReplayPaintPlan.buildLabPaintPlanFromFrame" in filter_body
+    assert "AsteroidField_Fluid.svg" in filter_body
+    assert "AsteroidField_Shape.svg" in filter_body
+
+    refresh_block = src.split("function refreshLabCanvasAfterLayoutChange(", 1)[1][:1200]
+    assert "filterTerrainCellsForPaintV2(" in refresh_block
+
+    canvas_frame_block = src.split("function applyLabCanvasServerReplayFrame(", 1)[1][:1400]
+    assert "filterTerrainCellsForPaintV2(" in canvas_frame_block
+
+
+def test_lab_js_dom_paint_v2_wiring_in_token_and_render() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    assert "function createDomPlanResolverForFrame(" in src
+    assert "function labDomPaintOptionsFromContext(" in src
+    assert "LabReplayPaintPlan.buildDomPlanResolverForFrame" in src
+    token_body = src.split("function labPaintTokenForCell(", 1)[1].split(
+        "function frameCellIndexMap(", 1
+    )[0]
+    render_body = src.split("function renderFullMapCells(", 1)[1].split(
+        "function renderDiffOverlays(", 1
+    )[0]
+    assert "resolveDomPlan" in token_body or "domPlan" in token_body
+    assert "createDomPlanResolverForFrame" in render_body
+    assert render_body.index("createDomPlanResolverForFrame") < render_body.index("for (let i = 0")
+    assert "domPlan" in render_body or "skipFullFill" in render_body
+
+
+def test_lab_js_detail_lookup_untouched() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    detail_body = src.split("function labCellDetailLookupInMapView(", 1)[1].split(
+        "function labCellDetailFromTimelineFrame(", 1
+    )[0]
+    assert "LabReplayPaintPlan" not in detail_body
+    assert "buildDomPlanResolverForFrame" not in detail_body
+    assert "mergeEffectiveCellView" in detail_body
+
+
+def test_lab_js_replay_dom_resolver_flag_independent_step_6_4() -> None:
+    """Step 6.4: replay DOM resolver always built; legacy opt-in no longer gates resolver."""
+    src = LAB_JS.read_text(encoding="utf-8")
+    resolver_body = src.split("function createDomPlanResolverForFrame(", 1)[1][:450]
+    assert "labPaintV2Enabled()" not in resolver_body
+    assert "LabReplayPaintPlan.buildDomPlanResolverForFrame" in resolver_body
+    render_body = src.split("function renderFullMapCells(", 1)[1].split(
+        "function renderDiffOverlays(", 1
+    )[0]
+    assert "createDomPlanResolverForFrame" in render_body
+    assert render_body.index("createDomPlanResolverForFrame") < render_body.index("for (let i = 0")
+
+
+def test_warmup_sprite_collect_uses_paint_plan() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    body = src.split("function collectSpriteRelpathsFromFrames(", 1)[1][:500]
+    assert "collectSpriteRelsFromPaintPlanFrames" in body
+    assert "labPaintV2Enabled()" not in body
+    assert "collectFrameSpatialTargets" not in body
+    assert "collectReplaySpatialCoordsForLayout" not in body
+
+
+def test_lab_js_non_sprite_policy_step_6_6() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    resolver_body = src.split("function resolveSpriteRelForStandaloneOverlayCell(", 1)[1].split(
+        "function attachLabSpriteImgNoDrag(", 1
+    )[0]
+    assert "isCandidateMinerOverlayKind(ck)" in resolver_body
+    assert "lab-overlay-candidate-miner" in src
+    non_sprite = src.split("var NON_SPRITE_OVERLAY_CELL_KINDS = {", 1)[1].split("};", 1)[0]
+    assert "candidate_miner" not in non_sprite
+    assert "candidate_transport_stub: true" in non_sprite
+    assert "candidate_route_path: true" in non_sprite
+    assert "route_path: true" in non_sprite
+    obs_body = src.split("function isCandidateObservationOverlayKind(", 1)[1].split(
+        "function toneForRouteOverlayKind(", 1
+    )[0]
+    assert "isCandidateMinerOverlayKind(ck)" in obs_body

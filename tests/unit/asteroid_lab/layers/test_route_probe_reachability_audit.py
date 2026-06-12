@@ -144,7 +144,7 @@ def test_corridor_share_not_hard_block() -> None:
     blockers_line = next(
         line for line in source.splitlines() if line.strip().startswith("blockers =")
     )
-    assert blockers_line.strip() == "blockers = state.occupied | set(own_equipment)"
+    assert blockers_line.strip() == "blockers = frozenset(state.occupied | set(own_equipment))"
     assert "state.corridor" not in blockers_line
 
 

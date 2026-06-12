@@ -94,3 +94,28 @@ Append-only chronological record. Newest entries at the bottom.
 - **Canon pointer:** `AGENTS.md` → `documents/knowledge/wiki/Index.md` + dream-sequence routine
 - **Not committed:** `local-general-workflow/` — duplicate of archived raw; delete locally when confirmed
 - **Status:** 21 concept pages indexed; no blocking open questions; game-data + agent/governance clusters linked
+
+## [2026-06-12] ingest | Algorithm authority redirect + glossary linking
+
+- **Input:** user request — organize related raw via llm-wiki and link to ubiquitous-language
+- **Raw:** `raw/algorithm/authority-redirect.md` (new ledger; existing raw files unchanged)
+- **Wiki:** `concepts/algorithm-doc-authority.md`; `raw/algorithm/README.md` pointer
+- **Index:** +1 concept; algorithm authority banner; glossary cross-link retained
+- **Processed:** +3 rows (redirect ledger, coord-transform deferred, ubiquitous-language output)
+- **Linked:** `docs/ubiquitous-language.md` ← → wiki Index ← → raw redirect
+- **Uncertainty:** historical raw/plan files may still contain stale `documents/Algorithm/` hrefs — use redirect ledger; do not bulk-edit raw
+
+## [2026-06-12] governance | Algorithm redirect in routers + inventory
+
+- **Updated:** `.cursor/rules/asteroid-lab-invariants.mdc` — canon order, globs, reference table → redirect ledger
+- **Updated:** `raw/index/document_inventory.md` — Asteroid Lab authority rows; removed `documents/Algorithm/` CANON row
+- **Updated:** `structure.md`, `quality-check` invariants checklist
+- **Open:** `RouteDomainSnapshotBuilder` planned vs inline code build
+
+## [2026-06-12] complete | Open items closure pass
+
+- **Code:** `RouteDomainSnapshotBuilder` in `route_domain_snapshot_builder.py`; wired `candidate_gen`, `commit_reprobe`, `route_probe`
+- **Wiki:** `reconstructed-map.md`; transport-system terminology mapping; game-data-manifest SHA anchors
+- **Glossary:** solver cross-app section; open questions cleared; builder + ReconstructedMap promoted
+- **Canon:** `testing.md` redirect; invariants router builder reference
+- **Index:** 23 pages

@@ -5,13 +5,16 @@ globs:
   - django_apps/shapez_asteroid/**
   - tests/unit/asteroid_lab/**
   - tests/unit/shapez_asteroid/**
-  - documents/Algorithm/asteroid_lab*.md
+  - documents/knowledge/raw/algorithm/**
+  - documents/knowledge/wiki/concepts/asteroid-lab*.md
+  - documents/knowledge/wiki/concepts/algorithm-doc-authority.md
+  - docs/ubiquitous-language.md
 alwaysApply: false
 ---
 
 # Asteroid Lab Invariants Router
 
-Canon: `AGENTS.md`, current `documents/Algorithm/asteroid_lab*.md`, then current tests.
+Canon: `AGENTS.md`, then code/tests, then wiki + `docs/` specs. Stale `documents/Algorithm/` paths are **not** local authority — use [`documents/knowledge/raw/algorithm/authority-redirect.md`](../documents/knowledge/raw/algorithm/authority-redirect.md) and wiki [[algorithm-doc-authority]] (`documents/knowledge/wiki/concepts/algorithm-doc-authority.md`).
 
 Preserve these contracts unless current canon explicitly changes them:
 
@@ -20,7 +23,7 @@ Preserve these contracts unless current canon explicitly changes them:
 - DTO: `coord_system` required; layout v2 stays island bbox-normalized.
 - Export: dense anchor export only at export boundary.
 - Candidate: generate/probe/reachable pool only; no commit semantics.
-- Commit: re-probe latest `route_domain`; `RouteDomainSnapshotBuilder` remains authority.
+- Commit: re-probe latest L3 `route_domain` (`WeightedTransportRouteDomain`); `RouteDomainSnapshotBuilder` is sole authority (`route_domain_snapshot_builder.py`).
 - Fitness: predictive fitness and observed commit survivability are separate.
 - Validation: read-only assertions; no route, placement, or topology repair.
 - Timeline: one product replay; monotonic `frame_index`; no second optimization controller.
@@ -29,4 +32,15 @@ Preserve these contracts unless current canon explicitly changes them:
 
 If violated or uncertain, report `invariant:` in risks.
 
-References: `documents/Algorithm/asteroid_lab_01_optimization_input.md`, `_03_candidate_generator.md`, `_07_incremental_commit.md`, `_08_validation.md`, `_09_replay_timeline.md`, `_12_runtime_replay_wiring.md`.
+References (redirected from former `documents/Algorithm/asteroid_lab_*.md`):
+
+| Topic | Authority |
+|---|---|
+| Coordinates / optimization input | wiki `island-mechanics`; raw `domain-docs/asteroid_coord_transform_spec.md` |
+| L3 route domain builder | `route_domain_snapshot_builder.py` `RouteDomainSnapshotBuilder` |
+| Candidate generator | `layer_03_rim_greedy_placement/candidate_gen.py`; glossary **Candidate** |
+| Incremental commit | `commit_reprobe.py`; glossary **Commit** |
+| Validation | ADR-003; glossary **Validation (solver)** |
+| Replay timeline | `docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md`; `timeline_dtos.py` |
+| Replay wiring | `artifact_replay_viewer_compose.py`; CLI-first artifact spec |
+| Full redirect map | `documents/knowledge/raw/algorithm/authority-redirect.md` |

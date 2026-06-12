@@ -34,6 +34,9 @@ from django_apps.asteroid_lab.observability.lab_perf_trace import (
     record_perf_ms,
     serialized_json_utf8_bytes,
 )
+from django_apps.asteroid_lab.replay.replay_frame_cell_resolver import (
+    lookup_effective_cell_in_serialized_frame,
+)
 from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
     lab_replay_frames_are_renderable,
 )
@@ -99,9 +102,6 @@ from django_apps.web.services.asteroid_lab_page_context import (
 from django_apps.web.services.graph_preview import (
     PlaywrightPngGraphPreviewRenderer,
     png_bytes_are_valid,
-)
-from django_apps.web.services.replay_frame_cell_lookup import (
-    lookup_effective_cell_in_serialized_frame,
 )
 
 

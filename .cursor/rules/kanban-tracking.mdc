@@ -1,0 +1,51 @@
+---
+description: "Kanban card per task/chat; update progress; warn on leftover WIP"
+alwaysApply: true
+---
+
+# Kanban Tracking Router
+
+Canon: `AGENTS.md` § Kanban tracking. Detail: `docs/agent-workflows/kanban-tracking.md`.
+
+Cards: `.devtool/features/*.md` (`status` = workflow phase id). Columns: `.devtool/README.md`.
+
+## When required
+
+| Mode | Kanban |
+|------|--------|
+| Read-only | optional — no card required |
+| Tiny | optional — update if card already linked |
+| Normal / High-risk | **required** for feature, bug, contract, or multi-step implementation |
+| Ops / recovery | optional unless user linked a card |
+
+## Session start
+
+1. Find linked card (user `@` path, same title, or `implement`/`verify`/`align`/`contract`/`slice` WIP).
+2. No card → create under `.devtool/features/` or ask user which card.
+3. Set `status` to current phase; append **Progress** note: date, chat scope, next step.
+
+## During work
+
+- Phase change → move `status` + append Progress (what changed, evidence).
+- `BLOCKED:` → `status: blocked` + blocker note.
+- Scope complete → `status: verify` then `done` after validation; archive per extension.
+
+Update card **before** claiming done — not only in chat summary.
+
+## Pivot / skip / new task (mandatory warning)
+
+Before unrelated work when a WIP card exists (`status` not `done` or `backlog`):
+
+```text
+LEFTOVER_WIP:
+- card: <id or path>
+- status: <phase>
+- unfinished: <acceptance / steps left>
+- to park: move to blocked/backlog + note, or finish first
+```
+
+Do not silently abandon. User must **explicitly** park (`blocked`/`backlog` + reason) or finish.
+
+## Card body (minimum)
+
+Under title: **Scope**, **Acceptance**, **Progress** (timestamped bullets). Keep frontmatter `modified` accurate.

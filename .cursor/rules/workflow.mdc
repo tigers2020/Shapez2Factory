@@ -25,6 +25,8 @@ Pipeline (Normal / High-risk):
 problem -> authority -> contract -> plan -> acceptance tests -> small change -> gate
 ```
 
+Phase order (Normal+): `align -> contract -> slice -> implement -> verify` (`workflow-phases.mdc`). Reject horizontal phase plans unless user explicitly scoped infra-only work.
+
 Authority for architecture/coupling: if `graphify-out/graph.json` exists, **mandatory** `/graphify` query/path/explain before wide grep or multi-module reads (`graphify.mdc`).
 
 For Shapez2 domain work, route to `shapez2-domain.mdc`.
@@ -50,4 +52,4 @@ If behavior authority is missing, stop with `BLOCKED:`.
 
 Validation tiers (when, not what): `docs/agent-workflows/validation-routine.md`.
 
-References: `documents/ai/templates/contract-brief.md`, `documents/ai/templates/pr-plan.md`, `documents/ai/manuals/testing.md`.
+References: `documents/ai/templates/contract-brief.md`, `documents/ai/templates/pr-plan.md`, `documents/knowledge/raw/ai/manuals/testing.md`.

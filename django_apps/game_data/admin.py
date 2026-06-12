@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from django.contrib import admin
 from django.http import HttpRequest
@@ -25,10 +25,10 @@ class GameDataReadOnlyAdminMixin:
     def has_add_permission(self, _request: HttpRequest) -> bool:
         return False
 
-    def has_change_permission(self, request: HttpRequest, _obj: Any | None = None) -> bool:
+    def has_change_permission(self, request: HttpRequest, _obj: object | None = None) -> bool:
         return bool(request.user.is_staff)
 
-    def has_delete_permission(self, request: HttpRequest, _obj: Any | None = None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, _obj: object | None = None) -> bool:
         return bool(request.user.is_superuser)
 
 
@@ -38,7 +38,7 @@ class GameDataAggregateAdminMixin:
     game_data_related_changelists: ClassVar[tuple[RelatedChangelistSpec, ...]] = ()
 
     @admin.display(description="Related sub-tables")
-    def related_subtable_links(self, obj: Any) -> str:
+    def related_subtable_links(self, obj: object) -> str:
         if obj is None or not self.game_data_related_changelists:
             return "—"
         links = []
@@ -68,7 +68,7 @@ class ImportBatchFilter(admin.SimpleListFilter):
         batches = m.ImportBatch.objects.order_by("-imported_at")[:20]
         return [(str(b.pk), str(b)) for b in batches]
 
-    def queryset(self, request: HttpRequest, queryset: Any) -> Any:
+    def queryset(self, request: HttpRequest, queryset: object) -> object:
         if self.value():
             return queryset.filter(import_batch_id=self.value())
         return queryset
@@ -1074,13 +1074,13 @@ class ExteriorShapeTransportCapacityAdmin(admin.ModelAdmin):
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
 
-    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
         return False
 
-    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
         return False
 
-    def has_view_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_view_permission(self, request: HttpRequest, obj: object = None) -> bool:
         return bool(request.user.is_active and request.user.is_staff)
 
 
@@ -1099,13 +1099,13 @@ class ExteriorFluidTransportCapacityAdmin(admin.ModelAdmin):
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
 
-    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
         return False
 
-    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
         return False
 
-    def has_view_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_view_permission(self, request: HttpRequest, obj: object = None) -> bool:
         return bool(request.user.is_active and request.user.is_staff)
 
 
@@ -1149,11 +1149,11 @@ class MiningExtractionRuleAdmin(admin.ModelAdmin):
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
 
-    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
         return False
 
-    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
         return False
 
-    def has_view_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+    def has_view_permission(self, request: HttpRequest, obj: object = None) -> bool:
         return bool(request.user.is_active and request.user.is_staff)

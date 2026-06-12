@@ -1,7 +1,7 @@
 # Knowledge Index
 
 > Map of synthesized knowledge. Raw sources live in `../raw/` (immutable). Maintenance: `docs/agent-workflows/dream-sequence.md`.
-> Last updated: 2026-06-12 | Total pages: 17
+> Last updated: 2026-06-12 | Total pages: 21
 
 ## Concepts
 
@@ -12,9 +12,12 @@
 | Shape Data Model | 1,170 shape recipes, 4-quadrant×4-layer 구조, Hash=Primary key | [[shape-data-model]] |
 | Building Definitions | 67 building groups, factory I/O + transport adapters | [[building-definitions]] |
 | Building Groups | Group taxonomy from game_data analysis | [[building-groups]] |
+| Building Variants | 131 internal variants; connectors, footprint, snapshots | [[building-variants]] |
 | Prefabs Registry | 764 prefab records, Wire* transport visuals | [[prefabs]] |
 | Game Data Manifest | Dump metadata, file_hashes integrity | [[game-data-manifest]] |
 | Transport System | 54 layout ID (SpaceBelt/SpacePipe), capacity bottleneck | [[transport-system]] |
+| Transport Capacity | Solver-facing throughput caps; belt/pipe bottlenecks | [[transport-capacity]] |
+| Island Mechanics | Copy JSON island-local coords vs world reconstruction | [[island-mechanics]] |
 | Fluid Data Model | 9 fluid 정의, RGB 원색, Mixer 2차색 | [[fluid-data-model]] |
 | Materials Data Model | C/R/S/W/c/P/- quadrant codes | [[materials-data-model]] |
 | Item Data Model | shapes.json gameplay subset (70 items) | [[item-data-model]] |
@@ -24,6 +27,7 @@
 | Graphify Map | graph.json scope, stale check, module-level granularity | [[graphify-architecture-map]] |
 | Agent Loop Design | Destination + feedback + reroute; verifier split; memory 5-step | [[agent-loop-design]] |
 | Software Fundamentals (AI Era) | Pocock six traps; deep modules; grey-box; anti specs-to-code divest | [[software-fundamentals-ai-era-pocock-2026]] |
+| Deep vs Shallow Modules | Ousterhout interface depth; AI maze navigation | [[deep-shallow-modules-ousterhout]] |
 
 ## Entities
 
@@ -47,6 +51,8 @@
 | When to run graphify vs grep? | graphify first when graph fresh; scoped replay updates | [[graphify-architecture-map]] |
 | Prompt vs loop for agents? | Set done criteria + feedback loop; separate verifier | [[agent-loop-design]] |
 | Why fundamentals still matter with AI? | Shallow-module mazes; design interfaces; TDD headlight limit | [[software-fundamentals-ai-era-pocock-2026]] |
+| Copy JSON X/Y — world or local? | Island-local; `X==0` valid; world map has no x=0 column | [[island-mechanics]] |
+| What is a building variant? | 131 geometry/connector snapshots; FK from groups | [[building-variants]] |
 
 ## Sources (external research)
 
@@ -65,6 +71,5 @@
 
 | Topic | Notes |
 |-------|-------|
-| `building-variants` | Referenced in raw analysis; no wiki page yet |
-| `island-mechanics` | Referenced in raw analysis; no wiki page yet |
-| `transport-capacity` | Could merge into [[transport-system]] or standalone later |
+| `building_variant_custom_config` | 156 `$type` nodes in variants — which matter for planner? (raw `08_risks`) |
+| Mirrored variant pairing | 34 `*Mirrored` rows — explicit FK vs suffix rule (unverified) |

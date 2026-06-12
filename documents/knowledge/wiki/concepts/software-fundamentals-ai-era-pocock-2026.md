@@ -37,12 +37,9 @@ Bad code is **more expensive** in the AI era, not cheaper. Specs-to-code that **
 
 Compiler-from-spec assumes code is disposable. Pocock: when code is cheap to generate but expensive to wrong, **design and boundaries** become the bottleneck — aligns with this repo's contract-first `AGENTS.md` workflow (inference).
 
-## Related raw (deferred)
-
-- `raw/2018-John Ousterhout-A Philosophy of Software Design.pdf` — deep/shallow module primary source; not ingested to wiki yet (PDF).
-
 ## Cross-References
 
+- [[deep-shallow-modules-ousterhout]]: Ousterhout primary source (PDF in raw/)
 - [[agent-loop-design]]: loops vs prompt tuning
 - [[vibe-coding-agentic-engineering-2026]]: risk-tiered rigor
 - [[asteroid-lab-wire-typing]]: boundary typing as grey-box interface work

@@ -73,3 +73,15 @@ Append-only chronological record. Newest entries at the bottom.
 - **Contradictions:** none — Pocock anti-specs-to-code complements (does not override) repo `AGENTS.md` contract workflow
 - **Uncertainty:** repo-mapping bullets in new pages marked inference
 - **Remaining:** `building-variants`, `island-mechanics`, `transport-capacity`; Ousterhout PDF summary
+
+## [2026-06-12] dream-sequence | raw:4 ingested, pages:4 created, contradictions:0
+
+- **Input:** user `진행해` — clear Index open questions
+- **Wiki created:**
+  - `concepts/deep-shallow-modules-ousterhout.md` — PDF + Pocock commentary synthesis
+  - `concepts/building-variants.md` — 131-variant game data hub
+  - `concepts/island-mechanics.md` — copy JSON vs world/reconstruction frames
+  - `concepts/transport-capacity.md` — solver throughput lens (detail in [[transport-system]])
+- **Index:** 17 → 21 pages; broken wikilinks from [[building-definitions]] resolved
+- **Open questions:** narrowed to variant CustomData / mirrored pairing (from raw risks doc)
+- **Uncertainty:** Ousterhout page is abbreviated — not full PDF line ingest

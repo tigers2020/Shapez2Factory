@@ -8,7 +8,7 @@ from typing import Any
 from django_apps.asteroid_lab.replay.effective_cell_wire import (
     EffectiveCellWire,
     effective_cell_to_wire,
-)
+)  # re-exported in __all__
 
 _LEGACY_SHAPE_OUTPUT_TOKENS = frozenset({"shape_belt", "belt", "shape"})
 _LEGACY_FLUID_OUTPUT_TOKENS = frozenset({"fluid_pipe", "pipe", "fluid"})
@@ -55,11 +55,6 @@ class EffectiveCellView:
     simulation: str | None
     output_transport_kind: str
     sources: dict[str, Any] = field(default_factory=dict)
-
-    def to_wire(self) -> EffectiveCellWire:
-        """Deprecated shim; prefer :func:`effective_cell_to_wire`."""
-
-        return effective_cell_to_wire(self)
 
 
 def normalize_project_transport_kind(raw: object) -> str:

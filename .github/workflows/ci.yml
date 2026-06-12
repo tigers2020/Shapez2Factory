@@ -32,7 +32,7 @@ jobs:
         run: |
           case "${{ matrix.task }}" in
             lint)      ruff check . ;;
-            typecheck) mypy src ;;
+            typecheck) mypy src django_apps/asteroid_lab/replay ;;
             format)    black --check . ;;
             test-fast) pytest -m "unit and not slow" -n auto --dist loadscope ;;
             test-integration) pytest -m integration -n auto --dist loadscope ;;

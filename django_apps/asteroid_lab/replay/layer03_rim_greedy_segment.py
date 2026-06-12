@@ -22,6 +22,7 @@ from django_apps.asteroid_lab.replay.pattern_bundle_highlight import (
 )
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.replay_limits import LAYER03_REPLAY_MAX_POOL_PREVIEW_WINDOWS
+from django_apps.asteroid_lab.replay.replay_overlay_wire import ReplayOverlayCellWire
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
 from django_apps.asteroid_lab.snapshots.equipment_bundles import ports_compatible
@@ -183,7 +184,7 @@ COMMITTED_RIM_EQUIPMENT_OVERLAY_ROLE = "committed_rim_equipment"
 
 def build_persistent_committed_equipment_overlay_wire(
     result: IntegratedRimGreedyResult,
-) -> list[dict[str, object]]:
+) -> list[ReplayOverlayCellWire]:
     """Miner + extension sprites carried on L4+ runtime frames (stacked with transport overlays)."""
 
     from django_apps.asteroid_lab.replay.runtime_frame_finalize import (

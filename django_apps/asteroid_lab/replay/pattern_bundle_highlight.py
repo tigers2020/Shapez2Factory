@@ -26,9 +26,14 @@ _EDGE_NEIGHBOR_OFFSETS: tuple[tuple[int, int], ...] = (
 
 
 class _RimPlacementMiningSource(Protocol):
-    extractor_cells: frozenset[Coord]
-    extension_cells: frozenset[Coord]
-    output_stub_cells: frozenset[Coord]
+    @property
+    def extractor_cells(self) -> frozenset[Coord]: ...
+
+    @property
+    def extension_cells(self) -> frozenset[Coord]: ...
+
+    @property
+    def output_stub_cells(self) -> frozenset[Coord]: ...
 
 
 def mining_occupied_from_rim_placement(placement: _RimPlacementMiningSource) -> frozenset[Coord]:

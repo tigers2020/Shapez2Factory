@@ -91,6 +91,7 @@ def test_shape_belt_banned_in_replay_fixture_payloads() -> None:
 
 def test_effective_cell_wire_never_emits_shape_belt() -> None:
     from django_apps.asteroid_lab.replay.effective_cell_view import merge_effective_cell_view
+    from django_apps.asteroid_lab.replay.effective_cell_wire import effective_cell_to_wire
 
     view = merge_effective_cell_view(
         x=1,
@@ -99,7 +100,7 @@ def test_effective_cell_wire_never_emits_shape_belt() -> None:
         overlay_cells=[{"x": 1, "y": 2, "kind": "candidate_miner", "transport": "shape_belt"}],
     )
     assert view is not None
-    wire = view.to_wire()
+    wire = effective_cell_to_wire(view)
     public = {key: value for key, value in wire.items() if key != "sources"}
     assert _BANNED_TOKEN not in str(public)
     assert wire["output"]["transport_kind"] == "space_belt"

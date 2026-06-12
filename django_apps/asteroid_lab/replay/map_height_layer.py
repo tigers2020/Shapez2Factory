@@ -52,10 +52,32 @@ _FLUID_TRANSPORT_VALUES = frozenset({"fluid", "fluid_pipe"})
 _SHAPE_TRANSPORT_VALUES = frozenset({"shape", "shape_belt"})
 
 
+def wire_coord_int(value: object) -> int:
+    """Coerce replay wire coordinates for dedupe keys (invalid → 0)."""
+
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (float, str)):
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return 0
+    return 0
+
+
 def clamp_replay_height_layer(value: object) -> int:
-    try:
-        n = int(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    if isinstance(value, bool):
+        return _REPLAY_HEIGHT_LAYER_MIN
+    if isinstance(value, int):
+        n = value
+    elif isinstance(value, (float, str)):
+        try:
+            n = int(value)
+        except (ValueError, TypeError):
+            return _REPLAY_HEIGHT_LAYER_MIN
+    else:
         return _REPLAY_HEIGHT_LAYER_MIN
     return max(_REPLAY_HEIGHT_LAYER_MIN, min(_REPLAY_HEIGHT_LAYER_MAX, n))
 

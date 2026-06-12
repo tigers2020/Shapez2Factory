@@ -25,6 +25,15 @@ def _minimal_copy() -> str:
     return "SHAPEZ2-4-e30="
 
 
+def _stub_game_data_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CLI tests mock runtime; avoid ORM snapshot export (xdist-safe)."""
+
+    monkeypatch.setattr(
+        "django_apps.asteroid_lab.management.commands.run_solver.build_game_data_snapshot_payload",
+        lambda: {},
+    )
+
+
 @override_settings(ASTEROID_LAB_LAYER_02_SOLVER_ENABLED=False)
 def test_run_solver_command_subprocess_failure_raises(
     capsys: pytest.CaptureFixture[str],
@@ -32,6 +41,7 @@ def test_run_solver_command_subprocess_failure_raises(
 ) -> None:
     proj = m.AsteroidProject.objects.create(name="CliStub", slug="cli-run-stub")
     m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
+    _stub_game_data_snapshot(monkeypatch)
 
     monkeypatch.setattr(
         "django_apps.asteroid_lab.management.commands.run_solver.run_solver_runtime_for_project",
@@ -63,6 +73,7 @@ def test_run_solver_command_json_stdout_includes_error_code(
 ) -> None:
     proj = m.AsteroidProject.objects.create(name="CliJson", slug="cli-run-json")
     m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
+    _stub_game_data_snapshot(monkeypatch)
     monkeypatch.setattr(
         "django_apps.asteroid_lab.management.commands.run_solver.run_solver_runtime_for_project",
         lambda *args, **kwargs: SolverRuntimeEntryResult(
@@ -91,6 +102,7 @@ def test_run_solver_command_subprocess_flag_keeps_subprocess_only_mode(
 ) -> None:
     proj = m.AsteroidProject.objects.create(name="CliSubprocess", slug="cli-subprocess")
     m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
+    _stub_game_data_snapshot(monkeypatch)
     calls: list[dict[str, object]] = []
 
     def fake_run_solver_runtime_for_project(

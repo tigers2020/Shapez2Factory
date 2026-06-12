@@ -7,6 +7,7 @@ from typing import Any
 
 from django_apps.asteroid_lab.replay.overlay_composition import compose_replay_overlay_cells
 from django_apps.asteroid_lab.replay.overlay_wire_contract import overlay_cell_to_wire_dict
+from django_apps.asteroid_lab.replay.replay_overlay_wire import ReplayOverlayCellWire
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
 from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayMapView,
@@ -40,7 +41,7 @@ def structural_overlay_wire_from_source_frame(
 
 def transient_overlay_cells_to_wire(
     cells: Sequence[ReplayOverlayCell],
-) -> list[dict[str, object]]:
+) -> list[ReplayOverlayCellWire]:
     return [overlay_cell_to_wire_dict(cell) for cell in cells]
 
 

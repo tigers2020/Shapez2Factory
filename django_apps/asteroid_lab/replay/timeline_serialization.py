@@ -34,6 +34,19 @@ def _require_int(value: object, *, field: str) -> int:
     return value
 
 
+def _coerce_int(value: object, *, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (float, str)):
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return default
+    return default
+
+
 def _mapping(value: object) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {}
@@ -81,7 +94,7 @@ def _cell_from_dict(data: dict[str, Any]) -> ReplayCell:
         kind=_wire_kind(data),
         transport=_wire_transport(data),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
-        rotation=int(data.get("rotation") or 0),
+        rotation=_coerce_int(data.get("rotation"), default=0),
         layer=wire_explicit_height_layer(data),
     )
 
@@ -94,7 +107,7 @@ def _cell_delta_from_dict(data: dict[str, Any]) -> ReplayCellDelta:
         transport=_wire_transport(data),
         op=str(data.get("op") or "set"),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
-        rotation=int(data.get("rotation") or 0),
+        rotation=_coerce_int(data.get("rotation"), default=0),
         layer=wire_explicit_height_layer(data),
     )
 
@@ -107,7 +120,7 @@ def _overlay_from_dict(data: Mapping[str, object]) -> ReplayOverlayCell:
         transport=_wire_transport(data),
         output_transport_kind=str(data.get("output_transport_kind") or ""),
         tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
-        rotation=int(data.get("rotation") or 0),
+        rotation=_coerce_int(data.get("rotation"), default=0),
         layer=wire_explicit_height_layer(dict(data)),
     )
 

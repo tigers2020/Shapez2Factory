@@ -5,30 +5,11 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab.replay.effective_cell_view import (
-    EffectiveCellView,
-    effective_cell_to_wire,
     merge_effective_cell_view,
     normalize_project_transport_kind,
     simulation_for_tile_id,
 )
-
-
-def test_effective_cell_to_wire_matches_to_wire_shim() -> None:
-    view = EffectiveCellView(
-        frame_index=0,
-        x=1,
-        y=2,
-        layer=0,
-        terrain_kind="void",
-        terrain_tile_type=None,
-        occupant_kind="",
-        occupant_rotation=None,
-        transport_kind="none",
-        transport_tile_id=None,
-        simulation=None,
-        output_transport_kind="none",
-    )
-    assert effective_cell_to_wire(view) == view.to_wire()
+from django_apps.asteroid_lab.replay.effective_cell_wire import effective_cell_to_wire
 
 
 def test_normalize_maps_legacy_shape_belt_to_space_belt() -> None:
@@ -63,7 +44,7 @@ def test_merge_candidate_miner_new_wire_uses_output_transport_kind() -> None:
     assert view is not None
     assert view.transport_kind == "none"
     assert view.output_transport_kind == "space_belt"
-    wire = view.to_wire()
+    wire = effective_cell_to_wire(view)
     assert wire["output"]["transport_kind"] == "space_belt"
     assert wire["transport"]["kind"] == "none"
 

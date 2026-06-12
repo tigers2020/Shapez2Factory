@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from django_apps.asteroid_lab.replay.map_height_layer import enrich_replay_wire_row_with_layer
+from django_apps.asteroid_lab.replay.map_height_layer import (
+    enrich_replay_wire_row_with_layer,
+    wire_coord_int,
+)
 
 _CONNECTOR_ROLE = "planned_exterior_connector"
 
@@ -12,8 +15,8 @@ _CONNECTOR_ROLE = "planned_exterior_connector"
 def _connector_dedupe_key(row: Mapping[str, object]) -> tuple[object, ...]:
     return (
         str(row.get("overlay_role") or ""),
-        int(row["x"]),
-        int(row["y"]),
+        wire_coord_int(row["x"]),
+        wire_coord_int(row["y"]),
         str(row.get("connector_id") or ""),
     )
 
@@ -22,8 +25,8 @@ def _candidate_dedupe_key(row: Mapping[str, object]) -> tuple[object, ...]:
     key: list[object] = [
         str(row.get("overlay_role") or ""),
         str(row.get("kind") or ""),
-        int(row["x"]),
-        int(row["y"]),
+        wire_coord_int(row["x"]),
+        wire_coord_int(row["y"]),
     ]
     if row.get("candidate_id") is not None:
         key.append(str(row["candidate_id"]))
@@ -36,8 +39,8 @@ def _structural_dedupe_key(row: Mapping[str, object]) -> tuple[object, ...]:
     return (
         str(row.get("overlay_role") or ""),
         str(row.get("kind") or ""),
-        int(row["x"]),
-        int(row["y"]),
+        wire_coord_int(row["x"]),
+        wire_coord_int(row["y"]),
     )
 
 

@@ -62,8 +62,12 @@ extend-exclude = "/(\\.git|\\.venv|graphify-out|django_apps/game_data/graphify-o
 
 [tool.mypy]
 strict = true
-files = ["src"]
+files = ["src", "django_apps/asteroid_lab/replay"]
 python_version = "3.12"
+
+[[tool.mypy.overrides]]
+module = "django.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

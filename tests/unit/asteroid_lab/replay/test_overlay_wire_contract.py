@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from django_apps.asteroid_lab.replay.effective_cell_view import merge_effective_cell_view
+from django_apps.asteroid_lab.replay.effective_cell_view import (
+    merge_effective_cell_view,
+)
+from django_apps.asteroid_lab.replay.effective_cell_wire import effective_cell_to_wire
 from django_apps.asteroid_lab.replay.layer03_overlay_cells import overlay_for_probed
 from django_apps.asteroid_lab.replay.overlay_wire_contract import (
     assert_candidate_overlay_wire_contract,
@@ -121,8 +124,8 @@ def test_effective_cell_view_merges_legacy_and_new_wire_same_result() -> None:
     assert legacy_view.output_transport_kind == new_view.output_transport_kind == "space_belt"
     assert legacy_view.occupant_kind == new_view.occupant_kind == "candidate_miner"
 
-    legacy_wire = legacy_view.to_wire()
-    new_wire = new_view.to_wire()
+    legacy_wire = effective_cell_to_wire(legacy_view)
+    new_wire = effective_cell_to_wire(new_view)
     assert legacy_wire["output"] == new_wire["output"]
     assert legacy_wire["transport"] == new_wire["transport"]
     assert "shape_belt" not in str(new_wire)

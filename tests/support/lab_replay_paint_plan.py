@@ -18,6 +18,7 @@ from tests.support.lab_replay_sprite_wire import (
     CELL_KIND_STATIC_RELPATH,
     CELL_KIND_TO_IDENTIFIER,
     _sprite_relpath_from_tile_type,
+    cell_overlay_json_from_frame,
 )
 
 # Mirror ``lab_replay_canvas_terrain.js`` TERRAIN_FILL defaults.
@@ -106,6 +107,22 @@ def _resolve_occupant(
     return None, chrome
 
 
+def _rotation_from_overlay_sources(view: Mapping[str, object]) -> int:
+    sources = view.get("sources")
+    if not isinstance(sources, Mapping):
+        return 0
+    overlays = sources.get("overlay_cells")
+    if overlays is None:
+        return 0
+    rows = overlays if isinstance(overlays, list) else [overlays]
+    for row in rows:
+        if isinstance(row, Mapping):
+            rot = _rotation(row)
+            if rot:
+                return rot
+    return 0
+
+
 def _resolve_transport(
     view: Mapping[str, object],
     *,
@@ -129,6 +146,10 @@ def _resolve_transport(
 
     occupant = _wire_section(view, "occupant")
     rotation = _rotation(occupant)
+    if _kind_str(occupant) in _NONE_KINDS:
+        overlay_rotation = _rotation_from_overlay_sources(view)
+        if overlay_rotation:
+            rotation = overlay_rotation
     return {"rel": rel, "rotation": rotation}
 
 
@@ -215,7 +236,11 @@ def _first_row_at_coord(
     return matches[0] if matches else None
 
 
-def _collect_coord_universe(map_view: Mapping[str, object]) -> set[tuple[int, int, int]]:
+def _collect_coord_universe(
+    map_view: Mapping[str, object],
+    *,
+    extra_rows: list[JsonObject] | None = None,
+) -> set[tuple[int, int, int]]:
     coords: set[tuple[int, int, int]] = set()
     for key in ("full_cells", "overlay_cells", "cell_delta"):
         rows = map_view.get(key)
@@ -224,7 +249,28 @@ def _collect_coord_universe(map_view: Mapping[str, object]) -> set[tuple[int, in
         for row in rows:
             if isinstance(row, Mapping):
                 coords.add(_cell_coord(row))
+    if extra_rows:
+        for row in extra_rows:
+            if isinstance(row, Mapping):
+                coords.add(_cell_coord(row))
     return coords
+
+
+def _overlay_json_rows_from_frame(frame: Mapping[str, object]) -> list[JsonObject]:
+    """Paint-target rows from ``cell_overlay_json`` (sparse overlay frame parity)."""
+
+    overlay = cell_overlay_json_from_frame(frame)
+    if not overlay:
+        return []
+    from django_apps.asteroid_lab.replay.replay_overlay_bucket_registry import (
+        collect_overlay_cells_for_paint_target,
+    )
+
+    return [
+        dict(row)
+        for row in collect_overlay_cells_for_paint_target(dict(overlay))
+        if isinstance(row, Mapping)
+    ]
 
 
 def build_effective_cell_view_index(
@@ -235,9 +281,9 @@ def build_effective_cell_view_index(
     """Build per-frame effective-cell wire index keyed by ``cell_key(x, y, layer)``.
 
     Collects the visible coordinate universe from ``map_view.full_cells``,
-    ``overlay_cells``, and ``cell_delta``. For each coordinate, sanitizes all
-    merge inputs, merges via ``merge_effective_cell_view``, and serializes with
-    ``effective_cell_to_wire``.
+    ``overlay_cells``, ``cell_delta``, and paint-target ``cell_overlay_json``
+    rows. For each coordinate, sanitizes all merge inputs, merges via
+    ``merge_effective_cell_view``, and serializes with ``effective_cell_to_wire``.
 
     ``carry_layout_snapshot`` is reserved for Slice 3 layout-carry expansion;
     ignored when ``None``.
@@ -265,6 +311,7 @@ def build_effective_cell_view_index(
         for row in map_view.get("cell_delta", [])
         if isinstance(row, Mapping)
     ]
+    overlay_json_rows = _overlay_json_rows_from_frame(frame)
 
     frame_index_raw = frame.get("frame_index")
     frame_index: int | None
@@ -277,10 +324,15 @@ def build_effective_cell_view_index(
             frame_index = None
 
     index: dict[str, dict[str, object]] = {}
-    for x, y, layer in sorted(_collect_coord_universe(map_view)):
+    for x, y, layer in sorted(
+        _collect_coord_universe(map_view, extra_rows=overlay_json_rows),
+    ):
         full_cell = _first_row_at_coord(full_rows, x, y, layer)
         delta_cell = _first_row_at_coord(delta_rows, x, y, layer)
-        overlay_cells = _rows_at_coord(overlay_rows, x, y, layer) or None
+        overlay_cells = _rows_at_coord(overlay_rows, x, y, layer)
+        overlay_cells.extend(_rows_at_coord(overlay_json_rows, x, y, layer))
+        if not overlay_cells:
+            overlay_cells = None
 
         sanitized_full = (
             sanitize_replay_wire_cell_for_read(full_cell) if full_cell is not None else None

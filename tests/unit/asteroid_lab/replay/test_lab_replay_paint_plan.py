@@ -152,3 +152,15 @@ def test_background_fill_allowed_only_when_no_sprite() -> None:
         terrain = layers.get("terrain")
         if terrain is not None and layers["occupant"] is None and layers["transport"] is None:
             assert terrain["mode"] != "background_fill" or terrain.get("fill") == BACKGROUND_FILL
+
+
+def test_build_effective_cell_view_index_unions_cell_overlay_json() -> None:
+    from tests.support.lab_replay_sprite_wire import overlay_fallback_fixture_frame
+
+    frame = overlay_fallback_fixture_frame()
+    index = build_effective_cell_view_index(frame)
+    pipe_key = cell_key(2, 0, 2)
+    assert pipe_key in index
+    view = index[pipe_key]
+    assert view["transport"]["kind"] == "space_pipe"
+    assert view["transport"]["tile_id"] == "SpacePipe_Forward"

@@ -135,6 +135,25 @@
     return { occupant: null, chrome: chrome };
   }
 
+  function rotationFromOverlaySources(view) {
+    var sources = view && view.sources;
+    if (!sources || typeof sources !== "object") {
+      return 0;
+    }
+    var overlays = sources.overlay_cells;
+    if (!overlays) {
+      return 0;
+    }
+    var rows = Array.isArray(overlays) ? overlays : [overlays];
+    for (var i = 0; i < rows.length; i++) {
+      var rot = rotation(rows[i]);
+      if (rot) {
+        return rot;
+      }
+    }
+    return 0;
+  }
+
   function resolveTransport(view, occupantKind) {
     if (occupantKind === "candidate_miner") {
       return null;
@@ -157,7 +176,14 @@
     }
 
     var occupant = wireSection(view, "occupant");
-    return { rel: rel, rotation: rotation(occupant) };
+    var rot = rotation(occupant);
+    if (NONE_KINDS[kindStr(occupant)]) {
+      var overlayRot = rotationFromOverlaySources(view);
+      if (overlayRot) {
+        rot = overlayRot;
+      }
+    }
+    return { rel: rel, rotation: rot };
   }
 
   function resolveTerrain(view, hasSprite) {
@@ -245,7 +271,47 @@
     return matches.length ? matches[0] : null;
   }
 
-  function collectCoordUniverse(mapView) {
+  function cellOverlayJsonFromFrame(frame) {
+    if (!frame || typeof frame !== "object") {
+      return null;
+    }
+    var top = frame.cell_overlay_json;
+    if (top && typeof top === "object") {
+      return top;
+    }
+    var payload = frame.frame_payload;
+    if (payload && typeof payload === "object" && payload.cell_overlay_json) {
+      return payload.cell_overlay_json;
+    }
+    return null;
+  }
+
+  function pushOverlayCellList(out, rows) {
+    if (!Array.isArray(rows)) {
+      return;
+    }
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i] && typeof rows[i] === "object") {
+        out.push(Object.assign({}, rows[i]));
+      }
+    }
+  }
+
+  function overlayJsonRowsFromFrame(frame) {
+    var overlay = cellOverlayJsonFromFrame(frame);
+    if (!overlay) {
+      return [];
+    }
+    var out = [];
+    pushOverlayCellList(out, overlay.cells);
+    pushOverlayCellList(out, overlay.equipment_cells);
+    pushOverlayCellList(out, overlay.equipment);
+    pushOverlayCellList(out, overlay.adjacent_transport);
+    pushOverlayCellList(out, overlay.transport);
+    return out;
+  }
+
+  function collectCoordUniverse(mapView, extraRows) {
     var coords = {};
     var keys = ["full_cells", "overlay_cells", "cell_delta"];
     for (var k = 0; k < keys.length; k++) {
@@ -261,6 +327,17 @@
         var coord = cellCoord(row);
         var key = coord[0] + "," + coord[1] + "," + coord[2];
         coords[key] = coord;
+      }
+    }
+    if (extraRows && extraRows.length) {
+      for (var j = 0; j < extraRows.length; j++) {
+        var extraRow = extraRows[j];
+        if (!extraRow || typeof extraRow !== "object") {
+          continue;
+        }
+        var extraCoord = cellCoord(extraRow);
+        var extraKey = extraCoord[0] + "," + extraCoord[1] + "," + extraCoord[2];
+        coords[extraKey] = extraCoord;
       }
     }
     return Object.keys(coords)
@@ -344,6 +421,8 @@
       }
     }
 
+    var overlayJsonRows = overlayJsonRowsFromFrame(frame);
+
     var frameIndex = null;
     if (frame.frame_index != null) {
       var fi = parseInt(String(frame.frame_index), 10);
@@ -351,7 +430,7 @@
     }
 
     var index = {};
-    var universe = collectCoordUniverse(mapView);
+    var universe = collectCoordUniverse(mapView, overlayJsonRows);
     for (i = 0; i < universe.length; i++) {
       var x = universe[i][0];
       var y = universe[i][1];
@@ -360,6 +439,10 @@
       var fullCell = firstRowAtCoord(fullRows, x, y, layer);
       var deltaCell = firstRowAtCoord(deltaRows, x, y, layer);
       var overlayCells = rowsAtCoord(overlayRows, x, y, layer);
+      var overlayJsonAtCoord = rowsAtCoord(overlayJsonRows, x, y, layer);
+      for (var oj = 0; oj < overlayJsonAtCoord.length; oj++) {
+        overlayCells.push(overlayJsonAtCoord[oj]);
+      }
       if (!overlayCells.length) {
         overlayCells = null;
       }

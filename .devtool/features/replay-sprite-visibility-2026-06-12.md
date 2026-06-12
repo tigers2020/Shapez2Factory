@@ -1,6 +1,6 @@
 ---
 id: "replay-sprite-visibility-2026-06-12"
-status: "implement"
+status: "verify"
 priority: "high"
 assignee: null
 epic: null
@@ -55,5 +55,7 @@ Replay map에서 sprite 일부 미표시·흐림(faded overlay 대체), legacy `
 - 2026-06-12 — **verify** — workflow gate: re-ran 58 passed (10.20s); commit graph `d9cdd73e..3a0d60ee` (5 Slice 4 commits); `buildDomPlanForCell` absent; `createDomPlanResolverForFrame` before loop — **Slice 4 closed**
 - 2026-06-12 — **align** — Slice 5 plan drafted (harvest quarantine/delete); Task 7 NON_SPRITE cleanup deferred to post-Slice-5 HITL subtask
 - 2026-06-12 — **align** — Slice 5 plan review APPROVED WITH AMENDMENTS: Task 5 default policy (A) soft quarantine; hard delete + NON_SPRITE → Task 6 HITL; no tag until requested
+- 2026-06-13 — **verify** — Slice 5 Tasks 1→5 (policy A): harvest quarantine markers; frameCellIndexMap v2; preload/carry dedup; Python sprite_entries paint plan; soft quarantine gate **66/66** pytest; commits `2fbd5f9e`→`cfd117e6`; legacy stageCell retained; Task 6/7 HITL
 - 2026-06-12 — **implement** — Slice 5 Task 2: `buildCellByGridIndexFromFrame` + v2 `frameCellIndexMap` delegate; legacy harvest when flag off; 27/27 pytest green; commit `8d9acf4b`
 - 2026-06-12 — **verify** — Slice 5 Task 5 policy (A) soft quarantine: v2 early-return clean; `test_build_canvas_paint_plan_v2_has_no_stage_cell` + `test_legacy_canvas_harvest_still_present_when_flag_off`; legacy `stageCell` + `const overlays` retained; Slice 5 gate green
+- 2026-06-12 — **implement** — Task 6a (HITL approved): policy A — `build_effective_cell_view_index` unions `cell_overlay_json` paint-target rows (Python registry + JS mirror); transport rotation from overlay sources; `test_build_effective_cell_view_index_unions_cell_overlay_json` + green `test_overlay_fallback_frame_includes_pipe_sprite_from_cell_overlay_json`; no harvest delete / flag / NON_SPRITE / tag

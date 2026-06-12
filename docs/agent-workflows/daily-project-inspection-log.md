@@ -243,3 +243,81 @@ Either (a) hide/disable checkbox until macro-only contract is implemented, or (b
 - Linear API search unavailable (401)
 
 **Next recommended target:** docs / specs / contracts / AGENTS rules (macro-only L4 open question vs UI exposure; replay wiring canon `documents/Algorithm/asteroid_lab_12_runtime_replay_wiring.md`) — or CI / scripts / automation (`scripts/test_fast.ps1` cross-platform gap SHA-46)
+
+---
+
+## 2026-06-12 Daily Inspection (13:00 UTC cron)
+
+**Target:** docs / specs / contracts / AGENTS rules — repository map SoT (`structure.md`), agent authority routing (`AGENTS.md`, `.cursor/rules/`), knowledge wiki bootstrap aftermath
+
+**Commands run:**
+- `git status`, `git branch --show-current`, `git log --oneline -15`
+- `python3 manage.py check` (pass)
+- `python3 -m pytest tests/unit/architecture/ -q` (54 passed)
+- Custom link-existence scan on `structure.md`, `AGENTS.md`, `docs/agent-workflows/`, `documents/knowledge/wiki/`
+- Path inventory: `ls documents/`, `ls docs/`, `find` for `asteroid_lab_*.md`, `documents/game_rules/`, `docs/adr/`
+- `curl https://api.linear.app/graphql` (401 — no `LINEAR_API_KEY`)
+- `rg` stale authority paths in `.cursor/`, `structure.md`, production code comments
+
+**Files/areas reviewed:**
+- `structure.md` § Documents map + Top-level layout links
+- `AGENTS.md` § Default workflow authority chain (wiki Index pointer added in bc43d5b6)
+- `.cursor/rules/asteroid-lab-invariants.mdc` (glob + six Algorithm file references)
+- `documents/knowledge/README.md`, `documents/knowledge/wiki/Index.md`, `documents/knowledge/wiki/Log.md`
+- `documents/knowledge/raw/index/document_inventory.md` (stale 2026-05-30 authority table)
+- `documents/knowledge/raw/algorithm/README.md` (only `asteroid_lab_11` remains ACTIVE)
+- `tests/unit/architecture/test_repo_map_governance.py` (top-level paths only; Documents map not gated)
+- Production doc comments: `django_apps/shapez_core/domain/*.py`, `rim_throughput.py`, migration `0026`
+
+**Findings filed:**
+
+> **Linear MCP blocked:** `https://api.linear.app/graphql` returned 401 (no `LINEAR_API_KEY`). Draft card below was **not** created in Linear.
+
+### Draft — SHA-70 (proposed)
+
+**Title:** `[docs] structure.md and asteroid-lab-invariants reference removed documents/ paths after knowledge wiki bootstrap`
+
+**Description:**
+
+## Problem
+2026-06-12 wiki bootstrap (`bc43d5b6`) updated `AGENTS.md` to route agents through `documents/knowledge/wiki/Index.md`, but `structure.md` (repository map SoT) and `.cursor/rules/asteroid-lab-invariants.mdc` still declare canonical authority under `documents/README.md`, `documents/index/`, `documents/Algorithm/`, `documents/plans/`, `documents/research/`, and legacy `docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/` paths that no longer exist on disk. Active `documents/` tree is now `documents/knowledge/` + `documents/ai/manuals/` only; ADRs, game rules, algorithm canon, and CLI-first specs live under `documents/knowledge/raw/` or a reduced `docs/superpowers/` set. Agents following `structure.md` or invariant router globs hit dead paths; `asteroid_lab_12_runtime_replay_wiring.md` and five other Algorithm contracts referenced by invariants are absent repo-wide.
+
+## Evidence
+- `structure.md` Documents map: 11 broken relative links (`documents/README.md`, `documents/index/document_inventory.md`, `documents/Algorithm/README.md`, `documents/plans/`, `documents/research/`, `documents/reports/README.md`, `docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/README.md`, `docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md`)
+- Missing at former canon paths: `documents/ai/START_HERE.md`, `docs/adr/`, `documents/game_rules/`, `docs/domain/asteroid_game_data_snapshot.md` — counterparts exist only under `documents/knowledge/raw/**`
+- `.cursor/rules/asteroid-lab-invariants.mdc`: glob `documents/Algorithm/asteroid_lab*.md` matches zero files; references `_01_optimization_input.md` … `_12_runtime_replay_wiring.md` — none on disk (only `documents/knowledge/raw/algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md` marked ACTIVE)
+- `documents/knowledge/raw/index/document_inventory.md` still lists deleted paths as `CANON` (dated 2026-05-30)
+- `tests/unit/architecture/test_repo_map_governance.py::test_structure_md_top_level_paths_exist` passes because it does not validate § Documents map links
+- Code comments still cite `documents/game_rules/*.md` while files are at `documents/knowledge/raw/game-rules/*.md` (e.g. `shape.py`, `crystal_geometry.py`, `rim_throughput.py`)
+- `python3 manage.py check` pass; `pytest tests/unit/architecture/ -q` 54 passed
+
+## Impact
+Repository map SoT contradicts post-bootstrap layout — agents, automations, and humans lose domain authority chain for Asteroid Lab invariants, ADRs, game rules, and CLI-first specs. Invariant router glob never activates on algorithm edits. Risk of reintroducing deleted archive docs or implementing against stale inventory rows.
+
+## Suggested Fix
+Pick one authority policy and apply consistently: (a) restore thin active symlinks or re-export paths for still-canonical docs (`docs/adr/`, active `docs/superpowers/specs/`, surviving algorithm contracts), or (b) update `structure.md` Documents map, `document_inventory.md`, `asteroid-lab-invariants.mdc` globs/references, and code-comment paths to `documents/knowledge/raw/` + wiki Index; add `test_structure_md_document_map_links_exist` (or extend repo-map governance) so future migrations cannot ship with broken SoT links.
+
+## Acceptance Criteria
+- Every link in `structure.md` § Documents map resolves on disk or is explicitly marked non-authority
+- `asteroid-lab-invariants.mdc` glob matches existing algorithm/canon files or lists wiki/raw successors
+- `document_inventory.md` reflects 2026-06-12 layout; no `CANON` rows for missing paths
+- Architecture test fails if Documents map links break
+- `AGENTS.md` and `structure.md` agree on authority read order
+
+**Labels:** docs, infra, automation | **Priority:** High
+
+**Findings skipped (duplicate or weak):**
+- Macro-only Lab checkbox no-op — **SHA-69** (UI; filed 2026-06-11)
+- L4 macro-only open question in archived spec `documents/knowledge/raw/docs-superpowers/specs/2026-06-08-l4-inner-pattern-fill-contract.md` — contract gap subsumed by SHA-69 product issue; not a separate docs card
+- `scripts/test_fast.ps1` Linux gap — **SHA-46** draft (CI/scripts rotation deferred)
+- CI governance script not in CI — **SHA-41** (open plan)
+- Wiki internal broken wikilinks — resolved per `documents/knowledge/wiki/Log.md` 2026-06-12 entries; active governance paths are the higher-severity gap
+- `documents/knowledge/raw/` internal cross-links to old `documents/Algorithm/` — expected archive noise; fix via inventory/structure update, not separate filing
+
+**Duplicate checks:**
+- `.agent-loop/reviewed-areas.md` (SHA-7–SHA-56; no structure.md / wiki-bootstrap entry)
+- `docs/agent-workflows/daily-project-inspection-log.md` prior entries (SHA-45–69 drafts; no SHA-70)
+- `documents/knowledge/raw/plans/` grep: no plan for structure.md / documents path migration
+- Linear API search unavailable (401)
+
+**Next recommended target:** CI / scripts / automation (`scripts/test_fast.ps1` cross-platform gap SHA-46; `check_governance.ps1` CI gap SHA-41) — or performance / large-fixture behavior (`tests/golden/`, golden harness SHA-30)

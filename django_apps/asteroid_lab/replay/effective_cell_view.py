@@ -8,6 +8,11 @@ from django_apps.asteroid_lab.replay.effective_cell_wire import (
     EffectiveCellWire,
     effective_cell_to_wire,
 )  # re-exported in __all__
+from django_apps.asteroid_lab.replay.replay_map_cell_wire import (
+    wire_field_kind,
+    wire_field_tile_type,
+    wire_field_transport,
+)
 from django_apps.asteroid_lab.typing_boundary import JsonObject
 
 _LEGACY_SHAPE_OUTPUT_TOKENS = frozenset({"shape_belt", "belt", "shape"})
@@ -80,37 +85,16 @@ def simulation_for_tile_id(tile_id: str | None) -> str | None:
     return None
 
 
-def _wire_cell_kind(cell: JsonObject) -> str:
-    raw = cell.get("kind")
-    if raw is None:
-        raw = cell.get("cell_kind")
-    return str(raw or "").strip()
-
-
-def _wire_transport_raw(cell: JsonObject) -> str:
-    raw = cell.get("transport")
-    if raw is None:
-        raw = cell.get("transport_kind")
-    return str(raw or "").strip()
-
-
 def _wire_output_transport_kind(cell: JsonObject) -> str:
     raw = cell.get("output_transport_kind")
     if raw is not None and str(raw).strip():
         normalized = normalize_project_transport_kind(raw)
         if normalized != "none":
             return normalized
-    kind = _wire_cell_kind(cell)
+    kind = wire_field_kind(cell).strip()
     if _occupant_kind_from_cell(kind) is not None:
-        return normalize_project_transport_kind(_wire_transport_raw(cell))
+        return normalize_project_transport_kind(wire_field_transport(cell))
     return "none"
-
-
-def _wire_tile_type(cell: JsonObject) -> str:
-    raw = cell.get("tile_type")
-    if raw is None:
-        raw = cell.get("sprite_identifier")
-    return str(raw or "").strip()
 
 
 def _wire_rotation(cell: JsonObject) -> int | None:
@@ -191,8 +175,8 @@ def merge_effective_cell_view(
     for cell in (full_cell, delta_cell):
         if cell is None:
             continue
-        kind = _wire_cell_kind(cell)
-        tile_type = _wire_tile_type(cell)
+        kind = wire_field_kind(cell).strip()
+        tile_type = wire_field_tile_type(cell).strip()
         layer = _wire_layer(cell, default=layer)
         if kind in _TERRAIN_CELL_KINDS or (not kind and not tile_type):
             if kind:
@@ -207,7 +191,7 @@ def merge_effective_cell_view(
             if profile != "none":
                 output_transport_kind = profile
         if _is_route_tile(tile_type, kind):
-            transport_kind = normalize_project_transport_kind(kind or _wire_transport_raw(cell))
+            transport_kind = normalize_project_transport_kind(kind or wire_field_transport(cell))
             if transport_kind == "none" and tile_type.startswith("SpacePipe_"):
                 transport_kind = "space_pipe"
             elif transport_kind == "none" and tile_type.startswith("SpaceBelt_"):
@@ -217,7 +201,7 @@ def merge_effective_cell_view(
 
     if overlay_cells:
         for overlay in overlay_cells:
-            kind = _wire_cell_kind(overlay)
+            kind = wire_field_kind(overlay).strip()
             occupant = _occupant_kind_from_cell(kind)
             if occupant is not None:
                 occupant_kind = occupant
@@ -228,10 +212,10 @@ def merge_effective_cell_view(
                 if profile != "none":
                     output_transport_kind = profile
                 layer = _wire_layer(overlay, default=layer)
-            tile_type = _wire_tile_type(overlay)
+            tile_type = wire_field_tile_type(overlay).strip()
             if _is_route_tile(tile_type, kind):
                 transport_kind = normalize_project_transport_kind(
-                    kind or _wire_transport_raw(overlay)
+                    kind or wire_field_transport(overlay)
                 )
                 if transport_kind == "none" and tile_type.startswith("SpacePipe_"):
                     transport_kind = "space_pipe"

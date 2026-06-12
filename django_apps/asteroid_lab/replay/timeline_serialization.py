@@ -5,12 +5,18 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Mapping
 
-from django_apps.asteroid_lab.replay.map_height_layer import (
-    resolve_replay_height_layer,
-    wire_explicit_height_layer,
-)
 from django_apps.asteroid_lab.replay.overlay_wire_contract import overlay_cell_to_wire_dict
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.replay_map_cell_wire import (
+    ReplayMapCellWireError,
+    replay_cell_delta_from_wire,
+    replay_cell_delta_to_wire,
+    replay_cell_from_wire,
+    replay_cell_to_wire,
+)
+from django_apps.asteroid_lab.replay.replay_map_cell_wire import (
+    replay_overlay_cell_from_wire as _replay_overlay_cell_from_wire,
+)
 from django_apps.asteroid_lab.replay.replay_timeline_wire import ReplayBBoxWire
 from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayAnnotation,
@@ -34,23 +40,14 @@ def _require_int(value: object, *, field: str) -> int:
     return value
 
 
-def _coerce_int(value: object, *, default: int = 0) -> int:
-    if isinstance(value, bool):
-        return default
-    if isinstance(value, int):
-        return value
-    if isinstance(value, (float, str)):
-        try:
-            return int(value)
-        except (ValueError, TypeError):
-            return default
-    return default
-
-
 def _mapping(value: object) -> JsonObject:
     if not isinstance(value, dict):
         return {}
     return dict(value)
+
+
+def _map_cell_wire_error(exc: ReplayMapCellWireError) -> ReplayTimelineDeserializationError:
+    return ReplayTimelineDeserializationError(str(exc))
 
 
 def replay_bbox_to_wire(bbox: ReplayBBox) -> ReplayBBoxWire:
@@ -79,73 +76,34 @@ def replay_bbox_from_json_dict(data: object) -> ReplayBBox:
     )
 
 
-def _wire_kind(data: Mapping[str, object]) -> str:
-    return str(data.get("kind") or data.get("cell_kind") or "")
-
-
-def _wire_transport(data: Mapping[str, object]) -> str:
-    return str(data.get("transport") or data.get("transport_kind") or "")
-
-
 def _cell_from_dict(data: JsonObject) -> ReplayCell:
-    return ReplayCell(
-        x=_require_int(data.get("x"), field="cell.x"),
-        y=_require_int(data.get("y"), field="cell.y"),
-        kind=_wire_kind(data),
-        transport=_wire_transport(data),
-        tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
-        rotation=_coerce_int(data.get("rotation"), default=0),
-        layer=wire_explicit_height_layer(data),
-    )
+    try:
+        return replay_cell_from_wire(data, field_prefix="cell", lenient_rotation=True)
+    except ReplayMapCellWireError as exc:
+        raise _map_cell_wire_error(exc) from exc
 
 
 def _cell_delta_from_dict(data: JsonObject) -> ReplayCellDelta:
-    return ReplayCellDelta(
-        x=_require_int(data.get("x"), field="cell_delta.x"),
-        y=_require_int(data.get("y"), field="cell_delta.y"),
-        kind=_wire_kind(data),
-        transport=_wire_transport(data),
-        op=str(data.get("op") or "set"),
-        tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
-        rotation=_coerce_int(data.get("rotation"), default=0),
-        layer=wire_explicit_height_layer(data),
-    )
+    try:
+        return replay_cell_delta_from_wire(data, field_prefix="cell_delta", lenient_rotation=True)
+    except ReplayMapCellWireError as exc:
+        raise _map_cell_wire_error(exc) from exc
 
 
 def _overlay_from_dict(data: JsonObject) -> ReplayOverlayCell:
-    return ReplayOverlayCell(
-        x=_require_int(data.get("x"), field="overlay.x"),
-        y=_require_int(data.get("y"), field="overlay.y"),
-        kind=_wire_kind(data),
-        transport=_wire_transport(data),
-        output_transport_kind=str(data.get("output_transport_kind") or ""),
-        tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
-        rotation=_coerce_int(data.get("rotation"), default=0),
-        layer=wire_explicit_height_layer(data),
-    )
+    try:
+        return _replay_overlay_cell_from_wire(data, field_prefix="overlay", lenient_rotation=True)
+    except ReplayMapCellWireError as exc:
+        raise _map_cell_wire_error(exc) from exc
 
 
 def replay_overlay_cell_from_wire(raw: Mapping[str, object]) -> ReplayOverlayCell:
     """Deserialize one overlay cell wire row into a semantic DTO."""
 
-    if not isinstance(raw, dict):
-        raise ReplayTimelineDeserializationError("overlay wire must be object")
-    return _overlay_from_dict(raw)
-
-
-def _resolved_layer_for_cell(
-    *,
-    kind: str,
-    transport: str,
-    tile_type: str,
-    layer: int | None,
-) -> int:
-    return resolve_replay_height_layer(
-        cell_kind=kind,
-        transport_kind=transport,
-        tile_type=tile_type,
-        layer=layer,
-    )
+    try:
+        return _replay_overlay_cell_from_wire(raw, field_prefix="overlay", lenient_rotation=True)
+    except ReplayMapCellWireError as exc:
+        raise _map_cell_wire_error(exc) from exc
 
 
 def _annotation_from_dict(data: JsonObject) -> ReplayAnnotation:
@@ -170,43 +128,8 @@ def _tuple_from_list[T](raw: object, factory: Callable[[JsonObject], T]) -> tupl
 def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, object]:
     return {
         "base_ref": map_view.base_ref,
-        "full_cells": [
-            {
-                "x": c.x,
-                "y": c.y,
-                "kind": c.kind,
-                "transport": c.transport,
-                "tile_type": c.tile_type,
-                "sprite_identifier": c.tile_type,
-                "rotation": c.rotation,
-                "layer": _resolved_layer_for_cell(
-                    kind=c.kind,
-                    transport=c.transport,
-                    tile_type=c.tile_type,
-                    layer=c.layer,
-                ),
-            }
-            for c in map_view.full_cells
-        ],
-        "cell_delta": [
-            {
-                "x": c.x,
-                "y": c.y,
-                "kind": c.kind,
-                "transport": c.transport,
-                "op": c.op,
-                "tile_type": c.tile_type,
-                "sprite_identifier": c.tile_type,
-                "rotation": c.rotation,
-                "layer": _resolved_layer_for_cell(
-                    kind=c.kind,
-                    transport=c.transport,
-                    tile_type=c.tile_type,
-                    layer=c.layer,
-                ),
-            }
-            for c in map_view.cell_delta
-        ],
+        "full_cells": [replay_cell_to_wire(c) for c in map_view.full_cells],
+        "cell_delta": [replay_cell_delta_to_wire(c) for c in map_view.cell_delta],
         "overlay_cells": [overlay_cell_to_wire_dict(c) for c in map_view.overlay_cells],
         "annotations": [{"x": a.x, "y": a.y, "label": a.label} for a in map_view.annotations],
         "bbox": replay_bbox_to_wire(map_view.bbox),

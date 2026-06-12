@@ -9,6 +9,11 @@ from typing import Literal
 from django.conf import settings
 from django.urls import reverse
 
+from django_apps.asteroid_lab.replay.replay_map_cell_wire import (
+    wire_field_kind,
+    wire_field_tile_type,
+)
+
 _TERRAIN_ONLY_KINDS = frozenset(
     {
         "asteroid_shape_field",
@@ -62,10 +67,10 @@ def frame_has_sprite_layout_cells(frame: Mapping[str, object]) -> bool:
     """True when a timeline frame still carries equipment sprites (not terrain-only)."""
 
     for cell in _map_view_cell_rows(frame):
-        kind = str(cell.get("kind") or cell.get("cell_kind") or "")
+        kind = wire_field_kind(cell)
         if kind in _TERRAIN_ONLY_KINDS:
             continue
-        if cell.get("tile_type") or cell.get("sprite_identifier"):
+        if wire_field_tile_type(cell):
             return True
         if kind in _SPRITE_LAYOUT_KINDS:
             return True

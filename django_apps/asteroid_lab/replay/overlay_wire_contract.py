@@ -7,6 +7,10 @@ from typing import cast
 
 from django_apps.asteroid_lab.replay.effective_cell_view import simulation_for_tile_id
 from django_apps.asteroid_lab.replay.map_height_layer import enrich_replay_wire_row_with_layer
+from django_apps.asteroid_lab.replay.replay_map_cell_wire import (
+    wire_field_kind,
+    wire_field_transport,
+)
 from django_apps.asteroid_lab.replay.replay_overlay_wire import ReplayOverlayCellWire
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
 
@@ -134,10 +138,10 @@ def overlay_cell_to_wire_dict(cell: ReplayOverlayCell) -> ReplayOverlayCellWire:
 
 
 def assert_candidate_overlay_wire_contract(row: Mapping[str, object]) -> None:
-    kind = str(row.get("kind") or row.get("cell_kind") or "")
+    kind = wire_field_kind(row)
     if kind not in CANDIDATE_OUTPUT_OVERLAY_KINDS:
         return
-    transport = str(row.get("transport") or row.get("transport_kind") or "").strip().lower()
+    transport = wire_field_transport(row).strip().lower()
     if transport in _BANNED_CANDIDATE_OCCUPANCY_TRANSPORT:
         msg = (
             f"candidate overlay kind={kind!r} must not claim transport occupancy "

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from django_apps.game_data.coverage.disposition import Disposition
@@ -17,21 +15,14 @@ from django_apps.game_data.models import (
     SimulationLaneDefinition,
     UnknownProperty,
 )
-
-_REPO = Path(__file__).resolve().parents[3]
-_PRIORITY_TSV = (
-    _REPO
-    / "documents"
-    / "game_data_analysis"
-    / "simulation_systems"
-    / "_nested_path_audit_priority.tsv"
-)
+from tests.support.repo_doc_paths import resolve_simulation_priority_audit_tsv
 
 
 def _priority_paths() -> list[str]:
     msg = "run: python scripts/audit_simulation_nested_paths.py --normalized --priority"
-    assert _PRIORITY_TSV.is_file(), msg
-    lines = _PRIORITY_TSV.read_text(encoding="utf-8-sig").strip().splitlines()[1:]
+    priority_tsv = resolve_simulation_priority_audit_tsv()
+    assert priority_tsv is not None, msg
+    lines = priority_tsv.read_text(encoding="utf-8-sig").strip().splitlines()[1:]
     return [ln.split("\t", 1)[0] for ln in lines if ln.strip() and not ln.startswith("#")]
 
 

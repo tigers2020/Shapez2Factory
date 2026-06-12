@@ -73,6 +73,7 @@ from django_apps.game_data.models.simulation import (
     SimulationTileBounds,
     SimulationType,
 )
+from django_apps.game_data.models.space_transport_layout import SpaceTransportLayoutRegistry
 from django_apps.game_data.models.taxonomy import GameDataNamespace, GameDataSection
 from django_apps.game_data.models.toolbar import (
     ToolbarBuildingPlacement,
@@ -140,6 +141,7 @@ __all__ = [
     "SimulationSystemParameterOccurrence",
     "SimulationTileBounds",
     "SimulationType",
+    "SpaceTransportLayoutRegistry",
     "SourceObject",
     "ToolbarBuildingPlacement",
     "ToolbarElement",

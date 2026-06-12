@@ -15,6 +15,7 @@ from django_apps.game_data.importers.building_assembly_audit import record_assem
 from django_apps.game_data.importers.shape_recipes import import_shape_rows
 from django_apps.game_data.importers.simulation_systems import import_simulation_systems
 from django_apps.game_data.importers.source_loader import load_json, sha256_file
+from django_apps.game_data.importers.space_transport_layouts import import_space_transport_layouts
 from django_apps.game_data.importers.toolbar_tree import import_toolbar_tree
 from django_apps.game_data.models import (
     ArtifactChecksum,
@@ -83,6 +84,7 @@ class GameDataImporter:
             self._import_asset_meta()
             self._import_research()
             self._import_simulation_systems()
+            self._import_space_transport_layouts()
             self._import_toolbar()
             self._import_translations_status()
             self._import_transport_registry()
@@ -696,6 +698,17 @@ class GameDataImporter:
             },
         )
         self.ctx.bump("localization_export_status")
+
+    def _import_space_transport_layouts(self) -> None:
+        assert self.ctx is not None
+        manifest = self._path("manifest.json")
+        manifest_data = load_json(manifest)
+        import_space_transport_layouts(
+            self.ctx,
+            research_unlocks_path=self._path("research_unlocks.json"),
+            simulation_systems_path=self._path("simulation_systems.json"),
+            game_version=str(manifest_data.get("game_version", "")),
+        )
 
     def _import_transport_registry(self) -> None:
         assert self.ctx is not None

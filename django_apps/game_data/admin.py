@@ -1109,6 +1109,29 @@ class ExteriorFluidTransportCapacityAdmin(admin.ModelAdmin):
         return bool(request.user.is_active and request.user.is_staff)
 
 
+@admin.register(m.SpaceTransportLayoutRegistry)
+class SpaceTransportLayoutRegistryAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = (
+        "tile_id",
+        "transport_kind",
+        "layout_suffix",
+        "simulation_family",
+        "routing_allowed",
+        "has_io_signature",
+        "import_batch",
+    )
+    list_filter = (
+        ImportBatchFilter,
+        "transport_kind",
+        "simulation_family",
+        "routing_allowed",
+        "has_io_signature",
+        "group_id",
+    )
+    search_fields = ("tile_id", "canonical_id", "layout_suffix", "simulation_system_key")
+    raw_id_fields = ("import_batch",)
+
+
 @admin.register(m.MiningExtractionRule)
 class MiningExtractionRuleAdmin(admin.ModelAdmin):
     list_display = (

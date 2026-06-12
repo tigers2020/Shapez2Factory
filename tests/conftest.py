@@ -14,6 +14,7 @@ Examples:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,29 @@ _SLOW_MODULE_SUFFIXES = (
     "test_golden_fixture_eval.py",
     "test_golden_transport_kind_validity.py",
 )
+
+
+@pytest.fixture(autouse=True)
+def _ensure_space_transport_layout_registry(
+    request: pytest.FixtureRequest,
+    django_db_blocker,
+    db: None,
+) -> None:
+    """Re-seed layouts after module fixtures flush game_data (macro-smoke / xdist safe)."""
+
+    if request.node.get_closest_marker("django_db") is None:
+        return
+
+    from django_apps.game_data.models import SpaceTransportLayoutRegistry
+    from django_apps.game_data.services.space_transport_layout_catalog import (
+        EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT,
+    )
+    from tests.support.game_data_layout_seed import ensure_space_transport_layout_registry
+
+    if SpaceTransportLayoutRegistry.objects.count() >= EXPECTED_SPACE_TRANSPORT_LAYOUT_COUNT:
+        return
+    with django_db_blocker.unblock():
+        ensure_space_transport_layout_registry(strict=bool(os.environ.get("CI")))
 
 
 def pytest_configure(config: pytest.Config) -> None:

@@ -16,22 +16,35 @@ from django_apps.game_data.models.exterior_transport_capacity import (
     ExteriorShapeTransportCapacity,
 )
 from django_apps.game_data.models.mining import MiningExtractionRule
+from tests.support.game_data_layout_seed import ensure_space_transport_layout_registry
 from tests.unit.game_data._dump_expectations import (
     PINNED_BATCH_NAME,
     PINNED_IMPORT_BATCH_PK,
     PINNED_MANIFEST_HASH,
 )
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_GAME_DATA_DUMP = _REPO_ROOT / "game_data_backup" / "game_data_dump.json"
+from tests.unit.game_data.dump_paths import resolve_game_data_dump_path
 
 
-def _require_game_data_dump(path: Path) -> None:
-    if path.is_file():
-        return
+def _require_game_data_dump() -> Path:
+    path = resolve_game_data_dump_path()
+    if path is not None:
+        return path
     if os.environ.get("CI") or os.environ.get("REQUIRE_GAME_DATA_DUMP") == "1":
-        pytest.fail(f"Missing pinned game_data dump: {path}")
-    pytest.skip(f"Missing pinned game_data dump: {path}")
+        pytest.fail(
+            "Missing pinned game_data dump (checked canon and documents/knowledge/raw paths)"
+        )
+    pytest.skip("Missing pinned game_data dump (checked canon and documents/knowledge/raw paths)")
+
+
+def _supplement_space_transport_layouts(batch: ImportBatch) -> None:
+    """Tier B dump predates SpaceTransportLayoutRegistry; import from Tier A when short."""
+
+    try:
+        ensure_space_transport_layout_registry(batch=batch, strict=True)
+    except RuntimeError as exc:
+        if os.environ.get("CI") or os.environ.get("REQUIRE_GAME_DATA_DUMP") == "1":
+            pytest.fail(str(exc))
+        pytest.skip(str(exc))
 
 
 _FLUSH_SKIP_TABLES = frozenset(
@@ -76,8 +89,7 @@ def _assert_pinned_import_batch() -> ImportBatch:
 
 @pytest.fixture(scope="module")
 def game_data_dump_path() -> Path:
-    _require_game_data_dump(_GAME_DATA_DUMP)
-    return _GAME_DATA_DUMP
+    return _require_game_data_dump()
 
 
 @pytest.fixture(scope="module")
@@ -91,6 +103,7 @@ def imported_game_data_batch_module(
         _flush_committed_game_data(django_db_blocker)
         call_command("loaddata", str(game_data_dump_path), verbosity=0)
         batch = _assert_pinned_import_batch()
+        _supplement_space_transport_layouts(batch)
     yield batch
     _flush_committed_game_data(django_db_blocker)
 

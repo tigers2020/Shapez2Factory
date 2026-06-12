@@ -84,6 +84,10 @@ def canonical_transport_kind(transport_kind: str) -> str:
     return reject_runtime_canonical(_slug("transport", transport_kind))
 
 
+def canonical_space_transport_layout(tile_id: str) -> str:
+    return reject_runtime_canonical(_slug("space_layout", tile_id))
+
+
 def canonical_research_upgrade(upgrade_key: str) -> str:
     return reject_runtime_canonical(_slug("upgrade", upgrade_key))
 

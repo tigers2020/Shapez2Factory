@@ -16,3 +16,8 @@ Prevents duplicate ingestion. One row per raw artifact. Match on Source ID or SH
 | src-20260612-island-mechanics | raw/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md | canon code: copy_json_coords.py | island-mechanics | 2026-06-12 | Coordinate frame hub |
 | src-20260612-transport-capacity | raw/analysis/belts_pipes_transport/00_summary.md | cross-ref transport-system wiki | transport-capacity | 2026-06-12 | Solver lens; detail in [[transport-system]] |
 | src-20260612-typing-zero-merge | _(canon — no raw copy)_ | PR #285 @ 597cdaf2, `scripts/check_typing_debt.py` | asteroid-lab-wire-typing | 2026-06-12 | Post-merge status update on existing wiki page |
+| src-20260612-algo-redirect | raw/algorithm/authority-redirect.md | new ledger @ 2026-06-12 | algorithm-doc-authority | 2026-06-12 | Redirect map only; does not modify other raw files |
+| src-20260612-coord-transform-raw | raw/domain-docs/asteroid_coord_transform_spec.md | committed domain contract | island-mechanics (partial) | 2026-06-12 | **deferred** full wiki — coords covered by island-mechanics; gene E detail stays raw |
+| src-20260612-ubiquitous-language | _(output — no raw copy)_ | `docs/ubiquitous-language.md` | — | 2026-06-12 | Glossary links back to wiki + raw ledger |
+| src-20260612-reconstructed-map | _(canon — no raw copy)_ | models + persist builder | reconstructed-map | 2026-06-12 | full_map ORM lifecycle wiki |
+| src-20260612-route-domain-builder | _(canon — no raw copy)_ | `route_domain_snapshot_builder.py` | ubiquitous-language | 2026-06-12 | L3 builder implements invariant |

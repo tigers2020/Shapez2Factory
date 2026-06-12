@@ -10,3 +10,9 @@ This tree contains current Asteroid Lab algorithm contracts only.
 
 Deleted archive, optimization, and old plan documents are not implementation
 authority.
+
+## Stale link recovery
+
+If a link targets `documents/Algorithm/asteroid_lab_*.md`, use
+[`authority-redirect.md`](authority-redirect.md) and wiki
+[[algorithm-doc-authority]].

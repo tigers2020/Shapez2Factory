@@ -1,7 +1,11 @@
 # Knowledge Index
 
 > Map of synthesized knowledge. Raw sources live in `../raw/` (immutable). Maintenance: `docs/agent-workflows/dream-sequence.md`.
-> Last updated: 2026-06-12 | Total pages: 21 | Status: bootstrap complete
+> Last updated: 2026-06-12 | Total pages: 23 | Status: bootstrap complete
+
+**Glossary (cross-app):** agent-friendly term map at [`docs/ubiquitous-language.md`](../../../docs/ubiquitous-language.md) — canonical/alias/ambiguous terms with evidence. Wiki pages remain per-concept synthesis.
+
+**Algorithm authority:** stale `documents/Algorithm/` links → [[algorithm-doc-authority]] + [`raw/algorithm/authority-redirect.md`](../raw/algorithm/authority-redirect.md).
 
 ## Concepts
 
@@ -18,10 +22,12 @@
 | Transport System | 54 layout ID (SpaceBelt/SpacePipe), capacity bottleneck | [[transport-system]] |
 | Transport Capacity | Solver-facing throughput caps; belt/pipe bottlenecks | [[transport-capacity]] |
 | Island Mechanics | Copy JSON island-local coords vs world reconstruction | [[island-mechanics]] |
+| Reconstructed Map | full_map `ReconstructedAsteroidMap` persist lifecycle | [[reconstructed-map]] |
 | Fluid Data Model | 9 fluid 정의, RGB 원색, Mixer 2차색 | [[fluid-data-model]] |
 | Materials Data Model | C/R/S/W/c/P/- quadrant codes | [[materials-data-model]] |
 | Item Data Model | shapes.json gameplay subset (70 items) | [[item-data-model]] |
 | Research Unlocks | Island progression tree, ShapeHash catalog | [[research-unlocks]] |
+| Algorithm doc authority | Redirect hub for deleted `documents/Algorithm/` paths | [[algorithm-doc-authority]] |
 | Asteroid Lab Layers | L2–L5 solver stack, replay projection boundary | [[asteroid-lab-algorithm]] |
 | Wire Typing (Any Boundary) | TypedDict wire contracts; typing-zero complete @597cdaf2 | [[asteroid-lab-wire-typing]] |
 | Graphify Map | graph.json scope, stale check, module-level granularity | [[graphify-architecture-map]] |

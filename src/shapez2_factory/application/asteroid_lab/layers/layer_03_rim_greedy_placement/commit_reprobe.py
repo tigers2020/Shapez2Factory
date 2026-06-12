@@ -16,8 +16,8 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.route_goal import
     build_layer03_route_goals,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import TransportKind
-from shapez2_factory.application.asteroid_lab.layers.contracts.weighted_transport_route_domain import (  # noqa: E501
-    WeightedTransportRouteDomain,
+from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snapshot_builder import (
+    RouteDomainSnapshotBuilder,
 )
 from shapez2_factory.application.asteroid_lab.layers.shared.route_probe import (
     RouteProbeLimits,
@@ -89,14 +89,12 @@ def try_commit_reprobe(
     # Equipment overlap is the only hard blocker. Corridor cells are accumulated for
     # overlay / observability and soft fitness pressure, not exclusive void-lane blocking
     # (CANON: many miners may merge toward one saturated exterior belt connector).
-    blockers = state.occupied | set(own_equipment)
-    walkable = ctx.base_walkable - blockers
-    field_cost = ctx.field_cells - blockers
-    domain = WeightedTransportRouteDomain(
+    blockers = frozenset(state.occupied | set(own_equipment))
+    domain = RouteDomainSnapshotBuilder.build_snapshot(
         search_bbox=ctx.search_bbox,
-        blocked_cells=frozenset(blockers),
-        walkable_cells=walkable,
-        field_cost_cells=field_cost,
+        base_walkable=ctx.base_walkable,
+        field_cells=ctx.field_cells,
+        blockers=blockers,
     )
     reprobed = weighted_route_probe(
         candidate=cand,

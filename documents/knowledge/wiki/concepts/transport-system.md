@@ -1,7 +1,7 @@
 ---
 title: Space Transport System (Belt & Pipeline)
 created: 2026-06-11
-updated: 2026-06-11
+updated: 2026-06-12
 type: concept
 tags: [transport, game-data-analysis]
 sources: [raw/analysis/belts_pipes_transport/00_summary.md, raw/articles/space-transport-identifiers.md]
@@ -29,6 +29,17 @@ confidence: high
 ## Cell Kind Classification
 - `SpaceBelt_*` → `cell_kind: space_belt` (shaped items)
 - `SpacePipe_*` → `cell_kind: space_pipe` (fluids only)
+
+## Terminology mapping (solver / wire)
+
+| Surface | Shape transport | Fluid transport |
+|---|---|---|
+| Game layout ID prefix | `SpaceBelt_*` | `SpacePipe_*` |
+| `cell_kind` (analysis) | `space_belt` | `space_pipe` |
+| `TransportKind` enum | `SPACE_BELT` / `space_belt` | `SPACE_PIPE` / `space_pipe` |
+| `ResourceKind` | `shape` | `fluid` |
+
+Mixed belt/pipe on one cell kind is invalid. See [[transport-capacity]] for throughput caps.
 
 ## Cross-References
 - [[building-definitions]]: corridor buildings reference these layouts

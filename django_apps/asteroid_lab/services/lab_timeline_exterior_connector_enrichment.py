@@ -5,13 +5,18 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+from django_apps.asteroid_lab.replay.persistent_connector_overlay_wire import (
+    ConnectorRoleWire,
+    PersistentConnectorOverlayWire,
+)
+
 METRICS_KEY = "exterior_connector_plan"
 OVERLAY_ROLE = "planned_exterior_connector"
 
 
 def _connector_coord_keys(plan_wire: dict[str, object]) -> set[tuple[int, int]]:
     keys: set[tuple[int, int]] = set()
-    for row in _planned_connectors(plan_wire):
+    for row in planned_connector_overlays_from_wire(plan_wire):
         keys.add((int(row["x"]), int(row["y"])))
     return keys
 
@@ -89,7 +94,7 @@ def enrich_lab_timeline_frames_with_exterior_connector_plan(
                     overlay,
                     connector_coords,
                 )
-            for conn in _planned_connectors(plan_wire):
+            for conn in planned_connector_overlays_from_wire(plan_wire):
                 overlay.append(conn)
             mv_copy["overlay_cells"] = overlay
             fr_copy["map_view"] = mv_copy
@@ -100,11 +105,13 @@ def enrich_lab_timeline_frames_with_exterior_connector_plan(
     return out, frozen_wire
 
 
-def _planned_connectors(plan_wire: dict[str, object]) -> list[dict[str, Any]]:
+def planned_connector_overlays_from_wire(
+    plan_wire: dict[str, object],
+) -> list[PersistentConnectorOverlayWire]:
     raw = plan_wire.get("planned_connectors")
     if not isinstance(raw, list):
         return []
-    out: list[dict[str, Any]] = []
+    out: list[PersistentConnectorOverlayWire] = []
     for item in raw:
         if not isinstance(item, dict):
             continue
@@ -115,19 +122,22 @@ def _planned_connectors(plan_wire: dict[str, object]) -> list[dict[str, Any]]:
         y = void_coord.get("y")
         if x is None or y is None:
             continue
-        role = str(item.get("role") or "required").strip().lower()
-        if role not in {"required", "spare"}:
+        role_raw = str(item.get("role") or "required").strip().lower()
+        role: ConnectorRoleWire
+        if role_raw == "spare":
+            role = "spare"
+        else:
             role = "required"
         out.append(
-            {
-                "x": int(x),
-                "y": int(y),
-                "overlay_role": OVERLAY_ROLE,
-                "connector_role": role,
-                "tile_type": str(item.get("layout_t") or ""),
-                "rotation": int(item.get("rotation") or 0),
-                "connector_id": str(item.get("connector_id") or ""),
-            }
+            PersistentConnectorOverlayWire(
+                x=int(x),
+                y=int(y),
+                overlay_role=OVERLAY_ROLE,
+                connector_role=role,
+                tile_type=str(item.get("layout_t") or ""),
+                rotation=int(item.get("rotation") or 0),
+                connector_id=str(item.get("connector_id") or ""),
+            )
         )
     return out
 
@@ -136,4 +146,5 @@ __all__ = [
     "METRICS_KEY",
     "OVERLAY_ROLE",
     "enrich_lab_timeline_frames_with_exterior_connector_plan",
+    "planned_connector_overlays_from_wire",
 ]

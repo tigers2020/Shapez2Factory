@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import cast
 
 from django_apps.asteroid_lab.replay.effective_cell_view import simulation_for_tile_id
 from django_apps.asteroid_lab.replay.map_height_layer import enrich_replay_wire_row_with_layer
@@ -133,7 +133,7 @@ def overlay_cell_to_wire_dict(cell: ReplayOverlayCell) -> ReplayOverlayCellWire:
     )
 
 
-def assert_candidate_overlay_wire_contract(row: Mapping[str, Any]) -> None:
+def assert_candidate_overlay_wire_contract(row: Mapping[str, object]) -> None:
     kind = str(row.get("kind") or row.get("cell_kind") or "")
     if kind not in CANDIDATE_OUTPUT_OVERLAY_KINDS:
         return

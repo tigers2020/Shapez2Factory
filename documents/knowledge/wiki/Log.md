@@ -37,3 +37,17 @@ Append-only chronological record. Newest entries at the bottom.
 - **Wiki:** `concepts/vibe-coding-agentic-engineering-2026.md`, `concepts/mcp-servers-cursor-2026.md`
 - **Index:** +2 concepts, +2 queries, Sources table
 - **Uncertainty:** Cursor tool limits / marketplace dates marked unverified in wiki
+
+## [2026-06-11] dream-sequence | Wiki refresh + typing/graphify ingest
+
+- **Input:** `/llm-wiki update`; session handoff (Phase 0/1/#280, Phase 4/#283, graphify guidance)
+- **Scan:** `raw/general_workflow_and_skill.md` present (untracked) — skipped as duplicate generic Cursor content
+- **Orphans fixed:** Index now lists `building-groups`, `prefabs`, `game-data-manifest` (pages existed, Index lagged)
+- **Wiki created:**
+  - `concepts/asteroid-lab-algorithm.md` — L2–L5 hub; fixes broken wikilink from [[transport-system]]
+  - `concepts/asteroid-lab-wire-typing.md` — wire boundary + mypy rollout status
+  - `concepts/graphify-architecture-map.md` — scoped updates, GRAPH_STALE, module-level granularity
+- **Index:** 9 → 15 concept rows; +2 queries; canon Sources table; Open questions for missing analysis pages
+- **Processed:** +4 ledger rows (3 ingested, 1 skipped)
+- **Uncertainty:** graphify node/edge counts marked inference; Phase 2+ typing deferred per design spec
+- **Remaining:** `building-variants`, `island-mechanics`, `transport-capacity` — raw exists, wiki deferred

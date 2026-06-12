@@ -21,8 +21,8 @@ from django_apps.asteroid_lab.replay.pattern_bundle_highlight import (
     build_pattern_bundle_highlights_wire,
 )
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
-from django_apps.asteroid_lab.replay.replay_overlay_wire import ReplayOverlayCellWire
 from django_apps.asteroid_lab.replay.replay_limits import LAYER03_REPLAY_MAX_POOL_PREVIEW_WINDOWS
+from django_apps.asteroid_lab.replay.replay_overlay_wire import ReplayOverlayCellWire
 from django_apps.asteroid_lab.replay.segment_frame_spec import ReplaySegmentFrameSpec
 from django_apps.asteroid_lab.replay.timeline_dtos import ReplayOverlayCell
 from django_apps.asteroid_lab.snapshots.equipment_bundles import ports_compatible

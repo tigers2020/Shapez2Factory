@@ -72,7 +72,7 @@ def _diff_structure_stats(diff: object) -> dict[str, int]:
     }
 
 
-def _lab_redundancy_and_sizes(lab_list: list[object]) -> tuple[dict[str], list[dict[str]]]:
+def _lab_redundancy_and_sizes(lab_list: list[object]) -> tuple[dict[str, object], list[dict[str, object]]]:
     """Return (redundancy_stats, largest_frames_meta) for Lab replay frames only."""
 
     fps: list[str] = []
@@ -115,7 +115,7 @@ def _lab_redundancy_and_sizes(lab_list: list[object]) -> tuple[dict[str], list[d
     duplicate_row_instance_estimate = max(0, total_row_instances - unique_row_identities)
     slots_with_multiplicity_gt_1 = sum(1 for _k, c in slot_counter.items() if c > 1)
 
-    meta: list[dict[str]] = []
+    meta: list[dict[str, object]] = []
     for i, fr in enumerate(lab_list):
         if not isinstance(fr, dict):
             meta.append({"list_index": i, "frame_index": None, "frame_key": None, "bytes": 0})
@@ -132,7 +132,7 @@ def _lab_redundancy_and_sizes(lab_list: list[object]) -> tuple[dict[str], list[d
         )
     meta_sorted = sorted(meta, key=lambda m: (-int(m["bytes"]), int(m["list_index"])))
 
-    redundancy: dict[str] = {
+    redundancy: dict[str, object] = {
         "adjacent_identical_full_map_count": adjacent_identical,
         "cell_row_total_instances": total_row_instances,
         "cell_row_unique_identity_count": unique_row_identities,
@@ -150,7 +150,7 @@ def measure_json_sections(
     root: Mapping[str],
     *,
     largest_lab_frames_n: int = _DEFAULT_LARGEST_FRAMES_N,
-) -> dict[str]:
+) -> dict[str, object]:
     """Attribute serialized size of a JSON-compatible mapping (e.g. POST JsonResponse body).
 
     * ``top_level_key_bytes[k]`` ??UTF-8 length of ``json.dumps(value)`` for that key only
@@ -212,7 +212,7 @@ def measure_json_sections(
     }
 
 
-def assert_lab_replay_not_capped_by_optimization_constants(root: Mapping[str]) -> int:
+def assert_lab_replay_not_capped_by_optimization_constants(root: Mapping[str, object]) -> int:
     """Return lab frame count (informational).
 
     Lab replay uses a separate pipeline without ``MAX_REPLAY_*`` optimization caps.

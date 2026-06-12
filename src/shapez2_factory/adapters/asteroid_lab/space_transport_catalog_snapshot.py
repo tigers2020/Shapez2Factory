@@ -146,7 +146,7 @@ class SpaceTransportTileCatalog:
             )
         return entry
 
-    def to_payload(self) -> dict[str]:
+    def to_payload(self) -> dict[str, object]:
         return {
             "schema_version": self.schema_version,
             "game_version": self.game_version,
@@ -221,8 +221,8 @@ def _parse_entry(raw: object) -> SpaceTransportTileCatalogEntry:
     )
 
 
-def _entry_to_dict(entry: SpaceTransportTileCatalogEntry) -> dict[str]:
-    out: dict[str] = {
+def _entry_to_dict(entry: SpaceTransportTileCatalogEntry) -> dict[str, object]:
+    out: dict[str, object] = {
         "tile_id": entry.tile_id,
         "transport_kind": entry.transport_kind,
         "group_id": entry.group_id,

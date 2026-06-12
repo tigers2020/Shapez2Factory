@@ -41,7 +41,7 @@ CELL_KIND_TO_IDENTIFIER = {
 }
 
 
-def overlay_cell_kind(cell: Mapping[str]) -> str:
+def overlay_cell_kind(cell: Mapping[str, object]) -> str:
     ck = cell.get("cell_kind")
     if ck is not None and str(ck) != "":
         return str(ck)
@@ -51,7 +51,7 @@ def overlay_cell_kind(cell: Mapping[str]) -> str:
     return ""
 
 
-def normalize_replay_wire_cell(raw: Mapping[str]) -> dict[str]:
+def normalize_replay_wire_cell(raw: Mapping[str, object]) -> dict[str, object]:
     tile_type = str(raw.get("tile_type") or raw.get("sprite_identifier") or "")
     return {
         "x": raw.get("x"),
@@ -84,7 +84,7 @@ def _sprite_relpath_from_tile_type(tile_type: str) -> str | None:
     return None
 
 
-def _infer_transport_sprite_identifier(cell: Mapping[str]) -> str | None:
+def _infer_transport_sprite_identifier(cell: Mapping[str, object]) -> str | None:
     ck = overlay_cell_kind(cell)
     if ck in {
         "miner",
@@ -103,14 +103,14 @@ def _infer_transport_sprite_identifier(cell: Mapping[str]) -> str | None:
     return None
 
 
-def is_non_sprite_overlay_cell(cell: Mapping[str]) -> bool:
+def is_non_sprite_overlay_cell(cell: Mapping[str, object]) -> bool:
     ck = overlay_cell_kind(cell)
     if not ck:
         return False
     return ck in NON_SPRITE_OVERLAY_CELL_KINDS
 
 
-def lab_sprite_relpath_for_cell(cell: Mapping[str]) -> str | None:
+def lab_sprite_relpath_for_cell(cell: Mapping[str, object]) -> str | None:
     if not cell:
         return None
     if is_non_sprite_overlay_cell(cell):
@@ -134,10 +134,10 @@ def lab_sprite_relpath_for_cell(cell: Mapping[str]) -> str | None:
     return rel
 
 
-def _cells_from_map_view(map_view: Mapping[str] | None) -> list[dict[str]]:
+def _cells_from_map_view(map_view: Mapping[str, object] | None) -> list[dict[str, object]]:
     if not isinstance(map_view, dict):
         return []
-    out: list[dict[str]] = []
+    out: list[dict[str, object]] = []
     for key in ("full_cells", "overlay_cells", "cell_delta"):
         rows = map_view.get(key)
         if not isinstance(rows, list):
@@ -149,7 +149,7 @@ def _cells_from_map_view(map_view: Mapping[str] | None) -> list[dict[str]]:
     return out
 
 
-def full_map_cells_from_frame(frame: Mapping[str]) -> list[dict[str]]:
+def full_map_cells_from_frame(frame: Mapping[str, object]) -> list[dict[str, object]]:
     map_view_raw = frame.get("map_view")
     map_view = map_view_raw if isinstance(map_view_raw, dict) else None
     from_mv = _cells_from_map_view(map_view)
@@ -175,7 +175,7 @@ def full_map_cells_from_frame(frame: Mapping[str]) -> list[dict[str]]:
     return []
 
 
-def cell_overlay_json_from_frame(frame: Mapping[str]) -> dict[str] | None:
+def cell_overlay_json_from_frame(frame: Mapping[str, object]) -> dict[str, object] | None:
     top = frame.get("cell_overlay_json")
     if isinstance(top, dict):
         return top
@@ -187,8 +187,8 @@ def cell_overlay_json_from_frame(frame: Mapping[str]) -> dict[str] | None:
     return None
 
 
-def collect_overlay_paint_targets(overlay: Mapping[str]) -> list[dict[str]]:
-    out: list[dict[str]] = []
+def collect_overlay_paint_targets(overlay: Mapping[str, object]) -> list[dict[str, object]]:
+    out: list[dict[str, object]] = []
     for key in ("cells", "equipment_cells", "equipment", "adjacent_transport", "transport"):
         rows = overlay.get(key)
         if isinstance(rows, list):
@@ -208,8 +208,8 @@ def collect_overlay_paint_targets(overlay: Mapping[str]) -> list[dict[str]]:
     return out
 
 
-def collect_frame_spatial_targets(frame: Mapping[str]) -> list[dict[str]]:
-    out: list[dict[str]] = []
+def collect_frame_spatial_targets(frame: Mapping[str, object]) -> list[dict[str, object]]:
+    out: list[dict[str, object]] = []
     out.extend(full_map_cells_from_frame(frame))
     map_view = frame.get("map_view")
     if isinstance(map_view, dict):
@@ -244,10 +244,10 @@ def collect_frame_spatial_targets(frame: Mapping[str]) -> list[dict[str]]:
     return out
 
 
-def sprite_paint_entries_for_frame(frame: Mapping[str]) -> list[dict[str]]:
+def sprite_paint_entries_for_frame(frame: Mapping[str, object]) -> list[dict[str, object]]:
     """Return sprite paint rows ``{x, y, rel, rotation}`` (canvas paint-plan parity)."""
 
-    by_xy: dict[tuple[int, int], dict[str]] = {}
+    by_xy: dict[tuple[int, int], dict[str, object]] = {}
     for cell in collect_frame_spatial_targets(frame):
         x, y = cell.get("x"), cell.get("y")
         try:
@@ -261,7 +261,7 @@ def sprite_paint_entries_for_frame(frame: Mapping[str]) -> list[dict[str]]:
             continue
         if rel and not prev.get("rel"):
             by_xy[key] = {"cell": cell, "rel": rel}
-    sprites: list[dict[str]] = []
+    sprites: list[dict[str, object]] = []
     for key, entry in by_xy.items():
         rel = entry.get("rel")
         if not rel:
@@ -278,7 +278,7 @@ def sprite_paint_entries_for_frame(frame: Mapping[str]) -> list[dict[str]]:
     return sprites
 
 
-def golden_transport_replay_frames() -> list[dict[str]]:
+def golden_transport_replay_frames() -> list[dict[str, object]]:
     from django_apps.asteroid_lab.replay.solver_runtime_assembler import (
         build_solver_runtime_replay_frames,
     )
@@ -303,7 +303,7 @@ def golden_transport_replay_frames() -> list[dict[str]]:
     )
 
 
-def overlay_fallback_fixture_frame() -> dict[str]:
+def overlay_fallback_fixture_frame() -> dict[str, object]:
     """``full_map`` + ``cell_overlay_json.cells`` pipe (Lab lookup parity)."""
 
     return {

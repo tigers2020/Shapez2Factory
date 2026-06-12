@@ -30,7 +30,7 @@ def staff_site_required(view_func):
 
 def _parse_graph_preview_warm_body(
     request: HttpRequest,
-) -> tuple[str, dict[str]] | JsonResponse:
+) -> tuple[str, dict[str, object]] | JsonResponse:
     try:
         body = json.loads(request.body)
     except json.JSONDecodeError:

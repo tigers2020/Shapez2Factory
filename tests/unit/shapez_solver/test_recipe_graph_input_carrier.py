@@ -6,7 +6,7 @@ from django_apps.shapez_solver.domain.operations import OperationType
 from django_apps.shapez_solver.services.recipe_graph_recompute import validate_graph_document
 
 
-def _doc(nodes: list[dict[str]], edges: list[dict[str]]) -> dict[str]:
+def _doc(nodes: list[dict[str, object]], edges: list[dict[str, object]]) -> dict[str, object]:
     return {"schema_version": 1, "nodes": nodes, "edges": edges}
 
 

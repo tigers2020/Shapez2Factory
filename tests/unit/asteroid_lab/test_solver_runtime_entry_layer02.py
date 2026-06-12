@@ -31,7 +31,7 @@ def _minimal_copy() -> str:
     return "SHAPEZ2-4-e30="
 
 
-def _minimal_snapshot_payload() -> dict[str]:
+def _minimal_snapshot_payload() -> dict[str, object]:
     return {"schema_version": "game_data_snapshot_v1"}
 
 
@@ -67,7 +67,7 @@ def test_entry_result_json_includes_run_summary_for_subprocess_run() -> None:
 def test_run_solver_invokes_cli_runner(monkeypatch: pytest.MonkeyPatch) -> None:
     proj = m.AsteroidProject.objects.create(name="Subprocess", slug="subprocess")
     m.AsteroidMapInput.objects.create(project=proj, copy_code=_minimal_copy())
-    calls: list[dict[str]] = []
+    calls: list[dict[str, object]] = []
 
     def fake_run_solver_subprocess(
         request: object,

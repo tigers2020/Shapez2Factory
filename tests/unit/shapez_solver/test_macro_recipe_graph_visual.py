@@ -73,7 +73,7 @@ def test_serialize_macro_recipe_visual_validates_document_once(
     calls = 0
     real_validate = macro_recipe_graph_visual.validate_graph_document
 
-    def counting_validate(raw: object) -> dict[str]:
+    def counting_validate(raw: object) -> dict[str, object]:
         nonlocal calls
         calls += 1
         return real_validate(raw)

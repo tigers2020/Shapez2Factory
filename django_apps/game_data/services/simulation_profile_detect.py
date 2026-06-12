@@ -10,7 +10,7 @@ PROFILE_OTHER = "other"
 
 
 def detect_simulation_profile_key(
-    params: dict[str],
+    params: dict[str, object],
     *,
     source_type_name: str = "",
 ) -> str:

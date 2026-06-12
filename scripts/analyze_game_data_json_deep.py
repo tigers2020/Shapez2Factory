@@ -201,7 +201,7 @@ def _render_schema(node: SchemaNode, indent: int = 0) -> list[str]:
     return lines
 
 
-def _envelope_stats(rows: list[dict[str]]) -> list[str]:
+def _envelope_stats(rows: list[dict[str, object]]) -> list[str]:
     key_counts: Counter[str] = Counter()
     for row in rows:
         key_counts.update(row.keys())
@@ -224,7 +224,7 @@ def _write_paths_tsv(path: Path, stats: dict[str, PathStat], row_total: int) -> 
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def _write_detail_md(stem: str, meta: dict[str], stats: dict[str, PathStat]) -> None:
+def _write_detail_md(stem: str, meta: dict[str, object], stats: dict[str, PathStat]) -> None:
     lines = [
         f"# `{meta['name']}` — deep structure",
         "",
@@ -263,7 +263,7 @@ def _write_detail_md(stem: str, meta: dict[str], stats: dict[str, PathStat]) -> 
     (OUT_DIR / f"{stem}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def analyze_file(json_path: Path) -> dict[str]:
+def analyze_file(json_path: Path) -> dict[str, object]:
     data = json.loads(json_path.read_text(encoding="utf-8-sig"))
     path_stats: dict[str, PathStat] = {}
     root_schema = SchemaNode()
@@ -312,7 +312,7 @@ def analyze_file(json_path: Path) -> dict[str]:
     return meta
 
 
-def _write_readme(summaries: list[dict[str]]) -> None:
+def _write_readme(summaries: list[dict[str, object]]) -> None:
     lines = [
         "# game_data JSON — deep structure appendix",
         "",
@@ -349,7 +349,7 @@ def _write_readme(summaries: list[dict[str]]) -> None:
     (OUT_DIR / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def _patch_main_structure_doc(summaries: list[dict[str]]) -> None:
+def _patch_main_structure_doc(summaries: list[dict[str, object]]) -> None:
     main = REPO / "docs" / "domain" / "game_data_json_structure.md"
     if not main.is_file():
         return
@@ -397,7 +397,7 @@ def _patch_main_structure_doc(summaries: list[dict[str]]) -> None:
 
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    summaries: list[dict[str]] = []
+    summaries: list[dict[str, object]] = []
     for path in sorted(SOURCE.glob("*.json")):
         print(f"analyze {path.name}...", flush=True)
         summaries.append(analyze_file(path))

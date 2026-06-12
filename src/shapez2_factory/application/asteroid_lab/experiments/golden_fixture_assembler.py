@@ -11,7 +11,7 @@ from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string, 
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 
 
-def _entry(x: int, y: int, *, tile: str, rotation: int = 0) -> dict[str]:
+def _entry(x: int, y: int, *, tile: str, rotation: int = 0) -> dict[str, object]:
     return {"X": x, "Y": y, "R": rotation, "T": tile}
 
 
@@ -19,7 +19,7 @@ def assemble_candidate_blueprint(
     *,
     artifacts: GoldenSolverArtifacts,
     empty_copy: str,
-) -> dict[str]:
+) -> dict[str, object]:
     """Merge empty field shell with L3 equipment and L5 transport tiles."""
 
     root = copy.deepcopy(decode_copy_string(empty_copy.strip().removesuffix("$")).root)
@@ -30,7 +30,7 @@ def assemble_candidate_blueprint(
 
     equipment_coords: set[Coord] = set()
     belt_coords: set[Coord] = set()
-    new_entries: list[dict[str]] = []
+    new_entries: list[dict[str, object]] = []
 
     rim = artifacts.rim_result
     if rim is not None:
@@ -63,7 +63,7 @@ def assemble_candidate_blueprint(
                 belt_coords.add((x, y))
                 new_entries.append(_entry(x, y, tile="SpaceBelt_Forward"))
 
-    kept: list[dict[str]] = []
+    kept: list[dict[str, object]] = []
     raw_entries = bp.get("Entries")
     if isinstance(raw_entries, list):
         for row in raw_entries:

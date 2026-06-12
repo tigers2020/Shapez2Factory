@@ -130,7 +130,7 @@ def run_layers_02_to_06(
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
     genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
-    capacity_envelope: dict[str] | None = None,
+    capacity_envelope: dict[str, object] | None = None,
     throughput_target_percent: int | None = None,
     transport_catalog: SpaceTransportTileCatalog | None = None,
 ) -> CoreStackRunResult:
@@ -263,7 +263,7 @@ def run_layers_02_to_05(
     budget_ctx: LayerBudgetContext,
     runners: tuple[_LayerStackRunner, ...],
     genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
-    capacity_envelope: dict[str] | None = None,
+    capacity_envelope: dict[str, object] | None = None,
     throughput_target_percent: int | None = None,
     transport_catalog: SpaceTransportTileCatalog | None = None,
 ) -> CoreStackRunResult:

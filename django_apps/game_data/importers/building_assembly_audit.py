@@ -58,7 +58,7 @@ def record_assembly_reflection_audit(
     ctx: ImportContext,
     *,
     owner_key: str,
-    definition_snapshot: dict[str],
+    definition_snapshot: dict[str, object],
 ) -> None:
     if not isinstance(definition_snapshot, dict):
         return

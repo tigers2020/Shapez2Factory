@@ -24,10 +24,10 @@ class ArtifactManifest:
     core_build_id: str
     content_hashes: dict[str, str] = field(default_factory=dict)
     paths: dict[str, str] = field(default_factory=dict)
-    game_data_provenance: dict[str] = field(default_factory=dict)
+    game_data_provenance: dict[str, object] = field(default_factory=dict)
     error_code: str | None = None
 
-    def to_json_dict(self) -> dict[str]:
+    def to_json_dict(self) -> dict[str, object]:
         return {
             "schema_version": self.schema_version,
             "run_key": self.run_key,
@@ -44,7 +44,7 @@ class ArtifactManifest:
         return json.dumps(self.to_json_dict(), indent=2, sort_keys=True, ensure_ascii=False)
 
     @classmethod
-    def from_json_dict(cls, payload: dict[str]) -> ArtifactManifest:
+    def from_json_dict(cls, payload: dict[str, object]) -> ArtifactManifest:
         return cls(
             schema_version=int(payload["schema_version"]),
             run_key=str(payload["run_key"]),
@@ -59,7 +59,7 @@ class ArtifactManifest:
 
     @classmethod
     def from_json(cls, text: str) -> ArtifactManifest:
-        parsed: dict[str] = json.loads(text)
+        parsed: dict[str, object] = json.loads(text)
         return cls.from_json_dict(parsed)
 
 

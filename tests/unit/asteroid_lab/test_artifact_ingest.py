@@ -33,7 +33,7 @@ def _write_artifact(
     lifecycle_status: str = "artifact_written",
     corrupt_hash: bool = False,
     error_code: str | None = None,
-) -> dict[str]:
+) -> dict[str, object]:
     summary_path = artifact_dir / "output" / "solver_summary.json"
     replay_path = artifact_dir / "output" / "replay_core.jsonl"
     summary_path.parent.mkdir(parents=True)
@@ -147,7 +147,7 @@ def test_ingest_artifact_rejects_existing_run_unless_replace(tmp_path: Path) -> 
     assert result.solver_run.status == m.SolverRun.RunStatus.COMPLETED
 
 
-def _write_artifact_with_stack_summary(artifact_dir: Path) -> dict[str]:
+def _write_artifact_with_stack_summary(artifact_dir: Path) -> dict[str, object]:
     summary = {
         "stack_run_status": "success",
         "run_success": True,

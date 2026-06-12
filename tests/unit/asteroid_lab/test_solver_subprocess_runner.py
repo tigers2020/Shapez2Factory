@@ -73,7 +73,7 @@ def test_run_solver_subprocess_invokes_tee_with_safe_arguments(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    calls: list[dict[str]] = []
+    calls: list[dict[str, object]] = []
 
     def fake_run_subprocess_with_tee(*args: object, **kwargs: object) -> SubprocessTeeResult:
         calls.append({"args": args, "kwargs": kwargs})

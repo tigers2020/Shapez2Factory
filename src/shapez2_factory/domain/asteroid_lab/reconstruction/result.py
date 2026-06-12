@@ -18,7 +18,7 @@ class ReconstructionResult:
     """
 
     cells: tuple[DecodedCellDTO, ...]  # overlay only
-    summary_json: dict[str] = field(default_factory=dict)
+    summary_json: dict[str, object] = field(default_factory=dict)
     outer_rim_coords: tuple[tuple[int, int], ...] = ()
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW
     confirmed_cells: frozenset[Coord] = field(default_factory=frozenset)

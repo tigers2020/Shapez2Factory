@@ -14,7 +14,7 @@ class ReconstructionTraceEvent:
     phase: str
     trace_event_type: str
     coords: frozenset[Coord]
-    summary_json: dict[str]
+    summary_json: dict[str, object]
 
 
 class ReconstructionTraceCollector:

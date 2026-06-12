@@ -7,7 +7,7 @@ from collections import defaultdict
 from django_apps.game_data.models import ToolbarNodeKind
 
 
-def has_placer_id(snapshot: dict[str]) -> bool:
+def has_placer_id(snapshot: dict[str, object]) -> bool:
     block = snapshot.get("IPlacementToolbarElementData.PlacerId") or {}
     if not isinstance(block, dict):
         return False
@@ -15,11 +15,11 @@ def has_placer_id(snapshot: dict[str]) -> bool:
     return pid is not None and str(pid) != ""
 
 
-def row_is_action(snapshot: dict[str]) -> bool:
+def row_is_action(snapshot: dict[str, object]) -> bool:
     return has_placer_id(snapshot)
 
 
-def is_separator_row(row: dict[str]) -> bool:
+def is_separator_row(row: dict[str, object]) -> bool:
     stype = str(row.get("source_type_name", ""))
     if stype == "ToolbarSlotSeparator":
         return True
@@ -42,7 +42,7 @@ def depth_from_tree_path(tree_path: str) -> int:
 def classify_toolbar_node_kind(
     *,
     tree_path: str,
-    row: dict[str],
+    row: dict[str, object],
     action_subtree: dict[str, bool],
     children_by_parent: dict[str | None, list[str]],
 ) -> str:

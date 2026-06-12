@@ -50,7 +50,7 @@ def _reconcile_occurrence_count(param_key: SimulationSystemParameterKey) -> None
 
 def sync_simulation_parameter_registry(
     system: SimulationSystem,
-    params: dict[str],
+    params: dict[str, object],
     *,
     touched_keys: set[str] | None = None,
 ) -> set[str]:
@@ -90,7 +90,7 @@ def reconcile_parameter_key_counts(key_names: set[str]) -> None:
 def sync_ignored_simulation_parameters(
     ctx: ImportContext,
     source_stable_id: str,
-    params: dict[str],
+    params: dict[str, object],
 ) -> int:
     """Record delegate/reflection/runtime keys on UnknownProperty (preview+hash only)."""
     if not isinstance(params, dict):

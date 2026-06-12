@@ -55,7 +55,7 @@ class JsonLogFormatter(logging.Formatter):
     """Emit one JSON object per log record (no trailing newline — handler owns terminator)."""
 
     def format(self, record: logging.LogRecord) -> str:
-        payload: dict[str] = {
+        payload: dict[str, object] = {
             "ts": datetime.fromtimestamp(record.created, tz=UTC).isoformat(timespec="milliseconds"),
             "level": record.levelname,
             "logger": record.name,

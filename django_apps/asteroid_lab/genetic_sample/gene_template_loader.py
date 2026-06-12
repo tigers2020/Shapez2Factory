@@ -50,7 +50,7 @@ def _parse_direction(raw: object) -> Direction:
     raise ValueError(msg)
 
 
-def parse_gene_template_record(record: dict[str]) -> GeneTemplate:
+def parse_gene_template_record(record: dict[str, object]) -> GeneTemplate:
     gene_id = record.get("gene_id")
     if not isinstance(gene_id, str) or not gene_id:
         msg = "gene_id must be a non-empty string"

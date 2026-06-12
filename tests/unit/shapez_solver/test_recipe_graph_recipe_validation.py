@@ -307,7 +307,7 @@ def test_validate_multi_output_operation_warns_missing_edges() -> None:
 
 
 def test_annotate_visual_graph_marks_error_node() -> None:
-    visual: dict[str] = {
+    visual: dict[str, object] = {
         "layout": {"direction": "horizontal"},
         "nodes": [
             {"id": "a", "kind": "shape", "role": "target"},

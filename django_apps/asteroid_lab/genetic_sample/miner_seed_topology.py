@@ -23,7 +23,7 @@ def throughput_factor_for_extension_count(extension_count: int) -> int:
     return 4 * (1 + extension_count)
 
 
-def _entries(root: dict[str]) -> list[dict[str]]:
+def _entries(root: dict[str, object]) -> list[dict[str, object]]:
     bp = root.get("BP")
     if not isinstance(bp, dict):
         return []
@@ -31,11 +31,11 @@ def _entries(root: dict[str]) -> list[dict[str]]:
     return list(raw) if isinstance(raw, list) else []
 
 
-def count_extensions(root: dict[str]) -> int:
+def count_extensions(root: dict[str, object]) -> int:
     return sum(1 for e in _entries(root) if e.get("T") in _EXT_T)
 
 
-def topology_signature_from_decoded_root(root: dict[str]) -> str:
+def topology_signature_from_decoded_root(root: dict[str, object]) -> str:
     """Stable hash: island-local cells relative to miner; roles not fluid-specific types."""
 
     entries = _entries(root)

@@ -7,9 +7,9 @@ from django_apps.shapez_solver.services.recipe_graph_recompute import validate_g
 
 
 def _minimal_doc(
-    nodes: list[dict[str]],
-    edges: list[dict[str]] | None = None,
-) -> dict[str]:
+    nodes: list[dict[str, object]],
+    edges: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
     return {"schema_version": 1, "nodes": nodes, "edges": edges or []}
 
 

@@ -140,7 +140,7 @@ def _cap_coords(coords: frozenset[Coord]) -> list[list[int | str]]:
 def diff_topology(
     actual: NormalizedReconstructionTopology,
     expected: NormalizedReconstructionTopology,
-) -> dict[str]:
+) -> dict[str, object]:
     """Symmetric set diffs for fixture assertion messages."""
 
     missing_mineable = expected.mineable_cells - actual.mineable_cells
@@ -172,7 +172,7 @@ def diff_topology(
     }
 
 
-def topology_diff_is_empty(diff: dict[str]) -> bool:
+def topology_diff_is_empty(diff: dict[str, object]) -> bool:
     for key in (
         "missing_mineable_cells",
         "extra_mineable_cells",

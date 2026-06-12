@@ -12,4 +12,4 @@ from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
 @dataclass(frozen=True, slots=True)
 class Layer01ReconstructionOutput:
     complete_map: ReconstructionCompleteMap
-    capacity_envelope: dict[str]
+    capacity_envelope: dict[str, object]

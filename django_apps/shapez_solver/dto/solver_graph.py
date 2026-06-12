@@ -15,7 +15,7 @@ class SolverShapeNode:
     role: ShapeNodeRole
     shape_code: str
     label: str
-    preview_scene: dict[str] | None = None
+    preview_scene: dict[str, object] | None = None
     reused_count: int = 0
     quantity: int = 1
     produced_state: ShapeProducedState | None = None

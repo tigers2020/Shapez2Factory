@@ -10,7 +10,7 @@ from typing import cast
 from django.conf import settings
 
 
-def _run_markup_probe() -> dict[str]:
+def _run_markup_probe() -> dict[str, object]:
     return _render_graph_markup(
         {
             "nodes": [
@@ -84,7 +84,7 @@ def _run_markup_probe() -> dict[str]:
     )
 
 
-def _render_graph_markup(graph: dict[str, object]) -> dict[str]:
+def _render_graph_markup(graph: dict[str, object]) -> dict[str, object]:
     static_root = Path(settings.BASE_DIR) / "django_apps" / "web" / "static" / "web" / "js"
     module_url = (static_root / "solver_timeline" / "graph_markup.js").as_uri()
     with tempfile.NamedTemporaryFile(
@@ -150,7 +150,7 @@ def _render_graph_markup(graph: dict[str, object]) -> dict[str]:
             errors="replace",
             cwd=settings.BASE_DIR,
         )
-        return cast(dict[str], json.loads(completed.stdout))
+        return cast(dict[str, object], json.loads(completed.stdout))
     finally:
         Path(graph_json_path).unlink(missing_ok=True)
 

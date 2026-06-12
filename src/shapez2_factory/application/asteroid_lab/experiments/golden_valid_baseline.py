@@ -81,7 +81,7 @@ def assert_master_valid_eval_result(result: GoldenEvalResult) -> None:
         raise AssertionError(msg)
 
 
-def assert_master_valid_loop_summary(summary: dict[str]) -> None:
+def assert_master_valid_loop_summary(summary: dict[str, object]) -> None:
     if not summary.get("best_valid"):
         msg = f"best_valid=false summary={summary}"
         raise AssertionError(msg)
@@ -91,7 +91,7 @@ def assert_master_valid_loop_summary(summary: dict[str]) -> None:
         raise AssertionError(msg)
 
 
-def assert_master_valid_diagnostics_payload(payload: dict[str]) -> None:
+def assert_master_valid_diagnostics_payload(payload: dict[str, object]) -> None:
     if not payload.get("best_valid"):
         msg = f"best_valid=false payload={payload}"
         raise AssertionError(msg)

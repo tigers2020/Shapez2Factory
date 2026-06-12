@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 
-def count_layers_and_slots(defn: dict[str]) -> tuple[int, int]:
+def count_layers_and_slots(defn: dict[str, object]) -> tuple[int, int]:
     layers = defn.get("Layers") or []
     slots = sum(len(layer.get("Parts") or []) for layer in layers)
     return len(layers), slots
 
 
-def shape_row_key(row: dict[str]) -> tuple[int, str]:
+def shape_row_key(row: dict[str, object]) -> tuple[int, str]:
     snap = row.get("definition_snapshot") or {}
     defn = snap.get("Definition") if isinstance(snap.get("Definition"), dict) else snap
     if not isinstance(defn, dict):

@@ -17,7 +17,7 @@ from django_apps.shapez_solver.services.recipe_graph_recompute import (
 )
 
 
-def _rotate_doc() -> dict[str]:
+def _rotate_doc() -> dict[str, object]:
     return {
         "schema_version": 1,
         "nodes": [

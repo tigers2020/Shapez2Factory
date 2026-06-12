@@ -108,7 +108,7 @@ def test_png_renderer_returns_empty_image_preview_when_rendering_fails() -> None
     class FailingRenderer(PlaywrightPngGraphPreviewRenderer):
         def _generate_and_store(
             self,
-            preview_scene: dict[str],
+            preview_scene: dict[str, object],
             target: object,
             *,
             use_db: bool,

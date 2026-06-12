@@ -14,7 +14,7 @@ from typing import Protocol
 class DecodedCopy:
     """Placeholder decoded copy payload; full DTO lands in PR-CLI-2a."""
 
-    raw: dict[str] = field(default_factory=dict)
+    raw: dict[str, object] = field(default_factory=dict)
 
 
 class CopyDecodePort(Protocol):

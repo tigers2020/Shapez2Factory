@@ -34,7 +34,7 @@ def import_space_transport_layouts(
         game_version=game_version,
         source_batch_id=str(ctx.batch.pk),
     )
-    entries: list[dict[str]] = payload.get("entries") or []
+    entries: list[dict[str, object]] = payload.get("entries") or []
     if len(entries) != 54:
         msg = f"expected 54 space transport layouts, got {len(entries)}"
         raise ValueError(msg)

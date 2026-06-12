@@ -19,7 +19,7 @@ def try_load_space_transport_catalog_from_orm() -> SpaceTransportTileCatalog | N
 
 
 def try_load_space_transport_catalog_from_snapshot_layouts(
-    layouts: list[dict[str]],
+    layouts: list[dict[str, object]],
 ) -> SpaceTransportTileCatalog | None:
     try:
         catalog_payload = build_space_transport_catalog_payload_from_snapshot_layouts(layouts)

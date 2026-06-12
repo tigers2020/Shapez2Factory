@@ -9,7 +9,7 @@ from typing import cast
 from django.conf import settings
 
 
-def _run_layout(graph: dict[str, object]) -> dict[str]:
+def _run_layout(graph: dict[str, object]) -> dict[str, object]:
     static_root = Path(settings.BASE_DIR) / "django_apps" / "web" / "static" / "web" / "js"
     module_url = (static_root / "solver_graph_layout.js").as_uri()
     script = textwrap.dedent(f"""
@@ -38,7 +38,7 @@ def _run_layout(graph: dict[str, object]) -> dict[str]:
         text=True,
         cwd=settings.BASE_DIR,
     )
-    return cast(dict[str], json.loads(completed.stdout))
+    return cast(dict[str, object], json.loads(completed.stdout))
 
 
 def _sample_graph() -> dict[str, object]:

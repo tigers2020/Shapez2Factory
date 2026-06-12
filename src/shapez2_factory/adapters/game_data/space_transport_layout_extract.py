@@ -87,15 +87,15 @@ def build_space_transport_catalog_payload(
     simulation_systems_path: str | Path,
     game_version: str = "",
     source_batch_id: str = "documents/game_data",
-) -> dict[str]:
+) -> dict[str, object]:
     research_path = Path(research_unlocks_path)
     simulation_path = Path(simulation_systems_path)
     tile_ids = enumerate_space_transport_tile_ids(research_path)
     sim_keys = simulation_keys_by_tile(simulation_path)
-    entries: list[dict[str]] = []
+    entries: list[dict[str, object]] = []
     for tile_id in tile_ids:
         transport_kind = transport_kind_for_tile_id(tile_id)
-        entry: dict[str] = {
+        entry: dict[str, object] = {
             "tile_id": tile_id,
             "transport_kind": transport_kind,
             "group_id": group_id_for_transport_kind(transport_kind),

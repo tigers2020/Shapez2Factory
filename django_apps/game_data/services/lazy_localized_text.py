@@ -42,7 +42,7 @@ def _extract_message_key(id_block: object) -> str:
     return ""
 
 
-def _parse_replacements(resolver: dict[str]) -> tuple[LazyLocalizedReplacement, ...]:
+def _parse_replacements(resolver: dict[str, object]) -> tuple[LazyLocalizedReplacement, ...]:
     raw = resolver.get("Replacements")
     if not isinstance(raw, dict) or not raw:
         return ()

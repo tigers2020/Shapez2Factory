@@ -22,7 +22,7 @@ def _list_or_empty(raw: object) -> list:
     return list(raw)
 
 
-def _empty_manifest_summary() -> dict[str]:
+def _empty_manifest_summary() -> dict[str, object]:
     return {
         "replay_payload_version": _LAB_REPLAY_PAYLOAD_VERSION,
         "lab_replay_cache_schema_version": _LAB_REPLAY_CACHE_SCHEMA_VERSION,

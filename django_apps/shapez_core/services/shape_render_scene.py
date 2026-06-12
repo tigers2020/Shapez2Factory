@@ -73,7 +73,7 @@ def build_shape_render_scene(pattern: NormalizedShapePattern | Shape) -> ShapeRe
     return ShapeRenderScene(normalized_code=normalized_pattern.normalized_code, cells=tuple(cells))
 
 
-def serialize_render_scene(scene: ShapeRenderScene) -> dict[str]:
+def serialize_render_scene(scene: ShapeRenderScene) -> dict[str, object]:
     """Single JSON payload contract for graph preview, modal preview, and sprite builders."""
     return {
         "normalized_code": scene.normalized_code,

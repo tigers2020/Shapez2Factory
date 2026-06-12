@@ -8,7 +8,7 @@ from pathlib import Path
 from django_apps.asteroid_lab.services.trace_logging import AsteroidLabTraceLogger
 
 
-def _jsonl(path: Path) -> list[dict[str]]:
+def _jsonl(path: Path) -> list[dict[str, object]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
 

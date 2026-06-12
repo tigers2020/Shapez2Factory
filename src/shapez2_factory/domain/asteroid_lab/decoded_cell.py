@@ -24,7 +24,7 @@ class DecodedCellDTO:
     has_nested_blueprint: bool
     nested_entry_count: int
     nested_type_counts_json: dict[str, int]
-    raw_entry_json: dict[str]
+    raw_entry_json: dict[str, object]
 
 
 __all__ = ["DecodedCellDTO"]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-def graph_cost_hint_from_document(graph_document: dict[str]) -> dict[str]:
+def graph_cost_hint_from_document(graph_document: dict[str, object]) -> dict[str, object]:
     """
     재계산된 graph_document에서 연산 노드 수 등 구조 기반 힌트를 만든다.
 

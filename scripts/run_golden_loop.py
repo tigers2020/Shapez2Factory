@@ -56,7 +56,7 @@ def build_config_grid(
     )
 
 
-def _eval_record_dict(result: object) -> dict[str]:
+def _eval_record_dict(result: object) -> dict[str, object]:
     payload = asdict(result)
     payload["diagnostics"] = list(result.diagnostics)
     return payload
@@ -105,7 +105,7 @@ def run_golden_loop(
     gene_seeds_source: str = "fixture",
     gene_seeds_db_scope: str = "admin",
     now_fn: Callable[[], datetime] | None = None,
-) -> dict[str]:
+) -> dict[str, object]:
     """Run the golden fixture loop and write JSON artifacts under ``out_dir``."""
 
     sys.path.insert(0, str(_REPO))
@@ -158,11 +158,11 @@ def run_golden_loop(
     runs_path = out / "runs.jsonl"
     failure_patterns: dict[str, int] = {}
     best_valid_score = float("-inf")
-    best_valid_record: dict[str] | None = None
+    best_valid_record: dict[str, object] | None = None
     best_valid_artifacts: object | None = None
     best_any_score = float("-inf")
-    best_any_record: dict[str] | None = None
-    run_records: list[dict[str]] = []
+    best_any_record: dict[str, object] | None = None
+    run_records: list[dict[str, object]] = []
 
     with runs_path.open("w", encoding="utf-8") as runs_file:
         for loop_config in grid:

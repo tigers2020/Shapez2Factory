@@ -160,7 +160,7 @@ def _genetic_sample_mini_map_cells_html(
 
 
 def genetic_sample_mini_map_html(
-    decoded_json: dict[str] | None,
+    decoded_json: dict[str, object] | None,
     *,
     cell_px: int = _DEFAULT_CELL_PX,
     for_list: bool = False,

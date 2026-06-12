@@ -54,7 +54,7 @@ def emit_boundary_jsonl(
     run_id: str,
     stage: str,
     boundary: str,
-    data: dict[str],
+    data: dict[str, object],
 ) -> None:
     """Write one JSON object as a single line to ``{dir}/{run_id}.jsonl``."""
 
@@ -62,7 +62,7 @@ def emit_boundary_jsonl(
         return
 
     ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    record: dict[str] = {
+    record: dict[str, object] = {
         "ts": ts,
         "run_id": run_id,
         "stage": stage,
@@ -91,7 +91,7 @@ class BoundaryJsonlSink:
         run_id: str,
         stage: str,
         boundary: str,
-        data: dict[str],
+        data: dict[str, object],
     ) -> None:
         emit_boundary_jsonl(run_id=run_id, stage=stage, boundary=boundary, data=data)
 

@@ -56,7 +56,7 @@ def _record_speed_import_issue(
     ctx: ImportContext,
     source_stable_id: str,
     parameter_name: str,
-    blob: dict[str],
+    blob: dict[str, object],
     *,
     reason_code: str,
 ) -> None:
@@ -74,7 +74,7 @@ def _record_speed_import_issue(
 def import_simulation_speeds(
     ctx: ImportContext,
     system: SimulationSystem,
-    params: dict[str],
+    params: dict[str, object],
     *,
     source_stable_id: str = "",
 ) -> None:

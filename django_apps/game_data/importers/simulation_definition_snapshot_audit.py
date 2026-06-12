@@ -24,7 +24,7 @@ def sync_definition_snapshot_coverage_audit(
     ctx: ImportContext,
     *,
     owner_key: str,
-    definition_snapshot: dict[str] | None,
+    definition_snapshot: dict[str, object] | None,
 ) -> int:
     if not isinstance(definition_snapshot, dict):
         return 0

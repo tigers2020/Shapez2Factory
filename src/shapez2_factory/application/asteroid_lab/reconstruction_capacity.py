@@ -38,7 +38,7 @@ def build_terrain_capacity_summary_row(
     max_extension_count: int,
     source_kind: str,
     authority: str,
-) -> dict[str]:
+) -> dict[str, object]:
     """Terrain upper bound: one field cell = one platform at base ×4 mini-units (not ×16)."""
 
     per_cell = output_per_min_from_mini_unit(

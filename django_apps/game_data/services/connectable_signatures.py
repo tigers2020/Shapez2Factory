@@ -16,14 +16,14 @@ def pivot_direction(pivot: object) -> str:
     return text[:32] if text else ""
 
 
-def connector_type_name(connector: dict[str]) -> str:
+def connector_type_name(connector: dict[str, object]) -> str:
     raw = connector.get("$type") or ""
     if isinstance(raw, str) and raw:
         return raw.rsplit(".", maxsplit=1)[-1]
     return "connector"
 
 
-def build_connector_signature(connectors: list[dict[str]]) -> str:
+def build_connector_signature(connectors: list[dict[str, object]]) -> str:
     parts: list[str] = []
     for conn in connectors:
         if not isinstance(conn, dict):
@@ -36,7 +36,7 @@ def build_connector_signature(connectors: list[dict[str]]) -> str:
     return "|".join(parts)
 
 
-def simulation_transport_slug(simulation: dict[str]) -> str:
+def simulation_transport_slug(simulation: dict[str, object]) -> str:
     raw = simulation.get("$type") or ""
     if isinstance(raw, str) and raw:
         return raw.rsplit(".", maxsplit=1)[-1]
@@ -45,7 +45,7 @@ def simulation_transport_slug(simulation: dict[str]) -> str:
 
 def build_lane_signature(
     *,
-    simulation: dict[str],
+    simulation: dict[str, object],
     lane_definitions: list[tuple[str, int | None, str]],
 ) -> str:
     if lane_definitions:

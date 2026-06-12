@@ -58,7 +58,7 @@ def _require_game_data_import_batch(imported_game_data_batch_module: object) -> 
     return imported_game_data_batch_module
 
 
-def _encode_v4_copy(root: dict[str]) -> str:
+def _encode_v4_copy(root: dict[str, object]) -> str:
     text = json.dumps(root, separators=(",", ":")).encode("utf-8")
     b64 = base64.b64encode(gzip.compress(text)).decode("ascii")
     return f"SHAPEZ2-4-{b64}"

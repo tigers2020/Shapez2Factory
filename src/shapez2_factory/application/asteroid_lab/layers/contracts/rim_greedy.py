@@ -97,7 +97,7 @@ class RimGreedyReject:
 class RimGreedyObservationEvent:
     phase: RimGreedyObservationPhase
     variant_id: str
-    payload: dict[str]
+    payload: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)

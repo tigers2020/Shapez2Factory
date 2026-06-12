@@ -337,7 +337,7 @@ class ShapePartSpriteAdmin(admin.ModelAdmin):
         )
         changelist_url = reverse("admin:web_shapepartsprite_changelist")
 
-        context: dict[str] = {
+        context: dict[str, object] = {
             **self.admin_site.each_context(request),
             "title": _("Sprite render progress"),
             "opts": self.model._meta,

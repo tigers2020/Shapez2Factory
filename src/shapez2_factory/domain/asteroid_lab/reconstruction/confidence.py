@@ -283,10 +283,10 @@ _PERSIST_SUMMARY_KEYS = (
 )
 
 
-def reconstruction_persist_summary(result: ReconstructionResult) -> dict[str]:
+def reconstruction_persist_summary(result: ReconstructionResult) -> dict[str, object]:
     """Blueprint ``_asteroid_lab_reconstruction.summary_json`` (no per-cell scores)."""
 
-    out: dict[str] = {
+    out: dict[str, object] = {
         k: result.summary_json[k] for k in _PERSIST_SUMMARY_KEYS if k in result.summary_json
     }
     out["reconstruction_acceptance_ok"] = reconstruction_acceptance_ok(result)

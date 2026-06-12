@@ -8,7 +8,7 @@ settings/file-I/O ``emit_boundary_jsonl`` writer when ``ASTEROID_LAB_BOUNDARY_JS
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Protocol
 
 
 class BoundaryTraceSink(Protocol):
@@ -20,7 +20,7 @@ class BoundaryTraceSink(Protocol):
         run_id: str,
         stage: str,
         boundary: str,
-        data: dict[str, Any],
+        data: dict[str, object],
     ) -> None: ...
 
 
@@ -33,7 +33,7 @@ class NullBoundaryTraceSink:
         run_id: str,
         stage: str,
         boundary: str,
-        data: dict[str, Any],
+        data: dict[str, object],
     ) -> None:
         return None
 
@@ -42,11 +42,11 @@ NO_OP_BOUNDARY_SINK: BoundaryTraceSink = NullBoundaryTraceSink()
 
 
 def summarize_cell_kind_transitions(
-    before: tuple[Any, ...],
-    after: tuple[Any, ...],
+    before: tuple[object, ...],
+    after: tuple[object, ...],
     *,
     max_items: int = 8000,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Pair cells by ``(x, y, layer)`` and list ``cell_kind`` changes (for boundary payloads).
 
     Each item includes explicit ``raw_x`` / ``raw_y`` names.
@@ -56,13 +56,13 @@ def summarize_cell_kind_transitions(
     for c in before:
         before_map[(int(c.x), int(c.y), c.layer)] = str(c.cell_kind)
 
-    out: list[dict[str, Any]] = []
+    out: list[dict[str, object]] = []
     for c in after:
         key = (int(c.x), int(c.y), c.layer)
         prev = before_map.get(key)
         cur = str(c.cell_kind)
         if prev != cur:
-            item: dict[str, Any] = {
+            item: dict[str, object] = {
                 "raw_x": key[0],
                 "raw_y": key[1],
                 "layer": key[2],

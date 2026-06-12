@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from shapez2_factory.domain.asteroid_lab.cell_classifier import classify_blueprint_entry
 from shapez2_factory.domain.asteroid_lab.copy_decode import decode_copy_string
@@ -46,13 +45,13 @@ def load_shapez_copy_string(path: Path | str) -> str:
     return line.removesuffix("$")
 
 
-def normalize_blueprint_entries(bp_root: dict[str, Any]) -> NormalizedBlueprintDTO:
+def normalize_blueprint_entries(bp_root: dict[str, object]) -> NormalizedBlueprintDTO:
     from shapez2_factory.domain.asteroid_lab.service_dtos import RawDecodedBlueprintDTO
 
     return normalize_decoded_blueprint(RawDecodedBlueprintDTO(root=bp_root))
 
 
-def summarize_blueprint(bp_root: dict[str, Any]) -> dict[str, Any]:
+def summarize_blueprint(bp_root: dict[str, object]) -> dict[str, object]:
     """Return summary dict including per-tile-type counts and bbox list."""
 
     norm = normalize_blueprint_entries(bp_root)
@@ -88,7 +87,7 @@ def summarize_blueprint(bp_root: dict[str, Any]) -> dict[str, Any]:
 
 
 def _extractor_anchor_export_xy(
-    rows: list[dict[str, Any]],
+    rows: list[dict[str, object]],
     *,
     has_explicit_raw_x_zero: bool,
 ) -> tuple[int, int] | None:
@@ -134,7 +133,7 @@ def _belt_adjacency_edges(
     return frozenset(edges)
 
 
-def build_golden_oracle(golden_bp: dict[str, Any]) -> GoldenOracle:
+def build_golden_oracle(golden_bp: dict[str, object]) -> GoldenOracle:
     entries = iter_entry_dicts(golden_bp)
     has_zero = entries_have_explicit_raw_x_zero(entries)
     summary = summarize_blueprint(golden_bp)
@@ -182,8 +181,8 @@ def build_golden_oracle(golden_bp: dict[str, Any]) -> GoldenOracle:
     )
 
 
-def load_golden_fixture_summary(path: Path | str) -> dict[str, Any]:
-    payload: dict[str, Any] = json.loads(Path(path).read_text(encoding="utf-8"))
+def load_golden_fixture_summary(path: Path | str) -> dict[str, object]:
+    payload: dict[str, object] = json.loads(Path(path).read_text(encoding="utf-8"))
     return payload
 
 

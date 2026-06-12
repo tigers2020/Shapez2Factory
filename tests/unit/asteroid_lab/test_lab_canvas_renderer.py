@@ -9,6 +9,7 @@ JS_DIR = REPO / "django_apps" / "web" / "static" / "web" / "js"
 TPL = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
 LAB_JS = JS_DIR / "asteroid_miner_layout_lab.js"
 SANITIZE_JS = JS_DIR / "lab_replay_wire_sanitize.js"
+PAINT_JS = JS_DIR / "lab_replay_paint_plan.js"
 
 
 def test_canvas_renderer_module_contract() -> None:
@@ -110,3 +111,26 @@ def test_lab_sprite_path_handles_space_belt_transport_wire() -> None:
         "overlayCellKind(cell)" in src.split("function inferTransportSpriteIdentifier(", 1)[1][:700]
     )
     assert "SpaceBelt_Forward" in src
+
+
+def test_js_lab_paint_layers_from_view_exists() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function labPaintLayersFromView" in src
+    assert "function buildEffectiveCellViewIndex" in src
+    assert "LabReplayPaintPlan" in src
+
+
+def test_template_loads_lab_replay_paint_plan_js() -> None:
+    tpl = TPL.read_text(encoding="utf-8")
+    assert "lab_replay_paint_plan.js" in tpl
+    assert tpl.index("lab_effective_cell_view.js") < tpl.index("lab_replay_paint_plan.js")
+
+
+def test_js_paint_plan_contains_candidate_priority_guard() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "candidate_miner" in src
+    assert "candidate_ring" in src
+    transport_fn = src.split("function resolveTransport(", 1)[1]
+    candidate_idx = transport_fn.index("candidate_miner")
+    guard_region = transport_fn[candidate_idx : candidate_idx + 120]
+    assert "null" in guard_region

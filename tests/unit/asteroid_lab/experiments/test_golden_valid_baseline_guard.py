@@ -75,7 +75,7 @@ def test_master_valid_baseline_constants_match_report() -> None:
     assert CANONICAL_BUDGET_MS == 60_000
     assert CANONICAL_SPEED_TIER == 1
     assert FROZEN_MIN_SOURCE_COUNT == 76
-    assert MASTER_MIN_ROUTED_THROUGHPUT == 30960.0
+    assert MASTER_MIN_ROUTED_THROUGHPUT == 37440.0
 
 
 @pytest.mark.skipif(not _fixtures_ready(), reason="asteroid_golden fixtures incomplete")

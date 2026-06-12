@@ -51,3 +51,11 @@ Append-only chronological record. Newest entries at the bottom.
 - **Processed:** +4 ledger rows (3 ingested, 1 skipped)
 - **Uncertainty:** graphify node/edge counts marked inference; Phase 2+ typing deferred per design spec
 - **Remaining:** `building-variants`, `island-mechanics`, `transport-capacity` — raw exists, wiki deferred
+
+## [2026-06-11] policy | Graphify `_private` granularity canon
+
+- **Input:** architect advisory — default exclude `_internal`; Level 2/3 selective include
+- **Canon:** `docs/agent-workflows/graphify-routine.md` § Granularity policy
+- **Wiki:** `graphify-architecture-map.md` expanded (include/exclude tables, cutoff)
+- **Filters:** `.graphifyignore` + `tests/**`; header points to routine
+- **Uncertainty:** graphify tool has no per-symbol `_` toggle yet — policy is agent scope discipline

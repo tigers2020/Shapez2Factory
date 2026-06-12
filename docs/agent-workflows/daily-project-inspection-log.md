@@ -165,3 +165,81 @@ Use deterministic tie-breaker (`run_dir.name` or creation order) in sort key, e.
 - Linear API search unavailable (401)
 
 **Next recommended target:** UI / frontend / interaction flow (Asteroid Lab replay viewer, lazy cache UX) — SHA-37/38 filed; consider `django_apps/web/views/` lab pages or `basedata_import_service.py` (deferred 2026-06-10 02:30)
+
+---
+
+## 2026-06-11 Daily Inspection (13:02 UTC cron)
+
+**Target:** UI / frontend / interaction flow — Asteroid Lab run-solver wiring (`asteroid_miner_layout_solver.html`, `asteroid_miner_layout_lab.js`, `public_pages.py`, `solver_runtime_entry.py`, `solver_subprocess_runner.py`)
+
+**Commands run:**
+- `git status`, `git branch --show-current`, `git log --oneline -10`
+- `python3 manage.py check`
+- `python3 -m pytest tests/integration/web/test_asteroid_miner_layout_solver_async.py tests/integration/web/test_web_smoke.py tests/unit/asteroid_lab/test_asteroid_lab_ui_strings.py -q` (37 passed)
+- `python3 -m pytest tests/integration/web/test_asteroid_miner_layout_solver.py tests/integration/web/test_lab_replay_ssr_manifest.py tests/unit/shapez_core/test_basedata_ivvd.py -q` (28 passed)
+- `python3 -m ruff check django_apps/web/views/public_pages.py django_apps/web/services/asteroid_lab_page_context.py django_apps/asteroid_lab/services/solver_runtime_entry.py` (pass)
+- `curl https://api.linear.app/graphql` (401 — no `LINEAR_API_KEY`)
+- `rg macro_only_mode|rttp_record_replay` (repo-wide wiring audit)
+
+**Files/areas reviewed:**
+- `django_apps/web/templates/web/asteroid_miner_layout_solver.html` (macro-only checkbox)
+- `django_apps/web/static/web/js/asteroid_miner_layout_lab.js` (run-solver POST body)
+- `django_apps/web/views/public_pages.py` (`_run_solver_request_config`, lazy replay cache gate)
+- `django_apps/web/services/asteroid_lab_page_context.py` (lazy SSR cache hit branch)
+- `django_apps/asteroid_lab/services/solver_runtime_entry.py` (`_build_subprocess_request`)
+- `django_apps/asteroid_lab/services/solver_subprocess_runner.py` (`build_solver_cli_args`)
+- `django_apps/asteroid_lab/services/solver_run_config_keys.py`, `solver_run_lab_summary.py`
+- `docs/superpowers/specs/2026-06-08-l4-inner-pattern-fill-contract.md` (macro-only open question)
+- `.agent-loop/reviewed-areas.md`, `plans/` (duplicate prevention)
+
+**Findings filed:**
+
+> **Linear MCP blocked:** `https://api.linear.app/graphql` returned 401 (no `LINEAR_API_KEY`). Draft card below was **not** created in Linear.
+
+### Draft — SHA-69 (proposed)
+
+**Title:** `[ui] Lab Macro-only mode checkbox does not wire macro_only_mode or rttp_record_replay into solver runtime`
+
+**Description:**
+
+## Problem
+The Asteroid Mining Lab exposes a "Macro-only mode" checkbox (`#lab-macro-only-mode`). When checked, the client POSTs `macro_only_mode: true` and `rttp_record_replay: true` to the run-solver endpoint. Those keys are defined in `solver_run_config_keys.py` and displayed in lab run summaries, but no runtime code reads them: `_build_subprocess_request` only forwards `throughput_target_percent` and `verbose`; `build_solver_cli_args` has no corresponding CLI flags; domain/stack code has no `macro_only_mode` branch (L4 contract still lists macro-only as an open question). Users believe they toggled a pipeline mode; solver behavior is unchanged.
+
+## Evidence
+- `asteroid_miner_layout_lab.js` lines 5109–5131: checkbox → `postBody.macro_only_mode` / `rttp_record_replay`
+- `public_pages.py` `_run_solver_request_config`: returns parsed JSON dict as `run_config` unchanged
+- `solver_runtime_entry.py` `_build_subprocess_request` lines 143–168: only `throughput_target_percent` extracted from config
+- `solver_subprocess_runner.py` `build_solver_cli_args` lines 121–150: no macro/RTTP flags
+- `rg macro_only_mode` across `django_apps/` + `src/`: only config key constants and lab summary display — zero consumers
+- `docs/superpowers/specs/2026-06-08-l4-inner-pattern-fill-contract.md` §미결정: "macro-only mode에서 L4 skip 여부"
+- Contrast: `throughput_target_percent` is wired end-to-end (JS → config → CLI `--throughput-target-percent`)
+
+## Impact
+Misleading Lab UX; experiment/debug sessions cannot enable macro-only pipeline from UI; run summary may show absent `macro_only_mode` even when checkbox was checked; agents/operators waste time assuming mode switched.
+
+## Suggested Fix
+Either (a) hide/disable checkbox until macro-only contract is implemented, or (b) thread `macro_only_mode` / `rttp_record_replay` through `SolverSubprocessRequest` → CLI args → stack runner with documented layer skip semantics; persist toggles in `SolverRun.config_json` on async enqueue; add integration test that checked checkbox changes artifact `solver_summary.macro_only_mode` or layer observability.
+
+## Acceptance Criteria
+- Checkbox state affects solver execution or is removed/disabled with explicit copy
+- `macro_only_mode` present in ingested `solver_summary` when toggled on
+- Regression test covers run-solver POST with `macro_only_mode: true`
+- No silent no-op for `rttp_record_replay` when sent alongside macro-only
+
+**Labels:** bug, ui, test | **Priority:** Medium
+
+**Findings skipped (duplicate or weak):**
+- `lab_page_context` lazy cache hit omits `is_cache_summary_valid` — **SHA-37** (page context); loader path — **SHA-38**
+- `topology_rules` always `[]` — **SHA-57**
+- Replay cache / lazy SSR manifest — **SHA-37**, **SHA-38**, **SHA-21**
+- `basedata_import_service.py` IVVD import — deferred (not in today's bounded UI pass)
+- Subprocess exit-20 ingest gap — **SHA-45** / daily log SHA-47 draft (distinct root cause)
+- All targeted web/lab pytest green — no new regression filed
+
+**Duplicate checks:**
+- `.agent-loop/reviewed-areas.md` (SHA-7–SHA-56; solver_timeline SHA-53; recipe editor SHA-56)
+- `plans/` grep: no existing SHA-* plan for `macro_only_mode`
+- `docs/agent-workflows/daily-project-inspection-log.md` prior entries (SHA-37/38/45–48 drafts)
+- Linear API search unavailable (401)
+
+**Next recommended target:** docs / specs / contracts / AGENTS rules (macro-only L4 open question vs UI exposure; replay wiring canon `documents/Algorithm/asteroid_lab_12_runtime_replay_wiring.md`) — or CI / scripts / automation (`scripts/test_fast.ps1` cross-platform gap SHA-46)

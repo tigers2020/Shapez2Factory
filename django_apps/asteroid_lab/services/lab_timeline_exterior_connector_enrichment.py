@@ -9,6 +9,11 @@ from django_apps.asteroid_lab.replay.persistent_connector_overlay_wire import (
     PersistentConnectorOverlayWire,
 )
 
+from django_apps.asteroid_lab.replay.persistent_connector_overlay_wire import (
+    ConnectorRoleWire,
+    PersistentConnectorOverlayWire,
+)
+
 METRICS_KEY = "exterior_connector_plan"
 OVERLAY_ROLE = "planned_exterior_connector"
 

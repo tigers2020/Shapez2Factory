@@ -159,7 +159,8 @@ def test_run_list_marks_completed_validation_failed_run_as_failed() -> None:
 
     assert page.status_code == 200
     content = page.content.decode()
-    assert "validation failed" in content
+    assert "lab-run-list-headline" in content
+    assert ">failed<" in content
     assert "border-rose-500/80" in content
 
 

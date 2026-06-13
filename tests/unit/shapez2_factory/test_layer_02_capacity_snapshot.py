@@ -64,6 +64,7 @@ def test_resolve_per_connector_capacity_module_removed_after_algorithm_reset() -
             "shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.capacity"
         )
 
+
 def test_missing_row_raises_lookup_error() -> None:
     adapter = JsonSnapshotGameDataRulesAdapter.from_payload(_VALID_PAYLOAD)
 

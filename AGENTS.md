@@ -55,7 +55,7 @@ Allowed: source, tests, docs, governance. Ask before `.env`, secrets, CI/deploy,
 
 ## Governance
 
-Root target ~75 lines; max 120 before split. Nested `AGENTS.md` ≤150. `.cursor/rules/*.mdc` ≤75. Detail: [`docs/agent-workflows/governance-acceptance.md`](docs/agent-workflows/governance-acceptance.md). Check: `scripts/check_governance.ps1`.
+Root target ~75 lines; max 120 before split. Nested `AGENTS.md` ≤150. `.cursor/rules/*.mdc` ≤75. Repository map SoT: [`structure.md`](structure.md). Detail: [`docs/agent-workflows/governance-acceptance.md`](docs/agent-workflows/governance-acceptance.md). Check: `scripts/check_governance.ps1`.
 
 When blocked: `BLOCKED:` + context, risk, fixes tried, next step.
 

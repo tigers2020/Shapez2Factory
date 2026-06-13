@@ -186,8 +186,11 @@ def test_template_loads_lab_replay_paint_plan_js() -> None:
     assert "lab_replay_overlay_bucket_registry.js" in tpl
     assert "lab_replay_paint_plan.js" in tpl
     assert tpl.index("lab_effective_cell_view.js") < tpl.index("lab_replay_height_layer.js")
-    assert tpl.index("lab_replay_height_layer.js") < tpl.index("lab_replay_overlay_bucket_registry.js")
-    assert tpl.index("lab_replay_overlay_bucket_registry.js") < tpl.index("lab_replay_paint_plan.js")
+    height_idx = tpl.index("lab_replay_height_layer.js")
+    registry_idx = tpl.index("lab_replay_overlay_bucket_registry.js")
+    paint_idx = tpl.index("lab_replay_paint_plan.js")
+    assert height_idx < registry_idx
+    assert registry_idx < paint_idx
 
 
 def test_js_paint_plan_contains_candidate_priority_guard() -> None:

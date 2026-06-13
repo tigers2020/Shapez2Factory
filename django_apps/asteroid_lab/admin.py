@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import json
 from io import StringIO
-from pathlib import Path
 
-from django.conf import settings
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
 from django.core.management import call_command

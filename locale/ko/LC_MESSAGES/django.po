@@ -195,9 +195,6 @@ msgstr ""
 msgid "Target throughput"
 msgstr "목표 처리량"
 
-msgid "% of theoretical max"
-msgstr "이론 최대치 대비 %"
-
 msgid "Height layer (L)"
 msgstr "Height layer (L)"
 
@@ -209,6 +206,9 @@ msgstr "Paste a blueprint and run the solver."
 
 msgid "Map Z layers"
 msgstr "Map Z layers"
+
+msgid "Run inspection"
+msgstr "Run inspection"
 
 msgid "Ops slug class"
 msgstr "Ops slug class"

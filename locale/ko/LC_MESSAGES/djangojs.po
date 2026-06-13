@@ -95,6 +95,9 @@ msgstr "중간 · {code}"
 msgid "Intermediate — shape_code after dry-run"
 msgstr "중간 — 드라이런 뒤 shape_code 확정"
 
+msgid "Jump replay to this layer"
+msgstr "Jump replay to this layer"
+
 msgid "Layer summaries appear after a solver run."
 msgstr "Layer summaries appear after a solver run."
 

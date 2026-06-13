@@ -14,6 +14,7 @@ _ALLOWED_UI_FILES = frozenset(
     {
         _UI_JS_ROOT / "lab_effective_cell_view.js",
         _UI_JS_ROOT / "lab_replay_wire_sanitize.js",
+        _UI_JS_ROOT / "lab_replay_height_layer.js",
     }
 )
 

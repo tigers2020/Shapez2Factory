@@ -147,6 +147,10 @@ def test_run_list_marks_completed_validation_failed_run_as_failed() -> None:
         project=proj,
         run_key="run-validation-failed-regression",
         status=m.SolverRun.RunStatus.COMPLETED,
+        solver_summary_json={
+            "validation_passed": False,
+            "issue_codes": [],
+        },
         config_json={
             SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY: {
                 "validation_passed": False,
@@ -159,7 +163,9 @@ def test_run_list_marks_completed_validation_failed_run_as_failed() -> None:
 
     assert page.status_code == 200
     content = page.content.decode()
-    assert "validation failed" in content
+    assert "lab-run-list-headline" in content
+    headline_slice = content.split("lab-run-list-headline", 1)[1][:120]
+    assert "failed" in headline_slice
     assert "border-rose-500/80" in content
 
 

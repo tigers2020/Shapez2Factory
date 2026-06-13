@@ -20,7 +20,7 @@
 
   <div
     id="lab-root"
-    class="min-h-screen w-full overflow-x-hidden bg-slate-950 text-slate-100"
+    class="min-h-screen w-full overflow-x-hidden bg-[#020617] text-slate-100{% if has_replay_frames %} lab-has-replay{% endif %}"
     data-lab-initial-frame="{{ initial_frame }}"
     data-lab-total-frames="{{ total_frames }}"
     data-lab-replay-cell-url="{% url 'web:asteroid-miner-layout-replay-frame-cell' %}"
@@ -34,56 +34,46 @@
     data-lab-renderer="canvas"
     data-lab-terrain-canvas="1"
   >
-    <div class="border-b border-slate-800 bg-slate-950/90 px-4 py-4 sm:px-6">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div class="flex items-center gap-2 text-sm text-cyan-300">
-            <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-            </svg>
-            Asteroid Mining Lab
-          </div>
-          <h1 class="mt-1 text-2xl font-semibold tracking-tight">Greenfield Solver Workspace</h1>
-          <p class="mt-1 max-w-3xl text-sm text-slate-400">Paste a blueprint, then run solver</p>
+    <div class="lab-workspace-header px-4 py-3 sm:px-6">
+      <div class="mx-auto flex max-w-[1600px] items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h1 class="truncate text-lg font-semibold tracking-tight text-slate-50 sm:text-xl">Asteroid Mining Lab</h1>
+          <p class="mt-0.5 text-xs text-slate-500 sm:text-sm">Paste a blueprint, then run solver</p>
+          <p class="sr-only">Greenfield Solver Workspace</p>
         </div>
-        <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
           {% if lab_project_slug %}
           <label
             for="lab-macro-only-mode"
-            class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 text-sm text-slate-200"
+            class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/80 px-2.5 py-1.5 text-xs text-slate-200 transition-colors duration-200 hover:border-cyan-500/30 sm:text-sm"
             title="Macro-only pipeline (macro_id genome slots)"
           >
             <input
               type="checkbox"
               id="lab-macro-only-mode"
-              class="h-4 w-4 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500/40"
+              class="h-3.5 w-3.5 cursor-pointer rounded border-slate-600 bg-slate-950 text-emerald-500 focus:ring-emerald-500/40"
             />
-            <span>Macro-only mode</span>
+            <span class="hidden sm:inline">Macro-only</span>
+            <span class="sm:hidden">Macro</span>
           </label>
           {% endif %}
-          <div class="flex gap-2">
           <button
             type="button"
             id="lab-header-reset"
-            class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800"
+            class="lab-btn-ghost inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900/90 px-3 py-1.5 text-sm font-medium text-slate-100 hover:border-slate-500 hover:bg-slate-800"
           >
-            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-              <path d="M3 3v5h5"/>
-            </svg>
             Reset
           </button>
           <button
             type="button"
             id="lab-header-run"
-            class="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400"
+            class="lab-btn-primary inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold"
           >
-            <svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg class="mr-1.5 h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M8 5v14l11-7z"/>
             </svg>
             Run Solver
           </button>
-          </div>
         </div>
       </div>
     </div>
@@ -143,22 +133,16 @@
       </div>
     </div>
 
-    <main class="lab-workspace-grid mx-auto p-4 sm:p-6">
-      <section class="lab-workspace-left flex min-h-0 min-w-0 flex-col gap-5">
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-          <div class="p-4">
-            <div class="flex items-center justify-between">
-              <h2 class="font-semibold">Input</h2>
-              <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            </div>
+    <main class="lab-workspace-grid mx-auto max-w-[1600px] p-3 sm:p-5">
+      <aside class="lab-workspace-sidebar">
+        <section class="lab-workspace-left flex min-w-0 flex-col gap-3">
+          <div class="lab-panel-card rounded-xl p-3">
+            <p class="lab-sidebar-section-title">Blueprint</p>
             <form
               id="lab-import-project-form"
               method="post"
               action="{% url 'web:asteroid-miner-layout-projects-create' %}"
-              class="mt-3"
+              class="mt-2"
             >
               {% csrf_token %}
               {% if lab_project_slug %}
@@ -168,406 +152,312 @@
               <textarea
                 id="lab-blueprint-input"
                 name="copy_code"
-                class="h-28 w-full resize-none rounded-xl border border-slate-800 bg-slate-900 p-3 text-xs text-slate-300 outline-none focus:border-cyan-500"
+                class="h-24 w-full resize-y rounded-lg border border-slate-700/80 bg-slate-900/90 p-2.5 font-mono text-xs leading-relaxed text-slate-200 outline-none transition-colors duration-200 placeholder:text-slate-500 focus:border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/20"
                 placeholder="Paste SHAPEZ2 copy code here..."
               >{{ blueprint_code }}</textarea>
-              <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <div class="rounded-xl bg-slate-900 p-3">
-                  <div class="text-slate-500">Mode</div>
-                  <div class="mt-1 font-medium">—</div>
-                </div>
-                <div class="rounded-xl bg-slate-900 p-3">
-                  <div class="text-slate-500">Budget</div>
-                  <div class="mt-1 font-medium">—</div>
-                </div>
-                <div class="rounded-xl bg-slate-900 p-3">
-                  <div class="text-slate-500">Shape ratio</div>
-                  <div class="mt-1 font-medium">—</div>
-                </div>
-                <div class="rounded-xl bg-slate-900 p-3">
-                  <div class="text-slate-500">Fluid ratio</div>
-                  <div class="mt-1 font-medium">—</div>
-                </div>
-              </div>
-              <button type="submit" class="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">
+              <button type="submit" class="lab-btn-primary mt-2 w-full cursor-pointer rounded-lg py-2 text-xs font-semibold">
                 Save and open project
               </button>
             </form>
           </div>
-        </div>
 
-        <details
-          id="lab-extractor-constraints-panel"
-          class="group rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm"
-          {% if extractor_rules %}open{% endif %}
-        >
-          <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
-            <div class="flex items-center gap-2">
-              <svg class="h-4 w-4 text-cyan-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/>
-                <path d="M17 18h1M12 18h1M7 18h1"/>
-              </svg>
-              <h2 class="font-semibold">Extractor Constraints</h2>
-            </div>
-            <svg class="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
-          </summary>
-          <div class="space-y-4 border-t border-slate-800 px-4 pb-4 pt-3">
-            <div class="grid gap-2">
-              {% for rule in extractor_rules %}
-                <div class="rounded-xl bg-slate-900 p-3">
-                  <div class="flex items-center justify-between gap-3">
-                    <div class="text-xs text-slate-500">{{ rule.label }}</div>
-                    <div class="text-sm font-semibold text-slate-100">{{ rule.value }}</div>
-                  </div>
-                  <div class="mt-1 text-xs text-slate-400">{{ rule.detail }}</div>
-                </div>
-              {% empty %}
-                <p class="text-sm text-slate-500">Run Solver to generate constraints</p>
-              {% endfor %}
-            </div>
-            <div class="border-t border-slate-800 pt-4">
-              <label for="lab-throughput-target-percent" class="text-xs font-medium text-slate-400">
-                {% trans "Target throughput" %}
-              </label>
-              <div class="mt-2 flex items-center gap-3">
-                <input
-                  type="range"
-                  id="lab-throughput-target-percent"
-                  class="min-w-0 flex-1 accent-cyan-500"
-                  min="10"
-                  max="80"
-                  step="10"
-                  value="80"
-                />
-                <span
-                  id="lab-throughput-target-percent-label"
-                  class="w-10 shrink-0 text-right text-sm font-semibold text-slate-100"
-                  >80%</span
-                >
-              </div>
-              <p class="mt-1 text-xs text-slate-500">{% trans "% of theoretical max" %}</p>
+          <div class="lab-panel-card rounded-xl p-3">
+            <label for="lab-throughput-target-percent" class="lab-sidebar-section-title">
+              {% trans "Target throughput" %}
+            </label>
+            <div class="mt-2 flex items-center gap-2">
+              <input
+                type="range"
+                id="lab-throughput-target-percent"
+                class="min-w-0 flex-1 cursor-pointer accent-emerald-500"
+                min="10"
+                max="80"
+                step="10"
+                value="80"
+              />
+              <span
+                id="lab-throughput-target-percent-label"
+                class="w-9 shrink-0 text-right text-xs font-semibold text-slate-100"
+              >80%</span>
             </div>
           </div>
-        </details>
 
-        <details
-          id="lab-topology-constraints-panel"
-          class="group rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm"
-          {% if topology_rules %}open{% endif %}
-        >
-          <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
-            <div class="min-w-0">
-              <div class="text-sm font-semibold">Topology Constraints</div>
-              <div class="mt-1 text-xs text-slate-500">Run Solver to generate constraints</div>
-            </div>
-            <svg class="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
-          </summary>
-          <div class="border-t border-slate-800 px-4 pb-4 pt-3">
-            <button
-              type="button"
-              id="lab-open-topology"
-              class="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 text-sm text-violet-300 hover:bg-violet-500/20"
-              aria-label="Open topology rules"
-            >
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>
+          <details
+            id="lab-evolution-runs-panel"
+            class="lab-panel-card group rounded-xl"
+            {% if runs %}open{% endif %}
+          >
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-2 p-3 [&::-webkit-details-marker]:hidden">
+              <span class="lab-sidebar-section-title">Solver runs</span>
+              <svg class="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/>
               </svg>
-              View bundle rules
-            </button>
-          </div>
-        </details>
-
-        <details
-          id="lab-solver-pipeline-panel"
-          class="group rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm"
-          {% if stages_display %}open{% endif %}
-        >
-          <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
-            <h2 class="font-semibold">Solver Pipeline</h2>
-            <svg class="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
-          </summary>
-          <div class="space-y-3 border-t border-slate-800 px-4 pb-4 pt-3">
-            {% for s in stages_display %}
-              <div class="flex items-center gap-3">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl {{ s.tone_class }}">
-                  {% include "web/partials/asteroid_mining_lab_stage_icon.html" with icon=s.icon only %}
-                </div>
-                <div class="min-w-0 flex-1">
-                  <div class="text-sm font-medium">{{ s.label }}</div>
-                  <div class="text-xs text-slate-500">{{ s.state }}</div>
-                </div>
-              </div>
-            {% empty %}
-              <p class="text-sm text-slate-500">Run Solver to generate constraints</p>
-            {% endfor %}
-          </div>
-        </details>
-
-        <details
-          id="lab-evolution-runs-panel"
-          class="group mt-auto rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm"
-          {% if runs %}open{% endif %}
-        >
-          <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
-            <div class="flex items-center gap-2">
-              <h2 class="font-semibold">Evolution Runs</h2>
-              <svg class="h-4 w-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-              </svg>
-            </div>
-            <svg class="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
-          </summary>
-          <div class="border-t border-slate-800 px-4 pb-4 pt-3">
-            <div id="lab-evolution-runs-list" class="max-h-64 space-y-3 overflow-y-auto">
-              {% for r in runs %}
-                <button
-                  type="button"
-                  data-lab-run-id="{{ r.id }}"
-                  class="w-full rounded-xl border p-3 text-left transition {% if r.status == 'failed' or not r.validation_passed %}{% if forloop.first %}border-rose-500/80 bg-rose-950/40{% else %}border-rose-800/80 bg-rose-950/20 hover:border-rose-700{% endif %}{% elif forloop.first %}border-cyan-500 bg-cyan-500/10{% else %}border-slate-800 bg-slate-900 hover:border-slate-700{% endif %}"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="font-medium">Run #{{ r.id }}</div>
-                    <div class="text-sm {% if r.status == 'failed' or not r.validation_passed %}text-rose-300{% else %}text-cyan-300{% endif %} lab-run-list-headline">
-                      {% if r.status == 'failed' or not r.validation_passed %}validation failed{% else %}Run #{{ r.id }}{% endif %}
+            </summary>
+            <div class="border-t border-slate-800 px-3 pb-3 pt-2">
+              <div id="lab-evolution-runs-list" class="max-h-48 space-y-2 overflow-y-auto">
+                {% for r in runs %}
+                  <button
+                    type="button"
+                    data-lab-run-id="{{ r.id }}"
+                    class="w-full cursor-pointer rounded-lg border p-2.5 text-left text-sm transition-colors duration-200 {% if r.status == 'failed' or not r.validation_passed %}{% if forloop.first %}border-rose-500/80 bg-rose-950/40{% else %}border-rose-800/80 bg-rose-950/20 hover:border-rose-700{% endif %}{% elif forloop.first %}border-emerald-500/70 bg-emerald-500/10{% else %}border-slate-700 bg-slate-900/80 hover:border-slate-600{% endif %}"
+                  >
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="font-medium">#{{ r.id }}</span>
+                      <span class="truncate text-xs {% if r.status == 'failed' or not r.validation_passed %}text-rose-300{% else %}text-slate-400{% endif %} lab-run-list-headline">
+                        {% if r.status == 'failed' or not r.validation_passed %}failed{% else %}{{ r.status }}{% endif %}
+                      </span>
                     </div>
-                  </div>
-                  <div class="mt-2 text-xs text-slate-400 lab-run-list-subtitle" data-lab-run-subtitle-id="{{ r.id }}">—</div>
-                  {% if r.first_issue_code %}
-                    <p class="mt-2 truncate text-xs text-rose-300/90" title="{{ r.first_issue_code }}">{{ r.first_issue_code }}</p>
-                  {% endif %}
-                </button>
-              {% empty %}
-                <p class="text-sm text-slate-500">No solver runs yet</p>
-              {% endfor %}
-            </div>
-          </div>
-        </details>
-      </section>
-
-      <section class="lab-workspace-center min-w-0 space-y-5">
-        <div class="min-w-0 rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
-          <div class="min-w-0 p-4">
-            <div
-              id="lab-replay-grid-viewport"
-              class="relative flex aspect-video w-full min-h-0 min-w-0 max-w-full items-center justify-center overflow-visible rounded-2xl border border-slate-800 bg-slate-900/50 p-4"
-            >
-              <div
-                id="lab-replay-grid-hud"
-                class="pointer-events-none absolute right-3 top-3 z-20 rounded-lg border border-slate-700/70 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 shadow-lg backdrop-blur"
-              >
-                <div>
-                  <span class="text-slate-400">xy</span>
-                  <span id="lab-replay-grid-hud-coord" class="font-mono">—</span>
-                </div>
-                <div>
-                  <span class="text-slate-400">role</span>
-                  <span id="lab-replay-grid-hud-role" class="font-mono">—</span>
-                </div>
+                    <div class="mt-1 truncate text-xs text-slate-500 lab-run-list-subtitle" data-lab-run-subtitle-id="{{ r.id }}">—</div>
+                    {% if r.first_issue_code %}
+                      <p class="mt-1 truncate text-xs text-rose-300/90" title="{{ r.first_issue_code }}">{{ r.first_issue_code }}</p>
+                    {% endif %}
+                  </button>
+                {% empty %}
+                  <p class="text-sm text-slate-500">No solver runs yet</p>
+                {% endfor %}
               </div>
+            </div>
+          </details>
 
-              <div id="lab-replay-grid-stage" class="relative min-h-0 min-w-0 max-h-full max-w-full overflow-hidden">
-                <canvas
-                  id="lab-replay-terrain-canvas"
-                  class="pointer-events-none absolute left-0 top-0 z-0"
-                  aria-hidden="true"
-                ></canvas>
-                <canvas
-                  id="lab-replay-overlay-canvas"
-                  class="pointer-events-none absolute left-0 top-0 z-[1]"
-                  aria-hidden="true"
-                ></canvas>
-                <canvas
-                  id="lab-replay-sprite-canvas"
-                  class="pointer-events-none absolute left-0 top-0 z-[4]"
-                  aria-hidden="true"
-                ></canvas>
-                <div
-                  id="lab-replay-grid"
-                  class="lab-replay-grid--canvas-target relative z-[3] grid h-max w-max opacity-100 transition-opacity duration-200"
-                  {% if not has_replay_frames %}style="grid-template-columns: repeat(23, minmax(0, 1.75rem));"{% endif %}
-                  data-overlay=""
-                >
-                  {% for cls in lab_cell_initial_classes %}
-                    <div data-lab-cell-index="{{ forloop.counter0 }}" class="{{ cls }}"></div>
+          <details class="lab-panel-card group rounded-xl">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-2 p-3 [&::-webkit-details-marker]:hidden">
+              <span class="lab-sidebar-section-title">Constraints &amp; pipeline</span>
+              <svg class="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </summary>
+            <div class="space-y-2 border-t border-slate-800 px-3 pb-3 pt-2">
+              <details id="lab-extractor-constraints-panel" class="rounded-lg border border-slate-800/80 bg-slate-900/40" {% if extractor_rules %}open{% endif %}>
+                <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-slate-200">Extractor Constraints</summary>
+                <div class="space-y-2 border-t border-slate-800 px-3 pb-3 pt-2">
+                  {% for rule in extractor_rules %}
+                    <div class="rounded-lg bg-slate-900/80 p-2.5 text-xs">
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="text-slate-500">{{ rule.label }}</span>
+                        <span class="font-semibold text-slate-100">{{ rule.value }}</span>
+                      </div>
+                      <p class="mt-1 text-slate-400">{{ rule.detail }}</p>
+                    </div>
+                  {% empty %}
+                    <p class="text-xs text-slate-500">Run Solver to generate constraints</p>
                   {% endfor %}
                 </div>
-                <div
-                  id="lab-optimization-overlay-layer"
-                  class="pointer-events-none absolute inset-0 z-10"
-                  aria-hidden="true"
-                ></div>
-              </div>
-              <div
-                id="lab-replay-layer-picker"
-                class="pointer-events-auto absolute bottom-3 right-3 z-[80] flex flex-col-reverse items-end gap-2"
-              >
-                <button
-                  type="button"
-                  id="lab-replay-layer-menu-toggle"
-                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-950/90 text-slate-100 shadow-lg backdrop-blur hover:border-cyan-500/60 hover:bg-slate-900"
-                  aria-expanded="false"
-                  aria-controls="lab-replay-layer-menu"
-                  aria-label="{% trans 'Map Z layers' %}"
-                  title="{% trans 'Map Z layers' %}"
-                >
-                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M4 7h16M4 12h16M4 17h16"/>
-                  </svg>
-                </button>
-                <div
-                  id="lab-replay-layer-menu"
-                  class="hidden max-h-[min(14rem,40vh)] min-w-[12rem] overflow-y-auto rounded-xl border border-slate-700 bg-slate-950/95 p-2 shadow-xl backdrop-blur"
-                  role="menu"
-                  aria-label="{% trans 'Map Z layers' %}"
-                >
-                  <p class="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-slate-500">{% trans "Height layer (L)" %}</p>
-                  <div id="lab-replay-layer-menu-options" class="space-y-0.5"></div>
-                </div>
-              </div>
-            </div>
+              </details>
 
-            <div
-              id="lab-timeline-controls"
-              data-lab-timeline-controls
-              class="mt-4 flex w-full min-w-0 flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 sm:flex-row sm:items-center sm:gap-3"
-            >
-              <div class="flex shrink-0 items-center gap-2">
-                <button type="button" id="lab-timeline-prev" class="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Previous frame">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="m15 18-6-6 6-6"/>
-                  </svg>
-                </button>
-                <button type="button" id="lab-timeline-play" class="rounded-xl bg-cyan-500 p-2 text-slate-950" aria-label="Play or pause replay">
-                  <svg id="lab-timeline-play-icon" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                  <svg id="lab-timeline-pause-icon" class="hidden h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                  </svg>
-                </button>
-                <button type="button" id="lab-timeline-next" class="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Next frame">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="m9 18 6-6-6-6"/>
-                  </svg>
-                </button>
-                <div class="hidden rounded-lg border border-slate-800 bg-slate-950/80 px-2 py-1 text-xs text-slate-400 sm:block">
-                  <span id="lab-frame-display-toolbar">{% if total_frames %}{{ initial_frame|add:1 }} / {{ total_frames }}{% else %}0 / 0{% endif %}</span>
+              <details id="lab-topology-constraints-panel" class="rounded-lg border border-slate-800/80 bg-slate-900/40" {% if topology_rules %}open{% endif %}>
+                <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-slate-200">Topology Constraints</summary>
+                <div class="border-t border-slate-800 px-3 pb-3 pt-2">
+                  <button
+                    type="button"
+                    id="lab-open-topology"
+                    class="lab-btn-ghost w-full cursor-pointer rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs text-violet-300 hover:bg-violet-500/20"
+                    aria-label="Open topology rules"
+                  >
+                    View bundle rules
+                  </button>
                 </div>
-              </div>
-              <label class="sr-only" for="lab-timeline-scrub">Replay frame</label>
-              <input
-                id="lab-timeline-scrub"
-                type="range"
-                class="min-w-0 flex-1"
-                min="0"
-                max="0"
-                value="0"
-                step="1"
-                aria-label="Replay frame scrubber"
-              />
-              <div id="lab-replay-load-status" class="shrink-0 text-xs text-muted sm:max-w-[8rem] sm:truncate"></div>
-            </div>
+              </details>
 
-            <div id="lab-map-footer" class="mt-4 space-y-4">
-              <div id="lab-replay-metadata" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div class="min-w-0 flex-1">
-                    <h2 class="font-semibold">Replay Timeline</h2>
-                    <p id="lab-replay-phase" class="mt-1 text-sm text-slate-500">{{ initial_replay_phase }}</p>
-                    <p id="lab-replay-event-type" class="mt-1 text-xs text-violet-300">—</p>
-                    <p id="lab-replay-title" class="mt-1 text-sm text-slate-200">—</p>
-                    <p
-                      id="lab-replay-description"
-                      class="mt-1 max-h-48 overflow-y-auto break-words text-xs leading-relaxed text-slate-500 whitespace-pre-wrap"
-                    >—</p>
-                    <p id="lab-replay-truncation-hud" class="mt-2 font-mono text-xs text-amber-300/90">—</p>
-                    <p id="lab-replay-run-status" class="mt-1 font-mono text-xs text-cyan-300/90">—</p>
-                    <pre
-                      id="lab-replay-run-log"
-                      class="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap font-mono text-[10px] leading-snug text-slate-400/90 hidden"
-                      aria-live="polite"
-                    ></pre>
-                    <p id="lab-macro-commit-hud" class="mt-1 hidden font-mono text-xs text-emerald-300/90">—</p>
-                    <p id="lab-gene-catalog-hud" class="mt-1 font-mono text-xs text-slate-500">
-                      {% if gene_template_catalog.needs_seed %}
-                        genes: DB empty — run seed_miner_patterns
-                      {% else %}
-                        genes: DB {{ gene_template_catalog.db_gene_count }} ({{ gene_template_catalog.generator_version }})
-                      {% endif %}
-                    </p>
-                  </div>
-                  <div class="flex shrink-0 flex-wrap items-center gap-3 text-xs">
-                    <div class="rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2">
-                      <div class="text-slate-500">Frame</div>
-                      <div class="font-semibold text-slate-100"><span id="lab-frame-display">{% if total_frames %}{{ initial_frame|add:1 }} / {{ total_frames }}{% else %}0 / 0{% endif %}</span></div>
+              <details id="lab-solver-pipeline-panel" class="rounded-lg border border-slate-800/80 bg-slate-900/40" {% if stages_display %}open{% endif %}>
+                <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-slate-200">Solver Pipeline</summary>
+                <div class="space-y-2 border-t border-slate-800 px-3 pb-3 pt-2">
+                  {% for s in stages_display %}
+                    <div class="flex items-center gap-2">
+                      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {{ s.tone_class }}">
+                        {% include "web/partials/asteroid_mining_lab_stage_icon.html" with icon=s.icon only %}
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-xs font-medium">{{ s.label }}</div>
+                        <div class="text-[11px] text-slate-500">{{ s.state }}</div>
+                      </div>
                     </div>
-                    <label class="flex items-center gap-2 text-slate-400">
-                      <input type="checkbox" id="lab-terrain-rim-highlight-toggle" checked />
-                      Rim highlight
-                    </label>
-                    <label class="flex items-center gap-2 text-slate-400">
-                      <input type="checkbox" id="lab-pattern-bundle-highlight-toggle" checked />
-                      Pattern highlight
-                    </label>
-                  </div>
+                  {% empty %}
+                    <p class="text-xs text-slate-500">Run Solver to generate constraints</p>
+                  {% endfor %}
                 </div>
+              </details>
+            </div>
+          </details>
+        </section>
+      </aside>
+
+      <section class="lab-workspace-center min-w-0">
+        <div class="lab-panel-card min-w-0 rounded-xl p-3 sm:p-4">
+          <div
+            id="lab-replay-grid-viewport"
+            class="group/viewport relative flex aspect-[16/10] w-full min-h-0 min-w-0 max-w-full items-center justify-center overflow-visible rounded-xl border border-slate-700/70 bg-gradient-to-br from-slate-900/80 to-[#020617] p-3 sm:aspect-video sm:p-4"
+          >
+            <div class="lab-grid-empty-state" aria-hidden="true">
+              <p class="max-w-[16rem] text-sm text-slate-500">Save a blueprint and run the solver to preview the map</p>
+            </div>
+            <div
+              id="lab-replay-grid-hud"
+              class="pointer-events-none absolute right-2 top-2 z-20 rounded-md border border-slate-700/60 bg-slate-950/85 px-2 py-1 text-[10px] text-slate-300 opacity-0 shadow-lg backdrop-blur transition-opacity duration-200 group-hover/viewport:opacity-100"
+            >
+              <span class="text-slate-500">xy</span>
+              <span id="lab-replay-grid-hud-coord" class="font-mono">—</span>
+              <span class="mx-1 text-slate-600">·</span>
+              <span class="text-slate-500">role</span>
+              <span id="lab-replay-grid-hud-role" class="font-mono">—</span>
+            </div>
+
+            <div id="lab-replay-grid-stage" class="relative min-h-0 min-w-0 max-h-full max-w-full overflow-hidden">
+              <canvas id="lab-replay-terrain-canvas" class="pointer-events-none absolute left-0 top-0 z-0" aria-hidden="true"></canvas>
+              <canvas id="lab-replay-overlay-canvas" class="pointer-events-none absolute left-0 top-0 z-[1]" aria-hidden="true"></canvas>
+              <canvas id="lab-replay-sprite-canvas" class="pointer-events-none absolute left-0 top-0 z-[4]" aria-hidden="true"></canvas>
+              <div
+                id="lab-replay-grid"
+                class="lab-replay-grid--canvas-target relative z-[3] grid h-max w-max opacity-100 transition-opacity duration-200"
+                {% if not has_replay_frames %}style="grid-template-columns: repeat(23, minmax(0, 1.75rem));"{% endif %}
+                data-overlay=""
+              >
+                {% for cls in lab_cell_initial_classes %}
+                  <div data-lab-cell-index="{{ forloop.counter0 }}" class="{{ cls }}"></div>
+                {% endfor %}
               </div>
-              <div class="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-                <div class="min-w-0 flex-1 space-y-1">
-                  <div id="lab-replay-footer-hint" class="text-slate-500">—</div>
-                </div>
-                <div class="font-mono text-cyan-300" id="lab-computation-cycle">computation_cycle #{{ initial_frame }}</div>
+              <div id="lab-optimization-overlay-layer" class="pointer-events-none absolute inset-0 z-10" aria-hidden="true"></div>
+            </div>
+            <div id="lab-replay-layer-picker" class="pointer-events-auto absolute bottom-2 right-2 z-[80] flex flex-col-reverse items-end gap-2">
+              <button
+                type="button"
+                id="lab-replay-layer-menu-toggle"
+                class="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-700 bg-slate-950/90 text-slate-100 shadow-lg backdrop-blur transition-colors duration-200 hover:border-cyan-500/60 hover:bg-slate-900"
+                aria-expanded="false"
+                aria-controls="lab-replay-layer-menu"
+                aria-label="{% trans 'Map Z layers' %}"
+                title="{% trans 'Map Z layers' %}"
+              >
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M4 7h16M4 12h16M4 17h16"/>
+                </svg>
+              </button>
+              <div
+                id="lab-replay-layer-menu"
+                class="hidden max-h-[min(14rem,40vh)] min-w-[12rem] overflow-y-auto rounded-xl border border-slate-700 bg-slate-950/95 p-2 shadow-xl backdrop-blur"
+                role="menu"
+                aria-label="{% trans 'Map Z layers' %}"
+              >
+                <p class="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-slate-500">{% trans "Height layer (L)" %}</p>
+                <div id="lab-replay-layer-menu-options" class="space-y-0.5"></div>
               </div>
+            </div>
+          </div>
+
+          <div
+            id="lab-timeline-controls"
+            data-lab-timeline-controls
+            class="mt-3 flex w-full min-w-0 flex-col gap-2 rounded-lg border border-slate-700/70 bg-slate-900/70 px-2.5 py-2 sm:flex-row sm:items-center sm:gap-3"
+          >
+            <div class="flex shrink-0 items-center gap-1.5">
+              <button type="button" id="lab-timeline-prev" class="lab-btn-ghost cursor-pointer rounded-lg p-1.5 text-slate-300 hover:bg-slate-800" aria-label="Previous frame">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m15 18-6-6 6-6"/>
+                </svg>
+              </button>
+              <button type="button" id="lab-timeline-play" class="lab-btn-primary cursor-pointer rounded-lg p-1.5" aria-label="Play or pause replay">
+                <svg id="lab-timeline-play-icon" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                <svg id="lab-timeline-pause-icon" class="hidden h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                </svg>
+              </button>
+              <button type="button" id="lab-timeline-next" class="lab-btn-ghost cursor-pointer rounded-lg p-1.5 text-slate-300 hover:bg-slate-800" aria-label="Next frame">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 18 6-6-6-6"/>
+                </svg>
+              </button>
+              <span id="lab-frame-display-toolbar" class="min-w-[3.5rem] px-1 text-xs text-slate-400">
+                {% if total_frames %}{{ initial_frame|add:1 }} / {{ total_frames }}{% else %}0 / 0{% endif %}
+              </span>
+            </div>
+            <label class="sr-only" for="lab-timeline-scrub">Replay frame</label>
+            <input
+              id="lab-timeline-scrub"
+              type="range"
+              class="min-w-0 flex-1 cursor-pointer"
+              min="0"
+              max="0"
+              value="0"
+              step="1"
+              aria-label="Replay frame scrubber"
+            />
+            <div class="flex shrink-0 flex-wrap items-center gap-2 text-xs">
+              <label class="flex cursor-pointer items-center gap-1.5 text-slate-400">
+                <input type="checkbox" id="lab-terrain-rim-highlight-toggle" class="cursor-pointer" checked />
+                Rim highlight
+              </label>
+              <label class="flex cursor-pointer items-center gap-1.5 text-slate-400">
+                <input type="checkbox" id="lab-pattern-bundle-highlight-toggle" class="cursor-pointer" checked />
+                Pattern highlight
+              </label>
+            </div>
+            <div id="lab-replay-load-status" class="shrink-0 text-xs text-slate-500 sm:max-w-[8rem] sm:truncate"></div>
+          </div>
+
+          <div id="lab-map-footer" class="mt-3">
+            <div class="lab-replay-status-bar">
+              <p id="lab-replay-phase" class="text-sm">{{ initial_replay_phase }}</p>
+              <span class="shrink-0 text-slate-500">
+                Frame <span id="lab-frame-display">{% if total_frames %}{{ initial_frame|add:1 }} / {{ total_frames }}{% else %}0 / 0{% endif %}</span>
+              </span>
+            </div>
+
+            <details class="mt-2 rounded-lg border border-slate-800/80 bg-slate-900/30">
+              <summary class="cursor-pointer px-3 py-2 text-xs font-medium text-slate-400">Replay Timeline</summary>
+              <div id="lab-replay-metadata" class="space-y-1 border-t border-slate-800 px-3 py-2 text-xs">
+                <p id="lab-replay-event-type" class="text-violet-300">—</p>
+                <p id="lab-replay-title" class="text-slate-200">—</p>
+                <p id="lab-replay-description" class="max-h-48 overflow-y-auto whitespace-pre-wrap break-words leading-relaxed text-slate-500">—</p>
+                <p id="lab-replay-truncation-hud" class="font-mono text-amber-300/90">—</p>
+                <p id="lab-replay-run-status" class="font-mono text-cyan-300/90">—</p>
+                <pre id="lab-replay-run-log" class="max-h-28 overflow-y-auto whitespace-pre-wrap font-mono text-[10px] leading-snug text-slate-400/90 hidden" aria-live="polite"></pre>
+                <p id="lab-macro-commit-hud" class="hidden font-mono text-emerald-300/90">—</p>
+                <p id="lab-gene-catalog-hud" class="lab-meta-collapsed font-mono text-slate-500">
+                  {% if gene_template_catalog.needs_seed %}
+                    genes: DB empty — run seed_miner_patterns
+                  {% else %}
+                    genes: DB {{ gene_template_catalog.db_gene_count }} ({{ gene_template_catalog.generator_version }})
+                  {% endif %}
+                </p>
+              </div>
+            </details>
+
+            <div class="lab-meta-collapsed" aria-hidden="true">
+              <div id="lab-replay-footer-hint">—</div>
+              <div id="lab-computation-cycle">computation_cycle #{{ initial_frame }}</div>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="lab-workspace-right min-w-0 space-y-5">
+      <section
+        class="lab-workspace-right lab-workspace-inspector min-w-0"
+        aria-label="{% trans 'Run inspection' %}"
+      >
         <details
           id="lab-selected-run-panel"
-          class="group rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm"
+          class="lab-panel-card group rounded-xl"
           {% if initial_lab_run %}open{% endif %}
         >
-          <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
-            <div class="flex items-center gap-2">
-              <svg class="h-4 w-4 text-cyan-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="16" y="16" width="6" height="6" rx="1"/>
-                <rect x="2" y="16" width="6" height="6" rx="1"/>
-                <rect x="9" y="2" width="6" height="6" rx="1"/>
-                <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/>
-              </svg>
-              <h2 class="font-semibold">Selected Run Detail</h2>
+          <summary class="lab-run-inspector-summary flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
+            <div class="flex min-w-0 flex-wrap items-center gap-2">
+              <span class="lab-sidebar-section-title shrink-0">Run inspection</span>
+              <span id="lab-detail-run-id" class="text-sm font-semibold text-slate-100">
+                {% if initial_lab_run %}Run #{{ initial_lab_run.id }}{% else %}{% trans "No runs yet" %}{% endif %}
+              </span>
+              <span id="lab-detail-ops-slug-badge" class="hidden" aria-label="{% trans 'Ops slug class' %}"></span>
+              <span
+                id="lab-detail-status"
+                class="rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-400"
+              >{% if initial_lab_run %}{{ initial_lab_run.status }}{% else %}{% trans "Paste a blueprint and run the solver." %}{% endif %}</span>
             </div>
             <svg class="h-4 w-4 shrink-0 text-slate-500 transition group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
               <path d="m6 9 6 6 6-6"/>
             </svg>
           </summary>
-          <div class="space-y-3 border-t border-slate-800 px-4 pb-4 pt-3">
-            <div class="flex flex-wrap items-center gap-2">
-              <div id="lab-detail-run-id" class="text-sm font-medium text-slate-100">
-                {% if initial_lab_run %}Run #{{ initial_lab_run.id }}{% else %}{% trans "No runs yet" %}{% endif %}
-              </div>
-              <span
-                id="lab-detail-ops-slug-badge"
-                class="hidden"
-                aria-label="{% trans 'Ops slug class' %}"
-              ></span>
-              <span
-                id="lab-detail-status"
-                class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300"
-              >{% if initial_lab_run %}{{ initial_lab_run.status }}{% else %}{% trans "Paste a blueprint and run the solver." %}{% endif %}</span>
-            </div>
-            <p id="lab-detail-stack-status" class="hidden font-mono text-xs text-cyan-300/90"></p>
+          <div class="lab-run-inspector-body border-t border-slate-800 px-4 pb-4 pt-3">
+            <p id="lab-detail-stack-status" class="mb-3 hidden text-sm text-cyan-300/90"></p>
             {% include "web/partials/lab_layer_summaries.html" %}
           </div>
         </details>
@@ -579,6 +469,8 @@
   <script src="{% static 'web/js/lab_replay_canvas_renderer.js' %}" defer></script>
   <script src="{% static 'web/js/lab_replay_wire_sanitize.js' %}?v=replay_wire_sanitize_v1" defer></script>
   <script src="{% static 'web/js/lab_effective_cell_view.js' %}?v=effective_cell_v1" defer></script>
+  <script src="{% static 'web/js/lab_replay_height_layer.js' %}?v=replay_height_layer_v1" defer></script>
+  <script src="{% static 'web/js/lab_replay_overlay_bucket_registry.js' %}?v=replay_overlay_registry_v1" defer></script>
   <script src="{% static 'web/js/lab_replay_paint_plan.js' %}?v=replay_paint_plan_v1" defer></script>
-  <script src="{% static 'web/js/asteroid_miner_layout_lab.js' %}?v=effective_cell_v1" defer></script>
+  <script src="{% static 'web/js/asteroid_miner_layout_lab.js' %}?v=lab-inspector-grid-2026-06-12" defer></script>
 {% endblock %}

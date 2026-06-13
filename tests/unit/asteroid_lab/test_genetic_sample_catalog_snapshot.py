@@ -35,7 +35,6 @@ from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placeme
     run_layer_03_rim_greedy_placement,
 )
 from tests.unit.asteroid_lab.layers.fixtures.layer_03_golden_map import (
-    expected_golden_rim_anchor_count,
     golden_5x5_complete_map,
     golden_5x5_fluid_complete_map,
     minimal_l2_plan_for_golden,
@@ -163,7 +162,11 @@ def test_exhaustive_path_only_when_no_miner_seed_v2_rows(
     assert len(payload["entries"]) == 2
 
 
-def test_l3_runs_with_miner_seed_v2_snapshot() -> None:
+def test_l3_skeleton_accepts_miner_seed_v2_snapshot() -> None:
+    from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
+        Layer03SkipReason,
+    )
+
     call_command("seed_miner_patterns", verbosity=0)
     payload = build_genetic_sample_seed_snapshot(_miner_seed_queryset())
     snapshot = GeneticSampleSeedSnapshot.from_payload(payload)
@@ -174,12 +177,16 @@ def test_l3_runs_with_miner_seed_v2_snapshot() -> None:
         budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
         genetic_sample_seeds=snapshot,
     )
-    assert result.metrics.layer_skip_reason is None
-    assert result.metrics.rim_anchor_count == expected_golden_rim_anchor_count()
-    assert result.metrics.committed_placement_count >= 1
+    assert result.metrics.layer_skip_reason == Layer03SkipReason.ALGORITHM_RESET.value
+    assert result.metrics.committed_placement_count == 0
+    assert result.committed_placements == ()
 
 
-def test_l3_fluid_map_uses_fluid_gene_clones_from_shape_pool() -> None:
+def test_l3_skeleton_accepts_fluid_map_and_catalog() -> None:
+    from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
+        Layer03SkipReason,
+    )
+
     call_command("seed_miner_patterns", verbosity=0)
     payload = build_genetic_sample_seed_snapshot(_miner_seed_queryset())
     snapshot = GeneticSampleSeedSnapshot.from_payload(payload)
@@ -190,10 +197,9 @@ def test_l3_fluid_map_uses_fluid_gene_clones_from_shape_pool() -> None:
         budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
         genetic_sample_seeds=snapshot,
     )
-    assert result.metrics.layer_skip_reason is None
-    assert result.metrics.rim_anchor_count == expected_golden_rim_anchor_count()
-    assert result.metrics.committed_placement_count >= 1
-    assert all(p.seed_id.startswith("fluid_miner_seed_") for p in result.committed_placements)
+    assert result.metrics.layer_skip_reason == Layer03SkipReason.ALGORITHM_RESET.value
+    assert result.metrics.committed_placement_count == 0
+    assert result.committed_placements == ()
 
 
 def test_build_genetic_sample_seed_snapshot_entries_sorted_by_gene_id(

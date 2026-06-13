@@ -29,21 +29,54 @@ def test_resolve_fluid_miner_is_l1() -> None:
     assert resolve_replay_height_layer(cell_kind="fluid_miner", transport_kind="fluid_pipe") == 1
 
 
-def test_resolve_space_belt_is_l2() -> None:
-    assert resolve_replay_height_layer(cell_kind="space_belt", transport_kind="shape_belt") == 2
+def test_resolve_space_belt_on_floor_is_l0() -> None:
+    assert resolve_replay_height_layer(cell_kind="space_belt", transport_kind="shape_belt") == 0
+
+
+def test_resolve_space_belt_forward_tile_is_l0() -> None:
+    assert (
+        resolve_replay_height_layer(
+            cell_kind="space_belt",
+            transport_kind="space_belt",
+            tile_type="SpaceBelt_Forward",
+        )
+        == 0
+    )
+
+
+def test_resolve_space_belt_lift1_tile_is_l1() -> None:
+    assert (
+        resolve_replay_height_layer(
+            cell_kind="space_belt",
+            transport_kind="space_belt",
+            tile_type="SpaceBelt_Lift1UpForward",
+        )
+        == 1
+    )
+
+
+def test_resolve_space_belt_lift2_tile_is_l1() -> None:
+    assert (
+        resolve_replay_height_layer(
+            cell_kind="space_belt",
+            transport_kind="space_belt",
+            tile_type="SpaceBelt_Lift2UpForward",
+        )
+        == 1
+    )
 
 
 def test_resolve_space_pipe_is_l1() -> None:
     assert resolve_replay_height_layer(cell_kind="space_pipe", transport_kind="fluid_pipe") == 1
 
 
-def test_resolve_route_probe_path_shape_is_l2() -> None:
+def test_resolve_route_probe_path_shape_is_l0() -> None:
     assert (
         resolve_replay_height_layer(
             cell_kind="route_probe_path",
             transport_kind="shape_belt",
         )
-        == 2
+        == 0
     )
 
 
@@ -66,7 +99,7 @@ def test_transient_overlay_wire_emits_layer() -> None:
         )
     )
     assert wire[0]["layer"] == 0
-    assert wire[1]["layer"] == 2
+    assert wire[1]["layer"] == 0
 
 
 def test_full_cell_wire_emits_layer_from_decode_row() -> None:
@@ -106,7 +139,7 @@ def test_replay_timeline_frame_json_round_trip_preserves_layer_wire() -> None:
                     y=5,
                     kind="route_probe_path",
                     transport="shape_belt",
-                    layer=2,
+                    layer=0,
                 ),
             ),
             bbox=ReplayBBox(min_x=10, min_y=4, max_x=22, max_y=7),
@@ -116,7 +149,7 @@ def test_replay_timeline_frame_json_round_trip_preserves_layer_wire() -> None:
     restored = replay_timeline_frame_json_round_trip(frame)
     after = replay_timeline_frame_to_json_dict(restored)
     assert before["map_view"]["full_cells"][0]["layer"] == 0
-    assert before["map_view"]["overlay_cells"][0]["layer"] == 2
+    assert before["map_view"]["overlay_cells"][0]["layer"] == 0
     assert after == before
     assert restored.map_view.full_cells[0].layer == 0
-    assert restored.map_view.overlay_cells[0].layer == 2
+    assert restored.map_view.overlay_cells[0].layer == 0

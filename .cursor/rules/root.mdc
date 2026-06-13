@@ -11,6 +11,7 @@ Canon: `AGENTS.md`.
 
 Route when relevant:
 
+- DOX hierarchy: `dox-framework.mdc` (`dox-framework.md`, `workflow-phases.md` § Workflow + DOX)
 - Scope: `agent_scope.mdc`
 - Phases (Normal+): `workflow-phases.mdc` (`workflow-phases.md`)
 - Kanban WIP: `kanban-tracking.mdc` (`kanban-tracking.md`)
@@ -20,6 +21,7 @@ Route when relevant:
 - Code search (graph exists): `graphify.mdc`
 - UI/browser verification: `playwright.mdc`
 - Git hygiene: `git-worktree.mdc`
+- Delivery safety: `workflow-safety.mdc` (`workflow-safety.md`)
 - Style: `caveman.mdc`
 
-Do not claim done without evidence. Do not commit/push/PR unless user asks.
+Do not claim done without evidence. Do not commit/push/PR/branch unless user asks (`workflow-safety.mdc`).

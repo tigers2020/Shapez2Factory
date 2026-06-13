@@ -9,26 +9,27 @@ Canon: `AGENTS.md` § Kanban tracking. Detail: `docs/agent-workflows/kanban-trac
 
 Cards: `.devtool/features/*.md` (`status` = workflow phase id). Columns: `.devtool/README.md`.
 
-## When required
+## Hard rule
 
-| Mode | Kanban |
-|------|--------|
-| Read-only | optional — no card required |
-| Tiny | optional — update if card already linked |
-| Normal / High-risk | **required** for feature, bug, contract, or multi-step implementation |
-| Ops / recovery | optional unless user linked a card |
+**Every task/chat needs a card** — read-only, Tiny, Normal, High-risk, ops/recovery, architecture review, Q&A. No exceptions.
+
+| Mode | Card |
+|------|------|
+| All | **required** — create at session start if none linked |
 
 ## Session start
 
-1. Find linked card (user `@` path, same title, or `implement`/`verify`/`align`/`contract`/`slice` WIP).
-2. No card → create under `.devtool/features/` or ask user which card.
+1. Find linked card (user `@` path, same title, or active WIP in `align`…`verify`/`blocked`).
+2. No card → **create** under `.devtool/features/` (do not skip; do not wait for user ask).
 3. Set `status` to current phase; append **Progress** note: date, chat scope, next step.
 
 ## During work
 
+- **One feature thread = one card** — append **Progress** per slice/sub-step; do not spawn sibling cards (`-r2`, `-step2`) for the same epic.
+- Sub-step done → tick Acceptance + Progress; stay in `implement`/`verify` until full Acceptance met.
 - Phase change → move `status` + append Progress (what changed, evidence).
 - `BLOCKED:` → `status: blocked` + blocker note.
-- Scope complete → `status: verify` then `done` after validation; archive per extension.
+- **Full** scope complete (all required Acceptance) → `verify` then `done`; archive per extension. Optional/deferred steps: note in Progress, do not early-archive.
 
 Update card **before** claiming done — not only in chat summary.
 
@@ -48,4 +49,4 @@ Do not silently abandon. User must **explicitly** park (`blocked`/`backlog` + re
 
 ## Card body (minimum)
 
-Under title: **Scope**, **Acceptance**, **Progress** (timestamped bullets). Keep frontmatter `modified` accurate.
+Under title: **Scope**, **Acceptance**, **Artifacts** (when architecture thread — link `docs/architecture/<slug>/`), **Progress** (timestamped bullets). Keep frontmatter `modified` accurate.

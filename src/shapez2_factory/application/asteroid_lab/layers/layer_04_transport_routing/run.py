@@ -1,4 +1,4 @@
-"""Layer 04 transport routing orchestrator (PR-L4-0 stub)."""
+"""Layer 5 transport routing skeleton — algorithm reset."""
 
 from __future__ import annotations
 
@@ -27,9 +27,6 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import
 from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import (
     ResourceKind,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_04_transport_routing.sequential_router import (  # noqa: E501
-    route_layer04_sequential,
-)
 from shapez2_factory.domain.asteroid_lab.reconstruction.complete_map import (
     ReconstructionCompleteMap,
 )
@@ -46,10 +43,13 @@ def run_layer_05_transport_routing(
     interior_occupied_cells: frozenset[tuple[int, int]] | None = None,
     inner_fill: Layer04InnerFillResult | None = None,
 ) -> Layer04RoutePlan:
-    """MVP routing when map + rim + exterior plan are present (canonical L5 slug)."""
-    _ = budget_ctx
-    interior = (
-        frozenset(interior_occupied_cells) if interior_occupied_cells is not None else frozenset()
+    _ = (
+        complete_map,
+        rim_result,
+        budget_ctx,
+        transport_catalog,
+        interior_occupied_cells,
+        inner_fill,
     )
     if exterior_plan is None:
         return Layer04RoutePlan(
@@ -71,18 +71,8 @@ def run_layer_05_transport_routing(
         rk = resource_kind.value
     else:
         rk = resource_kind or "shape"
-    if complete_map is None or rim_result is None:
-        tk = "space_belt" if rk == "shape" else "space_pipe"
-        return Layer04RoutePlan.empty(resource_kind=rk, transport_kind=tk)
-    return route_layer04_sequential(
-        complete_map=complete_map,
-        exterior_plan=exterior_plan,
-        rim_result=rim_result,
-        resource_kind=rk,
-        transport_catalog=transport_catalog,
-        interior_occupied_cells=interior,
-        inner_fill=inner_fill,
-    )
+    tk = "space_belt" if rk == "shape" else "space_pipe"
+    return Layer04RoutePlan.empty(resource_kind=rk, transport_kind=tk)
 
 
 run_layer_04_transport_routing = run_layer_05_transport_routing

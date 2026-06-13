@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import json
 from io import StringIO
-from pathlib import Path
 
-from django.conf import settings
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
@@ -230,7 +228,6 @@ class GeneSeedAdmin(admin.ModelAdmin):
             "db_row_count": gene_seed_l3_catalog_queryset(scope="admin").count(),
             "snapshot_entry_count": len(payload.get("entries", [])),
             "provenance_hash": payload.get("provenance_hash", ""),
-            "golden_fixture_path": "tests/fixtures/asteroid_golden/genetic_sample_seeds.json",
         }
         return super().changelist_view(request, extra_context=extra_context)
 
@@ -241,11 +238,6 @@ class GeneSeedAdmin(admin.ModelAdmin):
                 "seed-miner-patterns/",
                 self.admin_site.admin_view(self.seed_miner_patterns_view),
                 name=f"{info[0]}_{info[1]}_seed_miner_patterns",
-            ),
-            path(
-                "export-golden-fixture/",
-                self.admin_site.admin_view(self.export_golden_fixture_view),
-                name=f"{info[0]}_{info[1]}_export_golden_fixture",
             ),
             *super().get_urls(),
         ]
@@ -297,35 +289,6 @@ class GeneSeedAdmin(admin.ModelAdmin):
             for line in output.splitlines():
                 if "deleted stale exhaustive" in line or "deleted stale miner_seed" in line:
                     self.message_user(request, line.strip(), level=messages.WARNING)
-        return redirect(changelist_url)
-
-    def export_golden_fixture_view(self, request):
-        changelist_url = reverse("admin:asteroid_lab_geneseed_changelist")
-        if not self.has_change_permission(request):
-            raise PermissionDenied
-        if request.method != "POST":
-            return redirect(changelist_url)
-
-        from django_apps.asteroid_lab.services.gene_seed_l3_catalog import (
-            build_genetic_sample_seed_snapshot_from_db,
-            gene_seed_l3_catalog_queryset,
-        )
-
-        payload = build_genetic_sample_seed_snapshot_from_db(scope="admin")
-        fixture_root = Path(settings.BASE_DIR) / "tests" / "fixtures" / "asteroid_golden"
-        out_path = fixture_root / "genetic_sample_seeds.json"
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        row_count = gene_seed_l3_catalog_queryset(scope="admin").count()
-        entry_count = len(payload.get("entries", []))
-        self.message_user(
-            request,
-            (
-                f"Exported {entry_count} genetic_sample_seeds entries "
-                f"from {row_count} GeneSeed rows to {out_path.relative_to(settings.BASE_DIR)}"
-            ),
-            level=messages.SUCCESS,
-        )
         return redirect(changelist_url)
 
     @admin.display(description="Catalog rank", ordering="metadata_json__seed_rank")

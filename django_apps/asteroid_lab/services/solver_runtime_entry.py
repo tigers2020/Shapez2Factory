@@ -16,6 +16,9 @@ from django_apps.asteroid_lab.services.artifact_ingest import (
     ArtifactIngestError,
     ingest_artifact_for_project,
 )
+from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
+    lab_replay_frames_are_renderable,
+)
 from django_apps.asteroid_lab.services.genetic_sample_catalog_snapshot import (
     build_genetic_sample_seed_snapshot,
 )
@@ -28,6 +31,9 @@ from django_apps.asteroid_lab.services.lab_replay_persisted_cache import (
     is_cache_summary_valid,
     load_composed_frames_for_run_id,
     load_manifest_summary_for_run_id,
+)
+from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
+    build_lab_replay_frames_for_project,
 )
 from django_apps.asteroid_lab.services.solver_run_lab_summary import (
     lab_run_summary_from_orm,
@@ -119,11 +125,24 @@ def _run_subprocess_runtime_for_project(
 
     solver_summary = dict(ingest_result.solver_summary)
     ok = ingest_result.solver_run.status == m.SolverRun.RunStatus.COMPLETED
+    lab_replay_frames_json: list[dict[str, object]] = []
+    replay_track_metrics = _empty_replay_track_metrics(reason=None)
+    if ok:
+        try:
+            built_frames, built_metrics = build_lab_replay_frames_for_project(
+                int(project_id),
+                solver_run_id=int(ingest_result.solver_run.pk),
+            )
+            if lab_replay_frames_are_renderable(built_frames):
+                lab_replay_frames_json = built_frames
+                replay_track_metrics = dict(built_metrics)
+        except Exception:
+            pass
     return SolverRuntimeEntryResult(
         ok=ok,
         solver_run_id=int(ingest_result.solver_run.pk),
-        lab_replay_frames_json=[],
-        replay_track_metrics=_empty_replay_track_metrics(reason=None),
+        lab_replay_frames_json=lab_replay_frames_json,
+        replay_track_metrics=replay_track_metrics,
         solver_summary=solver_summary,
         validation_passed=validation_passed_from_solver_summary(solver_summary),
         error_code=None if ok else SolverRuntimeEntryErrorCode.SOLVER_SUBPROCESS_FAILED,

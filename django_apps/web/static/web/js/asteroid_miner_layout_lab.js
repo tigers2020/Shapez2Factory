@@ -104,6 +104,22 @@
   /** Set in ``init`` from ``#lab-root`` ``data-lab-sprite-base`` (Django ``{% static %}``). */
   let labSpriteBaseUrl = "";
 
+  /** CSS viewport zoom on ``#lab-replay-grid-stage``; canvas backing catches up after wheel idle. */
+  let labReplayViewportZoom = 1;
+  /** Last settled hi-res canvas backing scale; lags CSS zoom during interactive wheel zoom. */
+  let labReplayCanvasViewportZoom = 1;
+
+  function labCanvasBackingViewportScale(zoom) {
+    const z = Number(zoom);
+    if (!Number.isFinite(z) || z <= 0) {
+      return 1;
+    }
+    const capped = Math.min(z, LAB_CANVAS_VIEWPORT_SCALE_MAX);
+    const stepped =
+      Math.round(capped / LAB_CANVAS_VIEWPORT_SCALE_STEP) * LAB_CANVAS_VIEWPORT_SCALE_STEP;
+    return Math.max(1, stepped);
+  }
+
   const labRootForTotals = document.getElementById("lab-root");
   const rawTotal = labRootForTotals
     ? Number(labRootForTotals.dataset.labTotalFrames)
@@ -190,7 +206,7 @@
     const plan = LabReplayPaintPlan.buildLabPaintPlanFromFrame(
       frame,
       resolveCellIndex,
-      paintOptions || {},
+      Object.assign({}, paintOptions || {}, { selectedMapZLayer: labMapZSelectedLayer }),
     );
     const fieldSpriteIdx = new Set();
     const sprites = plan.sprites || [];
@@ -211,7 +227,7 @@
     });
   }
 
-  function syncLabTerrainCanvasLayer(cells, layout, cellPx, gapPx) {
+  function syncLabTerrainCanvasLayer(cells, layout, cellPx, gapPx, viewportScale) {
     if (!labTerrainCanvasEnabled() || !layout) {
       return;
     }
@@ -224,7 +240,14 @@
       return;
     }
     const visibleCells = cells.filter(cellPassesMapZFilter);
-    window.LabReplayCanvas.drawTerrainLayer(ctx, visibleCells, layout, cellPx, gapPx);
+    window.LabReplayCanvas.drawTerrainLayer(
+      ctx,
+      visibleCells,
+      layout,
+      cellPx,
+      gapPx,
+      viewportScale,
+    );
     canvas.hidden = visibleCells.length === 0;
   }
 
@@ -310,6 +333,11 @@
   const LAB_VIEWPORT_MIN_SCALE = 0.35;
   const LAB_VIEWPORT_MAX_SCALE = 7;
   const LAB_VIEWPORT_DRAG_THRESHOLD_PX = 6;
+  /** Canvas backing-store zoom cap/step; applied only after wheel/pinch settles (interactive zoom is CSS-only). */
+  const LAB_CANVAS_VIEWPORT_SCALE_MAX = LAB_VIEWPORT_MAX_SCALE;
+  const LAB_CANVAS_VIEWPORT_SCALE_STEP = 0.5;
+  /** Wheel idle before hi-res canvas redraw (interactive zoom uses CSS scale only). */
+  const LAB_CANVAS_ZOOM_SETTLE_MS = 150;
 
   let labViewportInteractionsBound = false;
 
@@ -332,6 +360,78 @@
     if (frameEl) frameEl.textContent = text;
     const toolbarEl = document.getElementById("lab-frame-display-toolbar");
     if (toolbarEl) toolbarEl.textContent = text;
+  }
+
+  function applyDomPlanDataAttrs(el, domPlan) {
+    if (!el || !domPlan || !domPlan.dataAttrs) {
+      return;
+    }
+    const da = domPlan.dataAttrs;
+    if (da.overlayRole) {
+      el.setAttribute("data-overlay-role", String(da.overlayRole));
+    } else {
+      el.removeAttribute("data-overlay-role");
+    }
+    if (da.terrainKind) {
+      el.setAttribute("data-terrain-kind", String(da.terrainKind));
+    } else {
+      el.removeAttribute("data-terrain-kind");
+    }
+    if (da.transportKind) {
+      el.setAttribute("data-transport-kind", String(da.transportKind));
+    } else {
+      el.removeAttribute("data-transport-kind");
+    }
+    if (da.outputTransportKind) {
+      el.setAttribute("data-output-transport-kind", String(da.outputTransportKind));
+    } else {
+      el.removeAttribute("data-output-transport-kind");
+    }
+    if (da.paintV2) {
+      el.setAttribute("data-paint-v2", String(da.paintV2));
+    } else {
+      el.removeAttribute("data-paint-v2");
+    }
+  }
+
+  function applyDomPlanToCell(el, base, cell, domPlan) {
+    if (!el || !domPlan) {
+      return;
+    }
+    const tone = domPlan.rootClasses || domPlan.toneClasses || "";
+    el.className = tone ? base + " " + tone : base;
+    applyDomPlanDataAttrs(el, domPlan);
+    const hudRole =
+      domPlan.hudRole != null && String(domPlan.hudRole) !== ""
+        ? String(domPlan.hudRole)
+        : domPlan.dataAttrs && domPlan.dataAttrs.overlayRole
+          ? String(domPlan.dataAttrs.overlayRole)
+          : "";
+    applyLabCellHudAttributes(el, cell, hudRole);
+    if (domPlan.candidateObservation) {
+      el.setAttribute("title", CANDIDATE_OBSERVATION_TITLE);
+      el.setAttribute("data-lab-candidate-overlay", "1");
+    } else {
+      el.removeAttribute("title");
+      el.removeAttribute("data-lab-candidate-overlay");
+    }
+    const spriteRel =
+      domPlan.sprite && domPlan.sprite.rel
+        ? String(domPlan.sprite.rel)
+        : domPlan.spriteRel
+          ? String(domPlan.spriteRel)
+          : "";
+    const spriteRotation =
+      domPlan.sprite && domPlan.sprite.rotation != null
+        ? domPlan.sprite.rotation
+        : domPlan.spriteRotation != null
+          ? domPlan.spriteRotation
+          : 0;
+    if (spriteRel) {
+      applyLabCellSpriteFromRel(el, spriteRel, spriteRotation);
+    } else {
+      clearLabCellSprite(el);
+    }
   }
 
   /** HUD: ``data-overlay-role``, ``data-cell-kind``, ``data-tile-type`` (cleared in ``resetGridBase``). */
@@ -995,27 +1095,13 @@
   }
 
   function wireExplicitLabCellMapZ(cell) {
-    if (!cell || typeof cell !== "object") {
-      return null;
+    if (
+      typeof LabReplayHeightLayer !== "undefined" &&
+      LabReplayHeightLayer.wireExplicitHeightLayer
+    ) {
+      return LabReplayHeightLayer.wireExplicitHeightLayer(cell);
     }
-    const raw =
-      cell.layer != null
-        ? cell.layer
-        : cell.L != null
-          ? cell.L
-          : cell.z != null
-            ? cell.z
-            : cell.Z != null
-              ? cell.Z
-              : null;
-    if (raw == null || raw === "") {
-      return null;
-    }
-    const n = Number(raw);
-    if (!Number.isFinite(n)) {
-      return null;
-    }
-    return Math.max(0, Math.min(2, Math.trunc(n)));
+    return null;
   }
 
   function normalizeReplayWireCell(c) {
@@ -1295,13 +1381,25 @@
     const out = [];
     if (!overlay || typeof overlay !== "object") return out;
 
-    pushCellList(out, overlay.cells, "");
-    pushCellList(out, overlay.equipment_cells, "equipment");
-    pushCellList(out, overlay.equipment, "equipment");
-    pushCellList(out, overlay.adjacent_transport, "adjacent_transport");
+    if (
+      typeof LabReplayOverlayBucketRegistry !== "undefined" &&
+      LabReplayOverlayBucketRegistry.collectOverlayCellsForPaintTarget
+    ) {
+      const paintRows =
+        LabReplayOverlayBucketRegistry.collectOverlayCellsForPaintTarget(overlay);
+      for (let i = 0; i < paintRows.length; i++) {
+        out.push({ cell: paintRows[i], role: "" });
+      }
+    } else {
+      pushCellList(out, overlay.cells, "");
+      pushCellList(out, overlay.equipment_cells, "equipment");
+      pushCellList(out, overlay.equipment, "equipment");
+      pushCellList(out, overlay.adjacent_transport, "adjacent_transport");
+      pushCellList(out, overlay.transport, "transport");
+    }
+
     pushFromComponentBlocks(out, overlay.components, "transport");
     pushFromComponentBlocks(out, overlay.transport_components, "transport");
-    pushCellList(out, overlay.transport, "transport");
 
     const main = overlay.main_component_candidate;
     if (main && typeof main === "object") {
@@ -1323,6 +1421,7 @@
       "transport",
       "main_component_candidate",
       "cleanup_candidate_cells",
+      "equipment_bundles",
     ]);
     const keys = Object.keys(overlay);
     for (let k = 0; k < keys.length; k++) {
@@ -1518,6 +1617,9 @@
       card.classList.toggle("ring-1", active);
       card.classList.toggle("ring-cyan-500/40", active);
       card.setAttribute("aria-current", active ? "true" : "false");
+      if (card.tagName === "DETAILS" && active) {
+        card.open = true;
+      }
     });
   }
 
@@ -1533,74 +1635,15 @@
   /** Active Shapez height layer (L); ``LAB_MAP_Z_LAYER_ALL`` shows every plane. */
   var labMapZSelectedLayer = LAB_MAP_Z_LAYER_ALL;
 
-  function inferLabCellMapZ(cell) {
-    const kind = overlayCellKind(cell);
-    const transport = String(cell.transport_kind || cell.transport || "");
-    const tile = String(cell.tile_type || cell.sprite_identifier || "");
-
-    var normalizedTransport =
-      typeof LabEffectiveCellView !== "undefined"
-        ? LabEffectiveCellView.normalizeProjectTransportKind(transport)
-        : transport;
-    if (kind === "candidate_miner") {
-      return normalizedTransport === "space_pipe" ? 1 : 0;
-    }
-    if (kind === "candidate_transport_stub") {
-      return normalizedTransport === "space_pipe" ? 1 : 2;
-    }
-    if (
-      kind === "space_belt" ||
-      kind === "route_probe_path" ||
-      kind === "route_path" ||
-      kind === "route_probe" ||
-      kind === "route_goal" ||
-      kind === "confirmed_route" ||
-      kind === "candidate_route_path" ||
-      kind === "overlap_conflict"
-    ) {
-      if (normalizedTransport === "space_pipe" && kind !== "space_belt") {
-        return 1;
-      }
-      return 2;
-    }
-    if (kind === "space_pipe") {
-      return 1;
-    }
-    if (
-      kind === "asteroid_fluid_field" ||
-      kind === "fluid_miner" ||
-      kind === "fluid_miner_extension" ||
-      normalizedTransport === "space_pipe"
-    ) {
-      return 1;
-    }
-    if (
-      kind === "asteroid_shape_field" ||
-      kind === "shape_miner" ||
-      kind === "shape_miner_extension" ||
-      kind === "inner_field_block" ||
-      normalizedTransport === "space_belt"
-    ) {
-      return 0;
-    }
-    if (kind.indexOf("route") >= 0) {
-      return normalizedTransport === "space_pipe" ? 1 : 2;
-    }
-    if (tile.indexOf("SpacePipe") >= 0 || tile.indexOf("Lift1") >= 0) {
-      return 1;
-    }
-    if (tile.indexOf("SpaceBelt") >= 0 || tile.indexOf("Lift2") >= 0) {
-      return 2;
-    }
-    return 0;
-  }
-
   function labCellMapZ(cell) {
-    const explicit = wireExplicitLabCellMapZ(cell);
-    if (explicit != null) {
-      return explicit;
+    if (
+      typeof LabReplayHeightLayer !== "undefined" &&
+      LabReplayHeightLayer.resolveReplayHeightLayerForWireRow
+    ) {
+      return LabReplayHeightLayer.resolveReplayHeightLayerForWireRow(cell);
     }
-    return inferLabCellMapZ(cell);
+    const explicit = wireExplicitLabCellMapZ(cell);
+    return explicit != null ? explicit : 0;
   }
 
   function labMapZLayerVisible(z) {
@@ -1852,19 +1895,30 @@
     return ck + "|" + role + "|" + rot + "||" + tone + "|" + cand;
   }
 
-  function labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan) {
+  function labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan, domPlanIn) {
     if (!cell || typeof cell !== "object") {
       return null;
     }
     const ck = overlayCellKind(cell);
     const el = domCells[idx];
+    const domPlan =
+      domPlanIn != null ? domPlanIn : resolveDomPlan ? resolveDomPlan(cell) : null;
     if (resolveDomPlan) {
-      const domPlan = resolveDomPlan(cell);
       if (domPlan) {
+        const role =
+          domPlan.hudRole != null && String(domPlan.hudRole) !== ""
+            ? String(domPlan.hudRole)
+            : domPlan.dataAttrs && domPlan.dataAttrs.overlayRole
+              ? String(domPlan.dataAttrs.overlayRole)
+              : "";
         const rot = cell.rotation != null ? String(cell.rotation) : "";
-        const role = cell.overlay_role != null ? String(cell.overlay_role) : "";
-        const domTone = domPlan.toneClasses || "";
-        const domSprite = domPlan.spriteRel || "";
+        const domTone = domPlan.rootClasses || domPlan.toneClasses || "";
+        const domSprite =
+          domPlan.sprite && domPlan.sprite.rel
+            ? String(domPlan.sprite.rel)
+            : domPlan.spriteRel
+              ? String(domPlan.spriteRel)
+              : "";
         const domCand = domPlan.candidateObservation ? "1" : "0";
         return ck + "|" + role + "|" + rot + "|" + domSprite + "|" + domTone + "|" + domCand + "|v2";
       }
@@ -1924,7 +1978,8 @@
       if (cellByIndex) {
         const cell = cellByIndex.get(idx);
         if (cell) {
-          const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan);
+          const domPlan = resolveDomPlan ? resolveDomPlan(cell) : null;
+          const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan, domPlan);
           if (token != null && renderedTokenByKey.get(idx) === token) {
             continue;
           }
@@ -1944,9 +1999,9 @@
       const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
-      const ck = overlayCellKind(cell);
       const el = domCells[idx];
-      const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan);
+      const domPlan = resolveDomPlan ? resolveDomPlan(cell) : null;
+      const token = labPaintTokenForCell(cell, frame, domCells, idx, resolveDomPlan, domPlan);
       if (token == null) {
         continue;
       }
@@ -1961,33 +2016,10 @@
         }
         continue;
       }
-      const domPlan = resolveDomPlan ? resolveDomPlan(cell) : null;
       if (!domPlan) {
         continue;
       }
-      const tone = domPlan.toneClasses || toneForFullMapCell(cell, frame);
-      el.className = tone ? base + " " + tone : base;
-      const hudRole =
-        cell.overlay_role != null
-          ? String(cell.overlay_role)
-          : isRouteOverlayCellKind(ck)
-            ? ck
-            : domPlan.candidateObservation
-              ? ck
-              : "";
-      applyLabCellHudAttributes(el, cell, hudRole);
-      if (domPlan.candidateObservation) {
-        el.setAttribute("title", CANDIDATE_OBSERVATION_TITLE);
-        el.setAttribute("data-lab-candidate-overlay", "1");
-      } else {
-        el.removeAttribute("title");
-        el.removeAttribute("data-lab-candidate-overlay");
-      }
-      if (domPlan.spriteRel) {
-        applyLabCellSpriteFromRel(el, domPlan.spriteRel, domPlan.spriteRotation);
-      } else {
-        clearLabCellSprite(el);
-      }
+      applyDomPlanToCell(el, base, cell, domPlan);
       renderedTokenByKey.set(idx, token);
       if (labPerfDebugEnabled()) {
         labPerfTouchedCells += 1;
@@ -2647,7 +2679,13 @@
     if (fm.length) {
       resetForFrame();
       if (labTerrainCanvasEnabled() && !useIncremental && rimDrawCtx) {
-        syncLabTerrainCanvasLayer(fm, rimDrawCtx.layout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+        syncLabTerrainCanvasLayer(
+          fm,
+          rimDrawCtx.layout,
+          rimDrawCtx.cellPx,
+          rimDrawCtx.gapPx,
+          labReplayViewportZoom,
+        );
       }
       renderFullMapReplayFrame(
         frame,
@@ -3057,10 +3095,12 @@
       gridStage.style.transformOrigin = "0 0";
       gridStage.style.transform =
         "translate3d(" + tx + "px, " + ty + "px, 0) scale(" + zoom + ")";
+      labReplayViewportZoom = zoom;
     }
 
     function applyLabGridLayoutForZoom() {
       let cellPx = null;
+      let gapPx = null;
       if (hasServerReplay && replayLayout) {
         const gw = replayLayout.gridW;
         const gh = replayLayout.gridH;
@@ -3074,19 +3114,28 @@
       }
       if (cellPx != null) {
         /* ~0.25rem at ~20px cells in CSS; gap scales with stage ``scale()`` via world cell size. */
-        const gapPx = Math.max(0, Math.round(cellPx * 0.2));
+        gapPx = Math.max(0, Math.round(cellPx * 0.2));
         gridEl.style.setProperty("--lab-cell-gap", gapPx + "px");
         const radiusPx = Math.max(2, Math.min(7, Math.round(cellPx * 0.14)));
         gridEl.style.setProperty("--lab-cell-radius", radiusPx + "px");
       }
       refreshLabLayoutCache();
       applyLabViewportTransform();
-      refreshLabCanvasAfterLayoutChange();
+      if (cellPx != null && gapPx != null) {
+        const nextKey = labCanvasLayoutKey(cellPx, gapPx);
+        if (nextKey !== labLastCanvasLayoutKey) {
+          labLastCanvasLayoutKey = nextKey;
+          refreshLabCanvasAfterLayoutChange();
+        }
+      }
     }
 
     function resetLabViewportTransform() {
       labViewportTransform = { zoom: 1, tx: 0, ty: 0 };
+      labReplayCanvasViewportZoom = 1;
+      cancelLabCanvasZoomRefresh();
       applyLabGridLayoutForZoom();
+      refreshLabCanvasAfterLayoutChange();
     }
 
     let resolveCellIndex = function (cell) {
@@ -3100,6 +3149,11 @@
 
     /** PR-RENDER-5 hybrid canvas renderer (must init before surface mount — TDZ). */
     let labCanvasRenderer = null;
+    let labCanvasZoomRefreshTimer = null;
+    let labCanvasZoomRefreshRaf = null;
+    let labReplayGridSizingTimer = null;
+    let labCanvasRefreshActive = false;
+    let labLastCanvasLayoutKey = "";
 
     function initializeServerReplaySurface(framesArr) {
       const neutralClass = LAB_CELL_BASE;
@@ -3148,6 +3202,16 @@
         applyLabGridLayoutForZoom();
       }
 
+      function scheduleReplayGridSizing() {
+        if (labReplayGridSizingTimer) {
+          clearTimeout(labReplayGridSizingTimer);
+        }
+        labReplayGridSizingTimer = setTimeout(function () {
+          labReplayGridSizingTimer = null;
+          applyReplayGridSizing();
+        }, 50);
+      }
+
       function labReplayViewportOnWindowResize() {
         applyReplayGridSizing();
         resetLabViewportTransform();
@@ -3163,6 +3227,7 @@
             replayLayout,
             terrainSizing.cellPx,
             terrainSizing.gapPx,
+            labReplayViewportZoom,
           );
         }
       } else {
@@ -3178,7 +3243,7 @@
          * retrigger the observer; ``applyReplayGridSizing`` already calls
          * ``applyLabGridLayoutForZoom`` with the current ``labViewportTransform``. */
         resizeObserver = new ResizeObserver(function () {
-          applyReplayGridSizing();
+          scheduleReplayGridSizing();
         });
         resizeObserver.observe(gridViewport);
         replayResizeMode = "observer";
@@ -3189,6 +3254,10 @@
 
       return function cleanupReplaySurface() {
         destroyLabCanvasRenderer();
+        if (labReplayGridSizingTimer) {
+          clearTimeout(labReplayGridSizingTimer);
+          labReplayGridSizingTimer = null;
+        }
         if (gridEl) {
           gridEl.classList.remove("lab-replay-grid--canvas-mode");
         }
@@ -3458,6 +3527,7 @@
     }
 
     function destroyLabCanvasRenderer() {
+      cancelLabCanvasZoomRefresh();
       if (labCanvasRenderer && labCanvasRenderer.destroy) {
         labCanvasRenderer.destroy();
       }
@@ -3469,8 +3539,15 @@
         typeof LabReplayPaintPlan !== "undefined" &&
         typeof LabReplayPaintPlan.collectSpriteRelsFromPaintPlanFrames === "function"
       ) {
+        const warmupFrames = [];
+        const current = getCurrentReplayFrame();
+        if (current) {
+          warmupFrames.push(current);
+        } else if (Array.isArray(framesArr) && framesArr.length) {
+          warmupFrames.push(framesArr[framesArr.length - 1]);
+        }
         return LabReplayPaintPlan.collectSpriteRelsFromPaintPlanFrames(
-          framesArr,
+          warmupFrames,
           resolveCellIndex,
           { replayFrames: framesArr, hasServerReplay: hasServerReplay },
         );
@@ -3521,35 +3598,84 @@
           replayArrayIndex: replayArrayIndex,
           replayFrames: replayFrames,
           hasServerReplay: hasServerReplay,
+          selectedMapZLayer: labMapZSelectedLayer,
         });
       }
       return { overlays: [], sprites: [] };
     }
 
-    function refreshLabCanvasAfterLayoutChange() {
+    function labCanvasLayoutKey(cellPx, gapPx) {
+      return String(cellPx) + ":" + String(gapPx);
+    }
+
+    function cancelLabCanvasZoomRefresh() {
+      if (labCanvasZoomRefreshTimer) {
+        clearTimeout(labCanvasZoomRefreshTimer);
+        labCanvasZoomRefreshTimer = null;
+      }
+      if (labCanvasZoomRefreshRaf) {
+        cancelAnimationFrame(labCanvasZoomRefreshRaf);
+        labCanvasZoomRefreshRaf = null;
+      }
+    }
+
+    /** Interactive zoom: CSS scale only while wheeling; hi-res canvas once after ``LAB_CANVAS_ZOOM_SETTLE_MS`` idle. */
+    function scheduleLabCanvasZoomRefresh() {
       if (!labCanvasRenderer || !hasServerReplay) {
         return;
       }
-      const rimDrawCtx = getLabRimDrawCtx();
-      if (rimDrawCtx) {
-        labCanvasRenderer.syncSize(replayLayout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
-        const fr = getCurrentReplayFrame();
-        if (fr) {
-          const fm = fullMapCellsFromFrame(fr);
-          if (fm.length) {
-            syncLabTerrainCanvasLayer(
-              filterTerrainCellsForPaintV2(fm, fr, resolveCellIndex, {
-                replayArrayIndex: replayArrayIndex,
-                replayFrames: replayFrames,
-                hasServerReplay: hasServerReplay,
-              }),
-              rimDrawCtx.layout,
-              rimDrawCtx.cellPx,
-              rimDrawCtx.gapPx,
-            );
+      cancelLabCanvasZoomRefresh();
+      labCanvasZoomRefreshTimer = setTimeout(function () {
+        labCanvasZoomRefreshTimer = null;
+        labCanvasZoomRefreshRaf = requestAnimationFrame(function () {
+          labCanvasZoomRefreshRaf = null;
+          refreshLabCanvasAfterLayoutChange();
+          applyLabViewportTransform();
+        });
+      }, LAB_CANVAS_ZOOM_SETTLE_MS);
+    }
+
+    function labCanvasViewportScale() {
+      return labReplayCanvasViewportZoom;
+    }
+
+    function refreshLabCanvasAfterLayoutChange() {
+      if (labCanvasRefreshActive || !labCanvasRenderer || !hasServerReplay) {
+        return;
+      }
+      labCanvasRefreshActive = true;
+      try {
+        const rimDrawCtx = getLabRimDrawCtx();
+        const viewportScale = labCanvasBackingViewportScale(labReplayViewportZoom);
+        labReplayCanvasViewportZoom = viewportScale;
+        if (rimDrawCtx) {
+          labCanvasRenderer.syncSize(
+            replayLayout,
+            rimDrawCtx.cellPx,
+            rimDrawCtx.gapPx,
+            viewportScale,
+          );
+          const fr = getCurrentReplayFrame();
+          if (fr) {
+            const fm = fullMapCellsFromFrame(fr);
+            if (fm.length) {
+              syncLabTerrainCanvasLayer(
+                filterTerrainCellsForPaintV2(fm, fr, resolveCellIndex, {
+                  replayArrayIndex: replayArrayIndex,
+                  replayFrames: replayFrames,
+                  hasServerReplay: hasServerReplay,
+                }),
+                rimDrawCtx.layout,
+                rimDrawCtx.cellPx,
+                rimDrawCtx.gapPx,
+                viewportScale,
+              );
+            }
+            labCanvasRenderer.drawFrame(buildCanvasPaintPlan(fr));
           }
-          labCanvasRenderer.drawFrame(buildCanvasPaintPlan(fr));
         }
+      } finally {
+        labCanvasRefreshActive = false;
       }
     }
 
@@ -3575,6 +3701,7 @@
         cellPx: sizing.cellPx,
         gapPx: sizing.gapPx,
         spriteBaseUrl: labSpriteBaseUrl,
+        viewportScale: labReplayViewportZoom,
       });
       if (gridEl) {
         gridEl.classList.add("lab-replay-grid--canvas-mode");
@@ -3605,6 +3732,7 @@
             rimDrawCtx.layout,
             rimDrawCtx.cellPx,
             rimDrawCtx.gapPx,
+            labCanvasViewportScale(),
           );
         }
       } else if (paintedIndices && paintedIndices.length) {
@@ -3618,7 +3746,12 @@
         applyLabCanvasHitLayer(paintedIndices);
       }
       if (rimDrawCtx) {
-        labCanvasRenderer.syncSize(replayLayout, rimDrawCtx.cellPx, rimDrawCtx.gapPx);
+        labCanvasRenderer.syncSize(
+          replayLayout,
+          rimDrawCtx.cellPx,
+          rimDrawCtx.gapPx,
+          labCanvasViewportScale(),
+        );
       }
       labCanvasRenderer.drawFrame(buildCanvasPaintPlan(fr));
       applyLabOverlayHighlights(fr, replayTrackMetrics, rimDrawCtx);
@@ -4068,22 +4201,19 @@
       }
       run.layer_summaries.forEach(function (layer) {
         if (!layer || typeof layer !== "object") return;
-        const card = document.createElement("article");
-        card.className =
-          "rounded-xl border border-slate-800 bg-slate-900/80 p-3 transition-colors hover:border-slate-600";
+        const card = document.createElement("details");
+        card.className = "lab-layer-summary-card";
         card.setAttribute("role", "listitem");
         if (layer.layer_slug) {
           card.setAttribute("data-lab-layer-slug", String(layer.layer_slug));
-          card.classList.add("cursor-pointer");
           card.setAttribute("tabindex", "0");
           card.setAttribute(
             "aria-label",
-            "Jump replay to " + String(layer.layer_slug),
+            "Layer summary " + String(layer.layer_slug),
           );
         }
 
-        const head = document.createElement("div");
-        head.className = "flex items-start justify-between gap-2";
+        const summary = document.createElement("summary");
 
         const titleWrap = document.createElement("div");
         titleWrap.className = "min-w-0";
@@ -4093,12 +4223,6 @@
         const layerTitle = layer.title != null ? String(layer.title) : dash;
         title.textContent = "L" + layerIndex + " · " + layerTitle;
         titleWrap.appendChild(title);
-        if (layer.layer_slug) {
-          const slugLine = document.createElement("p");
-          slugLine.className = "mt-0.5 truncate font-mono text-xs text-slate-500";
-          slugLine.textContent = String(layer.layer_slug);
-          titleWrap.appendChild(slugLine);
-        }
 
         const badge = document.createElement("span");
         const outcome = layer.outcome != null ? String(layer.outcome) : dash;
@@ -4107,36 +4231,69 @@
           layerOutcomeBadgeClass(outcome);
         badge.textContent = formatLayerOutcomeLabel(outcome);
 
-        head.appendChild(titleWrap);
-        head.appendChild(badge);
-        card.appendChild(head);
+        summary.appendChild(titleWrap);
+        summary.appendChild(badge);
+        card.appendChild(summary);
 
         const highlights = Array.isArray(layer.highlights) ? layer.highlights : [];
-        const dl = document.createElement("dl");
-        dl.className = "mt-2 space-y-1 text-sm";
-        highlights.forEach(function (row) {
-          if (!row || typeof row !== "object") return;
-          let val = formatLabLayerHighlightValue(
+        const visibleHighlights = highlights.filter(function (row) {
+          if (!row || typeof row !== "object") return false;
+          const val = formatLabLayerHighlightValue(
             row.label != null ? String(row.label) : "",
             row.value,
             run,
           );
-          if (val === dash) return;
-          const line = document.createElement("div");
-          line.className = "flex justify-between gap-3 text-slate-400";
-          const dt = document.createElement("dt");
-          dt.className = "min-w-0 truncate";
-          dt.textContent = row.label != null ? String(row.label) : "";
-          const dd = document.createElement("dd");
-          dd.className = "shrink-0 text-right text-slate-100";
-          dd.textContent = val;
-          line.appendChild(dt);
-          line.appendChild(dd);
-          dl.appendChild(line);
+          return val !== dash;
         });
-        if (dl.childElementCount > 0) {
-          card.appendChild(dl);
+        if (layer.layer_slug || visibleHighlights.length) {
+          const body = document.createElement("div");
+          body.className = "lab-layer-summary-body";
+
+          if (layer.layer_slug) {
+            const slugLine = document.createElement("p");
+            slugLine.className = "mb-2 truncate font-mono text-[11px] text-slate-500";
+            slugLine.textContent = String(layer.layer_slug);
+            body.appendChild(slugLine);
+          }
+
+          if (visibleHighlights.length) {
+            const dl = document.createElement("dl");
+            dl.className = "lab-layer-summary-highlights";
+            visibleHighlights.forEach(function (row) {
+              const val = formatLabLayerHighlightValue(
+                row.label != null ? String(row.label) : "",
+                row.value,
+                run,
+              );
+              const line = document.createElement("div");
+              const dt = document.createElement("dt");
+              dt.className = "min-w-0 truncate";
+              dt.textContent = row.label != null ? String(row.label) : "";
+              const dd = document.createElement("dd");
+              dd.textContent = val;
+              line.appendChild(dt);
+              line.appendChild(dd);
+              dl.appendChild(line);
+            });
+            body.appendChild(dl);
+          }
+
+          const jumpBtn = document.createElement("button");
+          jumpBtn.type = "button";
+          jumpBtn.className =
+            "lab-layer-summary-jump lab-btn-ghost mt-3 cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-[11px] text-cyan-300 hover:border-cyan-500/40";
+          jumpBtn.textContent =
+            typeof shapezUiT === "function"
+              ? shapezUiT("Jump replay to this layer")
+              : "Jump replay to this layer";
+          if (layer.layer_slug) {
+            jumpBtn.setAttribute("data-lab-layer-slug", String(layer.layer_slug));
+          }
+          body.appendChild(jumpBtn);
+
+          card.appendChild(body);
         }
+
         root.appendChild(card);
       });
     }
@@ -4414,22 +4571,22 @@
     }
 
     document.getElementById("lab-layer-summaries")?.addEventListener("click", function (event) {
-      const card = event.target && event.target.closest
-        ? event.target.closest("[data-lab-layer-slug]")
+      const jumpBtn = event.target && event.target.closest
+        ? event.target.closest(".lab-layer-summary-jump")
         : null;
-      if (!card) return;
-      const slug = card.getAttribute("data-lab-layer-slug");
+      if (!jumpBtn) return;
+      const slug = jumpBtn.getAttribute("data-lab-layer-slug");
       if (!slug) return;
       jumpReplayToLayerSlug(slug);
     });
     document.getElementById("lab-layer-summaries")?.addEventListener("keydown", function (event) {
       if (event.key !== "Enter" && event.key !== " ") return;
-      const card = event.target && event.target.closest
-        ? event.target.closest("[data-lab-layer-slug]")
+      const jumpBtn = event.target && event.target.closest
+        ? event.target.closest(".lab-layer-summary-jump")
         : null;
-      if (!card) return;
+      if (!jumpBtn) return;
       event.preventDefault();
-      const slug = card.getAttribute("data-lab-layer-slug");
+      const slug = jumpBtn.getAttribute("data-lab-layer-slug");
       if (!slug) return;
       jumpReplayToLayerSlug(slug);
     });
@@ -4869,6 +5026,7 @@
       labViewportTransform.tx = vx - (z1 / z0) * (vx - tx0);
       labViewportTransform.ty = vy - (z1 / z0) * (vy - ty0);
       applyLabViewportTransform();
+      scheduleLabCanvasZoomRefresh();
       updateLabGridHudFromPoint(event.clientX, event.clientY);
     }
 
@@ -5489,19 +5647,6 @@
       return payload;
     }
 
-    const LAB_CELL_DETAIL_KEY_ORDER = [
-      "coord",
-      "terrain",
-      "occupant",
-      "output",
-      "transport",
-      "frame_index",
-    ];
-
-    function labCellDetailIsSuppressedKey(key) {
-      return String(key || "").startsWith("server_");
-    }
-
     function labCellDetailEscapeHtml(s) {
       return String(s)
         .replace(/&/g, "&amp;")
@@ -5510,94 +5655,16 @@
         .replace(/"/g, "&quot;");
     }
 
-    function labCellDetailOrderedKeys(obj) {
-      const keys = Object.keys(obj || {});
-      const seen = {};
-      const out = [];
-      for (let i = 0; i < LAB_CELL_DETAIL_KEY_ORDER.length; i++) {
-        const k = LAB_CELL_DETAIL_KEY_ORDER[i];
-        if (keys.indexOf(k) >= 0) {
-          out.push(k);
-          seen[k] = true;
-        }
-      }
-      const rest = keys
-        .filter(function (k) {
-          return !seen[k] && !labCellDetailIsSuppressedKey(k);
-        })
-        .sort();
-      return out.concat(rest);
-    }
-
-    function labCellDetailFormatValue(v) {
-      if (v === null || v === undefined) {
-        return '<span class="text-slate-500">—</span>';
-      }
-      if (typeof v === "number" || typeof v === "boolean") {
-        return labCellDetailEscapeHtml(String(v));
-      }
-      if (typeof v === "string") {
-        const t = v.trim();
-        if (t === "") {
-          return '<span class="text-slate-500">(empty)</span>';
-        }
-        return labCellDetailEscapeHtml(v);
-      }
-      const json = JSON.stringify(v);
-      if (json.length <= 140) {
-        return (
-          '<span class="wrap-break-word font-mono text-[11px]">' + labCellDetailEscapeHtml(json) + "</span>"
-        );
-      }
-      return (
-        '<details class="mt-1">' +
-        '<summary class="cursor-pointer text-xs text-slate-400">JSON (' +
-        String(json.length) +
-        " chars)</summary>" +
-        '<pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap wrap-break-word rounded border border-slate-800 bg-slate-900/80 p-2 font-mono text-[11px] leading-snug">' +
-        labCellDetailEscapeHtml(JSON.stringify(v, null, 2)) +
-        "</pre></details>"
-      );
-    }
-
-    function labCellDetailKvTableHtml(obj) {
-      if (!obj || typeof obj !== "object") {
-        return '<p class="text-slate-500">—</p>';
-      }
-      const keys = labCellDetailOrderedKeys(obj);
-      if (!keys.length) {
-        return '<p class="text-slate-500">(empty object)</p>';
-      }
-      let rows = "";
-      for (let i = 0; i < keys.length; i++) {
-        const k = keys[i];
-        let dd = labCellDetailFormatValue(obj[k]);
-        if (k === "rotation") {
-          dd +=
-            ' <span class="whitespace-nowrap text-xs text-slate-500">(East=0, clockwise)</span>';
-        }
-        rows +=
-          '<div class="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 border-b border-slate-800/80 py-2 last:border-b-0">' +
-          '<dt class="shrink-0 font-mono text-xs text-slate-500">' +
-          labCellDetailEscapeHtml(k) +
-          "</dt>" +
-          '<dd class="min-w-0 text-slate-200">' +
-          dd +
-          "</dd></div>";
-      }
-      return '<dl class="rounded-lg border border-slate-800/80 px-3">' + rows + "</dl>";
-    }
-
     function labCellDetailFrameMetaHtml(data) {
       const parts = [];
       if (data.frame_index !== undefined && data.frame_index !== null) {
-        parts.push("frame_index: " + String(data.frame_index));
+        parts.push("Frame " + String(data.frame_index));
       }
       if (data.frame_key !== undefined && data.frame_key !== null && String(data.frame_key) !== "") {
-        parts.push("frame_key: " + String(data.frame_key));
+        parts.push(String(data.frame_key));
       }
       if (data.detail_source) {
-        parts.push("source=" + String(data.detail_source));
+        parts.push(String(data.detail_source));
       }
       if (data.canonical_mismatch) {
         parts.push("canonical mismatch corrected");
@@ -5612,60 +5679,80 @@
       );
     }
 
-    function labCellDetailSourceBlockHtml(sourceKey, val, mergedCell) {
+    function labEffectiveCellDiagnosticsHtml(effectiveCell, sources) {
       if (
-        sourceKey === "full_map" &&
-        mergedCell &&
-        typeof mergedCell === "object" &&
-        val &&
-        typeof val === "object" &&
-        !Array.isArray(val) &&
-        JSON.stringify(val) === JSON.stringify(mergedCell)
+        !effectiveCell ||
+        typeof effectiveCell !== "object" ||
+        typeof LabEffectiveCellView === "undefined" ||
+        typeof LabEffectiveCellView.effectiveCellViewDisplayDiagnostics !== "function"
       ) {
-        return (
-          '<div class="mb-4 last:mb-0">' +
-          '<h4 class="mb-1 font-mono text-xs text-slate-400">' +
-          labCellDetailEscapeHtml(sourceKey) +
-          "</h4>" +
-          '<p class="text-xs text-slate-500">Same as merged cell above.</p></div>'
-        );
+        return "";
       }
-      const head =
-        '<h4 class="mb-2 font-mono text-xs text-slate-400">' +
-        labCellDetailEscapeHtml(sourceKey) +
-        "</h4>";
-      if (val !== null && val !== undefined && typeof val === "object" && !Array.isArray(val)) {
-        return '<div class="mb-4 last:mb-0">' + head + labCellDetailKvTableHtml(val) + "</div>";
+      const diag = LabEffectiveCellView.effectiveCellViewDisplayDiagnostics(
+        effectiveCell,
+        sources || {}
+      );
+      if (!diag.hasContent || !diag.items.length) {
+        return "";
+      }
+      let rows = "";
+      for (let i = 0; i < diag.items.length; i++) {
+        const row = diag.items[i];
+        rows +=
+          '<div class="grid grid-cols-[minmax(0,8.5rem)_1fr] gap-x-3 border-b border-slate-800/60 py-1.5 last:border-b-0">' +
+          '<dt class="text-[11px] text-slate-500">' +
+          labCellDetailEscapeHtml(row.label) +
+          "</dt>" +
+          '<dd class="font-mono text-[11px] text-slate-200 wrap-break-word">' +
+          labCellDetailEscapeHtml(row.value) +
+          "</dd></div>";
       }
       return (
-        '<div class="mb-4 last:mb-0">' +
-        head +
-        '<div class="text-slate-200">' +
-        labCellDetailFormatValue(val) +
-        "</div></div>"
+        '<details class="mt-4">' +
+        '<summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-500">Diagnostics</summary>' +
+        '<p class="mt-2 text-[11px] leading-relaxed text-slate-500">Sprite identifiers and simulation only when not shown above.</p>' +
+        '<dl class="mt-3 rounded-lg border border-slate-800/80 bg-slate-950/40 px-3 py-1">' +
+        rows +
+        "</dl></details>"
       );
     }
 
-    function labEffectiveCellDetailTableHtml(effectiveCell) {
+    function labEffectiveCellDetailSectionsHtml(effectiveCell, meta) {
       if (!effectiveCell || typeof effectiveCell !== "object") {
         return '<p class="text-slate-500">—</p>';
       }
-      const rows =
+      const display =
         typeof LabEffectiveCellView !== "undefined"
-          ? LabEffectiveCellView.effectiveCellViewDisplayRows(effectiveCell)
-          : [];
-      let body = "";
-      for (let i = 0; i < rows.length; i++) {
-        body +=
-          '<div class="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 border-b border-slate-800/80 py-2 last:border-b-0">' +
-          '<dt class="shrink-0 font-mono text-xs text-slate-500">' +
-          labCellDetailEscapeHtml(rows[i][0]) +
-          "</dt>" +
-          '<dd class="min-w-0 text-slate-200">' +
-          labCellDetailEscapeHtml(rows[i][1]) +
-          "</dd></div>";
+          ? LabEffectiveCellView.effectiveCellViewDisplaySections(effectiveCell, meta || {})
+          : { sections: [] };
+      const sections = display.sections || [];
+      if (!sections.length) {
+        return '<p class="text-slate-500">—</p>';
       }
-      return '<dl class="rounded-lg border border-slate-800/80 px-3">' + body + "</dl>";
+      let body = "";
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
+        let itemsHtml = "";
+        for (let j = 0; j < section.items.length; j++) {
+          itemsHtml +=
+            '<li class="text-sm text-slate-200">' +
+            labCellDetailEscapeHtml(section.items[j].value) +
+            "</li>";
+        }
+        body +=
+          '<div class="space-y-1">' +
+          '<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-400">' +
+          labCellDetailEscapeHtml(section.title) +
+          "</h4>" +
+          '<ul class="list-none space-y-1 pl-0">' +
+          itemsHtml +
+          "</ul></div>";
+      }
+      return '<div class="space-y-4 rounded-lg border border-slate-800/80 px-3 py-3">' + body + "</div>";
+    }
+
+    function labEffectiveCellDetailTableHtml(effectiveCell, meta) {
+      return labEffectiveCellDetailSectionsHtml(effectiveCell, meta);
     }
 
     function labCellDetailRenderSuccess(cellDetailEl, data) {
@@ -5685,7 +5772,11 @@
           '<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">Effective cell</h3>' +
           observationBanner +
           frameMeta +
-          labEffectiveCellDetailTableHtml(effectiveCell) +
+          labEffectiveCellDetailSectionsHtml(effectiveCell, {
+            frame_index: data.frame_index,
+            detail_source: data.detail_source,
+          }) +
+          labEffectiveCellDiagnosticsHtml(effectiveCell, sources) +
           "</section>";
       } else {
         const msg = data.message || "no_cell_at_xy";
@@ -5696,19 +5787,6 @@
           "</p>" +
           frameMeta +
           "</section>";
-      }
-      const srcKeys = Object.keys(sources);
-      if (srcKeys.length) {
-        let srcHtml = "";
-        for (let s = 0; s < srcKeys.length; s++) {
-          srcHtml += labCellDetailSourceBlockHtml(srcKeys[s], sources[srcKeys[s]], null);
-        }
-        html +=
-          '<details class="space-y-3">' +
-          '<summary class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-400">Sources</summary>' +
-          '<div class="mt-3 space-y-3">' +
-          srcHtml +
-          "</div></details>";
       }
       html += "</div>";
       cellDetailEl.innerHTML = html;
@@ -5917,6 +5995,9 @@
     };
 
     applyLabGridLayoutForZoom();
+    if (labCanvasRenderer && hasServerReplay) {
+      refreshLabCanvasAfterLayoutChange();
+    }
     updateLabGridHudEmpty();
     bindLabViewportInteractions();
 

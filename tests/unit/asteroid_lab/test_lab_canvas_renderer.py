@@ -9,7 +9,10 @@ JS_DIR = REPO / "django_apps" / "web" / "static" / "web" / "js"
 TPL = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
 LAB_JS = JS_DIR / "asteroid_miner_layout_lab.js"
 SANITIZE_JS = JS_DIR / "lab_replay_wire_sanitize.js"
+HEIGHT_JS = JS_DIR / "lab_replay_height_layer.js"
+OVERLAY_REGISTRY_JS = JS_DIR / "lab_replay_overlay_bucket_registry.js"
 PAINT_JS = JS_DIR / "lab_replay_paint_plan.js"
+EFFECTIVE_CELL_JS = JS_DIR / "lab_effective_cell_view.js"
 
 
 def test_canvas_renderer_module_contract() -> None:
@@ -23,6 +26,30 @@ def test_canvas_renderer_module_contract() -> None:
     assert "overlayFillForKind" in src
     assert "let layout = opts.layout" in src
     assert "const layout = opts.layout" not in src
+    assert "viewportScale" in src
+    assert "devicePixelRatio" in src
+
+
+def test_canvas_viewport_zoom_backing_store_contract() -> None:
+    terrain = (JS_DIR / "lab_replay_canvas_terrain.js").read_text(encoding="utf-8")
+    lab = LAB_JS.read_text(encoding="utf-8-sig")
+    assert "viewportScale" in terrain
+    assert "labReplayViewportZoom" in lab
+    assert "labCanvasBackingViewportScale" in lab
+    assert "LAB_CANVAS_VIEWPORT_SCALE_MAX = LAB_VIEWPORT_MAX_SCALE" in lab
+    assert "LAB_CANVAS_ZOOM_SETTLE_MS" in lab
+    assert "scheduleLabCanvasZoomRefresh" in lab
+    wheel_block = lab.split("function handleLabViewportWheel(", 1)[1].split(
+        "function labPointerShouldStartViewportPan", 1
+    )[0]
+    assert "scheduleLabCanvasZoomRefresh" in wheel_block
+    assert "refreshLabCanvasAfterLayoutChange" not in wheel_block
+    settle_block = lab.split("function scheduleLabCanvasZoomRefresh(", 1)[1].split(
+        "function labCanvasViewportScale", 1
+    )[0]
+    assert "LAB_CANVAS_ZOOM_SETTLE_MS" in settle_block
+    assert "refreshLabCanvasAfterLayoutChange" in settle_block
+    assert "labReplayViewportZoom = zoom" in lab
 
 
 def test_template_has_overlay_and_sprite_canvases() -> None:
@@ -65,16 +92,26 @@ def test_lab_map_z_layer_picker_contract() -> None:
     assert "L=1 · Layer 1" in src
     assert "L=2 · Layer 2" in src
     assert "function labCellMapZ(" in src
-    assert "function inferLabCellMapZ(" in src
+    assert "LabReplayHeightLayer.resolveReplayHeightLayerForWireRow" in src
+    assert "function inferLabCellMapZ(" not in src
     assert "function cellPassesMapZFilter(" in src
     assert 'id="lab-replay-layer-picker"' in tpl
     assert 'id="lab-replay-grid-viewport"' in tpl
     assert "Height layer (L)" in tpl
     assert "flex-col-reverse" in tpl
     assert 'lab-replay-layer-picker"' in tpl
-    assert "absolute bottom-3 right-3" in tpl
+    assert "absolute bottom-2 right-2" in tpl
     assert 'input.type = "radio"' in src
     assert "labMapZSelectedLayer" in src
+
+
+def test_lab_js_collect_overlay_paint_targets_uses_registry() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    body = src.split("function collectOverlayPaintTargets(", 1)[1].split(
+        "function isSparseReplayFrame(", 1
+    )[0]
+    assert "LabReplayOverlayBucketRegistry.collectOverlayCellsForPaintTarget" in body
+    assert "equipment_bundles" in body
 
 
 def test_collect_replay_spatial_coords_includes_cell_overlay_json() -> None:
@@ -115,6 +152,27 @@ def test_lab_sprite_path_handles_space_belt_transport_wire() -> None:
     assert "SpaceBelt_Forward" in src
 
 
+def test_js_lab_replay_overlay_bucket_registry_module_contract() -> None:
+    src = OVERLAY_REGISTRY_JS.read_text(encoding="utf-8")
+    assert "LabReplayOverlayBucketRegistry" in src
+    assert "collectOverlayCellsForPaintTarget" in src
+
+
+def test_js_lab_replay_height_layer_module_contract() -> None:
+    src = HEIGHT_JS.read_text(encoding="utf-8")
+    assert "LabReplayHeightLayer" in src
+    assert "enrichReplayWireRowWithLayer" in src
+
+
+def test_js_paint_plan_enriches_height_layer_before_index() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "enrichWireRowWithLayer" in src
+    index_body = src.split("function buildEffectiveCellViewIndex(", 1)[1].split(
+        "function buildEffectiveCellViewIndexWithCarry(", 1
+    )[0]
+    assert "enrichWireRowWithLayer" in index_body
+
+
 def test_js_lab_paint_layers_from_view_exists() -> None:
     src = PAINT_JS.read_text(encoding="utf-8")
     assert "function labPaintLayersFromView" in src
@@ -124,8 +182,15 @@ def test_js_lab_paint_layers_from_view_exists() -> None:
 
 def test_template_loads_lab_replay_paint_plan_js() -> None:
     tpl = TPL.read_text(encoding="utf-8")
+    assert "lab_replay_height_layer.js" in tpl
+    assert "lab_replay_overlay_bucket_registry.js" in tpl
     assert "lab_replay_paint_plan.js" in tpl
-    assert tpl.index("lab_effective_cell_view.js") < tpl.index("lab_replay_paint_plan.js")
+    assert tpl.index("lab_effective_cell_view.js") < tpl.index("lab_replay_height_layer.js")
+    height_idx = tpl.index("lab_replay_height_layer.js")
+    registry_idx = tpl.index("lab_replay_overlay_bucket_registry.js")
+    paint_idx = tpl.index("lab_replay_paint_plan.js")
+    assert height_idx < registry_idx
+    assert registry_idx < paint_idx
 
 
 def test_js_paint_plan_contains_candidate_priority_guard() -> None:
@@ -136,6 +201,16 @@ def test_js_paint_plan_contains_candidate_priority_guard() -> None:
     candidate_idx = transport_fn.index("candidate_miner")
     guard_region = transport_fn[candidate_idx : candidate_idx + 120]
     assert "null" in guard_region
+
+
+def test_js_paint_plan_map_z_filter_helpers() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function effectiveWirePassesMapZFilter(" in src
+    assert "selectedMapZLayer" in src
+    body = src.split("function buildLabPaintPlanFromFrame(", 1)[1].split(
+        "function collectSpriteRelsFromPaintPlanFrames(", 1
+    )[0]
+    assert "effectiveWirePassesMapZFilter(wire, ck, options)" in body
 
 
 def test_js_build_lab_paint_plan_from_frame_exists() -> None:
@@ -162,6 +237,130 @@ def test_js_dom_plan_from_paint_layers_exists() -> None:
     assert "domPlanFromPaintLayers:" in src
     assert "lab-overlay-candidate-miner-ring" in src
     assert "skipFullFill" in src
+
+
+def test_js_slice_c_dom_plan_builder_and_render_authority() -> None:
+    paint_src = PAINT_JS.read_text(encoding="utf-8")
+    assert "function buildDomPlanForCell" in paint_src
+    assert "function resolveDomPlanForWire" in paint_src
+    assert "wireDataAttrsFromEffectiveWire" in paint_src
+    resolver_body = paint_src.split("function buildDomPlanResolverForFrame(", 1)[1].split(
+        "function coordFromWireOrKey(", 1
+    )[0]
+    assert "buildDomPlanForCell(wire)" in resolver_body
+    assert "sources.overlay_cells" not in resolver_body
+
+    lab_src = LAB_JS.read_text(encoding="utf-8")
+    assert "function applyDomPlanToCell(" in lab_src
+    render_body = lab_src.split("function renderFullMapCells(", 1)[1].split(
+        "function renderDiffOverlays(", 1
+    )[0]
+    assert "applyDomPlanToCell(" in render_body
+    assert "toneForFullMapCell(cell, frame)" not in render_body
+    assert "sources.overlay_cells" not in render_body
+    token_body = lab_src.split("function labPaintTokenForCell(", 1)[1].split(
+        "function frameCellIndexMap(", 1
+    )[0]
+    assert "cellRenderToken" in token_body
+    assert "domPlan.hudRole" in token_body or "domPlan.dataAttrs" in token_body
+
+
+def test_js_b2_semantic_display_model_projection() -> None:
+    src = EFFECTIVE_CELL_JS.read_text(encoding="utf-8")
+    assert "function effectiveCellViewDisplayModel" in src
+    model_body = src.split("function effectiveCellViewDisplayModel(", 1)[1].split(
+        "function effectiveCellViewDisplaySections(", 1
+    )[0]
+    sections_body = src.split("function effectiveCellViewDisplaySections(", 1)[1].split(
+        "function effectiveCellViewDisplayRows(", 1
+    )[0]
+    assert "effectiveCellViewDisplayModel" in sections_body
+    assert 'id: "machine"' in model_body
+    assert "Facing:" in model_body
+    assert "Output:" in model_body
+    assert 'title: "Sprite"' not in model_body
+    assert "Output requirement" not in model_body
+
+
+def test_js_overlay_output_hint_for_candidate_miner() -> None:
+    src = EFFECTIVE_CELL_JS.read_text(encoding="utf-8")
+    hint_body = src.split("function isOverlayOutputHint(", 1)[1].split(
+        "function hasMachineSummary(", 1
+    )[0]
+    assert "isOverlaySemanticKind" in hint_body
+    diag_body = src.split("function effectiveCellViewDisplayDiagnostics(", 1)[1].split(
+        "global.LabEffectiveCellView", 1
+    )[0]
+    assert "Merge inputs" not in diag_body
+    assert "Map view hits" not in diag_body
+    assert "Wire kind" not in diag_body
+
+
+def test_js_b2_overlay_semantic_kinds_skip_machine_summary() -> None:
+    src = EFFECTIVE_CELL_JS.read_text(encoding="utf-8")
+    assert "function isOverlaySemanticKind" in src
+    assert "function effectiveCellViewDisplayDiagnostics" in src
+    machine_body = src.split("function hasMachineSummary(", 1)[1].split(
+        "function effectiveCellViewDisplayModel(", 1
+    )[0]
+    assert "isOverlaySemanticKind" in machine_body
+
+
+def test_js_effective_cell_canonical_detail_sections() -> None:
+    src = EFFECTIVE_CELL_JS.read_text(encoding="utf-8")
+    assert "function effectiveCellViewDisplaySections" in src
+    assert "Requires output:" in src
+    display_body = src.split("function effectiveCellViewDisplayModel(", 1)[1].split(
+        "function effectiveCellViewDisplaySections(", 1
+    )[0]
+    assert "sources.overlay_cells" not in display_body
+    assert "sources.full_cell" not in display_body
+    assert "transport_tile" not in display_body
+    assert "sprite_identifier" not in display_body
+    assert "tile_type" not in display_body
+
+
+def test_js_lab_detail_panel_uses_canonical_sections() -> None:
+    src = LAB_JS.read_text(encoding="utf-8")
+    assert "effectiveCellViewDisplaySections" in src
+    assert "labEffectiveCellDetailSectionsHtml" in src
+    render_body = src.split("function labCellDetailRenderSuccess(", 1)[1].split(
+        "const cellDetailModal =", 1
+    )[0]
+    assert "labEffectiveCellDiagnosticsHtml" in render_body
+    assert "Diagnostics" in render_body
+    assert "Source wires" not in render_body
+    assert "Raw sources / debug evidence" not in render_body
+    assert "sources.overlay_cells" not in render_body.split("labEffectiveCellDetailSectionsHtml")[0]
+    detail_html_body = src.split("function labEffectiveCellDetailSectionsHtml(", 1)[1].split(
+        "function labCellDetailRenderSuccess(", 1
+    )[0]
+    assert "sources." not in detail_html_body
+
+
+def test_js_effective_cell_merge_carries_overlay_role() -> None:
+    src = EFFECTIVE_CELL_JS.read_text(encoding="utf-8")
+    assert "overlay_role:" in src
+    assert "OVERLAY_SEMANTIC_KINDS" in src
+    assert "overlayRoleFromCell" in src
+
+
+def test_js_paint_plan_uses_merged_overlay_role_not_raw_sources() -> None:
+    src = PAINT_JS.read_text(encoding="utf-8")
+    assert "overlayRoleFromWireSources" not in src
+    resolver_body = src.split("function buildDomPlanResolverForFrame(", 1)[1].split(
+        "function coordFromWireOrKey(", 1
+    )[0]
+    assert "buildDomPlanForCell(wire)" in resolver_body
+    attrs_body = src.split("function wireDataAttrsFromEffectiveWire(", 1)[1].split(
+        "function resolveHudRoleFromWire(", 1
+    )[0]
+    assert "wire.overlay_role" in attrs_body
+    cell_like_body = src.split("function cellLikeFromEffectiveWire(", 1)[1].split(
+        "function buildCellByGridIndexFromFrame(", 1
+    )[0]
+    assert "wire.overlay_role" in cell_like_body
+    assert "sources.overlay_cells" not in cell_like_body
 
 
 def test_js_build_dom_plan_resolver_for_frame_exists() -> None:
@@ -199,6 +398,8 @@ def test_lab_js_lab_paint_v2_enabled_helper() -> None:
     assert "replayArrayIndex" in plan_body
     assert "replayFrames" in plan_body
     assert "hasServerReplay" in plan_body
+    assert "selectedMapZLayer" in plan_body
+    assert "labMapZSelectedLayer" in plan_body
 
 
 def test_lab_js_paint_d_prime_flag_contract_step_6_1() -> None:

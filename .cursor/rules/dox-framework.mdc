@@ -1,0 +1,33 @@
+---
+description: "DOX AGENTS.md hierarchy — read chain before edit, DOX pass after"
+alwaysApply: true
+---
+
+# DOX Framework Router
+
+Canon: `AGENTS.md` § Workflow & DOX. Detail: `docs/agent-workflows/workflow-phases.md` § Workflow + DOX · `dox-framework.md`.
+
+## Hard rule
+
+DOX hooks into workflow phases — read chain before implement; DOX pass at verify (with validation), not as a separate phase.
+
+## Read before editing
+
+1. Root `AGENTS.md` + every `AGENTS.md` on path to each target
+2. Nearest doc = local contract; parents = repo-wide rules
+3. Closer doc wins local details; child cannot weaken parent DOX
+4. Re-read in session — do not rely on memory
+
+## Update after editing
+
+DOX pass when change affects purpose, scope, contracts, workflows, permissions, child index, or user preferences. Update parents when structure shifts. Remove stale text.
+
+## Child doc shape
+
+Purpose · Ownership · Local Contracts · Work Guidance · Verification · Child DOX Index. Create child when folder is a durable boundary.
+
+## Closeout
+
+At **verify**: validation + DOX pass (update owning `AGENTS.md` if contracts changed). Top-level index: root `AGENTS.md` only.
+
+References: `workflow-phases.mdc`, `structure.md`, `docs/AGENTS.md`, `governance-acceptance.md`.

@@ -1,10 +1,11 @@
-"""Stack continues and reaches L5 when L3 v2 commits a provisional placement."""
+"""Stack continues through L4 when L3 skeleton returns algorithm_reset."""
 
 from __future__ import annotations
 
 from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
     GeneticSampleSeedSnapshot,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )
@@ -18,6 +19,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.stack_status import StackRunStatus
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
+    ALGORITHM_STUB_ID,
     run_layer_03_rim_greedy_placement,
 )
 from shapez2_factory.application.asteroid_lab.stack_runner import (
@@ -65,7 +67,7 @@ def _stub_layer04_fill(**_kwargs: object) -> object:
     return run_layer_04_inner_pattern_fill(**_kwargs)
 
 
-def test_stack_runner_accepts_empty_l3_and_reaches_l5() -> None:
+def test_stack_runner_accepts_empty_l3_and_reaches_l4() -> None:
     complete_map = golden_5x5_complete_map()
     budget_ctx = LayerBudgetContext.from_budget_ms(LAYER_STACK_BUDGET_MS, now_fn=lambda: 0.0)
     runners = (
@@ -81,9 +83,10 @@ def test_stack_runner_accepts_empty_l3_and_reaches_l5() -> None:
     )
     assert core.stack_result.status == StackRunStatus.SUCCESS
     assert LAYER_03_RIM_GREEDY_PLACEMENT in core.stack_result.completed_layer_slugs
+    assert LAYER_04_INNER_PATTERN_FILL in core.stack_result.completed_layer_slugs
     l3_summary = next(
         s for s in core.layer_summaries if s.layer_slug == LAYER_03_RIM_GREEDY_PLACEMENT
     )
-    assert l3_summary.metrics.get("layer_skip_reason") is None
-    assert l3_summary.metrics.get("committed_placement_count") == 1
-    assert l3_summary.metrics.get("algorithm_stub") is None
+    assert l3_summary.metrics.get("layer_skip_reason") == Layer03SkipReason.ALGORITHM_RESET.value
+    assert l3_summary.metrics.get("committed_placement_count") == 0
+    assert l3_summary.metrics.get("algorithm_stub") == ALGORITHM_STUB_ID

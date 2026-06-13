@@ -42,6 +42,9 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import
     RimGreedyPass2Report,
     build_empty_integrated_rim_greedy_result,
 )
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy_append import (
+    rebuild_append_result_from_committed,
+)
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 from shapez2_factory.domain.asteroid_lab.wire_coerce import (
     wire_dict,
@@ -178,6 +181,7 @@ def deserialize_l3_wire(wire: dict[str, object]) -> IntegratedRimGreedyResult:
     return replace(
         base,
         committed_placements=placements,
+        append_result=rebuild_append_result_from_committed(placements, reserved_route),
         occupied_equipment_cells=occupied_equipment,
         reserved_route_cells=reserved_route,
         winning_variant_id=winning_variant_id,

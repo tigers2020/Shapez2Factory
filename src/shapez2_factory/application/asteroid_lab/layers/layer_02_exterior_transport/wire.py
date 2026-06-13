@@ -1,4 +1,4 @@
-"""Metrics wire serialization for exterior connector plans."""
+"""L2 exterior plan wire serialization (skeleton support for runtime wires)."""
 
 from __future__ import annotations
 

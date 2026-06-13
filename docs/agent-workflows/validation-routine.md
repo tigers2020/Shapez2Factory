@@ -65,12 +65,7 @@ mypy django_apps config src
 pytest <relevant-test-paths> -q
 ```
 
-For large solver / accounting changes (e.g. L4/L5 routing), add golden loop:
-
-```powershell
-python scripts/run_golden_loop.py --throughput-targets 80 --write-best-copy
-python scripts/summarize_golden_loop_diagnostics.py
-```
+For large solver / accounting changes (e.g. L4/L5 routing), run the relevant layer unit tests under `tests/unit/asteroid_lab/layers/` plus stack-runner smoke tests.
 
 ## Tier 4 — Before PR push
 

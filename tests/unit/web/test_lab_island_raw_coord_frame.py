@@ -12,7 +12,8 @@ TERRAIN_JS = REPO / "django_apps" / "web" / "static" / "web" / "js" / "lab_repla
 TEMPLATE = REPO / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
 
 LAB_COORD_BUILD = "island_raw_v2"
-LAB_JS_CACHE_BUILD = "effective_cell_v1"
+LAB_JS_CACHE_BUILD = "lab-inspector-grid-2026-06-12"
+LAB_JS_COORD_FRAME_BUILD = "effective_cell_v1"
 REPLAY_GRID_EDGE_PADDING = 5
 
 
@@ -80,7 +81,7 @@ def test_lab_js_run_solver_in_flight_declared_before_first_sync() -> None:
 
 def test_lab_js_declares_island_raw_coord_build_and_identity_visual_col() -> None:
     js = LAB_JS.read_text(encoding="utf-8")
-    assert f'LAB_COORD_FRAME_BUILD = "{LAB_JS_CACHE_BUILD}"' in js
+    assert f'LAB_COORD_FRAME_BUILD = "{LAB_JS_COORD_FRAME_BUILD}"' in js
     assert "return xi;" in js[js.index("function visualCol") : js.index("function cellIndexDemo")]
     assert "x - 1" not in js[js.index("function visualCol") : js.index("function cellIndexDemo")]
     assert "const xWorld = d;" in js

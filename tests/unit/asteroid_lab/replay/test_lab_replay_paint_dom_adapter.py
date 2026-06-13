@@ -9,6 +9,7 @@ from django_apps.asteroid_lab.replay.replay_wire_read_sanitize import (
 )
 from tests.support.lab_replay_paint_fixtures import frame_38_candidate_miner_fixture
 from tests.support.lab_replay_paint_plan import (
+    build_dom_plan_for_wire,
     dom_plan_from_paint_layers,
     lab_paint_layers_from_view,
 )
@@ -80,3 +81,32 @@ def test_dom_plan_void_candidate_allows_full_fill_fallback() -> None:
     assert plan["sprite_rel"] is None
     assert plan["skip_full_fill"] is False
     assert "lab-overlay-candidate-miner" in tokens
+
+
+def test_inner_field_block_dom_plan_from_merged_wire_without_sources() -> None:
+    wire = {
+        "frame_index": 38,
+        "coord": {"x": 5, "y": 8, "layer": 0},
+        "terrain": {"kind": "asteroid_shape_field", "tile_type": None},
+        "occupant": {"kind": "none", "rotation": None},
+        "transport": {"kind": "none", "tile_id": None, "simulation": None},
+        "output": {"transport_kind": "space_belt"},
+        "overlay_role": "inner_field_block",
+        "sources": {},
+    }
+    plan = build_dom_plan_for_wire(wire)
+    assert plan["sprite"] is None
+    assert plan["sprite_rel"] is None
+    assert plan["data_attrs"]["overlay_role"] == "inner_field_block"
+    assert plan["data_attrs"]["output_transport_kind"] == "space_belt"
+    assert plan["data_attrs"]["transport_kind"] == "none"
+    assert "ring-violet-400" in plan["root_classes"]
+    assert plan["candidate_observation"] is False
+
+
+def test_candidate_dom_plan_preserves_ring_without_fabricated_sprite() -> None:
+    wire = _merged_view_from_frame(frame_38_candidate_miner_fixture(), 10, 7)
+    plan = build_dom_plan_for_wire(wire)
+    assert plan["sprite_rel"] == "Miner/Layout_ShapeMiner.svg"
+    assert "lab-overlay-candidate-miner-ring" in plan["root_classes"]
+    assert plan["fallback_token"] is None

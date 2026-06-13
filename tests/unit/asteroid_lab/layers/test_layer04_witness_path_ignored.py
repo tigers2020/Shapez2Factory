@@ -1,4 +1,4 @@
-"""W5: L4 routing ignores L3 route_probe_path (PR-L4-2)."""
+"""W5: L5 routing skeleton ignores rim probe paths (algorithm reset)."""
 
 from __future__ import annotations
 
@@ -70,12 +70,10 @@ def _rim_with_probe(stub: tuple[int, int], probe: tuple[tuple[int, int], ...]):
     )
 
 
-def test_routing_unchanged_when_probe_paths_cleared() -> None:
+def test_routing_skeleton_unchanged_when_probe_paths_cleared() -> None:
     cm = build_rect_field_with_void_shell(width=4, height=4, void_pad=2)
     connector_void = (-1, 0)
-    assert connector_void in cm.external_void_cells
     stub = (-1, 1)
-    assert stub in cm.external_void_cells
     exterior = _exterior_plan(connector_void)
 
     rim_with_probe = _rim_with_probe(stub, ((-1, 1), (0, 1), (1, 1), connector_void))
@@ -93,6 +91,6 @@ def test_routing_unchanged_when_probe_paths_cleared() -> None:
         rim_result=rim_cleared,
         resource_kind="shape",
     )
-    assert plan_a.routes == plan_b.routes
-    assert plan_a.failures == plan_b.failures
-    assert len(plan_a.routes) == 1
+    assert plan_a == plan_b
+    assert plan_a.routes == ()
+    assert plan_a.failures == ()

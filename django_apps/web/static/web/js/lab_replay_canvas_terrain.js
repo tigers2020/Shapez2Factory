@@ -64,7 +64,7 @@
     return row * gw + col;
   }
 
-  function drawTerrainLayer(ctx, cells, layout, cellPx, gapPx) {
+  function drawTerrainLayer(ctx, cells, layout, cellPx, gapPx, viewportScale) {
     if (!ctx || !layout) return;
     const px = Math.max(4, Math.round(Number(cellPx) || 20));
     const gap = Math.max(0, Math.round(Number(gapPx) || 0));
@@ -74,7 +74,9 @@
     const w = gw * px + Math.max(0, gw - 1) * gap;
     const h = gh * px + Math.max(0, gh - 1) * gap;
     const canvas = ctx.canvas;
-    const dpr = global.devicePixelRatio || 1;
+    const zoom = Number(viewportScale);
+    const viewport = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+    const dpr = (global.devicePixelRatio || 1) * viewport;
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     canvas.width = Math.max(1, Math.round(w * dpr));

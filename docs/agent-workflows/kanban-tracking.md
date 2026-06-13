@@ -15,12 +15,24 @@ backlog → align → contract → slice → implement → verify → done
                               ↘ blocked ↗
 ```
 
+**One card per feature thread** — not per chat, sub-step, or review pass.
+
+| Do | Don't |
+|----|-------|
+| Reuse the same card for Step 1 → Step 2 → Step 3 of one epic | Create `feature-r2`, `step-2-only`, or session-sibling cards |
+| Append **Progress** bullets as each slice lands | Mark `done` after a sub-step when epic Acceptance still open |
+| Move `status` to the current phase of the **whole thread** | Archive to `features/done/` until full Acceptance met (optional steps may stay open with note) |
+| Mark `done` + archive only when scoped Acceptance is complete | Split history across multiple done cards for the same title/epic |
+
+Sub-step completion → update Acceptance checkboxes + Progress line; keep card in `implement`/`verify` until the thread stops.
+
 | Event | Card action |
 |-------|-------------|
-| Task/chat starts (Normal+) | Link or create card; set `status` to current phase |
-| Work advances | Move `status`; append **Progress** bullet |
+| Task/chat starts (any mode) | Link **existing** thread card or create **one** new card; set `status` to current phase |
+| Sub-step / slice completes | Append **Progress**; tick Acceptance; **do not** set `done` if more Acceptance remains |
+| Work advances (phase change) | Move `status`; append **Progress** bullet |
 | Blocked | `status: blocked`; note blocker + tried fixes |
-| Validation pass | `verify` → `done`; summary + commands run |
+| Full Acceptance + validation | `verify` → `done`; archive to `features/done/` |
 | User pivots away | `LEFTOVER_WIP` warning unless user parks card |
 
 ## Progress log format
@@ -35,6 +47,18 @@ Append to card body (markdown below frontmatter):
 ```
 
 Update frontmatter `modified` when editing.
+
+## Artifacts (architecture / improve-codebase-architecture)
+
+When using `/improve-codebase-architecture`, persist review content under `docs/architecture/<thread-slug>/` and link from the card **Artifacts** table:
+
+| File | Phase |
+|------|-------|
+| `report.md` | Review complete |
+| `spec.md` | Contract locked |
+| `plan.md` | Implementation approved |
+
+See `docs/architecture/README.md` and `.cursor/skills/improve-codebase-architecture/SKILL.md`. Card holds links + Acceptance; artifact files hold long-form content.
 
 ## Frontmatter (typical)
 
@@ -69,11 +93,9 @@ LEFTOVER_WIP:
 
 Agent must not proceed with unrelated implementation until user acknowledges — read-only triage is OK.
 
-## Mode exceptions
+## No mode exceptions
 
-- **Read-only:** no card required.
-- **Tiny:** update linked card if present; do not block on missing card.
-- **Ops/recovery:** only when user attached a card or recovery contract names it.
+Read-only, Tiny, ops/recovery, architecture review, and one-line Q&A all require a card at session start. Trivial work still gets a card (minimal Scope/Acceptance OK).
 
 ## Settings
 

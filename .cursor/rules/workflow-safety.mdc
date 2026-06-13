@@ -1,0 +1,55 @@
+---
+description: "Workflow safety: delivery modes 0-3; dirty root is user state; no destructive git by default"
+alwaysApply: true
+---
+
+# Workflow Safety Router
+
+Canon: `AGENTS.md` § Delivery safety. Detail: `docs/agent-workflows/workflow-safety.md`.
+
+## Core rule
+
+Dirty root is **user state**, not cleanup debt. Report it; protect it; **never auto-fix** (stash, restore, clean, checkout).
+
+## Default policy
+
+```text
+Review-only first → local patch → single working branch → PR on explicit command only
+```
+
+| Forbidden by default | Exception |
+|----------------------|-----------|
+| branch, PR create/push | explicit "create branch" / "open PR" |
+| all `git clean` variants (`-fd`, `-fdX`, `-fxd`, …) | explicit approval + preview + targeted cache path only |
+| `git reset --hard` | explicit approval |
+| untracked delete, branch delete | explicit approval |
+| auto `stash apply` / `stash pop` | explicit approval |
+| `git checkout` / `git switch` Mode 0–1 | explicit branch-move request |
+| dirty files **outside** task scope | user approves continue, narrow scope, or review-only |
+
+## Modes
+
+| Mode | Scope | Git |
+|------|-------|-----|
+| 0 Review | design, patch plan | no edits; no checkout/switch/clean/stash/commit/branch |
+| 1 Local patch | 1–3 files; scope ⊆ dirty OK | current branch only; no checkout/switch |
+| 2 Single branch | multi-commit slice | one `work/*` branch; create/switch only to it |
+| 3 Real PR | merge-ready | tests pass; scope-clean; explicit "open PR" |
+
+Default **Mode 0 or 1** when unclear.
+
+## Before first edit
+
+1. `git status --short` — report dirty files.
+2. Dirty **outside** explicit scope → **STOP**; ask: continue, narrow scope, or review-only. Do not stash/restore/clean/switch.
+3. All dirty inside scope → Mode 1 may proceed on current branch.
+4. Edit only scoped paths.
+5. Protected — never wholesale delete: `plans/**`, `documents/**`, `docs/**`, `var/plan-run/**`, `.worktrees/**`, `.devtool/**`. `graphify-out/**`: hybrid — see detail doc.
+
+## Slice naming
+
+**Step 1 / Step 2 / …** = implementation sequence. "PR1/PR2" = slice size, not mandatory GitHub PRs.
+
+## Integration
+
+`git-worktree.mdc`, `ops-recovery.mdc`, `AGENTS.md` § Default workflow step 7.

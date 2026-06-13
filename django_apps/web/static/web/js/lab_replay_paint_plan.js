@@ -17,6 +17,13 @@
   var DOM_CANDIDATE_MINER_RING = "lab-overlay-candidate-miner-ring relative";
   var DOM_CANDIDATE_MINER_FILL = "lab-overlay-candidate-miner relative";
 
+  var OVERLAY_DOM_TONE_BY_ROLE = {
+    inner_field_block: "ring-1 ring-inset ring-violet-400/35 bg-violet-950/15",
+    candidate_transport_stub: "lab-overlay-candidate-transport-stub relative",
+    candidate_route_path: "lab-overlay-candidate-route-path relative",
+    planned_exterior_connector: "lab-planned-exterior-connector relative",
+  };
+
   var CELL_KIND_STATIC_RELPATH = {
     asteroid_fluid_field: "AsteroidField_Fluid.svg",
     asteroid_shape_field: "AsteroidField_Shape.svg",
@@ -135,7 +142,7 @@
     return { occupant: null, chrome: chrome };
   }
 
-  function rotationFromOverlaySources(view) {
+  function legacyFallbackRotationFromWireSources(view) {
     var sources = view && view.sources;
     if (!sources || typeof sources !== "object") {
       return 0;
@@ -178,7 +185,7 @@
     var occupant = wireSection(view, "occupant");
     var rot = rotation(occupant);
     if (NONE_KINDS[kindStr(occupant)]) {
-      var overlayRot = rotationFromOverlaySources(view);
+      var overlayRot = legacyFallbackRotationFromWireSources(view);
       if (overlayRot) {
         rot = overlayRot;
       }
@@ -271,6 +278,36 @@
     return matches.length ? matches[0] : null;
   }
 
+  var MAP_Z_LAYER_ALL = -1;
+
+  function mapZLayerVisible(selectedLayer, z) {
+    if (selectedLayer == null || selectedLayer === MAP_Z_LAYER_ALL) {
+      return true;
+    }
+    var plane = Math.max(0, Math.min(2, Math.trunc(Number(z))));
+    return plane === Math.trunc(Number(selectedLayer));
+  }
+
+  function effectiveWirePassesMapZFilter(wire, cellKeyStr, options) {
+    options = options || {};
+    if (options.selectedMapZLayer == null || options.selectedMapZLayer === MAP_Z_LAYER_ALL) {
+      return true;
+    }
+    var coord = coordFromWireOrKey(wire, cellKeyStr);
+    var cellLike = cellLikeFromEffectiveWire(wire);
+    cellLike.x = coord.x;
+    cellLike.y = coord.y;
+    cellLike.layer = coord.layer;
+    var z = coord.layer;
+    if (
+      typeof LabReplayHeightLayer !== "undefined" &&
+      LabReplayHeightLayer.resolveReplayHeightLayerForWireRow
+    ) {
+      z = LabReplayHeightLayer.resolveReplayHeightLayerForWireRow(cellLike);
+    }
+    return mapZLayerVisible(options.selectedMapZLayer, z);
+  }
+
   function cellOverlayJsonFromFrame(frame) {
     if (!frame || typeof frame !== "object") {
       return null;
@@ -286,29 +323,22 @@
     return null;
   }
 
-  function pushOverlayCellList(out, rows) {
-    if (!Array.isArray(rows)) {
-      return;
-    }
-    for (var i = 0; i < rows.length; i++) {
-      if (rows[i] && typeof rows[i] === "object") {
-        out.push(Object.assign({}, rows[i]));
-      }
-    }
-  }
-
   function overlayJsonRowsFromFrame(frame) {
     var overlay = cellOverlayJsonFromFrame(frame);
     if (!overlay) {
       return [];
     }
-    var out = [];
-    pushOverlayCellList(out, overlay.cells);
-    pushOverlayCellList(out, overlay.equipment_cells);
-    pushOverlayCellList(out, overlay.equipment);
-    pushOverlayCellList(out, overlay.adjacent_transport);
-    pushOverlayCellList(out, overlay.transport);
-    return out;
+    if (
+      typeof LabReplayOverlayBucketRegistry !== "undefined" &&
+      LabReplayOverlayBucketRegistry.collectOverlayCellsForPaintTarget
+    ) {
+      return LabReplayOverlayBucketRegistry.collectOverlayCellsForPaintTarget(overlay).map(
+        function (row) {
+          return Object.assign({}, row);
+        },
+      );
+    }
+    return [];
   }
 
   function collectCoordUniverse(mapView, extraRows) {
@@ -357,6 +387,16 @@
     return cell;
   }
 
+  function enrichWireRowWithLayer(row) {
+    if (
+      typeof LabReplayHeightLayer !== "undefined" &&
+      LabReplayHeightLayer.enrichReplayWireRowWithLayer
+    ) {
+      return LabReplayHeightLayer.enrichReplayWireRowWithLayer(row);
+    }
+    return row;
+  }
+
   function mergeCellView(options) {
     if (
       typeof LabEffectiveCellView !== "undefined" &&
@@ -402,26 +442,28 @@
     if (Array.isArray(fullSource)) {
       for (i = 0; i < fullSource.length; i++) {
         if (fullSource[i] && typeof fullSource[i] === "object") {
-          fullRows.push(Object.assign({}, fullSource[i]));
+          fullRows.push(enrichWireRowWithLayer(Object.assign({}, fullSource[i])));
         }
       }
     }
     if (Array.isArray(overlaySource)) {
       for (i = 0; i < overlaySource.length; i++) {
         if (overlaySource[i] && typeof overlaySource[i] === "object") {
-          overlayRows.push(Object.assign({}, overlaySource[i]));
+          overlayRows.push(enrichWireRowWithLayer(Object.assign({}, overlaySource[i])));
         }
       }
     }
     if (Array.isArray(deltaSource)) {
       for (i = 0; i < deltaSource.length; i++) {
         if (deltaSource[i] && typeof deltaSource[i] === "object") {
-          deltaRows.push(Object.assign({}, deltaSource[i]));
+          deltaRows.push(enrichWireRowWithLayer(Object.assign({}, deltaSource[i])));
         }
       }
     }
 
-    var overlayJsonRows = overlayJsonRowsFromFrame(frame);
+    var overlayJsonRows = overlayJsonRowsFromFrame(frame).map(function (row) {
+      return enrichWireRowWithLayer(row);
+    });
 
     var frameIndex = null;
     if (frame.frame_index != null) {
@@ -430,7 +472,14 @@
     }
 
     var index = {};
-    var universe = collectCoordUniverse(mapView, overlayJsonRows);
+    var universe = collectCoordUniverse(
+      {
+        full_cells: fullRows,
+        overlay_cells: overlayRows,
+        cell_delta: deltaRows,
+      },
+      overlayJsonRows,
+    );
     for (i = 0; i < universe.length; i++) {
       var x = universe[i][0];
       var y = universe[i][1];
@@ -658,6 +707,8 @@
       toneClasses = hasSprite ? DOM_CANDIDATE_MINER_RING : DOM_CANDIDATE_MINER_FILL;
     } else if (overlayKind === "candidate_miner" && !hasSprite) {
       toneClasses = DOM_CANDIDATE_MINER_FILL;
+    } else if (overlayKind && OVERLAY_DOM_TONE_BY_ROLE[overlayKind]) {
+      toneClasses = OVERLAY_DOM_TONE_BY_ROLE[overlayKind];
     }
 
     return {
@@ -667,6 +718,95 @@
       candidateObservation: hasCandidateRing || overlayKind === "candidate_miner",
       skipFullFill: hasSprite,
     };
+  }
+
+  function wireDataAttrsFromEffectiveWire(wire) {
+    if (!wire || typeof wire !== "object") {
+      return {
+        overlayRole: "",
+        terrainKind: "",
+        transportKind: "",
+        outputTransportKind: "",
+        paintV2: "1",
+      };
+    }
+    var terrain = wireSection(wire, "terrain");
+    var transport = wireSection(wire, "transport");
+    var output = wireSection(wire, "output");
+    return {
+      overlayRole:
+        wire.overlay_role != null && String(wire.overlay_role).trim()
+          ? String(wire.overlay_role).trim()
+          : "",
+      terrainKind: kindStr(terrain) || "empty",
+      transportKind: kindStr(transport) || "none",
+      outputTransportKind: kindStr(output, "transport_kind") || "none",
+      paintV2: "1",
+    };
+  }
+
+  function resolveHudRoleFromWire(wire, paintPlan) {
+    if (!wire || typeof wire !== "object") {
+      return "";
+    }
+    var dataAttrs = wireDataAttrsFromEffectiveWire(wire);
+    if (dataAttrs.overlayRole) {
+      return dataAttrs.overlayRole;
+    }
+    if (paintPlan && paintPlan.candidateObservation) {
+      var occupant = wireSection(wire, "occupant");
+      var occKind = kindStr(occupant);
+      if (occKind && occKind !== "none") {
+        return occKind;
+      }
+    }
+    var transportKind = dataAttrs.transportKind;
+    if (TRANSPORT_KINDS[transportKind]) {
+      return transportKind;
+    }
+    return "";
+  }
+
+  function buildDomPlanForCell(wire) {
+    if (!wire || typeof wire !== "object") {
+      return null;
+    }
+    var coord = coordFromWireOrKey(wire, "");
+    var cellKeyStr = keyForCell(coord.x, coord.y, coord.layer);
+    var dataAttrs = wireDataAttrsFromEffectiveWire(wire);
+    var overlayKind = dataAttrs.overlayRole;
+    var layers = labPaintLayersFromView(wire);
+    var paintPlan = domPlanFromPaintLayers(layers, {
+      overlayKind: overlayKind,
+    });
+    var sprite =
+      paintPlan.spriteRel != null && String(paintPlan.spriteRel).trim()
+        ? { rel: String(paintPlan.spriteRel), rotation: paintPlan.spriteRotation || 0 }
+        : null;
+    var hudRole = resolveHudRoleFromWire(wire, paintPlan);
+    return {
+      cellKey: cellKeyStr,
+      coord: coord,
+      rootClasses: paintPlan.toneClasses || "",
+      chromeClasses: paintPlan.toneClasses || "",
+      paintLayers: layers,
+      sprite: sprite,
+      toneClasses: paintPlan.toneClasses || "",
+      spriteRel: paintPlan.spriteRel,
+      spriteRotation: paintPlan.spriteRotation,
+      candidateObservation: paintPlan.candidateObservation,
+      skipFullFill: paintPlan.skipFullFill,
+      hudRole: hudRole,
+      dataAttrs: dataAttrs,
+      fallbackToken: null,
+      debug: {
+        overlayKind: overlayKind,
+      },
+    };
+  }
+
+  function resolveDomPlanForWire(wire) {
+    return buildDomPlanForCell(wire);
   }
 
   function overlayCellKindFromWire(cell) {
@@ -700,10 +840,7 @@
       if (!wire) {
         return null;
       }
-      var layers = labPaintLayersFromView(wire);
-      return domPlanFromPaintLayers(layers, {
-        overlayKind: overlayCellKindFromWire(cell),
-      });
+      return buildDomPlanForCell(wire);
     };
   }
 
@@ -742,30 +879,6 @@
     return kindStr(terrain) || "empty";
   }
 
-  function overlayRoleFromWireSources(wire) {
-    var sources = wire && wire.sources;
-    if (!sources || typeof sources !== "object") {
-      return null;
-    }
-    var overlay = sources.overlay_cells;
-    if (!overlay) {
-      return null;
-    }
-    if (Array.isArray(overlay)) {
-      for (var i = overlay.length - 1; i >= 0; i--) {
-        var row = overlay[i];
-        if (row && row.overlay_role != null && String(row.overlay_role) !== "") {
-          return String(row.overlay_role);
-        }
-      }
-      return null;
-    }
-    if (overlay.overlay_role != null && String(overlay.overlay_role) !== "") {
-      return String(overlay.overlay_role);
-    }
-    return null;
-  }
-
   function cellLikeFromEffectiveWire(wire) {
     var coord = coordFromWireOrKey(wire, "");
     var occupant = wireSection(wire, "occupant");
@@ -780,9 +893,8 @@
     if (occupant.rotation != null) {
       cell.rotation = occupant.rotation;
     }
-    var overlayRole = overlayRoleFromWireSources(wire);
-    if (overlayRole) {
-      cell.overlay_role = overlayRole;
+    if (wire && wire.overlay_role != null && String(wire.overlay_role).trim()) {
+      cell.overlay_role = String(wire.overlay_role).trim();
     }
     return cell;
   }
@@ -847,6 +959,9 @@
       var wire = index[ck];
       var layers = labPaintLayersFromView(wire);
       var coord = coordFromWireOrKey(wire, ck);
+      if (!effectiveWirePassesMapZFilter(wire, ck, options)) {
+        continue;
+      }
       if (typeof resolveCellIndex !== "function") {
         continue;
       }
@@ -896,6 +1011,7 @@
     buildEffectiveCellViewIndex: buildEffectiveCellViewIndex,
     buildEffectiveCellViewIndexWithCarry: buildEffectiveCellViewIndexWithCarry,
     buildCellByGridIndexFromFrame: buildCellByGridIndexFromFrame,
+    buildDomPlanForCell: buildDomPlanForCell,
     buildDomPlanResolverForFrame: buildDomPlanResolverForFrame,
     buildLabPaintPlanFromFrame: buildLabPaintPlanFromFrame,
     canvasPlanFromPaintLayers: canvasPlanFromPaintLayers,
@@ -904,5 +1020,6 @@
     indexHasSpriteCapableCells: indexHasSpriteCapableCells,
     labPaintLayersFromView: labPaintLayersFromView,
     lastFrameWithSpriteCapableCells: lastFrameWithSpriteCapableCells,
+    resolveDomPlanForWire: resolveDomPlanForWire,
   };
 })(typeof window !== "undefined" ? window : globalThis);

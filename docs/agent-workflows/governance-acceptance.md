@@ -13,6 +13,9 @@ powershell -File scripts/check_governance.ps1
 - [ ] every `.cursor/rules/**/*.mdc` <= 75 lines (thin routers)
 - [ ] `root.mdc` routes `workflow.mdc`, `agent_scope.mdc`, and `ops-recovery.mdc`
 - [ ] `AGENTS.md` separates process vs domain authority
+- [ ] `docs/agent-workflows/dox-framework.md` exists; `dox-framework.mdc` routes to it
+- [ ] `workflow-phases.md` § Workflow + DOX integrates phases, DOX, and kanban
+- [ ] top-level Child DOX Index lives only in root `AGENTS.md` § Child DOX Index (no duplicate table in `dox-framework.md`)
 - [ ] protected paths documented: `var/plan-run/**`, `.worktrees/**`, `plans/**`
 - [ ] `docs/agent-workflows/workflow-strictness.md` exists; `AGENTS.md` § Workflow strictness routes to it
 - [ ] handoff docs defer validation to `AGENTS.md` § Validation

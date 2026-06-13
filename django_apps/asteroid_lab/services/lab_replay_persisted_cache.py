@@ -91,11 +91,10 @@ def _is_stale_composed_replay_cache(
     summary: dict[str, object] | None,
     artifact_root: str | None,
 ) -> bool:
-    if _is_stale_thin_artifact_l3_cache(frames):
-        return True
-
     cached_source = _cached_replay_source(frames)
     if artifact_root and _artifact_has_runtime_wires(artifact_root):
+        if _is_stale_thin_artifact_l3_cache(frames):
+            return True
         if cached_source != "artifact_runtime_wire_projection":
             return True
 

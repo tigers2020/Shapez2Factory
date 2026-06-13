@@ -120,13 +120,17 @@ def test_l5_transport_complete_frame_carries_committed_inner_fill() -> None:
     )
 
     complete_map = golden_5x5_complete_map()
-    inner_fill = run_layer_04_inner_pattern_fill(
-        complete_map=complete_map,
-        exterior_plan=minimal_l2_plan_for_golden(),
-        provisional_overlay=ProvisionalLayoutOverlay.empty(),
-        budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
+    inner_fill = Layer04InnerFillResult(
+        interior_occupied_cells=frozenset({(1, 1), (2, 1)}),
+        placements=(
+            InnerPlacement(coord=(1, 1), pattern_id="builtin_1x1_field_block", rotation=0),
+            InnerPlacement(coord=(2, 1), pattern_id="builtin_1x1_field_block", rotation=0),
+        ),
+        metrics=Layer04FillMetrics(
+            interior_occupied_cell_count=2,
+            coverage_ratio=0.5,
+        ),
     )
-    assert inner_fill.interior_occupied_cells
 
     frames = build_solver_runtime_replay_frames(
         complete_map=complete_map,

@@ -9,6 +9,7 @@ from django_apps.asteroid_lab.replay.effective_cell_view import (
     merge_effective_cell_view,
 )
 from django_apps.asteroid_lab.replay.effective_cell_wire import effective_cell_to_wire
+from django_apps.asteroid_lab.replay.map_height_layer import enrich_replay_wire_row_with_layer
 from django_apps.asteroid_lab.replay.replay_cell_index import cell_key
 from django_apps.asteroid_lab.replay.replay_wire_read_sanitize import (
     sanitize_replay_wire_cell_for_read,
@@ -63,6 +64,13 @@ CANDIDATE_RING_STROKE = "rgba(244,114,182,0.9)"
 
 DOM_CANDIDATE_MINER_RING = "lab-overlay-candidate-miner-ring relative"
 DOM_CANDIDATE_MINER_FILL = "lab-overlay-candidate-miner relative"
+
+OVERLAY_DOM_TONE_BY_ROLE: dict[str, str] = {
+    "inner_field_block": "ring-1 ring-inset ring-violet-400/35 bg-violet-950/15",
+    "candidate_transport_stub": "lab-overlay-candidate-transport-stub relative",
+    "candidate_route_path": "lab-overlay-candidate-route-path relative",
+    "planned_exterior_connector": "lab-planned-exterior-connector relative",
+}
 
 
 def _wire_section(view: Mapping[str, object], key: str) -> dict[str, object]:
@@ -136,6 +144,7 @@ def _resolve_occupant(
 
 
 def _rotation_from_overlay_sources(view: Mapping[str, object]) -> int:
+    """Legacy fallback: rotation from raw wire sources when merged wire lacks it."""
     sources = view.get("sources")
     if not isinstance(sources, Mapping):
         return 0
@@ -235,6 +244,10 @@ def _row_int(value: object, *, default: int = 0) -> int:
     return default
 
 
+def _enrich_wire_row_with_layer(row: Mapping[str, object]) -> JsonObject:
+    return enrich_replay_wire_row_with_layer(dict(row))
+
+
 def _cell_coord(row: Mapping[str, object]) -> tuple[int, int, int]:
     return (
         _row_int(row.get("x")),
@@ -324,12 +337,24 @@ def build_effective_cell_view_index(
         return {}
 
     map_view = dict(map_view_raw)
-    full_rows = [dict(row) for row in map_view.get("full_cells", []) if isinstance(row, Mapping)]
-    overlay_rows = [
-        dict(row) for row in map_view.get("overlay_cells", []) if isinstance(row, Mapping)
+    full_rows = [
+        _enrich_wire_row_with_layer(row)
+        for row in map_view.get("full_cells", [])
+        if isinstance(row, Mapping)
     ]
-    delta_rows = [dict(row) for row in map_view.get("cell_delta", []) if isinstance(row, Mapping)]
-    overlay_json_rows = _overlay_json_rows_from_frame(frame)
+    overlay_rows = [
+        _enrich_wire_row_with_layer(row)
+        for row in map_view.get("overlay_cells", [])
+        if isinstance(row, Mapping)
+    ]
+    delta_rows = [
+        _enrich_wire_row_with_layer(row)
+        for row in map_view.get("cell_delta", [])
+        if isinstance(row, Mapping)
+    ]
+    overlay_json_rows = [
+        _enrich_wire_row_with_layer(row) for row in _overlay_json_rows_from_frame(frame)
+    ]
 
     frame_index_raw = frame.get("frame_index")
     frame_index: int | None
@@ -342,8 +367,13 @@ def build_effective_cell_view_index(
             frame_index = None
 
     index: dict[str, dict[str, object]] = {}
+    enriched_map_view = {
+        "full_cells": full_rows,
+        "overlay_cells": overlay_rows,
+        "cell_delta": delta_rows,
+    }
     for x, y, layer in sorted(
-        _collect_coord_universe(map_view, extra_rows=overlay_json_rows),
+        _collect_coord_universe(enriched_map_view, extra_rows=overlay_json_rows),
     ):
         full_cell = _first_row_at_coord(full_rows, x, y, layer)
         delta_cell = _first_row_at_coord(delta_rows, x, y, layer)
@@ -463,8 +493,30 @@ def _index_spatial_rank(frame: Mapping[str, object]) -> dict[str, int]:
     return rank
 
 
+def _map_z_layer_visible(selected: int | None, z: int) -> bool:
+    if selected is None or selected == -1:
+        return True
+    plane = max(0, min(2, int(z)))
+    return plane == int(selected)
+
+
+def _layer_from_index_key(key: str, view: Mapping[str, object]) -> int:
+    if ":" in key:
+        layer_part = key.split(":", 1)[0]
+        try:
+            return int(layer_part)
+        except ValueError:
+            return 0
+    coord = view.get("coord")
+    if isinstance(coord, Mapping):
+        return _row_int(coord.get("layer"))
+    return 0
+
+
 def sprite_entries_from_paint_plan_frame(
     frame: Mapping[str, object],
+    *,
+    selected_map_z_layer: int | None = None,
 ) -> list[dict[str, object]]:
     """Sprite paint rows ``{x, y, rel, rotation}`` via EffectiveCellView paint plan."""
 
@@ -475,6 +527,8 @@ def sprite_entries_from_paint_plan_frame(
     by_xy: dict[tuple[int, int], dict[str, object]] = {}
     for key in ordered_keys:
         view = index[key]
+        if not _map_z_layer_visible(selected_map_z_layer, _layer_from_index_key(key, view)):
+            continue
         coord = view.get("coord")
         if not isinstance(coord, Mapping):
             continue
@@ -533,6 +587,8 @@ def dom_plan_from_paint_layers(
         tone_classes = DOM_CANDIDATE_MINER_RING if has_sprite else DOM_CANDIDATE_MINER_FILL
     elif overlay_kind == "candidate_miner" and not has_sprite:
         tone_classes = DOM_CANDIDATE_MINER_FILL
+    elif overlay_kind in OVERLAY_DOM_TONE_BY_ROLE:
+        tone_classes = OVERLAY_DOM_TONE_BY_ROLE[overlay_kind]
 
     return {
         "tone_classes": tone_classes,
@@ -543,12 +599,79 @@ def dom_plan_from_paint_layers(
     }
 
 
+def _wire_data_attrs_from_effective_wire(wire: Mapping[str, object]) -> dict[str, str]:
+    terrain = _wire_section(wire, "terrain")
+    transport = _wire_section(wire, "transport")
+    output = _wire_section(wire, "output")
+    overlay_role_raw = wire.get("overlay_role")
+    overlay_role = str(overlay_role_raw).strip() if overlay_role_raw is not None else ""
+    return {
+        "overlay_role": overlay_role,
+        "terrain_kind": _kind_str(terrain) or "empty",
+        "transport_kind": _kind_str(transport) or "none",
+        "output_transport_kind": _kind_str(output, "transport_kind") or "none",
+        "paint_v2": "1",
+    }
+
+
+def _resolve_hud_role_from_wire(
+    wire: Mapping[str, object],
+    paint_plan: Mapping[str, object],
+) -> str:
+    data_attrs = _wire_data_attrs_from_effective_wire(wire)
+    if data_attrs["overlay_role"]:
+        return data_attrs["overlay_role"]
+    if paint_plan.get("candidate_observation"):
+        occupant = _wire_section(wire, "occupant")
+        occ_kind = _kind_str(occupant)
+        if occ_kind and occ_kind not in _NONE_KINDS:
+            return occ_kind
+    transport_kind = data_attrs["transport_kind"]
+    if transport_kind in TRANSPORT_KINDS:
+        return transport_kind
+    return ""
+
+
+def build_dom_plan_for_wire(wire: Mapping[str, object]) -> dict[str, object]:
+    data_attrs = _wire_data_attrs_from_effective_wire(wire)
+    overlay_kind = data_attrs["overlay_role"]
+    layers = lab_paint_layers_from_view(wire)
+    paint_plan = dom_plan_from_paint_layers(layers, overlay_kind=overlay_kind)
+    sprite_rel = paint_plan.get("sprite_rel")
+    sprite = (
+        {"rel": str(sprite_rel), "rotation": int(paint_plan.get("sprite_rotation", 0))}
+        if sprite_rel
+        else None
+    )
+    coord = wire.get("coord")
+    coord_dict = dict(coord) if isinstance(coord, Mapping) else {"x": 0, "y": 0, "layer": 0}
+    return {
+        "cell_key": None,
+        "coord": coord_dict,
+        "root_classes": paint_plan["tone_classes"],
+        "chrome_classes": paint_plan["tone_classes"],
+        "paint_layers": layers,
+        "sprite": sprite,
+        "tone_classes": paint_plan["tone_classes"],
+        "sprite_rel": paint_plan["sprite_rel"],
+        "sprite_rotation": paint_plan["sprite_rotation"],
+        "candidate_observation": paint_plan["candidate_observation"],
+        "skip_full_fill": paint_plan["skip_full_fill"],
+        "hud_role": _resolve_hud_role_from_wire(wire, paint_plan),
+        "data_attrs": data_attrs,
+        "fallback_token": None,
+        "debug": {"overlay_kind": overlay_kind},
+    }
+
+
 __all__ = [
     "BACKGROUND_FILL",
     "CANDIDATE_RING_STROKE",
     "DOM_CANDIDATE_MINER_FILL",
     "DOM_CANDIDATE_MINER_RING",
+    "OVERLAY_DOM_TONE_BY_ROLE",
     "VOID_FILL",
+    "build_dom_plan_for_wire",
     "build_effective_cell_view_index",
     "canvas_plan_from_paint_layers",
     "dom_plan_from_paint_layers",

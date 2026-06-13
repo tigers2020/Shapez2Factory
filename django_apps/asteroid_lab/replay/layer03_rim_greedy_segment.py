@@ -40,8 +40,6 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy_append
     AppendCellKind,
     AppendedPlacementCell,
     Layer03AppendResult,
-)
-from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_finalize import (
     rebuild_append_result_from_committed,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.transport_kind import (

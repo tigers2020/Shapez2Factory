@@ -15,7 +15,7 @@ PATTERN_BUILTIN_1X1_FIELD_BLOCK = "builtin_1x1_field_block"
 
 # Routeable installation target: share of max group sets (field_cells // 4).
 TARGET_ROUTEABLE_FILL_RATIO = 0.90
-# Golden Criterion B inner fill ratio (see golden_l4_capacity_metrics).
+# Criterion B inner fill ratio (80% of max inner routeable group sets).
 CRITERION_B_INNER_FILL_RATIO = 0.80
 FIELD_CELLS_PER_ROUTEABLE_GROUP = 4
 

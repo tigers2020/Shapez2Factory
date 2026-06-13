@@ -56,22 +56,13 @@ def test_adapter_reads_fluid_capacity_from_fixture() -> None:
     assert row.per_connector_capacity_per_min == Decimal("7200")
 
 
-def test_resolve_per_connector_capacity_uses_injected_port() -> None:
-    from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport import (
-        capacity,
-    )
+def test_resolve_per_connector_capacity_module_removed_after_algorithm_reset() -> None:
+    import importlib
 
-    adapter = JsonSnapshotGameDataRulesAdapter.from_file(_FIXTURE)
-
-    got = capacity.resolve_per_connector_capacity(
-        rules=adapter,
-        resource_kind="shape",
-        speed_tier=1,
-    )
-
-    assert got.shortfall_reason is None
-    assert got.capacity_per_min == Decimal("5760")
-
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module(
+            "shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.capacity"
+        )
 
 def test_missing_row_raises_lookup_error() -> None:
     adapter = JsonSnapshotGameDataRulesAdapter.from_payload(_VALID_PAYLOAD)

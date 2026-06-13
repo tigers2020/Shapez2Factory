@@ -100,7 +100,7 @@ def test_lab_map_z_layer_picker_contract() -> None:
     assert "Height layer (L)" in tpl
     assert "flex-col-reverse" in tpl
     assert 'lab-replay-layer-picker"' in tpl
-    assert "absolute bottom-3 right-3" in tpl
+    assert "absolute bottom-2 right-2" in tpl
     assert 'input.type = "radio"' in src
     assert "labMapZSelectedLayer" in src
 

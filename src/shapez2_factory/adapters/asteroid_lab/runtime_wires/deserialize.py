@@ -35,15 +35,15 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs impor
     LAYER_04_INNER_PATTERN_FILL,
     LAYER_05_TRANSPORT_ROUTING,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.commit_finalize import (
-    rebuild_append_result_from_committed,
-)
 from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
     CommittedRimSeedPlacement,
     IntegratedRimGreedyResult,
     RimGreedyMetrics,
     RimGreedyPass2Report,
     build_empty_integrated_rim_greedy_result,
+)
+from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy_append import (
+    rebuild_append_result_from_committed,
 )
 from shapez2_factory.domain.asteroid_lab.grid_contract import Coord
 from shapez2_factory.domain.asteroid_lab.wire_coerce import (

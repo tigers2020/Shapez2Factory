@@ -18,12 +18,11 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import
 from shapez2_factory.application.asteroid_lab.layers.layer_01_reconstruction.output import (
     Layer01ReconstructionOutput,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.rim_throughput import (  # noqa: E501
-    SHAPE_MINI_UNIT_OUTPUT_PER_MIN,
-)
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
     ALGORITHM_STUB_ID,
 )
+
+SHAPE_MINI_UNIT_OUTPUT_PER_MIN = 30
 from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_list, wire_str
 
 

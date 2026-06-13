@@ -170,12 +170,14 @@ def test_lab_replay_description_has_fixed_scroll_viewport() -> None:
     assert footer_idx < idx
 
 
-def test_throughput_target_slider_in_extractor_constraints_not_header() -> None:
+def test_throughput_target_slider_in_lab_sidebar_not_header() -> None:
     template = TEMPLATE.read_text(encoding="utf-8")
     assert 'id="lab-throughput-target-percent"' in template
-    assert template.index("Extractor Constraints") < template.index("lab-throughput-target-percent")
     header_end = template.index("</div>", template.index("lab-header-run"))
-    assert template.index("lab-throughput-target-percent") > header_end
+    slider_idx = template.index("lab-throughput-target-percent")
+    center_idx = template.index("lab-workspace-center")
+    assert slider_idx > header_end
+    assert slider_idx < center_idx
 
 
 @pytest.mark.parametrize("needle", FORBIDDEN)

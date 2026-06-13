@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&display=swap");
 
 @import "tailwindcss";
 @import "flowbite/src/themes/mono";
@@ -70,6 +70,189 @@
     image-rendering: auto;
   }
 
+  /* Asteroid Lab design tokens (ui-ux-pro-max: dark OLED dashboard). */
+  #lab-root {
+    --lab-bg: #020617;
+    --lab-surface: #0f172a;
+    --lab-surface-raised: #1e293b;
+    --lab-border: rgb(51 65 85 / 0.85);
+    --lab-text: #f8fafc;
+    --lab-text-muted: #94a3b8;
+    --lab-accent: #22d3ee;
+    --lab-cta: #22c55e;
+    --lab-cta-hover: #4ade80;
+    font-family: "Fira Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  #lab-root .font-mono,
+  #lab-root [class*="font-mono"],
+  #lab-root code,
+  #lab-root pre {
+    font-family: "Fira Code", ui-monospace, monospace;
+  }
+
+  #lab-root .lab-panel-card {
+    border: 1px solid var(--lab-border);
+    background: linear-gradient(165deg, rgb(15 23 42 / 0.92), rgb(2 6 23 / 0.78));
+    box-shadow:
+      0 1px 0 rgb(248 250 252 / 0.04) inset,
+      0 12px 40px rgb(2 6 23 / 0.45);
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease;
+  }
+
+  #lab-root .lab-panel-card:hover {
+    border-color: rgb(34 211 238 / 0.22);
+  }
+
+  #lab-root .lab-stat-tile {
+    border: 1px solid rgb(51 65 85 / 0.65);
+    background: rgb(15 23 42 / 0.75);
+    transition: border-color 200ms ease;
+  }
+
+  #lab-root .lab-stat-tile:hover {
+    border-color: rgb(34 211 238 / 0.25);
+  }
+
+  #lab-root .lab-btn-ghost {
+    cursor: pointer;
+    transition:
+      color 200ms ease,
+      background-color 200ms ease,
+      border-color 200ms ease;
+  }
+
+  #lab-root .lab-btn-ghost:focus-visible {
+    outline: 2px solid rgb(34 211 238 / 0.55);
+    outline-offset: 2px;
+  }
+
+  #lab-root .lab-btn-primary {
+    cursor: pointer;
+    background-color: var(--lab-cta);
+    color: #052e16;
+    transition:
+      background-color 200ms ease,
+      box-shadow 200ms ease;
+  }
+
+  #lab-root .lab-btn-primary:hover {
+    background-color: var(--lab-cta-hover);
+    box-shadow: 0 0 20px rgb(34 197 94 / 0.35);
+  }
+
+  #lab-root .lab-btn-primary:focus-visible {
+    outline: 2px solid rgb(74 222 128 / 0.7);
+    outline-offset: 2px;
+  }
+
+  #lab-root .lab-workspace-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    border-bottom: 1px solid var(--lab-border);
+    background: linear-gradient(180deg, rgb(2 6 23 / 0.97), rgb(2 6 23 / 0.88));
+    backdrop-filter: blur(12px);
+  }
+
+  #lab-root .lab-workspace-header::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(34 197 94 / 0.45) 20%,
+      rgb(34 211 238 / 0.45) 50%,
+      rgb(34 197 94 / 0.45) 80%,
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  #lab-root .lab-workflow-step {
+    border: 1px solid rgb(51 65 85 / 0.7);
+    background: rgb(15 23 42 / 0.65);
+    color: var(--lab-text-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  #lab-root .lab-workflow-step--active {
+    border-color: rgb(34 197 94 / 0.45);
+    background: rgb(20 83 45 / 0.35);
+    color: rgb(134 239 172);
+  }
+
+  #lab-root .lab-grid-empty-state {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    pointer-events: none;
+    color: var(--lab-text-muted);
+  }
+
+  #lab-root .lab-grid-empty-state svg {
+    color: rgb(34 211 238 / 0.35);
+  }
+
+  #lab-root.lab-has-replay .lab-grid-empty-state {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #lab-root .lab-panel-card,
+    #lab-root .lab-stat-tile,
+    #lab-root .lab-btn-ghost,
+    #lab-root .lab-btn-primary {
+      transition: none;
+    }
+  }
+
+  #lab-root .lab-replay-status-bar {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    border-top: 1px solid rgb(51 65 85 / 0.55);
+    padding-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--lab-text-muted);
+  }
+
+  #lab-root .lab-replay-status-bar #lab-replay-phase {
+    min-width: 0;
+    flex: 1 1 12rem;
+    margin: 0;
+    color: rgb(226 232 240);
+  }
+
+  #lab-root .lab-sidebar-section-title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgb(100 116 139);
+  }
+
+  #lab-root .lab-meta-collapsed {
+    display: none;
+  }
+
   /* Lab workspace IDE split-pane (explicit breakpoints; survives stale Tailwind arbitrary-class builds). */
   #lab-root .lab-workspace-grid {
     display: grid;
@@ -77,36 +260,122 @@
     min-width: 0;
     max-width: 100%;
     grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
+    gap: 1rem;
     overflow-x: hidden;
+  }
+
+  #lab-root .lab-workspace-sidebar {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  #lab-root .lab-workspace-center {
+    order: -1;
+    min-width: 0;
   }
 
   @media (min-width: 64rem) {
     #lab-root .lab-workspace-grid {
-      grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+      gap: 1.25rem;
+      align-items: start;
     }
 
-    #lab-root .lab-workspace-grid > .lab-workspace-right {
+    #lab-root .lab-workspace-center {
+      order: 0;
+    }
+
+    #lab-root .lab-workspace-sidebar {
+      position: sticky;
+      top: 4.5rem;
+      align-self: start;
+    }
+
+    #lab-root .lab-workspace-inspector {
       grid-column: 1 / -1;
-    }
-
-    #lab-root .lab-workspace-left {
-      min-height: auto;
     }
   }
 
-  @media (min-width: 96rem) {
-    #lab-root .lab-workspace-grid {
-      grid-template-columns: minmax(0, 280px) minmax(0, 1fr) minmax(0, 300px);
-    }
+  #lab-root .lab-run-inspector-summary {
+    flex-wrap: wrap;
+  }
 
-    #lab-root .lab-workspace-grid > .lab-workspace-right {
-      grid-column: auto;
-    }
+  #lab-root .lab-run-inspector-body {
+    max-height: min(28rem, 50vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 
-    #lab-root .lab-workspace-left {
-      min-height: calc(100dvh - 10rem);
+  #lab-root .lab-layer-summaries-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (min-width: 48rem) {
+    #lab-root .lab-layer-summaries-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
+
+  @media (min-width: 80rem) {
+    #lab-root .lab-layer-summaries-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  #lab-root .lab-layer-summary-card {
+    border: 1px solid rgb(51 65 85 / 0.85);
+    border-radius: 0.75rem;
+    background: rgb(15 23 42 / 0.75);
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease;
+  }
+
+  #lab-root .lab-layer-summary-card[open] {
+    border-color: rgb(34 211 238 / 0.28);
+    box-shadow: 0 0 0 1px rgb(34 211 238 / 0.12);
+  }
+
+  #lab-root .lab-layer-summary-card summary {
+    display: flex;
+    cursor: pointer;
+    list-style: none;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 0.875rem;
+  }
+
+  #lab-root .lab-layer-summary-card summary::-webkit-details-marker {
+    display: none;
+  }
+
+  #lab-root .lab-layer-summary-card .lab-layer-summary-body {
+    border-top: 1px solid rgb(51 65 85 / 0.55);
+    padding: 0.625rem 0.875rem 0.875rem;
+  }
+
+  #lab-root .lab-layer-summary-card .lab-layer-summary-highlights {
+    display: grid;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+  }
+
+  #lab-root .lab-layer-summary-card .lab-layer-summary-highlights > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: rgb(148 163 184);
+  }
+
+  #lab-root .lab-layer-summary-card .lab-layer-summary-highlights dd {
+    margin: 0;
+    text-align: right;
+    color: rgb(241 245 249);
   }
 
   /* Replay timeline toolbar below canvas: isolate pointer targets from grid viewport pan. */
@@ -125,7 +394,7 @@
     margin: 0;
     padding: 0.375rem 0;
     cursor: pointer;
-    accent-color: rgb(6 182 212);
+    accent-color: rgb(34 197 94);
     touch-action: manipulation;
   }
 
@@ -140,7 +409,7 @@
     height: 1.125rem;
     border: none;
     border-radius: 9999px;
-    background-color: rgb(6 182 212);
+    background-color: rgb(34 197 94);
   }
 
   /* Lab replay grid: single source for Tailwind gap-1 (0.25rem) and bundle gap bridges. */

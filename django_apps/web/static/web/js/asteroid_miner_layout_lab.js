@@ -1617,6 +1617,9 @@
       card.classList.toggle("ring-1", active);
       card.classList.toggle("ring-cyan-500/40", active);
       card.setAttribute("aria-current", active ? "true" : "false");
+      if (card.tagName === "DETAILS" && active) {
+        card.open = true;
+      }
     });
   }
 
@@ -4198,22 +4201,19 @@
       }
       run.layer_summaries.forEach(function (layer) {
         if (!layer || typeof layer !== "object") return;
-        const card = document.createElement("article");
-        card.className =
-          "rounded-xl border border-slate-800 bg-slate-900/80 p-3 transition-colors hover:border-slate-600";
+        const card = document.createElement("details");
+        card.className = "lab-layer-summary-card";
         card.setAttribute("role", "listitem");
         if (layer.layer_slug) {
           card.setAttribute("data-lab-layer-slug", String(layer.layer_slug));
-          card.classList.add("cursor-pointer");
           card.setAttribute("tabindex", "0");
           card.setAttribute(
             "aria-label",
-            "Jump replay to " + String(layer.layer_slug),
+            "Layer summary " + String(layer.layer_slug),
           );
         }
 
-        const head = document.createElement("div");
-        head.className = "flex items-start justify-between gap-2";
+        const summary = document.createElement("summary");
 
         const titleWrap = document.createElement("div");
         titleWrap.className = "min-w-0";
@@ -4223,12 +4223,6 @@
         const layerTitle = layer.title != null ? String(layer.title) : dash;
         title.textContent = "L" + layerIndex + " · " + layerTitle;
         titleWrap.appendChild(title);
-        if (layer.layer_slug) {
-          const slugLine = document.createElement("p");
-          slugLine.className = "mt-0.5 truncate font-mono text-xs text-slate-500";
-          slugLine.textContent = String(layer.layer_slug);
-          titleWrap.appendChild(slugLine);
-        }
 
         const badge = document.createElement("span");
         const outcome = layer.outcome != null ? String(layer.outcome) : dash;
@@ -4237,36 +4231,69 @@
           layerOutcomeBadgeClass(outcome);
         badge.textContent = formatLayerOutcomeLabel(outcome);
 
-        head.appendChild(titleWrap);
-        head.appendChild(badge);
-        card.appendChild(head);
+        summary.appendChild(titleWrap);
+        summary.appendChild(badge);
+        card.appendChild(summary);
 
         const highlights = Array.isArray(layer.highlights) ? layer.highlights : [];
-        const dl = document.createElement("dl");
-        dl.className = "mt-2 space-y-1 text-sm";
-        highlights.forEach(function (row) {
-          if (!row || typeof row !== "object") return;
-          let val = formatLabLayerHighlightValue(
+        const visibleHighlights = highlights.filter(function (row) {
+          if (!row || typeof row !== "object") return false;
+          const val = formatLabLayerHighlightValue(
             row.label != null ? String(row.label) : "",
             row.value,
             run,
           );
-          if (val === dash) return;
-          const line = document.createElement("div");
-          line.className = "flex justify-between gap-3 text-slate-400";
-          const dt = document.createElement("dt");
-          dt.className = "min-w-0 truncate";
-          dt.textContent = row.label != null ? String(row.label) : "";
-          const dd = document.createElement("dd");
-          dd.className = "shrink-0 text-right text-slate-100";
-          dd.textContent = val;
-          line.appendChild(dt);
-          line.appendChild(dd);
-          dl.appendChild(line);
+          return val !== dash;
         });
-        if (dl.childElementCount > 0) {
-          card.appendChild(dl);
+        if (layer.layer_slug || visibleHighlights.length) {
+          const body = document.createElement("div");
+          body.className = "lab-layer-summary-body";
+
+          if (layer.layer_slug) {
+            const slugLine = document.createElement("p");
+            slugLine.className = "mb-2 truncate font-mono text-[11px] text-slate-500";
+            slugLine.textContent = String(layer.layer_slug);
+            body.appendChild(slugLine);
+          }
+
+          if (visibleHighlights.length) {
+            const dl = document.createElement("dl");
+            dl.className = "lab-layer-summary-highlights";
+            visibleHighlights.forEach(function (row) {
+              const val = formatLabLayerHighlightValue(
+                row.label != null ? String(row.label) : "",
+                row.value,
+                run,
+              );
+              const line = document.createElement("div");
+              const dt = document.createElement("dt");
+              dt.className = "min-w-0 truncate";
+              dt.textContent = row.label != null ? String(row.label) : "";
+              const dd = document.createElement("dd");
+              dd.textContent = val;
+              line.appendChild(dt);
+              line.appendChild(dd);
+              dl.appendChild(line);
+            });
+            body.appendChild(dl);
+          }
+
+          const jumpBtn = document.createElement("button");
+          jumpBtn.type = "button";
+          jumpBtn.className =
+            "lab-layer-summary-jump lab-btn-ghost mt-3 cursor-pointer rounded-md border border-slate-700 px-2 py-1 text-[11px] text-cyan-300 hover:border-cyan-500/40";
+          jumpBtn.textContent =
+            typeof shapezUiT === "function"
+              ? shapezUiT("Jump replay to this layer")
+              : "Jump replay to this layer";
+          if (layer.layer_slug) {
+            jumpBtn.setAttribute("data-lab-layer-slug", String(layer.layer_slug));
+          }
+          body.appendChild(jumpBtn);
+
+          card.appendChild(body);
         }
+
         root.appendChild(card);
       });
     }
@@ -4544,22 +4571,22 @@
     }
 
     document.getElementById("lab-layer-summaries")?.addEventListener("click", function (event) {
-      const card = event.target && event.target.closest
-        ? event.target.closest("[data-lab-layer-slug]")
+      const jumpBtn = event.target && event.target.closest
+        ? event.target.closest(".lab-layer-summary-jump")
         : null;
-      if (!card) return;
-      const slug = card.getAttribute("data-lab-layer-slug");
+      if (!jumpBtn) return;
+      const slug = jumpBtn.getAttribute("data-lab-layer-slug");
       if (!slug) return;
       jumpReplayToLayerSlug(slug);
     });
     document.getElementById("lab-layer-summaries")?.addEventListener("keydown", function (event) {
       if (event.key !== "Enter" && event.key !== " ") return;
-      const card = event.target && event.target.closest
-        ? event.target.closest("[data-lab-layer-slug]")
+      const jumpBtn = event.target && event.target.closest
+        ? event.target.closest(".lab-layer-summary-jump")
         : null;
-      if (!card) return;
+      if (!jumpBtn) return;
       event.preventDefault();
-      const slug = card.getAttribute("data-lab-layer-slug");
+      const slug = jumpBtn.getAttribute("data-lab-layer-slug");
       if (!slug) return;
       jumpReplayToLayerSlug(slug);
     });

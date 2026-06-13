@@ -86,9 +86,7 @@ def rebuild_append_result_from_committed(
         CommittedRimSeedPlacement,
     )
 
-    typed_committed = tuple(
-        p for p in committed if isinstance(p, CommittedRimSeedPlacement)
-    )
+    typed_committed = tuple(p for p in committed if isinstance(p, CommittedRimSeedPlacement))
     cells: list[AppendedPlacementCell] = []
     for placement in typed_committed:
         for coord in sorted(placement.miner_cells):

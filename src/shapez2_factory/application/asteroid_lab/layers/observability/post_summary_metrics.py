@@ -21,9 +21,9 @@ from shapez2_factory.application.asteroid_lab.layers.layer_01_reconstruction.out
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
     ALGORITHM_STUB_ID,
 )
+from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_list, wire_str
 
 SHAPE_MINI_UNIT_OUTPUT_PER_MIN = 30
-from shapez2_factory.domain.asteroid_lab.wire_coerce import wire_list, wire_str
 
 
 def build_layer01_post_summary_metrics(

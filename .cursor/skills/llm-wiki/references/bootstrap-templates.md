@@ -15,7 +15,7 @@ Copy these verbatim when creating `documents/knowledge/` for the first time.
 ```markdown
 # Knowledge Index
 
-> Map of synthesized knowledge. Raw sources live in `../raw/` (immutable). Maintenance: `docs/agent-workflows/dream-sequence.md`.
+> Map of synthesized knowledge. Raw sources live in `../raw/` (immutable). Maintenance: `documents/agent-workflows/dream-sequence.md`.
 
 ## Concepts
 
@@ -47,7 +47,7 @@ Append-only chronological record. Newest entries at the bottom.
 
 - Created `documents/knowledge/` (raw / wiki / outputs)
 - Added `Index.md`, `Processed.md`, append-only `Log.md`
-- Added `docs/agent-workflows/dream-sequence.md`
+- Added `documents/agent-workflows/dream-sequence.md`
 - Linked from `AGENTS.md`; workflow in `.cursor/skills/llm-wiki/`
 ```
 
@@ -82,7 +82,7 @@ Persistent research and conversation insights — **not** solver canon.
 - Wiki is working memory; spec/ADR/canon docs beat wiki pages.
 - Promote to canon via `/doc-update`, not by editing wiki alone.
 
-Maintenance: `docs/agent-workflows/dream-sequence.md` · Skill: `.cursor/skills/llm-wiki/`
+Maintenance: `documents/agent-workflows/dream-sequence.md` · Skill: `.cursor/skills/llm-wiki/`
 ```
 
 ## Log entry template (ingest / dream-sequence)

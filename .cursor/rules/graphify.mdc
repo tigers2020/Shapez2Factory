@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Graphify Router
 
-Canon: `AGENTS.md` § Tool Routing. Detail: `docs/agent-workflows/graphify-routine.md` § Code Search Routing.
+Canon: `AGENTS.md` § Tool Routing. Detail: `documents/agent-workflows/graphify-routine.md` § Code Search Routing.
 
 ## Mandatory gate
 

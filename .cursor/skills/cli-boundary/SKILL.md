@@ -321,7 +321,7 @@ Before approving a CLI PR, verify:
 [ ] targeted pytest passed
 [ ] ruff passed
 [ ] mypy passed where applicable
-[ ] docs/help updated
+[ ] documents/help updated
 ```
 
 ---

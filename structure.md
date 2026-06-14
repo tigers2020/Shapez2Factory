@@ -10,17 +10,17 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | DOX rail — agent operating contract; child `AGENTS.md` per major tree; **not** the path map SoT |
 | [`structure.md`](structure.md) | **Repository map SoT** — paths, apps, URLs, tests, commands |
-| [`docs/`](docs/) | Domain, architecture, runbook, ADR summaries (agent-friendly) |
+| [`documents/`](documents/) | Domain, architecture, runbook, ADR summaries (agent-friendly) |
 | [`documents/`](documents/README.md) | Canonical body text, CANON, plans, research |
-| [`src/shapez2_factory/`](src/shapez2_factory/) | Hexagonal solver-core extraction target; Asteroid Lab CLI-first migration in progress ([`docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/`](docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/README.md)) — Django-free (BA-1) |
+| [`src/shapez2_factory/`](src/shapez2_factory/) | Hexagonal solver-core extraction target; Asteroid Lab CLI-first migration in progress ([`documents/superpowers/plans/2026-05-30-asteroid-lab-cli-first/`](documents/superpowers/plans/2026-05-30-asteroid-lab-cli-first/README.md)) — Django-free (BA-1) |
 
 ## Top-level layout
 
 | Path | Purpose |
 |---|---|
-| `AGENTS.md` | DOX rail — root agent contract + Child DOX Index; see also `docs/`, `django_apps/`, `src/`, `documents/`, `.cursor/`, `tests/`, `frontend/` child `AGENTS.md` |
+| `AGENTS.md` | DOX rail — root agent contract + Child DOX Index; see also `documents/`, `django_apps/`, `src/`, `documents/`, `.cursor/`, `tests/`, `frontend/` child `AGENTS.md` |
 | `structure.md` | Repository map SoT (this document) |
-| `docs/` | Domain, architecture, runbook, ADR summaries |
+| `documents/` | Domain, architecture, runbook, ADR summaries |
 | `config/` | Django settings, root URLs, WSGI/ASGI, runtime flags |
 | `django_apps/shapez_core/` | Shape parsing, normalization, preview API |
 | `django_apps/shapez_solver/` | Solver projects/runs, recipe graph, macro patterns, planner services |
@@ -44,7 +44,7 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 | `frontend/graph_layout/` | TypeScript graph layout engine source |
 | `locale/` | gettext catalog |
 | `scripts/` | Locale build, graph preview, diagnostics helpers |
-| `var/` | Local run traces/debug output — not source of truth. Asteroid Lab CLI artifacts live under `var/runs/<run_key>/` (atomic `manifest.json` + `output/replay_core.jsonl`), staging in `var/runs/.tmp/` — see [artifact design spec](docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md) |
+| `var/` | Local run traces/debug output — not source of truth. Asteroid Lab CLI artifacts live under `var/runs/<run_key>/` (atomic `manifest.json` + `output/replay_core.jsonl`), staging in `var/runs/.tmp/` — see [artifact design spec](documents/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md) |
 
 `node_modules/`, `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`, `.graph_preview_cache*/`, `db.sqlite3`, `.env` are local/generated artifacts, not structural canon.
 

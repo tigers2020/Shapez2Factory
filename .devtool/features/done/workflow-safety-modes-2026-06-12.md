@@ -22,7 +22,7 @@ Non-goals: product code changes; replay Step 2+ implementation.
 ## Acceptance
 
 - [x] `.cursor/rules/workflow-safety.mdc` always-on router
-- [x] `docs/agent-workflows/workflow-safety.md` detail
+- [x] `documents/agent-workflows/workflow-safety.md` detail
 - [x] `AGENTS.md`, `root.mdc`, `git-worktree.mdc`, `ops-recovery*` aligned
 - [x] replay card: PR1–PR4 → Step 1–4 terminology
 - [x] governance check passes (`check_governance.ps1` exit 0)

@@ -11,7 +11,7 @@ Normative rules (verified against in-game paste, 2026-05-23):
 - ``X == 0`` is a valid column in copy JSON (unlike lab world map ``x == 0``).
 
 See ``documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md``
-and ``docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md``.
+and ``documents/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md``.
 
 Tagged boundary: :func:`entry_island_raw_coord` → :class:`~coord_frames.IslandRawCoord`.
 Export-column projection is kept here because it is a copy JSON serialization rule,

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # DOX Framework Router
 
-Canon: `AGENTS.md` § Workflow & DOX. Detail: `docs/agent-workflows/workflow-phases.md` § Workflow + DOX · `dox-framework.md`.
+Canon: `AGENTS.md` § Workflow & DOX. Detail: `documents/agent-workflows/workflow-phases.md` § Workflow + DOX · `dox-framework.md`.
 
 ## Hard rule
 
@@ -30,4 +30,4 @@ Purpose · Ownership · Local Contracts · Work Guidance · Verification · Chil
 
 At **verify**: validation + DOX pass (update owning `AGENTS.md` if contracts changed). Top-level index: root `AGENTS.md` only.
 
-References: `workflow-phases.mdc`, `structure.md`, `docs/AGENTS.md`, `governance-acceptance.md`.
+References: `workflow-phases.mdc`, `structure.md`, `documents/AGENTS.md`, `governance-acceptance.md`.

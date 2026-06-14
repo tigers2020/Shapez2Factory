@@ -4,7 +4,7 @@ description: >-
   Review-only architecture improvement: find scattered, shallow, temporally
   decomposed, overexposed, or conjoined code; propose deeper modules behind
   simpler interfaces (Ousterhout). Writes report/spec/plan to
-  docs/architecture/<slug>/ and links from kanban card. Use for
+  documents/architecture/<slug>/ and links from kanban card. Use for
   /improve-codebase-architecture, refactor opportunities, complexity reduction,
   or seam identification. No implementation without explicit user approval.
 disable-model-invocation: false
@@ -28,7 +28,7 @@ Do **not** edit code, create files, rewrite modules, or open PRs unless the user
 
 1. **No implementation without approval.**
 
-   * First run produces an architecture report as **`docs/architecture/<slug>/report.md`** and links it on the kanban card.
+   * First run produces an architecture report as **`documents/architecture/<slug>/report.md`** and links it on the kanban card.
    * Implementation requires a separate explicit user request and an approved **`plan.md`** (linked on the same card).
 
 2. **Small strategic improvements only.**
@@ -57,7 +57,7 @@ Do **not** edit code, create files, rewrite modules, or open PRs unless the user
 
 7. **Durable docs + kanban links — not chat-only reports.**
 
-   * Write review/contract/plan content to markdown under `docs/architecture/<thread-slug>/`.
+   * Write review/contract/plan content to markdown under `documents/architecture/<thread-slug>/`.
    * Link every artifact from the **single feature-thread** kanban card (`.devtool/features/`).
    * Append **Progress** on the card; do not spawn sibling cards or `done` early (`kanban-tracking.md`).
 
@@ -76,11 +76,11 @@ Architecture work is tracked on **one kanban card per feature thread**. Review c
 | Sub-steps | Append **Progress**; tick **Acceptance**; stay off `done` until epic Acceptance complete |
 | No siblings | Do not create `-r2`, `-step2`, or per-chat duplicate cards for the same thread |
 
-Router: `docs/agent-workflows/kanban-tracking.md`, `.cursor/rules/kanban-tracking.mdc`.
+Router: `documents/agent-workflows/kanban-tracking.md`, `.cursor/rules/kanban-tracking.mdc`.
 
 ### Artifact paths
 
-All files under `docs/architecture/<thread-slug>/` (see `docs/architecture/README.md`):
+All files under `documents/architecture/<thread-slug>/` (see `documents/architecture/README.md`):
 
 | File | Phase | Contents |
 |------|-------|----------|
@@ -93,7 +93,7 @@ All files under `docs/architecture/<thread-slug>/` (see `docs/architecture/READM
 ### Workflow
 
 ```text
-align     → kanban card + docs/architecture/<slug>/; explore; draft report.md
+align     → kanban card + documents/architecture/<slug>/; explore; draft report.md
 contract  → spec.md (decisions); card status contract; link Artifacts
 slice     → plan.md (steps); card status slice; link Artifacts
 implement → execute plan steps; append Progress + tick Acceptance (same card)
@@ -118,9 +118,9 @@ done      → only when full Acceptance met; then archive card
 
 | Kind | Path | Updated |
 |------|------|---------|
-| report | docs/architecture/<slug>/report.md | YYYY-MM-DD |
-| spec | docs/architecture/<slug>/spec.md | YYYY-MM-DD |
-| plan | docs/architecture/<slug>/plan.md | YYYY-MM-DD |
+| report | documents/architecture/<slug>/report.md | YYYY-MM-DD |
+| spec | documents/architecture/<slug>/spec.md | YYYY-MM-DD |
+| plan | documents/architecture/<slug>/plan.md | YYYY-MM-DD |
 
 ## Progress
 <timestamped bullets>
@@ -134,7 +134,7 @@ After scope is defined:
 
 1. Choose `<thread-slug>`.
 2. Create or update kanban card; add **Artifacts** table (create rows as files appear).
-3. `mkdir -p docs/architecture/<thread-slug>/` if missing.
+3. `mkdir -p documents/architecture/<thread-slug>/` if missing.
 4. If resuming a thread, **read linked artifacts first** before re-exploring.
 
 ---
@@ -710,13 +710,13 @@ Use multiple PRs only when needed, for example:
 
 End review-only runs with:
 
-1. Write the full report to `docs/architecture/<thread-slug>/report.md`.
+1. Write the full report to `documents/architecture/<thread-slug>/report.md`.
 2. Update kanban card **Artifacts** (report row + date), **Progress**, and `modified`.
 3. Emit in chat:
 
 ```text
 STOPPED_AT_ARCHITECTURE_REVIEW
-Report: docs/architecture/<thread-slug>/report.md
+Report: documents/architecture/<thread-slug>/report.md
 Card: .devtool/features/<thread-slug>.md
 No production code changes made.
 ```
@@ -791,7 +791,7 @@ For review-only runs:
 
 ```text
 STOPPED_AT_ARCHITECTURE_REVIEW
-Report: docs/architecture/<slug>/report.md
+Report: documents/architecture/<slug>/report.md
 Card: .devtool/features/<slug>.md
 No production code changes made.
 ```
@@ -803,7 +803,7 @@ Final Report
 - Changed:
 - Tests:
 - Card: .devtool/features/<slug>.md
-- Plan: docs/architecture/<slug>/plan.md
+- Plan: documents/architecture/<slug>/plan.md
 - Remaining risk:
 - Follow-up:
 ```

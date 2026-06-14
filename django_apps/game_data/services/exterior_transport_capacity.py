@@ -11,7 +11,7 @@ from django_apps.game_data.models.exterior_transport_capacity import (
 )
 
 EVTC_SPEC_NOTE = (
-    "docs/superpowers/specs/2026-05-26-rttp-external-void-transport-capacity-contract.md"
+    "documents/superpowers/specs/2026-05-26-rttp-external-void-transport-capacity-contract.md"
 )
 
 

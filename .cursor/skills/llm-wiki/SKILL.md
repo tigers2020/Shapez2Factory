@@ -29,7 +29,7 @@ documents/knowledge/wiki/Index.md     # content map
 documents/knowledge/wiki/Log.md       # append-only chronological log
 documents/knowledge/wiki/Processed.md # source id/hash/path → wiki trace
 documents/knowledge/outputs/          # deliverables
-docs/agent-workflows/dream-sequence.md  # maintenance routine (detail lives here)
+documents/agent-workflows/dream-sequence.md  # maintenance routine (detail lives here)
 .cursor/skills/llm-wiki/SKILL.md      # workflow logic
 AGENTS.md                             # 1–2 line link only
 ```
@@ -57,11 +57,11 @@ When `documents/knowledge/` is missing or user requests setup:
 
 1. Create directory tree (see mapping above).
 2. Write wiki templates from [references/bootstrap-templates.md](references/bootstrap-templates.md).
-3. Write `docs/agent-workflows/dream-sequence.md` from [references/dream-sequence-routine.md](references/dream-sequence-routine.md).
+3. Write `documents/agent-workflows/dream-sequence.md` from [references/dream-sequence-routine.md](references/dream-sequence-routine.md).
 4. Add to `AGENTS.md` (Tool Routing section):
 
    ```markdown
-   - **LLM Wiki (persistent knowledge):** raw → `documents/knowledge/`; maintenance via `docs/agent-workflows/dream-sequence.md`. Skill: `/llm-wiki`.
+   - **LLM Wiki (persistent knowledge):** raw → `documents/knowledge/`; maintenance via `documents/agent-workflows/dream-sequence.md`. Skill: `/llm-wiki`.
    ```
 
 5. Register skill in `.cursor/skills/README.md` if not already listed.
@@ -86,7 +86,7 @@ Prefer updating an existing wiki page over creating duplicates. Merge related to
 
 ## Dream Sequence
 
-Manual maintenance pass — full routine in `docs/agent-workflows/dream-sequence.md`.
+Manual maintenance pass — full routine in `documents/agent-workflows/dream-sequence.md`.
 
 Quick checklist:
 

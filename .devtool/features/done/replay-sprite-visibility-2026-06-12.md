@@ -34,12 +34,12 @@ Replay map에서 sprite 일부 미표시·흐림(faded overlay 대체), legacy `
 
 | Kind | Path | Updated |
 |------|------|---------|
-| spec | docs/superpowers/specs/2026-06-12-replay-sprite-visibility-design.md | 2026-06-12 |
-| plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-1.md | 2026-06-12 |
-| plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-2.md | 2026-06-12 |
-| plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-3.md | 2026-06-12 |
-| plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-4.md | 2026-06-12 |
-| plan | docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-5.md | 2026-06-12 |
+| spec | documents/superpowers/specs/2026-06-12-replay-sprite-visibility-design.md | 2026-06-12 |
+| plan | documents/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-1.md | 2026-06-12 |
+| plan | documents/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-2.md | 2026-06-12 |
+| plan | documents/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-3.md | 2026-06-12 |
+| plan | documents/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-4.md | 2026-06-12 |
+| plan | documents/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-5.md | 2026-06-12 |
 
 ## Archive summary
 
@@ -53,7 +53,7 @@ Task 6 commits: `93f457c1` → `0d1a1049`. No template flag change; no git tag.
 - 2026-06-12 — **align** — Q1: timeline scope → **D** (almost all frames, Map Z "All")
 - 2026-06-12 — **align** — Q3: **C** — candidate miner sprite 보이나 흐림; 정본 `shape_belt` 금지 위반; 셀당 모델 과다
 - 2026-06-12 — **contract** — §1 APPROVED WITH MINOR CONTRACT AMENDMENTS
-- 2026-06-12 — **verify** — Slice 1 committed `6e4eb56a`; Slice 2 plan drafted (`docs/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-2.md`) — awaiting review before execution
+- 2026-06-12 — **verify** — Slice 1 committed `6e4eb56a`; Slice 2 plan drafted (`documents/superpowers/plans/2026-06-12-replay-sprite-visibility-slice-2.md`) — awaiting review before execution
 - 2026-06-12 — **implement** — Slice 1 Task 2: `replay_wire_read_sanitize.py` + 4 sanitizer tests; 6/6 pytest green, ruff clean
 - 2026-06-12 — **implement** — Slice 1 Task 4: `test_replay_wire_audit.py` (golden assembler + fixture scan); audit fix `_BANNED_LEGACY_COMMITTED_TRANSPORT` (canonical `space_belt` on committed rows was false positive); 2/2 audit + 6/6 sanitizer pytest green
 - 2026-06-12 — **implement** — Slice 2 Task 3: `build_effective_cell_view_index` + `test_build_effective_cell_view_index_frame_38`; 6/6 paint-plan pytest green, ruff clean

@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}}
 
-> Cursor를 "코드 작성기"가 아니라 **하니스 실행기**로 다루는 프로젝트. 루트 `AGENTS.md`로 운영 계약을 만들고, `.cursor/rules/`로 경로별 가이드를 붙이며, `.cursor/skills/`로 반복 업무를 패키징하고, `docs/domain/`과 `tests/golden/`으로 지식과 검증을 외부화한다. — [research.md](research.md) 결론
+> Cursor를 "코드 작성기"가 아니라 **하니스 실행기**로 다루는 프로젝트. 루트 `AGENTS.md`로 운영 계약을 만들고, `.cursor/rules/`로 경로별 가이드를 붙이며, `.cursor/skills/`로 반복 업무를 패키징하고, `documents/domain/`과 `tests/golden/`으로 지식과 검증을 외부화한다. — [research.md](research.md) 결론
 
 ## Quick Start
 
@@ -39,7 +39,7 @@ black --check .
 │   ├── unit/                        # Domain + use case 단위 테스트
 │   ├── integration/                 # Adapter 통합 테스트
 │   └── golden/                      # 결정적 회귀 데이터 (phase2)
-├── docs/
+├── documents/
 │   ├── domain/                      # 도메인 매뉴얼 (도미닉)
 │   ├── architecture/                # 레이어 구조·의존 방향
 │   ├── runbooks/                    # 반복 개발 절차
@@ -55,7 +55,7 @@ black --check .
 
 의존 방향: `interfaces` → `application` → `domain` ← (adapters → ports)
 
-상세: [docs/architecture/README.md](docs/architecture/README.md)
+상세: [documents/architecture/README.md](documents/architecture/README.md)
 
 ## Workflow
 

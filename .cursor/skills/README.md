@@ -14,7 +14,7 @@ Invoke **only** when rules below match. Not default workflow — see [`AGENTS.md
 | `bug-fix` | `/bug-fix` | Fix + regression tests, or tests-only mode |
 | `quality-check` | `/quality-check` | Diff review or pre-spec plan review |
 | `grill-me-shapez2` | `/grill-me-shapez2` | HITL alignment before contract (read-only) |
-| `doc-update` | `/doc-update` | Sync docs/ADR after contract change |
+| `doc-update` | `/doc-update` | Sync documents/ADR after contract change |
 | `cli-boundary` | CLI touch | Thin adapter rules for management commands |
 | `plan-run` | `/plan-run` | Linear plan queue automation |
 | `clean-root` | `/clean-root` | Safe root cleanup before plan-run (stash-based) |
@@ -24,6 +24,7 @@ Invoke **only** when rules below match. Not default workflow — see [`AGENTS.md
 | `fallow` | `/fallow` | JS/TS static health audit |
 | `llm-wiki` | `/llm-wiki` | `documents/knowledge/` ingest + maintenance |
 | `improve-codebase-architecture` | `/improve-codebase-architecture` | Review-only deep-module proposals (Ousterhout); no code without approval |
+| `ui-ux-pro-max` | UI/UX design task | Design DB search + `DESIGN.md` token overlay; rule `ui-ux-pro-max-skill.mdc` |
 
 ## Adding a skill
 

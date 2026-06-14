@@ -20,6 +20,7 @@ Route when relevant:
 - Shapez2: `shapez2-domain.mdc`, `shapez2-core.mdc`
 - Code search (graph exists): `graphify.mdc`
 - UI/browser verification: `playwright.mdc`
+- UI design intelligence: `ui-ux-pro-max-skill.mdc` (glob: templates/static/frontend/css)
 - Git hygiene: `git-worktree.mdc`
 - Delivery safety: `workflow-safety.mdc` (`workflow-safety.md`)
 - Style: `caveman.mdc`

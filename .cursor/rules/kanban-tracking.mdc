@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Kanban Tracking Router
 
-Canon: `AGENTS.md` § Kanban tracking. Detail: `docs/agent-workflows/kanban-tracking.md`.
+Canon: `AGENTS.md` § Kanban tracking. Detail: `documents/agent-workflows/kanban-tracking.md`.
 
 Cards: `.devtool/features/*.md` (`status` = workflow phase id). Columns: `.devtool/README.md`.
 
@@ -49,4 +49,4 @@ Do not silently abandon. User must **explicitly** park (`blocked`/`backlog` + re
 
 ## Card body (minimum)
 
-Under title: **Scope**, **Acceptance**, **Artifacts** (when architecture thread — link `docs/architecture/<slug>/`), **Progress** (timestamped bullets). Keep frontmatter `modified` accurate.
+Under title: **Scope**, **Acceptance**, **Artifacts** (when architecture thread — link `documents/architecture/<slug>/`), **Progress** (timestamped bullets). Keep frontmatter `modified` accurate.

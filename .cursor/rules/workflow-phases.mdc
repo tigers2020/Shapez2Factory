@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Workflow Phases Router
 
-Canon: `AGENTS.md` § Workflow & DOX. Detail: `docs/agent-workflows/workflow-phases.md` § Workflow + DOX.
+Canon: `AGENTS.md` § Workflow & DOX. Detail: `documents/agent-workflows/workflow-phases.md` § Workflow + DOX.
 
 ## Phase order (Normal+)
 
@@ -15,11 +15,11 @@ align → contract → slice → implement → verify → STOPPED_AT_APPROVED_SC
 
 ## HITL vs AFK
 
-**HITL:** ambiguous intent · contract create/amend · slice shape review · merge approval · taste/UX/domain judgment
+**HITL (stop):** ambiguous intent · contract create/amend · merge approval · taste/UX judgment
 
-**AFK:** implement against explicit contract · bounded refactor · verification with explicit commands
+**AFK (auto):** implement against explicit contract/plan · bounded refactor · verification with explicit commands · spec/plan already provided by user · user said "auto" or "go"
 
-Do not convert HITL work into AFK because a plan file exists.
+Default AFK when user provides plan/spec or says "auto"/"go". Do not ask for confirmation unless truly ambiguous or scope outside user's request.
 
 ## Vertical slice
 

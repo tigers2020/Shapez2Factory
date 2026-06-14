@@ -121,8 +121,8 @@ Allowed paths:
 .cursor/rules/**
 AGENTS.md
 scripts/check_governance.ps1
-docs/agent-workflows/**
-docs/agent-skills/**
+documents/agent-workflows/**
+documents/agent-skills/**
 ```
 
 These may be auto-committed by `/clean-root auto`.
@@ -397,7 +397,7 @@ If Class A changes exist:
 3. Stage only Class A paths:
 
 ```bash
-git add .cursor/skills .cursor/rules AGENTS.md scripts/check_governance.ps1 docs/agent-workflows docs/agent-skills
+git add .cursor/skills .cursor/rules AGENTS.md scripts/check_governance.ps1 documents/agent-workflows documents/agent-skills
 ```
 
 4. Verify staged set:
@@ -517,7 +517,7 @@ Commands:
 
 ```bash
 git status --short
-git add .cursor/skills .cursor/rules AGENTS.md scripts/check_governance.ps1 docs/agent-workflows docs/agent-skills
+git add .cursor/skills .cursor/rules AGENTS.md scripts/check_governance.ps1 documents/agent-workflows documents/agent-skills
 git diff --cached --name-only
 git commit -m "<agent commit message>"
 ```

@@ -17,9 +17,9 @@ order: "a1"
 
 | Kind | Path | Updated |
 |------|------|---------|
-| report | docs/architecture/replay-cell-semantics/report.md | 2026-06-12 |
-| spec | docs/architecture/replay-cell-semantics/spec.md | 2026-06-13 |
-| plan | docs/architecture/replay-cell-semantics/plan.md | 2026-06-13 |
+| report | documents/architecture/replay-cell-semantics/report.md | 2026-06-12 |
+| spec | documents/architecture/replay-cell-semantics/spec.md | 2026-06-13 |
+| plan | documents/architecture/replay-cell-semantics/plan.md | 2026-06-13 |
 
 ## Archive summary
 

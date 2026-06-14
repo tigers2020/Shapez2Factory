@@ -1,7 +1,7 @@
 # Manual: Typing Boundary Layers (Any · object · TypedDict · dataclass)
 
 Process authority: [`AGENTS.md`](../../../AGENTS.md).  
-Companion: [`typing_contracts.md`](typing_contracts.md) · [`docs/superpowers/specs/2026-06-11-any-boundary-typing-design.md`](../../../docs/superpowers/specs/2026-06-11-any-boundary-typing-design.md).
+Companion: [`typing_contracts.md`](typing_contracts.md) · [`documents/superpowers/specs/2026-06-11-any-boundary-typing-design.md`](../../../documents/superpowers/specs/2026-06-11-any-boundary-typing-design.md).
 
 **Canon path:** `documents/ai/manuals/typing_boundary_layers.md`
 

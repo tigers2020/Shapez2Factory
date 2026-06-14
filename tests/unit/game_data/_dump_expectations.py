@@ -1,7 +1,7 @@
 """Pinned ORM counts for game_data_backup/game_data_dump.json.
 
 All values are valid only when ImportBatch.manifest_self_hash == PINNED_MANIFEST_HASH.
-Regenerate via docs/runbooks/game_data_tier_a_release_gate.md when the dump changes.
+Regenerate via documents/runbooks/game_data_tier_a_release_gate.md when the dump changes.
 """
 
 from __future__ import annotations

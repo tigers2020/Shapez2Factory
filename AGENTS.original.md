@@ -10,7 +10,7 @@ Always follow **small safe changes + fast verification + documentation sync**.
 | Surface | Language |
 |---|---|
 | Chat with the user (questions, plans, reviews, closing summaries) | **Korean** (한국어) |
-| Repository docs (`docs/`, `documents/`, ADRs, runbooks, specs, plans) | **English** |
+| Repository docs (`documents/`, `documents/`, ADRs, runbooks, specs, plans) | **English** |
 | Code (identifiers, comments, docstrings), commit messages, PR title/body | **English** |
 
 Exceptions: follow an existing file’s declared front matter (e.g. `language: ko`) or an explicit user request for that artifact; do not bulk-translate legacy Korean docs unless asked.
@@ -39,9 +39,9 @@ Use this document as the top-priority operating contract when any of the followi
 | `asteroid_lab` | Denny + invariants | `django_apps/asteroid_lab/` — [`asteroid-lab-invariants.mdc`](.cursor/rules/asteroid-lab-invariants.mdc) |
 
 **Session entry:** [`documents/ai/START_HERE.md`](documents/ai/START_HERE.md)  
-**Hexagonal (Phase 2+ stub):** `src/shapez2_factory/` — layers in [`docs/architecture/README.md`](docs/architecture/README.md)
+**Hexagonal (Phase 2+ stub):** `src/shapez2_factory/` — layers in [`documents/architecture/README.md`](documents/architecture/README.md)
 
-References: [`structure.md`](structure.md) · `@docs/domain/` · `@docs/architecture/` · `@docs/runbooks/` · `@documents/ai/START_HERE.md` · `@.cursor/rules/` · `@.cursor/skills/`
+References: [`structure.md`](structure.md) · `@documents/domain/` · `@documents/architecture/` · `@documents/runbooks/` · `@documents/ai/START_HERE.md` · `@.cursor/rules/` · `@.cursor/skills/`
 
 ## Reading scope
 
@@ -116,7 +116,7 @@ Ask direction questions only when the answer cannot be inferred from: (1) the us
 
 Before editing code, create or update a written checklist covering: Goal · Scope · Non-goals · Behavior contract · Forbidden behavior · Target files · Tests to add or update · Verification commands · Documentation updates · Risks.
 
-For small tasks the checklist may live in the response only. For non-trivial tasks, write or update the active project document, plan, or report per repository conventions (see [`documents/ai/current_plan.md`](documents/ai/current_plan.md) and `docs/`).
+For small tasks the checklist may live in the response only. For non-trivial tasks, write or update the active project document, plan, or report per repository conventions (see [`documents/ai/current_plan.md`](documents/ai/current_plan.md) and `documents/`).
 
 The checklist is the execution contract. Implementation continues until every checklist item is complete, explicitly skipped with a documented reason, or `BLOCKED`.
 
@@ -169,7 +169,7 @@ Do not update docs for purely internal edits unless the docs would otherwise bec
 
 ### Phase 7 — Completion gate
 
-Before reporting **DONE**, confirm: every checklist item is complete, explicitly skipped, or blocked · implementation is complete · relevant tests were added or updated · focused verification passed · broader verification passed when applicable · docs/plan were updated when required · no known failing check is hidden · no expected behavior was changed without contract-change documentation · no unrelated scope was added.
+Before reporting **DONE**, confirm: every checklist item is complete, explicitly skipped, or blocked · implementation is complete · relevant tests were added or updated · focused verification passed · broader verification passed when applicable · documents/plan were updated when required · no known failing check is hidden · no expected behavior was changed without contract-change documentation · no unrelated scope was added.
 
 If any required item is incomplete, do not report **DONE**.
 

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Workflow Safety Router
 
-Canon: `AGENTS.md` § Delivery safety. Detail: `docs/agent-workflows/workflow-safety.md`.
+Canon: `AGENTS.md` § Delivery safety. Detail: `documents/agent-workflows/workflow-safety.md`.
 
 ## Core rule
 
@@ -36,15 +36,15 @@ Review-only first → local patch → single working branch → PR on explicit c
 | 2 Single branch | multi-commit slice | one `work/*` branch; create/switch only to it |
 | 3 Real PR | merge-ready | tests pass; scope-clean; explicit "open PR" |
 
-Default **Mode 0 or 1** when unclear.
+Default **Mode 1** (local patch) when user provides plan/spec or says "auto". Mode 0 (review-only) only when user explicitly asked for review only.
 
 ## Before first edit
 
 1. `git status --short` — report dirty files.
-2. Dirty **outside** explicit scope → **STOP**; ask: continue, narrow scope, or review-only. Do not stash/restore/clean/switch.
+2. Dirty **outside** explicit scope → if user explicitly scoped the task, proceed with narrow scope (user has already decided). If task is **unscoped** or user said "auto", check only critical paths (git, secrets, CI).
 3. All dirty inside scope → Mode 1 may proceed on current branch.
 4. Edit only scoped paths.
-5. Protected — never wholesale delete: `plans/**`, `documents/**`, `docs/**`, `var/plan-run/**`, `.worktrees/**`, `.devtool/**`. `graphify-out/**`: hybrid — see detail doc.
+5. Protected — never wholesale delete: `plans/**`, `documents/**`, `documents/**`, `var/plan-run/**`, `.worktrees/**`, `.devtool/**`. `graphify-out/**`: hybrid — see detail doc.
 
 ## Slice naming
 

@@ -4,7 +4,7 @@ Role: AI Systems Architect
 
 ## 핵심 요약
 
-이 보고서의 결론은 간단합니다. 새 프로젝트에서 가장 먼저 설계해야 할 것은 “좋은 모델”이 아니라 **좋은 하니스**입니다. 제공된 Maker-Evan 관련 영상 단서와 업로드된 transcript의 공통 축은 하니스를 `지속 규칙`, `도메인 매뉴얼`, `재사용 가능한 스킬`, `자동 검증`, `작업 계획`의 묶음으로 보는 관점이며, Cursor 공식 문서 역시 이를 거의 같은 구조로 지원합니다. Cursor는 **Rules, AGENTS.md, Skills, Plan Mode, MCP, CLI/Cloud Agent, Hooks, Bugbot**을 통해 이 구조를 구현할 수 있고, Anthropic·OpenAI의 1차 자료도 공통적으로 **단순한 단일 에이전트 중심 설계로 시작하고, 도구/컨텍스트/검증을 분리하며, 필요한 경우에만 다중 에이전트와 긴 러닝 루프를 추가하라**고 권합니다. 따라서 Shapez2/Asteroid Solver 류의 코드베이스에는 `AGENTS.md + .cursor/rules + .cursor/skills + docs/domain + tests/golden + CI`를 중심으로 한 **문서 기반-계획 기반-검증 우선** 운영체계를 먼저 깔고, 이후에 Hooks·Cloud Agent·Headless CLI·Bugbot을 점진적으로 붙이는 구성이 가장 재현성과 유지보수성이 높습니다. citeturn1search0turn2search7turn42search1turn9view0turn9view1turn18view0turn25view0turn35view1
+이 보고서의 결론은 간단합니다. 새 프로젝트에서 가장 먼저 설계해야 할 것은 “좋은 모델”이 아니라 **좋은 하니스**입니다. 제공된 Maker-Evan 관련 영상 단서와 업로드된 transcript의 공통 축은 하니스를 `지속 규칙`, `도메인 매뉴얼`, `재사용 가능한 스킬`, `자동 검증`, `작업 계획`의 묶음으로 보는 관점이며, Cursor 공식 문서 역시 이를 거의 같은 구조로 지원합니다. Cursor는 **Rules, AGENTS.md, Skills, Plan Mode, MCP, CLI/Cloud Agent, Hooks, Bugbot**을 통해 이 구조를 구현할 수 있고, Anthropic·OpenAI의 1차 자료도 공통적으로 **단순한 단일 에이전트 중심 설계로 시작하고, 도구/컨텍스트/검증을 분리하며, 필요한 경우에만 다중 에이전트와 긴 러닝 루프를 추가하라**고 권합니다. 따라서 Shapez2/Asteroid Solver 류의 코드베이스에는 `AGENTS.md + .cursor/rules + .cursor/skills + documents/domain + tests/golden + CI`를 중심으로 한 **문서 기반-계획 기반-검증 우선** 운영체계를 먼저 깔고, 이후에 Hooks·Cloud Agent·Headless CLI·Bugbot을 점진적으로 붙이는 구성이 가장 재현성과 유지보수성이 높습니다. citeturn1search0turn2search7turn42search1turn9view0turn9view1turn18view0turn25view0turn35view1
 
 **근거와 신뢰도 평가**
 
@@ -24,7 +24,7 @@ Role: AI Systems Architect
 
 ## 권장 저장소 구조
 
-아래 구조는 **언어/플랫폼: 미지정** 상태를 전제로 한 Cursor 우선 설계입니다. 추측입니다만, Shapez2/Asteroid Solver 류 프로젝트는 상태 전이·시뮬레이션·알고리즘 회귀가 중요할 가능성이 높으므로, `docs/domain`, `tests/golden`, `harness/validators`의 비중을 높게 잡는 편이 일반적으로 유리합니다. 정확하지 않을 수 있습니다.
+아래 구조는 **언어/플랫폼: 미지정** 상태를 전제로 한 Cursor 우선 설계입니다. 추측입니다만, Shapez2/Asteroid Solver 류 프로젝트는 상태 전이·시뮬레이션·알고리즘 회귀가 중요할 가능성이 높으므로, `documents/domain`, `tests/golden`, `harness/validators`의 비중을 높게 잡는 편이 일반적으로 유리합니다. 정확하지 않을 수 있습니다.
 
 | 파일/디렉터리 | 목적 | 예시 항목 |
 |---|---|---|
@@ -34,13 +34,13 @@ Role: AI Systems Architect
 | `.cursor/plans/` | Plan Mode로 저장한 구현 계획 저장소. 계획을 문서 자산으로 축적할 수 있습니다. citeturn18view0turn18view1 | `solver-cache-optimization.md`, `shape-routing-refactor.md` |
 | `.cursor/hooks.json` | 중단 시점·완료 시점 등에 자동 후속 행동을 붙이는 현관문. Cursor 공식 블로그는 `stop` hook으로 “테스트가 모두 통과할 때까지 반복”하는 패턴을 예시로 듭니다. citeturn47view0turn47view1 | stop hook, docs sync hook, regression reminder hook |
 | `.cursor/hooks/` | hook 스크립트를 모아두는 추천 디렉터리. 공식 예시는 `.cursor/hooks/grind.ts`를 사용합니다. citeturn47view0turn47view1 | `grind.ts`, `sync-docs.ts`, `emit-summary.py` |
-| `.cursor/mcp.json` | 프로젝트 범위 MCP 설정. Cursor는 프로젝트와 글로벌 둘 다 지원하고, 환경변수 interpolation도 지원합니다. citeturn12view4 | Playwright, GitHub, issue tracker, docs/search, logs |
+| `.cursor/mcp.json` | 프로젝트 범위 MCP 설정. Cursor는 프로젝트와 글로벌 둘 다 지원하고, 환경변수 interpolation도 지원합니다. citeturn12view4 | Playwright, GitHub, issue tracker, documents/search, logs |
 | `.cursor/BUGBOT.md` | PR 검토용 Bugbot의 프로젝트 문맥 파일. 루트 파일은 항상 포함되고, 하위 경로도 계층적으로 적용됩니다. citeturn7search1turn19search3 | 보안 금칙, 리뷰 기준, blocking bug 조건 |
 | `.cursorignore` | Agent, semantic search, inline edit, @ mention에 들어가면 안 되는 파일을 제외하는 제어 파일입니다. 단, terminal/MCP tool 호출까지 완전 차단하는 보안 경계는 아닙니다. citeturn40search0turn16view5 | `.env*`, 빌드 산출물, 대형 바이너리, 민감 로그 |
-| `docs/domain/` | 도메인 매뉴얼. Maker-Evan류 하니스 관점에서 가장 중요하게 다뤄지는 “사람의 프로젝트 해석법”을 문서화하는 곳입니다. 공식적으로도 Rules/Skills는 내부 문서처럼 짧고 명확하게 유지하는 것이 권장됩니다. citeturn1search0turn18view0turn9view0 | `game-rules.md`, `solver-invariants.md`, `board-state.md` |
-| `docs/architecture/` | 시스템 구조·모듈 책임·데이터 흐름의 canonical reference | `module-map.md`, `events.md`, `storage.md` |
-| `docs/runbooks/` | 반복 개발 절차를 문서화한 실행 가이드 | `bugfix-runbook.md`, `release-check.md`, `perf-investigation.md` |
-| `docs/adr/` | 아키텍처 결정 기록 | `ADR-solver-cache.md`, `ADR-path-encoding.md` |
+| `documents/domain/` | 도메인 매뉴얼. Maker-Evan류 하니스 관점에서 가장 중요하게 다뤄지는 “사람의 프로젝트 해석법”을 문서화하는 곳입니다. 공식적으로도 Rules/Skills는 내부 문서처럼 짧고 명확하게 유지하는 것이 권장됩니다. citeturn1search0turn18view0turn9view0 | `game-rules.md`, `solver-invariants.md`, `board-state.md` |
+| `documents/architecture/` | 시스템 구조·모듈 책임·데이터 흐름의 canonical reference | `module-map.md`, `events.md`, `storage.md` |
+| `documents/runbooks/` | 반복 개발 절차를 문서화한 실행 가이드 | `bugfix-runbook.md`, `release-check.md`, `perf-investigation.md` |
+| `documents/adr/` | 아키텍처 결정 기록 | `ADR-solver-cache.md`, `ADR-path-encoding.md` |
 | `harness/validators/` | 검증 스크립트·golden comparator·smoke runner | `compare_golden.py`, `smoke.sh`, `perf_budget.js` |
 | `harness/prompts/` | 반복 작업 프롬프트 템플릿 보관 | `feature-task.md`, `bug-task.md`, `review-task.md` |
 | `tests/golden/` | 결정적 회귀 검증 데이터셋 | 입력 보드, expected route, expected score, snapshot |
@@ -48,7 +48,7 @@ Role: AI Systems Architect
 
 **실행 항목**
 
-- `AGENTS.md`, `.cursor/rules/`, `.cursor/skills/`, `docs/domain/`, `tests/golden/`를 첫 커밋에 포함시키십시오.
+- `AGENTS.md`, `.cursor/rules/`, `.cursor/skills/`, `documents/domain/`, `tests/golden/`를 첫 커밋에 포함시키십시오.
 - `.cursorignore`에 비밀값·대형 파일·생성 산출물을 먼저 넣으십시오.
 - `.cursor/plans/`를 단순 캐시가 아니라 “작업 명세 저장소”로 취급하십시오.
 
@@ -80,9 +80,9 @@ Cursor는 `Project Rules`, `User Rules`, `Team Rules`, 그리고 `AGENTS.md`를 
 - 성능/안정성 개선 요청
 
 ## Repository map
-- 도메인 매뉴얼: @docs/domain/
-- 아키텍처 문서: @docs/architecture/
-- 실행 가이드: @docs/runbooks/
+- 도메인 매뉴얼: @documents/domain/
+- 아키텍처 문서: @documents/architecture/
+- 실행 가이드: @documents/runbooks/
 - 규칙: @.cursor/rules/
 - 스킬: @.cursor/skills/
 - 검증기: @harness/validators/
@@ -170,7 +170,7 @@ BLOCKED:
 |---|---|---|
 | P0 | 계획 없는 편집 금지 | Cursor Plan Mode는 코드베이스를 조사하고, 질문하고, 파일 경로가 포함된 검토 가능한 계획을 만든 뒤 승인 대기를 하는 흐름을 공식 지원합니다. 이 프로젝트는 모든 중간 이상 난도 작업을 이 흐름으로 시작해야 합니다. citeturn18view0turn18view1turn12view1 |
 | P0 | 검증 없는 완료 금지 | Cursor 공식 권장 워크플로우는 “테스트 작성 → 실패 확인 → 구현 → 테스트 통과까지 반복”이며, hooks로 이 반복을 자동화할 수도 있습니다. citeturn47view1 |
-| P0 | 도메인 문서 우선 | Rules는 짧고 핵심만 담고, canonical example과 파일 참조를 활용하라고 Cursor가 권장합니다. 즉, 도메인 지식의 본문은 `docs/domain/`에 두고 Rules/Skills는 이를 가리켜야 합니다. citeturn9view0turn18view0 |
+| P0 | 도메인 문서 우선 | Rules는 짧고 핵심만 담고, canonical example과 파일 참조를 활용하라고 Cursor가 권장합니다. 즉, 도메인 지식의 본문은 `documents/domain/`에 두고 Rules/Skills는 이를 가리켜야 합니다. citeturn9view0turn18view0 |
 | P0 | 민감정보 비노출 | Cursor 보안 문서는 `.cursorignore` 사용, terminal/MCP 승인 유지, “Run Everything” 비권장을 명시합니다. citeturn16view5turn40search0 |
 | P1 | 경로 스코프 규칙화 | Project Rules와 Skills 모두 파일 패턴 기반 스코프를 지원하므로, 테스트/문서/핵심 엔진 규칙을 분리해 컨텍스트 오염을 줄여야 합니다. citeturn9view0turn9view1 |
 | P1 | 고위험 작업은 worktree 격리 | Cursor CLI는 `--worktree`를 지원하므로 대규모 리팩터·도구 업그레이드·CI 변경은 격리된 작업트리에서 수행하는 것이 안전합니다. citeturn12view1 |
@@ -248,12 +248,12 @@ metadata:
 
 ## Failure handling
 - 재현 불가면 BLOCKED
-- 검증 명령 미발견 시 docs/runbooks 참조
+- 검증 명령 미발견 시 documents/runbooks 참조
 - 리스크가 높으면 사용자 승인 전 구현 중단
 
 ## References
-- @docs/domain/<file>.md
-- @docs/runbooks/<file>.md
+- @documents/domain/<file>.md
+- @documents/runbooks/<file>.md
 - @harness/validators/<file>
 ```
 
@@ -265,7 +265,7 @@ metadata:
 ---
 name: bug-fix
 description: 실패 로그나 재현 절차가 주어졌을 때 최소 수정으로 원인을 제거하고 회귀 테스트를 추가한다.
-paths: ["src/**", "tests/**", "docs/**"]
+paths: ["src/**", "tests/**", "documents/**"]
 ---
 
 # Bug Fix
@@ -304,7 +304,7 @@ paths: ["src/**", "tests/**"]
 ---
 name: feature-add
 description: 새로운 기능을 추가할 때 사용한다. 계획서와 검증 기준 없는 구현을 금지한다.
-paths: ["src/**", "tests/**", "docs/**"]
+paths: ["src/**", "tests/**", "documents/**"]
 ---
 
 # Feature Add
@@ -314,7 +314,7 @@ paths: ["src/**", "tests/**", "docs/**"]
 2. 영향 파일, 리스크, 롤백 방안을 plan 에 적는다.
 3. 큰 기능은 feature flag 또는 단계적 노출을 우선 고려한다.
 4. happy path + edge case 테스트를 추가한다.
-5. docs/domain 또는 architecture 문서를 갱신한다.
+5. documents/domain 또는 architecture 문서를 갱신한다.
 ```
 
 **테스트 작성 스킬**
@@ -342,7 +342,7 @@ paths: ["tests/**", "src/**"]
 ---
 name: doc-update
 description: 코드 변경 후 문서, 계획, ADR, runbook 을 동기화할 때 사용한다.
-paths: ["docs/**", "AGENTS.md", ".cursor/rules/**"]
+paths: ["documents/**", "AGENTS.md", ".cursor/rules/**"]
 disable-model-invocation: true
 ---
 
@@ -384,7 +384,7 @@ disable-model-invocation: true
 **권장 부트스트랩 프롬프트**
 
 ```text
-현재 저장소의 AGENTS.md, 적용되는 .cursor/rules, docs/domain, docs/architecture를 먼저 읽어라.
+현재 저장소의 AGENTS.md, 적용되는 .cursor/rules, documents/domain, documents/architecture를 먼저 읽어라.
 그 다음 아래 형식으로만 응답하라.
 1) 문제 재정의
 2) 변경할 파일 후보
@@ -501,20 +501,20 @@ jobs:
 
 | 단계 | 기간 | 목표 | 산출물 |
 |---|---|---|---|
-| 기초 정렬 | 첫 2주 | 저장소 운영 계약과 문서 지형 정리 | `AGENTS.md`, `.cursor/rules/`, `.cursorignore`, `docs/domain/`, 기본 CI |
+| 기초 정렬 | 첫 2주 | 저장소 운영 계약과 문서 지형 정리 | `AGENTS.md`, `.cursor/rules/`, `.cursorignore`, `documents/domain/`, 기본 CI |
 | 검증 확보 | 다음 2주 | 최소 회귀 기반 확보 | `tests/smoke/`, `tests/golden/`, Tier 0/1 자동화 |
 | 스킬화 | 다음 3주 | 반복 작업을 스킬로 승격 | `bug-fix`, `write-tests`, `doc-update`, 일부 hooks |
 | 장기 작업 대응 | 다음 2주 | 장기 루프·병렬 검증 도입 | stop hook, worktree 흐름, 선택적 validator subagent |
 | 자동화 고도화 | 마지막 3주 | PR/CI/Cloud Agent 붙이기 | headless CLI, Bugbot, optional cloud handoff |
 
-3개월 내 목표는 다음 네 가지로 잡는 것이 좋습니다. 첫째, 사람이 새로 합류해도 `AGENTS.md`와 `docs/domain/`만 읽으면 저장소의 의사결정 규칙을 이해할 수 있어야 합니다. 둘째, Cursor Agent가 신규 기능과 버그 수정을 **반복 프롬프트 없이** 수행할 수 있어야 합니다. 셋째, 최소한 한 종류의 결정적 회귀 검증—예를 들어 solver golden test 또는 simulation smoke test—이 반드시 돌아야 합니다. 넷째, PR마다 자동 검증과 AI 보조 리뷰가 함께 작동해야 합니다. 이 목표는 Cursor의 plan/skills/hooks/CLI/cloud 방향성과도 부합합니다. citeturn18view0turn47view1turn44search0turn18view2turn46search1
+3개월 내 목표는 다음 네 가지로 잡는 것이 좋습니다. 첫째, 사람이 새로 합류해도 `AGENTS.md`와 `documents/domain/`만 읽으면 저장소의 의사결정 규칙을 이해할 수 있어야 합니다. 둘째, Cursor Agent가 신규 기능과 버그 수정을 **반복 프롬프트 없이** 수행할 수 있어야 합니다. 셋째, 최소한 한 종류의 결정적 회귀 검증—예를 들어 solver golden test 또는 simulation smoke test—이 반드시 돌아야 합니다. 넷째, PR마다 자동 검증과 AI 보조 리뷰가 함께 작동해야 합니다. 이 목표는 Cursor의 plan/skills/hooks/CLI/cloud 방향성과도 부합합니다. citeturn18view0turn47view1turn44search0turn18view2turn46search1
 
 ```mermaid
 timeline
     title 3개월 하니스 구축 로드맵
     첫달 : AGENTS.md 작성
          : .cursor/rules 기초 규칙 분리
-         : docs/domain 및 architecture 정리
+         : documents/domain 및 architecture 정리
          : .cursorignore 및 기본 CI 도입
     둘째달 : bug-fix / write-tests / doc-update 스킬 도입
           : smoke 및 golden 검증 추가
@@ -531,8 +531,8 @@ graph TD
     A[사용자 요청 또는 이슈] --> B[Planner Agent]
     B --> C[AGENTS.md]
     B --> D[.cursor/rules]
-    B --> E[docs/domain]
-    B --> F[docs/architecture]
+    B --> E[documents/domain]
+    B --> F[documents/architecture]
     B --> G[Implementer Skill]
     G --> H[Bug Fix]
     G --> I[Feature Add]
@@ -575,4 +575,4 @@ graph TD
 
 **결론 요약**
 
-현 시점에서 가장 실무적인 선택은 **Cursor를 “코드 작성기”가 아니라 “하니스 실행기”로 다루는 것**입니다. 즉, 루트 `AGENTS.md`로 운영 계약을 만들고, `.cursor/rules/`로 경로별 가이드를 붙이며, `.cursor/skills/`로 반복 업무를 패키징하고, `docs/domain/`과 `tests/golden/`으로 지식과 검증을 외부화하십시오. 그 위에 Plan Mode, hooks, headless CLI, Bugbot을 단계적으로 붙이면, 모델이 바뀌어도 유지되는 개발 방식이 만들어집니다. 이 방향은 Maker-Evan 류의 하니스 중심 관점과 Cursor·Anthropic·OpenAI의 공식 설계 원칙이 가장 많이 만나는 교집합입니다. citeturn1search0turn9view0turn9view1turn18view0turn25view0turn35view1
+현 시점에서 가장 실무적인 선택은 **Cursor를 “코드 작성기”가 아니라 “하니스 실행기”로 다루는 것**입니다. 즉, 루트 `AGENTS.md`로 운영 계약을 만들고, `.cursor/rules/`로 경로별 가이드를 붙이며, `.cursor/skills/`로 반복 업무를 패키징하고, `documents/domain/`과 `tests/golden/`으로 지식과 검증을 외부화하십시오. 그 위에 Plan Mode, hooks, headless CLI, Bugbot을 단계적으로 붙이면, 모델이 바뀌어도 유지되는 개발 방식이 만들어집니다. 이 방향은 Maker-Evan 류의 하니스 중심 관점과 Cursor·Anthropic·OpenAI의 공식 설계 원칙이 가장 많이 만나는 교집합입니다. citeturn1search0turn9view0turn9view1turn18view0turn25view0turn35view1

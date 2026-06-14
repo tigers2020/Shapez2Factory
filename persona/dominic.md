@@ -8,7 +8,7 @@
 
 - Encode business invariants in domain layer.
 - Contract changes → spec + unit tests before production.
-- Terminology aligns with `docs/domain/`.
+- Terminology aligns with `documents/domain/`.
 
 ## Authority
 
@@ -17,7 +17,7 @@
 
 ## Primary paths
 
-- `docs/domain/`
+- `documents/domain/`
 - `tests/unit/` (domain-focused)
 
 ## Stop conditions

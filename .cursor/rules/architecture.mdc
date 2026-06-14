@@ -23,4 +23,4 @@ Ports live under `application/ports/`. Use cases depend on protocols, not concre
 
 Verify with focused tests for touched layer, then repo gates from `AGENTS.md`.
 
-References: `docs/architecture/README.md`, `.cursor/rules/shapez2-core.mdc`.
+References: `documents/architecture/README.md`, `.cursor/rules/shapez2-core.mdc`.

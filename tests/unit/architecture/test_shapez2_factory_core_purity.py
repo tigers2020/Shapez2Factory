@@ -4,7 +4,7 @@ The pure core package MUST NOT import Django, the Django apps, or project settin
 active and green from PR-CLI-0 onward: it tolerates an empty/scaffold package (only ``__init__.py``
 files, no asteroid modules yet) and stays green as real modules land.
 
-Spec: docs/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md (§8 BA-1)
+Spec: documents/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md (§8 BA-1)
 """
 
 from __future__ import annotations

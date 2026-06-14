@@ -54,4 +54,4 @@ Recovery deadlock: dirty root blocks plan-run → ops/recovery, not implementati
 
 Do **not** create branch or worktree by default (`workflow-safety.mdc`). Mode 1–2: current branch or one `work/*` branch when user scoped. Isolated worktree or new branch only on explicit user request or Mode 3.
 
-Detail: `docs/agent-workflows/git-worktree-routine.md`, `workflow-safety.md`.
+Detail: `documents/agent-workflows/git-worktree-routine.md`, `workflow-safety.md`.

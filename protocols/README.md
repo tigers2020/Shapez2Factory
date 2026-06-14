@@ -60,4 +60,4 @@ PR-5: cleanup
 - [workflow.mdc](../.cursor/rules/workflow.mdc)
 - [shapez2-core.mdc](../.cursor/rules/shapez2-core.mdc)
 - [Position index](../persona/README.md)
-- Plan examples: [`docs/superpowers/plans/`](../docs/superpowers/plans/)
+- Plan examples: [`documents/superpowers/plans/`](../documents/superpowers/plans/)

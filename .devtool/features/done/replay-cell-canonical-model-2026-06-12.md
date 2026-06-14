@@ -34,7 +34,7 @@ Close the gap between **raw map_view wire rows** and **one canonical cell read-m
 |------|------|
 | design (chat) | user contract 2026-06-12 |
 | canon (evolve) | `effective_cell_view.py`, `lab_effective_cell_view.js` |
-| spec (pending) | `docs/architecture/replay-cell-canonical-model/spec.md` |
+| spec (pending) | `documents/architecture/replay-cell-canonical-model/spec.md` |
 
 - [x] Slice C: `buildDomPlanForCell` → `applyDomPlanToCell`; v2 render path canonical-only
 

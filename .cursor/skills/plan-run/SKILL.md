@@ -22,7 +22,7 @@ Execute approved plans from the repo plan queue. One plan per run.
 
 Canon: [`AGENTS.md`](../../../AGENTS.md) · [`.cursor/rules/agent_scope.mdc`](../../rules/agent_scope.mdc) · [`.cursor/rules/git-worktree.mdc`](../../rules/git-worktree.mdc)
 
-Plan queue root: **`plans/high/` · `plans/mid/` · `plans/low/`** only — **not** `docs/plans/`.
+Plan queue root: **`plans/high/` · `plans/mid/` · `plans/low/`** only — **not** `documents/plans/`.
 
 Default branch: **`master`**.
 
@@ -731,7 +731,7 @@ stop_condition: "…"
 | `blocked_by` | advisory DAG hint; `depends_on` remains pick authority |
 | `contract_authority` | canon paths — closed plan must not override |
 
-**`plan-run auto`** requires `afk_eligible: true`, clean worktree, explicit acceptance and `stop_condition`. Plan authority lifecycle: `docs/agent-workflows/plan-lifecycle.md`.
+**`plan-run auto`** requires `afk_eligible: true`, clean worktree, explicit acceptance and `stop_condition`. Plan authority lifecycle: `documents/agent-workflows/plan-lifecycle.md`.
 
 Matching key: **`linear_issue`** → Linear identifier (e.g. `SHA-12`).
 

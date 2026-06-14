@@ -1,0 +1,50 @@
+---
+description: "UI UX Pro Max router: design DB + DESIGN.md tokens for AI UI work"
+globs:
+  - django_apps/web/templates/**
+  - django_apps/web/static/**
+  - frontend/**
+  - assets/css/**
+alwaysApply: false
+---
+
+# UI UX Pro Max Router
+
+Canon: `DESIGN.md` tokens > project CSS > skill DB suggestions.
+Skill: `/ui-ux-pro-max` → `.cursor/skills/ui-ux-pro-max/SKILL.md`
+Spec: `documents/superpowers/specs/2026-06-13-ui-ux-pro-max-integration.md`
+
+## Trigger
+
+UI/UX design, layout, styling, component work, or visual refresh on matched paths.
+Read `DESIGN.md` first; run skill `--design-system` before implementing.
+
+## Workflow
+
+1. Read `DESIGN.md` (colors, typography, spacing).
+2. Design system CLI:
+   ```bash
+   python .cursor/skills/ui-ux-pro-max/scripts/search.py "<feature> dark OLED factory dashboard" --design-system --stack html-tailwind -p "shapez2 Factory Planner"
+   ```
+3. Map skill output to project tokens — **never replace** canon hex/fonts.
+4. Tailwind in templates or `@layer components` in `assets/css/input.css`.
+5. Verify: `npm run build:css`; visible UI → `/playwright` when practical.
+
+## Project tokens (override skill defaults)
+
+| Role | Value |
+|------|-------|
+| primary / bg | `#020617` |
+| surface | `#0F172A` |
+| accent | `#22D3EE`, `#06B6D4` |
+| success | `#34D399` |
+| Font | `Google Sans Code`; mono `Fira Code` |
+
+## Rules
+
+- Dark OLED factory-console only — skip light-only skill styles.
+- No Glassmorphism/Neumorphism unless dark-adapted and token-aligned.
+- Keep `lab-*` compatible; no business logic in templates/CSS.
+- Skill vs `DESIGN.md` conflict → report; do not silently override canon.
+
+Prompt: `.cursor/prompts/ui-design.md`. Refs: `web-interface.mdc`, `frontend/AGENTS.md`.

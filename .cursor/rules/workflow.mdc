@@ -1,55 +1,56 @@
 ---
-description: "SDD router: spec/contract before code; tests verify contracts"
+description: "SDD router: spec/plan=grill, implement=auto, report=verify"
 alwaysApply: true
 ---
 
 # Workflow Router
 
-Canon: `AGENTS.md` § Workflow strictness. Detail: `docs/agent-workflows/workflow-strictness.md`.
+Canon: `AGENTS.md` § Workflow strictness. Detail: `documents/agent-workflows/workflow-strictness.md`.
 
-## Strictness
-
-Classify risk before pipeline. **Full pipeline = Normal + High-risk only.**
-
-| Mode | Contract |
-|------|----------|
-| Read-only | none — no production edits |
-| Tiny | Problem / Change / Validation (3-line) |
-| Normal / High-risk | full contract + ICE when implementation |
-
-Auto-upgrade to **High-risk** for: solver, routing, replay, validation, DTO/schema, migrations, artifact contracts, golden loop, plan-run automation.
-
-Pipeline (Normal / High-risk):
+## Two modes
 
 ```text
-problem -> authority -> contract -> plan -> acceptance tests -> DOX read chain -> small change -> gate -> DOX pass
+Mode 1 — Spec/Plan: grill with user → finalize → STOP
+Mode 2 — Implement: 100% auto → produce report → STOP
 ```
 
-Phase order (Normal+): `align -> contract -> slice -> implement -> verify` (`workflow-phases.mdc` § Workflow + DOX). Reject horizontal phase plans unless user explicitly scoped infra-only work.
+**Mode 1 (grill):** ambiguous spec, new feature scope, contract design. Create spec/plan. Ask grill questions. Wait for user approval. After approved: write plan file, STOP.
 
-Authority for architecture/coupling: if `graphify-out/graph.json` exists, **mandatory** `/graphify` query/path/explain before wide grep or multi-module reads (`graphify.mdc`).
+**Mode 2 (auto):** user said "go" / "auto" / or approved plan exists. Implement ONLY the approved plan. No extra questions. No "next step" suggestions. Produce final report with changed files list.
 
-For Shapez2 domain work, route to `shapez2-domain.mdc`.
+## Pipeline
 
-Rules:
+```text
+Mode 1: problem -> authority -> spec/contract -> grill -> plan -> STOP
+Mode 2: read plan -> implement each task -> validation -> report -> STOP
+```
 
-- Normal/High-risk: no production edit until problem, goal, non-goals, contract, and acceptance are clear.
-- Full contract must name: source of truth, affected layer, forbidden inputs/outputs, validation command, rollback/stop condition.
-- Tiny: 3-line contract only; touched-file validation.
-- Ops/recovery tasks: route `ops-recovery.mdc` — no product contract required; recovery scope must be explicit.
-- Contract change: spec/brief -> acceptance -> tests -> production.
-- Regression: failing repro -> fix -> regression gate.
-- Refactor: preserve behavior; update tests only when contract shifts.
-- Docs-only: no runtime claims.
-- One PR-sized purpose; split mixed work.
-- Plan execution: closed-world scope; see `.cursor/rules/agent_scope.mdc`.
+## Rules
 
-Tests must assert real contracts. Avoid weak generated tests and implementation trivia.
+- **Spec/Plan = grill.** If user asked for plan/spec, write it, grill on ambiguities, get approval, save file, STOP.
+- **Implement = auto.** If user said "go"/"auto" or approved plan exists: implement tasks A, B, C... in order. Run validation. Write report. STOP.
+- **Never interleave mode 1+2.** Finish spec/plan → approval → THEN implement. Or implement → report → DONE.
+- **Report after implement:** list every changed file, line count, purpose. No "next steps" or "follow-up" suggestions.
+- **Tests** assert real contracts. Avoid weak tests. Never relax tests to force green.
+- **Missing authority:** note it, proceed with best assumption (unless user said "wait").
+- **Tiny fixes:** Problem/Change/Validation (3-line), implement, report.
+- **Closed-world scope:** `agent_scope.mdc`.
+- **Validation tiers:** `documents/agent-workflows/validation-routine.md`.
 
-Never relax tests to force green.
+## Report format (after Mode 2)
 
-If behavior authority is missing, stop with `BLOCKED:`.
+```md
+## Report
 
-Validation tiers (when, not what): `docs/agent-workflows/validation-routine.md`.
+### Changed files
+- `path/to/file.md` — purpose (lines changed)
+- ...
 
-References: `documents/ai/templates/contract-brief.md`, `documents/ai/templates/pr-plan.md`, `documents/knowledge/raw/ai/manuals/testing.md`.
+### Validation
+- `command` → exit code N
+- ...
+
+STOPPED_AT_APPROVED_SCOPE
+```
+
+References: `documents/ai/templates/contract-brief.md`, `documents/ai/templates/pr-plan.md`.

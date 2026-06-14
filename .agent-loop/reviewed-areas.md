@@ -4,7 +4,7 @@ Tracks areas reviewed by periodic project review automation to prevent duplicate
 
 Read this file before each run to avoid duplicate work. Append a dated entry after each successful pass.
 
-**Mutex:** Global run lock uses label `auto:project-review-running` on holder card [SHA-67](https://linear.app/zkaufman/issue/SHA-67/automation-project-review-run-mutex-via-dedicated-linear-holder-card). Contract: [`docs/agent-workflows/project-review-mutex.md`](../docs/agent-workflows/project-review-mutex.md). Skip Linear issues labeled `reviewing` during scans.
+**Mutex:** Global run lock uses label `auto:project-review-running` on holder card [SHA-67](https://linear.app/zkaufman/issue/SHA-67/automation-project-review-run-mutex-via-dedicated-linear-holder-card). Contract: [`documents/agent-workflows/project-review-mutex.md`](../documents/agent-workflows/project-review-mutex.md). Skip Linear issues labeled `reviewing` during scans.
 
 ## 2026-06-09 21:21
 

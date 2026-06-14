@@ -11,7 +11,7 @@ Preserve full DOX contract in dedicated doc + thin `dox-framework.mdc` router.
 
 ## Acceptance
 
-- [x] `docs/agent-workflows/dox-framework.md` — full DOX text + Child DOX Index
+- [x] `documents/agent-workflows/dox-framework.md` — full DOX text + Child DOX Index
 - [x] `.cursor/rules/dox-framework.mdc` — always-on router ≤75 lines
 - [x] Root `AGENTS.md` + `root.mdc` route to DOX canon
 - [x] `check_governance.ps1` PASS

@@ -1,6 +1,6 @@
 """Tagged map coordinate frames (island copy, world evidence).
 
-Normative spec: ``docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md``.
+Normative spec: ``documents/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md``.
 
 New boundaries should use the frozen dataclasses below.
 """

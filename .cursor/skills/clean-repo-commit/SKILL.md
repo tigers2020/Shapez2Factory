@@ -152,7 +152,7 @@ Examples:
 ```text
 M  src/replay/effective_cell_wire.py
 M  tests/unit/replay/test_effective_cell_wire.py
-M  docs/agent-workflows/graphify-routine.md
+M  documents/agent-workflows/graphify-routine.md
 A  .cursor/skills/clean-repo-commit/SKILL.md
 M  pyproject.toml
 ```
@@ -244,7 +244,7 @@ Examples:
 ?? notes.md
 ?? output/manual_patch.json
 M  src/large_unrelated_module.py
-M  docs/random_design.md
+M  documents/random_design.md
 ?? export.zip
 ?? screenshot.png
 D  unknown_file.py
@@ -389,7 +389,7 @@ git add -- .cursor/skills/clean-repo-commit/SKILL.md
 Risky example, avoid unless every file under the directory was reviewed:
 
 ```bash
-git add -- docs/
+git add -- documents/
 ```
 
 Before committing, always run:

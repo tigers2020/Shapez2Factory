@@ -13,7 +13,7 @@ Integrate session phases, DOX read/pass, and kanban into one pipeline across AGE
 
 - [x] `workflow-phases.md` § Workflow + DOX — integrated phase map (canonical)
 - [x] Root `AGENTS.md` § Workflow & DOX — single rail section
-- [x] `docs/AGENTS.md` default workflow steps include DOX read + pass
+- [x] `documents/AGENTS.md` default workflow steps include DOX read + pass
 - [x] `dox-framework.md` / mdc cross-ref workflow verify step
 - [x] `check_governance.ps1` PASS
 

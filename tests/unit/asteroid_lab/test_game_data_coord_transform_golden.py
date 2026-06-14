@@ -13,7 +13,7 @@ from django_apps.asteroid_lab.genetic_sample.enums import Direction
 _REFERENCE_OFFSET = (1, 0)
 _REFERENCE_DIRECTION = Direction.E
 
-# Normative table: docs/domain/asteroid_coord_transform_spec.md § Golden vectors
+# Normative table: documents/domain/asteroid_coord_transform_spec.md § Golden vectors
 _OFFSET_GOLDEN: tuple[tuple[int, tuple[int, int]], ...] = (
     (0, (1, 0)),
     (1, (0, -1)),

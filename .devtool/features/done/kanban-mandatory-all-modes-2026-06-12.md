@@ -21,7 +21,7 @@ Governance: every task/chat must create or link a `.devtool/features/` card — 
 
 - [x] `AGENTS.md` § Kanban tracking updated
 - [x] `kanban-tracking.mdc` hard rule
-- [x] `docs/agent-workflows/kanban-tracking.md` — remove mode exceptions
+- [x] `documents/agent-workflows/kanban-tracking.md` — remove mode exceptions
 - [x] `workflow-phases.mdc` + `.devtool/README.md` aligned
 
 ## Progress

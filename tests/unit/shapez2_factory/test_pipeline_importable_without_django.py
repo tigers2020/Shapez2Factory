@@ -4,7 +4,7 @@ Proves the relocated pipeline imports with ``DJANGO_SETTINGS_MODULE`` unset and 
 ``django`` module into ``sys.modules``.
 
 Target core module paths are fixed by the PR-CLI-2f plan
-(``docs/superpowers/plans/2026-05-30-asteroid-lab-cli-first/pr-cli-2f-decode-cleanup-reconstruction-move.md``).
+(``documents/superpowers/plans/2026-05-30-asteroid-lab-cli-first/pr-cli-2f-decode-cleanup-reconstruction-move.md``).
 """
 
 from __future__ import annotations

@@ -177,7 +177,7 @@ Living design contract for humans and AI agents building UI in this repository.
 
 When tokens and Tailwind drift, fix both in the same change: adjust classes in templates first, then sync hex values here.
 
-**Spec:** [DESIGN.md format](https://stitch.withgoogle.com/docs/design-md/overview) · [github.com/google-labs-code/design.md](https://github.com/google-labs-code/design.md).
+**Spec:** [DESIGN.md format](https://stitch.withgoogle.com/documents/design-md/overview) · [github.com/google-labs-code/design.md](https://github.com/google-labs-code/design.md).
 
 ## Tailwind CSS (implementation)
 

@@ -1,7 +1,7 @@
 # Manual: Typing Contracts · Wire Boundaries
 
 Process authority: [`AGENTS.md`](../../../AGENTS.md).  
-Design spec: [`docs/superpowers/specs/2026-06-11-any-boundary-typing-design.md`](../../../docs/superpowers/specs/2026-06-11-any-boundary-typing-design.md).
+Design spec: [`documents/superpowers/specs/2026-06-11-any-boundary-typing-design.md`](../../../documents/superpowers/specs/2026-06-11-any-boundary-typing-design.md).
 
 **Canon path for this manual:** `documents/ai/manuals/typing_contracts.md` (not `documents/knowledge/raw/...`).
 

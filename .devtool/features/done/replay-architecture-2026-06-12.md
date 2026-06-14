@@ -14,7 +14,7 @@ order: "a3"
 
 ## Scope
 
-Holistic `/improve-codebase-architecture` pass on Asteroid Lab replay. **Implemented:** Option A height-layer JS mirror + paint index enrich. Detail: `docs/architecture/replay-architecture/spec.md`.
+Holistic `/improve-codebase-architecture` pass on Asteroid Lab replay. **Implemented:** Option A height-layer JS mirror + paint index enrich. Detail: `documents/architecture/replay-architecture/spec.md`.
 
 ## Acceptance
 
@@ -31,9 +31,9 @@ Holistic `/improve-codebase-architecture` pass on Asteroid Lab replay. **Impleme
 
 | Kind | Path | Updated |
 |------|------|---------|
-| report | docs/architecture/replay-architecture/report.md | 2026-06-12 |
-| spec | docs/architecture/replay-architecture/spec.md | 2026-06-12 |
-| plan | docs/architecture/replay-architecture/plan.md | 2026-06-12 |
+| report | documents/architecture/replay-architecture/report.md | 2026-06-12 |
+| spec | documents/architecture/replay-architecture/spec.md | 2026-06-12 |
+| plan | documents/architecture/replay-architecture/plan.md | 2026-06-12 |
 
 ## Progress
 

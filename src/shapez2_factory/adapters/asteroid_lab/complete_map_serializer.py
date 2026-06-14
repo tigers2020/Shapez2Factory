@@ -1,8 +1,8 @@
 """Deterministic ``ReconstructionCompleteMap`` <-> JSON dict serializer (pure, no Django).
 
 Produces the body of ``output/complete_map.json`` for the CLI-first artifact contract (§2 of
-``documents/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md``). Coordinate sets
-are sorted so the payload is byte-stable; ``cells`` preserves the terrain SoT order produced by
+``documents/superpowers/specs/2026-05-30-asteroid-lab-cli-first-artifact-design.md``). Coordinate
+sets are sorted so the payload is byte-stable; ``cells`` preserves the terrain SoT order produced by
 ``build_reconstruction_complete_map``. The artifact shell (PR-CLI-3a) owns file placement + hashing.
 """
 

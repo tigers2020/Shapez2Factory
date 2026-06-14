@@ -49,4 +49,6 @@ def test_run_stack_capacity_matches_mining_not_space_belt() -> None:
         for item in result.solver_summary["layer_summaries"]
         if item["layer_slug"] == "layer_02_exterior_transport"
     )
-    assert l2["metrics"] == {"stub": True}
+    assert l2["metrics"] != {"stub": True}
+    assert result.exterior_plan is not None
+    assert int(l2["metrics"].get("planned_connector_count", -1)) >= 0

@@ -7,7 +7,7 @@ thread_slug: game-data-import-boundary
 
 ## Scope
 
-Game data import pipeline — `GameDataBundleGate` implemented per grill + report.
+Game data import pipeline — `bundle_gate` module implemented per grill + report.
 
 ## Acceptance
 

@@ -78,9 +78,7 @@ def validate_game_data_bundle(*, source: Path | None = None) -> GameDataBundle:
         msg = "manifest.json missing file_hashes object"
         raise GameDataBundleInvalid(GameDataBundleInvalidCode.MANIFEST_INVALID, msg)
 
-    incomplete_sections = {
-        str(section) for section in (raw.get("incomplete_sections") or [])
-    }
+    incomplete_sections = {str(section) for section in (raw.get("incomplete_sections") or [])}
 
     missing_errors: list[str] = []
     mismatch_errors: list[str] = []

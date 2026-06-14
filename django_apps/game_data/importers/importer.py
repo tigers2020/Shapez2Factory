@@ -101,9 +101,7 @@ class GameDataImporter:
     def _load_manifest(self) -> ImportBatch:
         data = self.bundle.manifest
         manifest_hash = self.bundle.manifest_hash
-        incomplete_sections = {
-            str(section) for section in (data.get("incomplete_sections") or [])
-        }
+        incomplete_sections = {str(section) for section in (data.get("incomplete_sections") or [])}
         ts_raw = data.get("dump_timestamp_utc", "")
         ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
         batch, _ = ImportBatch.objects.update_or_create(

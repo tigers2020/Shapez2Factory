@@ -13,9 +13,6 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.layer_budget impo
 from shapez2_factory.application.asteroid_lab.layers.contracts.provisional_overlay import (
     ProvisionalLayoutOverlay,
 )
-from shapez2_factory.application.asteroid_lab.layers.layer_02_exterior_transport.run import (
-    run_layer_02_exterior_transport,
-)
 from shapez2_factory.application.asteroid_lab.layers.layer_03_rim_greedy_placement.run import (
     run_layer_03_rim_greedy_placement,
 )
@@ -48,23 +45,16 @@ def _sample_complete_map():
     return complete_map_from_overlay_cells(_field_cell(0, 0))
 
 
-def test_layer02_skeleton_returns_none() -> None:
-    result = run_layer_02_exterior_transport(
-        complete_map=_sample_complete_map(),
-        budget_ctx=LayerBudgetContext.from_budget_ms(1000),
-        capacity_envelope={"primary_resource_kind": "shape"},
-        throughput_target_percent=80,
-    )
-    assert result is None
-
-
-def test_layer03_skeleton_algorithm_reset() -> None:
+def test_layer03_skips_without_exterior_plan() -> None:
     result = run_layer_03_rim_greedy_placement(
         complete_map=_sample_complete_map(),
         exterior_plan=None,
         budget_ctx=LayerBudgetContext.from_budget_ms(1000),
     )
-    assert result.metrics.layer_skip_reason == Layer03SkipReason.ALGORITHM_RESET.value
+    assert (
+        result.metrics.layer_skip_reason
+        == Layer03SkipReason.MISSING_EXTERIOR_CONNECTION_PLAN.value
+    )
     assert result.committed_placements == ()
 
 

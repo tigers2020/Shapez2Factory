@@ -1,11 +1,7 @@
-"""Regression: narrow external channels must not be overclosed by morphology fill."""
+"""Regression: simplified reconstruction does not invent fill beyond miner/extension coords."""
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
-from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.reconstruction.evidence import is_asteroid_evidence
 from django_apps.asteroid_lab.reconstruction.grid import Coord
@@ -14,41 +10,9 @@ from django_apps.asteroid_lab.reconstruction.pipeline import (
     run_topology_reconstruction,
 )
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
-    build_decoded_blueprint_snapshot,
-)
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 
 _FIELD_KINDS = frozenset({"asteroid_shape_field", "asteroid_fluid_field"})
-
-# External 1-cell-wide vertical seam (x=6) on regression fixture; must stay unfilled.
-EXTERNAL_CHANNEL_COORDS: frozenset[Coord] = frozenset(
-    {
-        (6, -10),
-        (6, -9),
-        (6, -8),
-        (6, -6),
-        (6, -5),
-        (6, -4),
-        (6, -3),
-        (6, -2),
-        (6, -1),
-    }
-)
-
-# Fully enclosed hole in synthetic hole-island layout.
-ENCLOSED_INTERIOR_COORDS: frozenset[Coord] = frozenset({(2, 2)})
-
-
-def _fixture_copy(name: str) -> str:
-    p = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / name
-    return p.read_text(encoding="utf-8").splitlines()[0].strip()
-
-
-def _snapshot_from_fixture(name: str) -> DecodedBlueprintSnapshotDTO:
-    code = _fixture_copy(name).removesuffix("$")
-    norm = normalize_decoded_blueprint(decode_copy_string(code))
-    return build_decoded_blueprint_snapshot(norm.decoded_json)
 
 
 def _cell(
@@ -92,7 +56,7 @@ def _snapshot(cells: tuple[DecodedCellDTO, ...]) -> DecodedBlueprintSnapshotDTO:
             "min_x": mn_x,
             "max_x": mx_x,
             "min_y": mn_y,
-            "max_y": mn_y,
+            "max_y": mx_y,
             "width": mx_x - mn_x + 1,
             "height": mx_y - mn_y + 1,
         },
@@ -123,43 +87,22 @@ def _hole_island_cells() -> tuple[DecodedCellDTO, ...]:
     )
 
 
-def test_reconstruction_sample_does_not_overclose_one_cell_channels() -> None:
-    snap = _snapshot_from_fixture("regression_narrow_external_channels.txt")
-    res = reconstruct_snapshot(snap)
-    filled = _filled_field_coords(res.cells)
-
-    for coord in EXTERNAL_CHANNEL_COORDS:
-        assert coord not in filled
-
-    s = res.summary_json
-    assert int(s["sealed_slit_cell_count"]) == 0
-    assert int(s["inferred_shell_cell_count"]) == 0
-    preserved = int(s["external_void_preserved_count"])
-    assert preserved >= len(EXTERNAL_CHANNEL_COORDS)
+def test_reconstruction_does_not_fill_interior_hole() -> None:
+    res = reconstruct_snapshot(_snapshot(_hole_island_cells()))
+    assert (2, 2) not in _filled_field_coords(res.cells)
+    assert int(res.summary_json["filled_hole_cell_count"]) == 0
 
 
-def test_reconstruction_internal_hole_still_fills() -> None:
+def test_reconstruction_only_fields_at_miner_extension_coords() -> None:
     res = reconstruct_snapshot(_snapshot(_hole_island_cells()))
     filled = _filled_field_coords(res.cells)
-
-    for coord in ENCLOSED_INTERIOR_COORDS:
-        assert coord in filled
-
-    assert int(res.summary_json["interior_patch_filled_count"]) >= len(ENCLOSED_INTERIOR_COORDS)
+    assert filled == {(1, 0), (3, 0)}
 
 
-def test_reconstruction_no_recursive_shell_closure() -> None:
-    snap = _snapshot_from_fixture("regression_narrow_external_channels.txt")
-    cleanup = deconstruct_snapshot(snap)
+def test_reconstruction_summary_mode() -> None:
+    cleanup = deconstruct_snapshot(_snapshot(_hole_island_cells()))
     res = run_topology_reconstruction(cleanup)
-    s = res.summary_json
-
-    assert int(s["inferred_shell_cell_count"]) == 0
-    assert int(s["sealed_slit_cell_count"]) == 0
-    walls = int(s["wall_cell_count"])
-    diagonal = int(s["diagonal_closed_cell_count"])
-    barrier = int(s["barrier_cell_count"])
-    assert barrier == walls + diagonal
+    assert res.summary_json["reconstruction_mode"] == "miner_extension_to_field"
 
 
 def test_reconstruction_belt_pipe_not_evidence() -> None:
@@ -174,14 +117,12 @@ def test_reconstruction_belt_pipe_not_evidence() -> None:
     assert is_transport_tile(cells[0])
 
 
-def test_reconstruction_miner_extension_are_evidence() -> None:
+def test_reconstruction_miner_extension_become_fields_only() -> None:
     cells = (
         _cell(1, 2, cell_kind="fluid_miner"),
         _cell(3, 2, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
     )
-    cleanup = deconstruct_snapshot(_snapshot(cells))
-    assert (1, 2) in cleanup.wall_coords
-    assert (3, 2) in cleanup.wall_coords
     res = reconstruct_snapshot(_snapshot(cells))
-    assert (2, 2) not in _filled_field_coords(res.cells)
-    assert int(res.summary_json["sealed_slit_cell_count"]) == 0
+    filled = _filled_field_coords(res.cells)
+    assert filled == {(1, 2), (3, 2)}
+    assert (2, 2) not in filled

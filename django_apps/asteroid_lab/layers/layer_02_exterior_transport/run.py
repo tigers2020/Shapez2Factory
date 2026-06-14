@@ -32,6 +32,7 @@ def execute_layer_02_exterior_transport_plan(
     throughput_target_percent: int,
     speed_tier: int = 1,
     rules: GameDataRulesPort | None = None,
+    exterior_connector_edges: object | None = None,
 ) -> ExteriorConnectionPlan:
     if rules is None:
         from django_apps.asteroid_lab.adapters.orm_game_data_rules import build_orm_game_data_rules
@@ -43,6 +44,7 @@ def execute_layer_02_exterior_transport_plan(
         throughput_target_percent=throughput_target_percent,
         speed_tier=speed_tier,
         rules=rules,
+        exterior_connector_edges=exterior_connector_edges,
     )
 
 
@@ -52,6 +54,7 @@ def run_layer_02_exterior_transport(
     budget_ctx: LayerBudgetContext,
     capacity_envelope: dict[str, object] | None = None,
     throughput_target_percent: int | None = None,
+    exterior_connector_edges: object | None = None,
     speed_tier: int = 1,
     rules: GameDataRulesPort | None = None,
 ) -> ExteriorConnectionPlan | None:
@@ -68,6 +71,7 @@ def run_layer_02_exterior_transport(
         budget_ctx=budget_ctx,
         capacity_envelope=capacity_envelope,
         throughput_target_percent=throughput_target_percent,
+        exterior_connector_edges=exterior_connector_edges,
         speed_tier=speed_tier,
         rules=rules,
     )

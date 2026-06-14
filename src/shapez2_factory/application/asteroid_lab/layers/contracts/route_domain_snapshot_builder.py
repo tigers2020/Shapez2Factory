@@ -24,8 +24,8 @@ class RouteDomainSnapshotBuilder:
         return WeightedTransportRouteDomain(
             search_bbox=search_bbox,
             blocked_cells=blockers,
-            walkable_cells=base_walkable - blockers,
-            field_cost_cells=field_cells - blockers,
+            walkable_cells=base_walkable,
+            field_cost_cells=field_cells,
         )
 
     @staticmethod

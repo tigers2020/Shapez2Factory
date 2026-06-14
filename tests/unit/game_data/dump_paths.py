@@ -12,11 +12,6 @@ _GAME_DATA_DUMP_CANDIDATES: tuple[Path, ...] = (
     _REPO_ROOT / "documents" / "knowledge" / "raw" / "game_data_backup" / "game_data_dump.json",
 )
 
-_GAME_DATA_SOURCE_CANDIDATES: tuple[Path, ...] = (
-    _REPO_ROOT / "documents" / "game_data",
-    _REPO_ROOT / "documents" / "knowledge" / "raw" / "game_data",
-)
-
 
 def resolve_game_data_dump_path() -> Path | None:
     for path in _GAME_DATA_DUMP_CANDIDATES:
@@ -26,10 +21,15 @@ def resolve_game_data_dump_path() -> Path | None:
 
 
 def resolve_game_data_source_dir() -> Path | None:
-    for path in _GAME_DATA_SOURCE_CANDIDATES:
-        if (path / "manifest.json").is_file():
-            return path
-    return None
+    from django_apps.game_data.services.bundle_gate import (
+        GameDataBundleInvalid,
+        resolve_game_data_source_dir as _resolve_source_dir,
+    )
+
+    try:
+        return _resolve_source_dir(explicit=None)
+    except GameDataBundleInvalid:
+        return None
 
 
 __all__ = ["resolve_game_data_dump_path", "resolve_game_data_source_dir"]

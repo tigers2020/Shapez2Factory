@@ -40,6 +40,7 @@ class SolverSubprocessRequest:
     replace_existing: bool = False
     verbose: bool = False
     throughput_target_percent: int | None = None
+    exterior_connector_edges: tuple[str, ...] | None = None
     genetic_sample_seeds: dict[str, object] = field(default_factory=dict)
 
 
@@ -144,6 +145,13 @@ def build_solver_cli_args(
             [
                 "--throughput-target-percent",
                 str(int(request.throughput_target_percent)),
+            ]
+        )
+    if request.exterior_connector_edges:
+        args.extend(
+            [
+                "--exterior-connector-edges",
+                ",".join(request.exterior_connector_edges),
             ]
         )
     return args

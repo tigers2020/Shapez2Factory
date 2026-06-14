@@ -47,6 +47,7 @@ def test_cli_run_writes_full_artifact_and_validates(tmp_path: Path) -> None:
         "stack_result",
         "solver_summary",
         "replay_core",
+        "solver_runtime_wires",
     }
     assert set(manifest.content_hashes) >= set(manifest.paths.values())
     assert (

@@ -47,4 +47,4 @@ def test_core_l3_run_entrypoint_is_authoritative() -> None:
     )
 
     assert callable(core_run.run_layer_03_rim_greedy_placement)
-    assert core_run.ALGORITHM_STUB_ID == "algorithm_reset"
+    assert core_run.ALGORITHM_STUB_ID == "rim_placement_v2"

@@ -54,7 +54,7 @@ It is generated from available source material and should be reviewed by domain 
 | Item (game data) | Canonical Term | Gameplay subset of shape recipes (70 entries in `items.json`); all `Hash` values ⊆ full shapes catalog. | wiki `item-data-model.md` | Schema | High |
 | Research unlock | Canonical Term | Island progression tree entry; 253 `ShapeHash` references into shapes catalog. | wiki `research-unlocks.md` | Schema | High |
 | Transport capacity | Canonical Term | Solver-facing throughput caps: miner 30/min (480 max), pump 300 L/min (4.8 kL max), belt 5,760 shapes/min, pipeline 345.6 kL/min bottlenecks. | wiki `transport-capacity.md`, `transport-system.md` | Docs, Internal Only | High |
-| file_hashes | Canonical Term | Manifest map of SHA256 per `documents/game_data/*.json`; import integrity gate. | wiki `game-data-manifest.md` | Schema, Config | High |
+| file_hashes | Canonical Term | Manifest map of SHA256 per bundle `*.json`; validated by `bundle_gate` before import. | wiki `game-data-manifest.md`; [spec](../../architecture/game-data-import-boundary/spec.md) | Schema, Config | High |
 | stable_id | Canonical Term | Import-correlation primary key within a game_data JSON file (64-char hex for prefabs/building groups). | wiki `building-groups.md`, `prefabs.md` | Schema | Medium |
 
 ## Roles
@@ -64,7 +64,8 @@ It is generated from available source material and should be reviewed by domain 
 | AsteroidProject | One lab page / work unit owning map inputs and solver runs. | `django_apps/asteroid_lab/models.py` | DB, UI, API | Persistence role |
 | AsteroidMapInput | Decoded blueprint and copy-code metadata for a project. | `models.py` `AsteroidMapInput` | DB, Wire | Carries `copy_code`, `decoded_json`, fingerprints |
 | SolverRun (Asteroid Lab) | One GA/hybrid solver execution for an `AsteroidProject`; indexes artifacts and replay cache. | `models.py` `SolverRun` (asteroid_lab) | DB, UI, API | Distinct from `shapez_solver.SolverRun` |
-| GameDataImporter | Deterministic importer for canonical game dump sections. | `structure.md` § `game_data/importers/` | Internal Only | Staff browse + ORM |
+| GameDataImporter | Deterministic importer for canonical game dump sections; accepts `GameDataBundle` after gate validation. | `structure.md` § `game_data/importers/`; `bundle_gate` spec | Internal Only | Staff browse + ORM |
+| GameDataBundle | Validated on-disk game_data JSON bundle (`source_dir`, `manifest`, `manifest_hash`) from `validate_game_data_bundle()`. | `django_apps/game_data/services/bundle_gate.py` | Internal Only | Import CLI + tests |
 | CLI (`asteroid_solve`) | Django-free entry: `python -m shapez2_factory.interfaces.cli.asteroid_solve`; subprocess-only from Django. | `structure.md` § asteroid_lab | CLI, Wire | Thin execution adapter |
 
 ## Events

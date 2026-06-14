@@ -8,7 +8,7 @@ from shapez2_factory.application.asteroid_lab.layers.contracts.route_domain_snap
 from shapez2_factory.domain.asteroid_lab.grid_contract import bbox_from_coords
 
 
-def test_build_snapshot_subtracts_blockers_from_walkable_and_field() -> None:
+def test_build_snapshot_keeps_walkable_reference_and_blocks_in_step_cost() -> None:
     base = frozenset({(0, 0), (1, 0), (0, 1)})
     field = frozenset({(1, 0)})
     blockers = frozenset({(0, 0)})
@@ -22,8 +22,11 @@ def test_build_snapshot_subtracts_blockers_from_walkable_and_field() -> None:
     )
 
     assert domain.blocked_cells == blockers
-    assert domain.walkable_cells == frozenset({(1, 0), (0, 1)})
-    assert domain.field_cost_cells == frozenset({(1, 0)})
+    assert domain.walkable_cells == base
+    assert domain.field_cost_cells == field
+    assert domain.step_cost((0, 0)) is None
+    assert domain.step_cost((1, 0)) == 25
+    assert domain.step_cost((0, 1)) == 1
 
 
 def test_build_immediate_probe_surface_uses_placeable_only() -> None:

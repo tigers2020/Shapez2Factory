@@ -107,6 +107,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=80,
     )
+    run.add_argument(
+        "--exterior-connector-edges",
+        dest="exterior_connector_edges",
+        default=None,
+        help="Comma-separated cardinal edges for L2 connectors: north,east,south,west",
+    )
     run.add_argument("--budget-ms", dest="budget_ms", type=int, default=60_000)
     run.add_argument("--verbose", dest="verbose", action="store_true")
     run.add_argument(
@@ -199,6 +205,12 @@ def _read_copy_file(path: Path) -> str:
     raise ValueError(f"copy file is empty: {path}")
 
 
+def _parse_exterior_connector_edges(raw: str | None) -> list[str] | None:
+    if raw is None or not str(raw).strip():
+        return None
+    return [part.strip().lower() for part in str(raw).split(",") if part.strip()]
+
+
 def _run_artifact(
     artifact_root: Path,
     run_key: str,
@@ -208,6 +220,7 @@ def _run_artifact(
     snapshot_path: Path,
     expected_snapshot_hash: str | None,
     throughput_target_percent: int,
+    exterior_connector_edges: list[str] | None,
     budget_ms: int,
     verbose: bool,
     genetic_sample_seeds_path: Path | None = None,
@@ -234,6 +247,7 @@ def _run_artifact(
     result = RunStackUseCase(game_data_rules=rules).run(
         copy_text=copy_text,
         throughput_target_percent=throughput_target_percent,
+        exterior_connector_edges=exterior_connector_edges,
         budget_ms=budget_ms,
         genetic_sample_seeds=genetic_sample_seeds,
     )
@@ -284,7 +298,7 @@ def _run_artifact(
     }
     if genetic_sample_seeds_text is not None:
         manifest_paths["genetic_sample_seeds"] = "input/genetic_sample_seeds.json"
-    if result.ok and result.exterior_plan is not None:
+    if result.ok:
         wires_doc = build_runtime_wires_document(
             run_key=run_key,
             core_build_id="local",
@@ -346,6 +360,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.snapshot,
                 args.expected_snapshot_hash,
                 args.throughput_target_percent,
+                _parse_exterior_connector_edges(args.exterior_connector_edges),
                 args.budget_ms,
                 args.verbose,
                 args.genetic_sample_seeds,

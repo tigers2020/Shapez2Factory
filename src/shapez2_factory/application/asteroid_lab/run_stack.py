@@ -191,6 +191,7 @@ class RunStackUseCase:
         *,
         copy_text: str,
         throughput_target_percent: int = 80,
+        exterior_connector_edges: object | None = None,
         budget_ms: int = LAYER_STACK_BUDGET_MS,
         speed_tier: int = 1,
         genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
@@ -210,6 +211,7 @@ class RunStackUseCase:
                     run_layer_02_exterior_transport,
                     capacity_envelope=capacity_envelope,
                     throughput_target_percent=throughput_target_percent,
+                    exterior_connector_edges=exterior_connector_edges,
                     speed_tier=speed_tier,
                     rules=self._game_data_rules,
                 ),
@@ -226,6 +228,7 @@ class RunStackUseCase:
             genetic_sample_seeds=genetic_sample_seeds,
             capacity_envelope=capacity_envelope,
             throughput_target_percent=throughput_target_percent,
+            exterior_connector_edges=exterior_connector_edges,
         )
         stack_result_json = _stack_result_to_json(core_result.stack_result)
         layer_summaries = [_layer_summary_to_json(record) for record in core_result.layer_summaries]
@@ -237,6 +240,11 @@ class RunStackUseCase:
             "completed_layer_slugs": list(core_result.stack_result.completed_layer_slugs),
             "failed_layer_slug": core_result.stack_result.failed_layer_slug,
             "throughput_target_percent": throughput_target_percent,
+            "exterior_connector_edges": (
+                list(exterior_connector_edges)
+                if isinstance(exterior_connector_edges, (list, tuple))
+                else None
+            ),
             "reconstruction_capacity": capacity_envelope,
             "layer_summaries": layer_summaries,
         }

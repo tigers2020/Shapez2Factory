@@ -45,6 +45,9 @@ from django_apps.asteroid_lab.services.lab_replay_diagnostics import (
 from django_apps.asteroid_lab.services.lab_timeline_exterior_connector_enrichment import (
     enrich_lab_timeline_frames_with_exterior_connector_plan,
 )
+from django_apps.asteroid_lab.services.lab_timeline_layout_carry_enrichment import (
+    enrich_lab_timeline_frames_with_carried_layout_overlays,
+)
 from django_apps.asteroid_lab.services.lab_timeline_pattern_bundle_enrichment import (
     enrich_lab_timeline_frames_with_pattern_bundle_highlights,
 )
@@ -336,6 +339,7 @@ def build_lab_replay_frames_for_project(
             plan_wire=plan_wire,
             l2_complete_frame_index=l2_start,
         )
+        serialized = enrich_lab_timeline_frames_with_carried_layout_overlays(serialized)
     with perf_span("replay_metrics_build_ms"):
         diagnostic = _lab_replay_diagnostic_reason(pid, composed_count=len(serialized))
         metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)

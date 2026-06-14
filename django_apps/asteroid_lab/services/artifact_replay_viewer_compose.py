@@ -32,6 +32,21 @@ from django_apps.asteroid_lab.services.runtime_wire_compose import (
     wire_content_hash_from_document,
 )
 from shapez2_factory.adapters.asteroid_lab.complete_map_serializer import parse_complete_map
+from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+    LAYER_02_EXTERIOR_TRANSPORT,
+    LAYER_03_RIM_GREEDY_PLACEMENT,
+    LAYER_04_INNER_PATTERN_FILL,
+    LAYER_05_TRANSPORT_ROUTING,
+    LAYER_06_COMMIT_VALIDATE,
+)
+
+_RUNTIME_LAYER_ORDER: dict[str, int] = {
+    LAYER_02_EXTERIOR_TRANSPORT: 2,
+    LAYER_03_RIM_GREEDY_PLACEMENT: 3,
+    LAYER_04_INNER_PATTERN_FILL: 4,
+    LAYER_05_TRANSPORT_ROUTING: 5,
+    LAYER_06_COMMIT_VALIDATE: 6,
+}
 
 _LAYER_EVENT_TYPE: dict[str, ReplayEventType] = {
     "layer_02_exterior_transport": ReplayEventType.EXTERIOR_TRANSPORT_COMPLETED,
@@ -129,6 +144,87 @@ def _timeline_frame_from_core_record(
         map_view=map_view_from_complete_map(complete_map),
         inspector={"layer_slug": layer_slug, "replay_source": "artifact_replay_core"},
         metrics=metrics,
+    )
+
+
+def _runtime_layer_slug_from_frame(frame: dict[str, object]) -> str | None:
+    inspector = frame.get("inspector")
+    if isinstance(inspector, dict):
+        slug = inspector.get("layer_slug")
+        if isinstance(slug, str) and slug.startswith("layer_"):
+            return slug
+    title = frame.get("title")
+    if isinstance(title, str) and title.startswith("layer_"):
+        return title
+    event_type = str(frame.get("event_type") or "")
+    if "exterior_transport" in event_type:
+        return LAYER_02_EXTERIOR_TRANSPORT
+    if "layer03" in event_type or "rim_greedy" in event_type:
+        return LAYER_03_RIM_GREEDY_PLACEMENT
+    if "layer04_inner" in event_type:
+        return LAYER_04_INNER_PATTERN_FILL
+    if "layer05_transport" in event_type or "layer04_transport" in event_type:
+        return LAYER_05_TRANSPORT_ROUTING
+    if event_type == ReplayEventType.PATTERN_GENERATED.value:
+        return LAYER_04_INNER_PATTERN_FILL
+    if event_type == ReplayEventType.VALIDATION_COMPLETED.value:
+        return LAYER_06_COMMIT_VALIDATE
+    return None
+
+
+def _merge_wire_and_replay_core_runtime_frames(
+    wire_frames: list[dict[str, object]],
+    *,
+    complete_map: ReconstructionCompleteMap,
+    replay_core_records: list[dict[str, object]] | None,
+) -> list[dict[str, object]]:
+    """Merge wire projection with replay_core milestones in canonical L2→L6 order."""
+
+    covered_slugs = {
+        slug
+        for slug in (_runtime_layer_slug_from_frame(frame) for frame in wire_frames)
+        if slug is not None
+    }
+    ordered: list[tuple[int, int, dict[str, object]]] = []
+    for index, frame in enumerate(wire_frames):
+        slug = _runtime_layer_slug_from_frame(frame) or ""
+        layer_index = _RUNTIME_LAYER_ORDER.get(slug, 99)
+        ordered.append((layer_index, index, frame))
+
+    tail_index = len(wire_frames)
+    for record in replay_core_records or []:
+        slug = str(record.get("layer_slug") or "")
+        if not slug or slug in covered_slugs:
+            continue
+        layer_index = _RUNTIME_LAYER_ORDER.get(slug, 99)
+        ordered.append(
+            (
+                layer_index,
+                tail_index,
+                replay_timeline_frame_to_json_dict(
+                    _timeline_frame_from_core_record(record, complete_map=complete_map)
+                ),
+            )
+        )
+        tail_index += 1
+        covered_slugs.add(slug)
+
+    ordered.sort(key=lambda item: (item[0], item[1]))
+    return [frame for _, _, frame in ordered]
+
+
+def _append_replay_core_records_missing_from_wire_frames(
+    frames: list[dict[str, object]],
+    *,
+    complete_map: ReconstructionCompleteMap,
+    replay_core_records: list[dict[str, object]] | None,
+) -> list[dict[str, object]]:
+    """Keep replay_core milestones (e.g. L2/L6) when wire projection omits them."""
+
+    return _merge_wire_and_replay_core_runtime_frames(
+        frames,
+        complete_map=complete_map,
+        replay_core_records=replay_core_records,
     )
 
 
@@ -237,7 +333,11 @@ def compose_lab_replay_frames_from_artifact_run(run: SolverRun) -> list[dict[str
                     meta = inspector.get(REPLAY_COMPOSE_META_INSPECTOR_KEY)
                     if isinstance(meta, dict) and content_hash is not None:
                         meta["wire_content_hash"] = content_hash
-            return frames
+            return _append_replay_core_records_missing_from_wire_frames(
+                frames,
+                complete_map=complete_map,
+                replay_core_records=core_records,
+            )
 
     return _compose_degraded_terrain_frames(
         complete_map,

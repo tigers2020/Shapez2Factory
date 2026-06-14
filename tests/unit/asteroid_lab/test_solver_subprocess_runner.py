@@ -48,6 +48,26 @@ def test_build_solver_cli_args_uses_python_module_and_list_args(tmp_path: Path) 
     assert "--verbose" not in args
 
 
+def test_build_solver_cli_args_passes_exterior_connector_edges(tmp_path: Path) -> None:
+    request = runner.SolverSubprocessRequest(
+        run_key="run-edges",
+        copy_code="SHAPEZ2-4-e30=",
+        game_data_snapshot={"schema_version": "game_data_snapshot_v1"},
+        artifact_root=tmp_path / "runs",
+        allowed_root=tmp_path / "runs",
+        timeout_seconds=3,
+        exterior_connector_edges=("north", "west"),
+    )
+    args = runner.build_solver_cli_args(
+        request,
+        copy_path=tmp_path / "copy.txt",
+        snapshot_path=tmp_path / "snapshot.json",
+    )
+
+    idx = args.index("--exterior-connector-edges")
+    assert args[idx + 1] == "north,west"
+
+
 def test_build_solver_cli_args_passes_throughput_target_percent(tmp_path: Path) -> None:
     request = runner.SolverSubprocessRequest(
         run_key="run-tp",

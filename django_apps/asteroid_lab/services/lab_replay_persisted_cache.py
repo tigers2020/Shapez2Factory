@@ -30,7 +30,7 @@ from shapez2_factory.adapters.asteroid_lab.runtime_wires.envelope import (
     RUNTIME_WIRES_SCHEMA_VERSION,
 )
 
-CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION = 3
+CURRENT_LAB_REPLAY_CACHE_SCHEMA_VERSION = 4
 
 
 def replay_compose_cache_enabled() -> bool:
@@ -85,6 +85,32 @@ def _cached_replay_source(frames: list[dict[str, object]]) -> str | None:
     return None
 
 
+def _is_stale_tail_layout_cache(frames: list[dict[str, object]]) -> bool:
+    """True when the last frame lost layout overlays present earlier in the timeline."""
+
+    from django_apps.asteroid_lab.services.lab_timeline_layout_carry_enrichment import (
+        overlay_cells_are_layout_sparse,
+    )
+
+    last_layout: list[object] | None = None
+    for frame in frames:
+        map_view = frame.get("map_view")
+        if not isinstance(map_view, dict):
+            continue
+        overlay = map_view.get("overlay_cells")
+        rows = list(overlay) if isinstance(overlay, list) else []
+        if not overlay_cells_are_layout_sparse(rows):
+            last_layout = rows
+    if not frames or last_layout is None:
+        return False
+    tail_overlay = frames[-1].get("map_view", {})
+    if not isinstance(tail_overlay, dict):
+        return True
+    tail_rows = tail_overlay.get("overlay_cells")
+    tail_list = list(tail_rows) if isinstance(tail_rows, list) else []
+    return overlay_cells_are_layout_sparse(tail_list)
+
+
 def _is_stale_composed_replay_cache(
     frames: list[dict[str, object]],
     *,
@@ -94,6 +120,8 @@ def _is_stale_composed_replay_cache(
     cached_source = _cached_replay_source(frames)
     if artifact_root and _artifact_has_runtime_wires(artifact_root):
         if _is_stale_thin_artifact_l3_cache(frames):
+            return True
+        if _is_stale_tail_layout_cache(frames):
             return True
         if cached_source != "artifact_runtime_wire_projection":
             return True

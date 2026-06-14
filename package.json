@@ -3,6 +3,8 @@
     "design:lint": "design.md lint DESIGN.md",
     "lint": "npm run design:lint && npm run build:css",
     "test": "npm --prefix frontend/recipe_graph_editor run test",
+    "test:visual": "playwright test --grep @visual",
+    "test:visual:update": "playwright test --grep @visual --update-snapshots",
     "build": "npm run build:css && npm run build:graph-layout && npm run build:recipe-graph-editor",
     "build:graph-layout": "esbuild frontend/graph_layout/src/solverStaticBundle.ts --bundle --format=esm --platform=neutral --target=es2022 --banner:js=\"/* GENERATED — do not edit by hand. Source: frontend/graph_layout/src/*.ts | Rebuild: npm run build:graph-layout */\" --outfile=django_apps/web/static/web/js/solver_graph_layout.js && esbuild frontend/graph_layout/src/editorStaticBundle.ts --bundle --format=esm --platform=neutral --target=es2022 --banner:js=\"/* GENERATED — do not edit by hand. Source: frontend/graph_layout/src/*.ts | Rebuild: npm run build:graph-layout */\" --outfile=django_apps/web/static/web/js/editor_graph_layout.js",
     "build:recipe-graph-editor": "npm --prefix frontend/recipe_graph_editor run build",
@@ -10,6 +12,7 @@
     "watch:css": "npx @tailwindcss/cli -i ./assets/css/input.css -o ./django_apps/web/static/web/css/app.css --watch"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/cli": "^4.0.0",
     "esbuild": "^0.25.0",
     "fallow": "^2.91.0",

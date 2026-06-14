@@ -78,6 +78,8 @@ celerybeat.pid
 ehthumbs.db
 Thumbs.db
 Desktop.ini
+# Windows: `> nul` typo creates a tracked-looking file named nul at repo root
+/nul
 
 # --- Secrets & local env (keep .env.example tracked) ---
 .env
@@ -123,6 +125,10 @@ agents/
 .mcp.json
 .playwright-mcp/
 output/playwright/
+# Playwright default report dirs (repo uses output/playwright/ in playwright.config.ts)
+/test-results/
+/playwright-report/
+/blob-report/
 skills-lock.json
 
 # --- Misc junk ---
@@ -150,15 +156,19 @@ docs/agent-context/
 !docs/agent-context/graphify-index.md
 
 # graphify local-only / wrong-CWD outputs (upstream: cost.json local; cache optional ignore)
+# Track at repo root: graph.json, GRAPH_REPORT.md, manifest.json, .graphify_labels.json
 graphify-out/cost.json
 graphify-out/cache/
-graphify-out/.graphify_detect.json
+graphify-out/.graphify_detect*.json
+graphify-out/.graphify_incremental.json
+graphify-out/.graphify_src_ast.json
 graphify-out/.graphify_python
 graphify-out/.graphify_root
 graphify-out/2026-*/
 graphify-out/obsidian/
 django_apps/graphify-out/
 src/graphify-out/
+src/shapez2_factory/graphify-out/
 
 # Obsidian machine state (not vault markdown)
 .obsidian/

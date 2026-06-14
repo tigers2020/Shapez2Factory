@@ -5351,6 +5351,12 @@
           postBody.throughput_target_percent = parsed;
         }
       }
+      const edgeInputs = document.querySelectorAll(".lab-exterior-connector-edge:checked");
+      if (edgeInputs.length > 0) {
+        postBody.exterior_connector_edges = Array.from(edgeInputs).map(function (el) {
+          return String(el.value);
+        });
+      }
       if (macroOnlyMode) {
         postBody.macro_only_mode = true;
         postBody.rttp_record_replay = true;

@@ -17,6 +17,8 @@ dependencies = [
     "Pillow>=11",
     "jsonschema>=4.23",
     "polib>=1.2",
+    "gurobipy>=13.0.2",
+    "pyscipopt>=6.2.1",
 ]
 
 [project.optional-dependencies]

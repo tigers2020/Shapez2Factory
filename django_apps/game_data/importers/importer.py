@@ -48,6 +48,7 @@ from django_apps.game_data.models import (
     TransportBuildingRegistry,
 )
 from django_apps.game_data.services import classifiers, identifiers
+from django_apps.game_data.services.bundle_gate import GameDataBundle
 from django_apps.game_data.services.identifiers import InvalidCanonicalIdError
 from django_apps.game_data.services.import_guards import (
     assert_import_preconditions,
@@ -57,8 +58,9 @@ from django_apps.game_data.services.lazy_localized_text import parse_lazy_locali
 
 
 class GameDataImporter:
-    def __init__(self, source_dir: Path, batch_name: str = "") -> None:
-        self.source_dir = source_dir.resolve()
+    def __init__(self, bundle: GameDataBundle, batch_name: str = "") -> None:
+        self.bundle = bundle
+        self.source_dir = bundle.source_dir
         self.batch_name = batch_name
         self.ctx: ImportContext | None = None
 
@@ -97,9 +99,11 @@ class GameDataImporter:
         return self.source_dir / name
 
     def _load_manifest(self) -> ImportBatch:
-        path = self._path("manifest.json")
-        data = load_json(path)
-        manifest_hash = sha256_file(path)
+        data = self.bundle.manifest
+        manifest_hash = self.bundle.manifest_hash
+        incomplete_sections = {
+            str(section) for section in (data.get("incomplete_sections") or [])
+        }
         ts_raw = data.get("dump_timestamp_utc", "")
         ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
         batch, _ = ImportBatch.objects.update_or_create(
@@ -116,14 +120,21 @@ class GameDataImporter:
         )
         ArtifactChecksum.objects.filter(import_batch=batch).delete()
         for filename, expected in (data.get("file_hashes") or {}).items():
-            fpath = self._path(filename)
-            actual = sha256_file(fpath) if fpath.is_file() else ""
+            name = str(filename)
+            fpath = self._path(name)
+            is_incomplete = name in incomplete_sections
+            if fpath.is_file():
+                import_status = "ok"
+            elif is_incomplete:
+                import_status = "ok"
+            else:
+                import_status = "mismatch"
             ArtifactChecksum.objects.create(
                 import_batch=batch,
-                artifact_filename=filename,
-                expected_sha256=expected,
-                import_status="ok" if actual == expected else "mismatch",
-                is_incomplete=filename in (data.get("incomplete_sections") or []),
+                artifact_filename=name,
+                expected_sha256=str(expected),
+                import_status=import_status,
+                is_incomplete=is_incomplete,
             )
         ExportWarning.objects.filter(import_batch=batch).delete()
         for idx, msg in enumerate(data.get("warnings") or []):

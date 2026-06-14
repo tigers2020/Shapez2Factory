@@ -7,6 +7,10 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 
 from django_apps.game_data.importers import GameDataImporter
+from django_apps.game_data.services.bundle_gate import (
+    GameDataBundleInvalid,
+    validate_game_data_bundle,
+)
 from django_apps.game_data.services.import_guards import GameDataImportBlockedError
 from django_apps.game_data.services.import_verify import (
     GameDataVerifyError,
@@ -21,8 +25,11 @@ class Command(BaseCommand):
         parser.add_argument(
             "--source",
             type=str,
-            default="documents/game_data",
-            help="Directory containing manifest.json and artifact JSON files.",
+            default=None,
+            help=(
+                "Directory containing manifest.json and artifact JSON files "
+                "(default: auto-resolve repo candidates)."
+            ),
         )
         parser.add_argument(
             "--batch-name",
@@ -37,15 +44,15 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args: object, **options: object) -> None:
-        source = Path(str(options["source"]))
+        source_raw = options.get("source")
+        source = Path(str(source_raw)) if source_raw else None
         batch_name = str(options["batch_name"])
-        if not (source / "manifest.json").is_file():
-            self.stderr.write(self.style.ERROR(f"manifest.json not found in {source}"))
-            return
 
         if bool(options.get("verify")):
             try:
                 batch = verify_game_data_source(source)
+            except GameDataBundleInvalid as exc:
+                raise CommandError(str(exc)) from exc
             except GameDataVerifyError as exc:
                 raise CommandError(str(exc)) from exc
             self.stdout.write(
@@ -55,11 +62,17 @@ class Command(BaseCommand):
                 )
             )
             return
+
         try:
-            summary = GameDataImporter(source, batch_name=batch_name).run()
+            bundle = validate_game_data_bundle(source=source)
+        except GameDataBundleInvalid as exc:
+            raise CommandError(str(exc)) from exc
+
+        try:
+            summary = GameDataImporter(bundle, batch_name=batch_name).run()
         except GameDataImportBlockedError as exc:
-            self.stderr.write(self.style.ERROR(str(exc)))
-            return
+            raise CommandError(str(exc)) from exc
+
         self.stdout.write(self.style.SUCCESS("Import complete"))
         for key, value in summary.items():
             self.stdout.write(f"  {key}: {value}")

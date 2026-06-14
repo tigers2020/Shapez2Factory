@@ -125,7 +125,7 @@ def test_persist_full_map_matches_replay_complete_bbox(hole_island_copy: str) ->
 
     persist_cells = load_reconstruction_cells_from_decoded_json(dict(row.decoded_json))
     by_xy = {(c.x, c.y): c for c in persist_cells}
-    assert by_xy[(2, 2)].cell_kind in ("asteroid_shape_field", "asteroid_fluid_field")
+    assert (2, 2) not in by_xy
     for xy in ((1, 1), (2, 1), (3, 1), (1, 2), (3, 2), (1, 3), (2, 3), (3, 3)):
         assert by_xy[xy].cell_kind == "unknown"
 

@@ -132,6 +132,7 @@ def run_layers_02_to_06(
     genetic_sample_seeds: GeneticSampleSeedSnapshot | None = None,
     capacity_envelope: dict[str, object] | None = None,
     throughput_target_percent: int | None = None,
+    exterior_connector_edges: object | None = None,
     transport_catalog: SpaceTransportTileCatalog | None = None,
 ) -> CoreStackRunResult:
     completed: list[str] = []
@@ -176,6 +177,7 @@ def run_layers_02_to_06(
                 budget_ctx=budget_ctx,
                 capacity_envelope=capacity_envelope,
                 throughput_target_percent=throughput_target_percent,
+                exterior_connector_edges=exterior_connector_edges,
             )
             if isinstance(layer02_result, ExteriorConnectionPlan):
                 last_exterior_plan = layer02_result

@@ -244,3 +244,99 @@ def test_load_composed_frames_does_not_return_raw_replay_core(tmp_path: Path) ->
     loaded = load_composed_frames_for_run_id(int(run.pk))
 
     assert loaded is None
+
+
+def test_wire_compose_orders_replay_core_l2_before_l3_wire_frames(tmp_path: Path) -> None:
+    """When wire projection skips L2, replay_core L2 must precede L3 wire segment frames."""
+
+    from shapez2_factory.adapters.asteroid_lab.runtime_wires import (
+        MANIFEST_PATH_KEY,
+        RUNTIME_WIRES_ARTIFACT_REL_PATH,
+        build_runtime_wires_document,
+    )
+    from shapez2_factory.application.asteroid_lab.layers.contracts.layer_slugs import (
+        LAYER_02_EXTERIOR_TRANSPORT,
+        LAYER_03_RIM_GREEDY_PLACEMENT,
+    )
+    from shapez2_factory.application.asteroid_lab.layers.contracts.rim_greedy import (
+        build_empty_integrated_rim_greedy_result,
+    )
+
+    project = m.AsteroidProject.objects.create(name="Order", slug="artifact-layer-order")
+    run_key = "artifact-layer-order-run"
+    complete_map = build_rect_field_with_void_shell(width=10, height=10, void_pad=12)
+    core_lines = [
+        {
+            "record_type": "frame",
+            "frame_index": index,
+            "event": "layer_done",
+            "layer_slug": slug,
+            "outcome": "completed",
+            "elapsed_ms": index,
+        }
+        for index, slug in enumerate(
+            (
+                LAYER_02_EXTERIOR_TRANSPORT,
+                LAYER_03_RIM_GREEDY_PLACEMENT,
+            )
+        )
+    ]
+    _write_artifact(
+        tmp_path,
+        run_key=run_key,
+        core_lines=core_lines,
+        complete_map=complete_map,
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    complete_map_hash = manifest["content_hashes"]["output/layer01_complete_map.json"]
+    wires_doc = build_runtime_wires_document(
+        run_key=run_key,
+        written_at_utc="2026-06-14T00:00:00Z",
+        complete_map_hash=complete_map_hash,
+        transport_summary={
+            "requested_resource_kind": "shape",
+            "effective_transport_kind": "space_belt",
+        },
+        rim_greedy=build_empty_integrated_rim_greedy_result(),
+    )
+    wires_path = tmp_path / RUNTIME_WIRES_ARTIFACT_REL_PATH
+    wires_path.parent.mkdir(parents=True, exist_ok=True)
+    wires_path.write_text(json.dumps(wires_doc, sort_keys=True), encoding="utf-8")
+    manifest["paths"][MANIFEST_PATH_KEY] = RUNTIME_WIRES_ARTIFACT_REL_PATH
+    manifest["content_hashes"][RUNTIME_WIRES_ARTIFACT_REL_PATH] = hashlib.sha256(
+        wires_path.read_bytes()
+    ).hexdigest()
+    manifest_path.write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+
+    run = m.SolverRun.objects.create(
+        project=project,
+        run_key=run_key,
+        artifact_root=str(tmp_path.resolve()),
+        lifecycle_status="succeeded",
+    )
+    composed = compose_lab_replay_frames_from_artifact_run(run)
+    assert composed is not None
+
+    def _layer_slug(frame: dict[str, object]) -> str | None:
+        inspector = frame.get("inspector")
+        if isinstance(inspector, dict):
+            slug = inspector.get("layer_slug")
+            if isinstance(slug, str):
+                return slug
+        event_type = str(frame.get("event_type") or "")
+        if "exterior_transport" in event_type:
+            return LAYER_02_EXTERIOR_TRANSPORT
+        if "layer03" in event_type or "rim_greedy" in event_type:
+            return LAYER_03_RIM_GREEDY_PLACEMENT
+        return None
+
+    l2_index = next(
+        index for index, frame in enumerate(composed) if _layer_slug(frame) == LAYER_02_EXTERIOR_TRANSPORT
+    )
+    l3_index = next(
+        index
+        for index, frame in enumerate(composed)
+        if _layer_slug(frame) == LAYER_03_RIM_GREEDY_PLACEMENT
+    )
+    assert l2_index < l3_index

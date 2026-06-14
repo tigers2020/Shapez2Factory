@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
-    Layer03SkipReason,
     RimBundleCandidateSet,
 )
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
@@ -91,11 +90,7 @@ def build_layer03_rim_greedy_post_summary_metrics(
         "append_placement_count": append.placement_count,
         "append_cell_count": len(append.cells),
         "append_route_reserved_cell_count": append.route_reserved_cell_count,
-        "algorithm_stub": (
-            ALGORITHM_STUB_ID
-            if metrics.layer_skip_reason == Layer03SkipReason.ALGORITHM_RESET.value
-            else None
-        ),
+        "algorithm_stub": ALGORITHM_STUB_ID,
     }
 
 

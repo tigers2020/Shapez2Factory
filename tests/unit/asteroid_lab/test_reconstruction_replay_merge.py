@@ -145,8 +145,9 @@ def test_reconstruction_final_full_map_merges_overlay_not_replace() -> None:
     collector = ReconstructionTraceCollector()
     recon = run_topology_reconstruction(cleanup, trace_collector=collector)
     recon_keys = {(c.x, c.y, c.layer) for c in recon.cells}
-    assert (2, 2, None) in recon_keys
-    assert (2, 2, None) not in structural_keys
+    assert (2, 2, None) not in recon_keys
+    assert (1, 0, None) in recon_keys
+    assert (3, 0, None) in recon_keys
 
     row_recon = [r for r in row_extension if cell_key_xy_layer(r) in recon_keys]
     recon_summary = snapshot_summary_from_rows(row_recon)
@@ -166,8 +167,7 @@ def test_reconstruction_final_full_map_merges_overlay_not_replace() -> None:
     assert structural_keys <= final_keys
     assert recon_keys <= final_keys
     assert len(fm) == len(final_keys) == len(structural_keys | recon_keys)
-    hole = next(r for r in fm if int(r["x"]) == 2 and int(r["y"]) == 2)
-    assert hole.get("cell_kind") in ("asteroid_shape_field", "asteroid_fluid_field")
+    assert not any(int(r["x"]) == 2 and int(r["y"]) == 2 for r in fm)
     for xy in ((1, 1), (2, 1), (3, 1), (1, 2), (3, 2), (1, 3), (2, 3), (3, 3)):
         wall = next(r for r in fm if int(r["x"]) == xy[0] and int(r["y"]) == xy[1])
         assert wall.get("cell_kind") == "unknown"

@@ -11,7 +11,6 @@ from django.conf import settings
 from django.utils import timezone
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.models import GeneSeed
 from django_apps.asteroid_lab.services.artifact_ingest import (
     ArtifactIngestError,
     ingest_artifact_for_project,
@@ -21,6 +20,10 @@ from django_apps.asteroid_lab.services.artifact_replay_viewer_compose import (
 )
 from django_apps.asteroid_lab.services.genetic_sample_catalog_snapshot import (
     build_genetic_sample_seed_snapshot,
+)
+from django_apps.asteroid_lab.services.gene_seed_l3_catalog import (
+    ensure_miner_gene_seeds_bootstrapped,
+    gene_seed_l3_catalog_queryset,
 )
 from django_apps.asteroid_lab.services.lab_replay_lazy_handle import (
     build_lab_replay_lazy_handle,
@@ -172,7 +175,16 @@ def _build_subprocess_request(
             throughput_target_percent = int(raw_percent)
         except (TypeError, ValueError):
             throughput_target_percent = None
-    genetic_sample_seeds = build_genetic_sample_seed_snapshot(GeneSeed.objects.all())
+    exterior_connector_edges: tuple[str, ...] | None = None
+    raw_edges = runtime_config.get("exterior_connector_edges")
+    if isinstance(raw_edges, (list, tuple)):
+        parsed_edges = tuple(str(edge).lower() for edge in raw_edges if str(edge).strip())
+        if parsed_edges:
+            exterior_connector_edges = parsed_edges
+    ensure_miner_gene_seeds_bootstrapped()
+    genetic_sample_seeds = build_genetic_sample_seed_snapshot(
+        gene_seed_l3_catalog_queryset(scope="all"),
+    )
     return SolverSubprocessRequest(
         run_key=resolved_run_key,
         copy_code=str(inp.copy_code or ""),
@@ -183,6 +195,7 @@ def _build_subprocess_request(
         replace_existing=replace_existing_run,
         verbose=verbose,
         throughput_target_percent=throughput_target_percent,
+        exterior_connector_edges=exterior_connector_edges,
         genetic_sample_seeds=genetic_sample_seeds,
     )
 

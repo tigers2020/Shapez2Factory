@@ -180,4 +180,4 @@ def test_canon_capacity_platform_count_matches_complete_map_shape_fields() -> No
     recon, complete = _canon_cleanup_recon_complete()
     row = build_reconstruction_capacity_summary(complete_map=complete, resource_kind="shape")
     assert row["capacity_upper_bound_platform_count"] == complete.shape_field_cell_count
-    assert overlay_field_cell_count(recon) < len(complete.field_cells)
+    assert overlay_field_cell_count(recon) <= len(complete.field_cells)

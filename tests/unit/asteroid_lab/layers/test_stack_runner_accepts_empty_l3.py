@@ -1,11 +1,10 @@
-"""Stack continues through L4 when L3 skeleton returns algorithm_reset."""
+"""Stack continues through L4 when L3 rim placement completes on golden map."""
 
 from __future__ import annotations
 
 from shapez2_factory.adapters.asteroid_lab.genetic_sample_seed_snapshot import (
     GeneticSampleSeedSnapshot,
 )
-from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import Layer03SkipReason
 from shapez2_factory.application.asteroid_lab.layers.contracts.exterior_connection import (
     ExteriorConnectionPlan,
 )
@@ -67,7 +66,7 @@ def _stub_layer04_fill(**_kwargs: object) -> object:
     return run_layer_04_inner_pattern_fill(**_kwargs)
 
 
-def test_stack_runner_accepts_empty_l3_and_reaches_l4() -> None:
+def test_stack_runner_runs_l3_rim_placement_and_reaches_l4() -> None:
     complete_map = golden_5x5_complete_map()
     budget_ctx = LayerBudgetContext.from_budget_ms(LAYER_STACK_BUDGET_MS, now_fn=lambda: 0.0)
     runners = (
@@ -87,6 +86,7 @@ def test_stack_runner_accepts_empty_l3_and_reaches_l4() -> None:
     l3_summary = next(
         s for s in core.layer_summaries if s.layer_slug == LAYER_03_RIM_GREEDY_PLACEMENT
     )
-    assert l3_summary.metrics.get("layer_skip_reason") == Layer03SkipReason.ALGORITHM_RESET.value
-    assert l3_summary.metrics.get("committed_placement_count") == 0
+    assert l3_summary.metrics.get("layer_skip_reason") is None
+    assert l3_summary.metrics.get("committed_placement_count", 0) >= 1
     assert l3_summary.metrics.get("algorithm_stub") == ALGORITHM_STUB_ID
+    assert ALGORITHM_STUB_ID == "rim_placement_v2"

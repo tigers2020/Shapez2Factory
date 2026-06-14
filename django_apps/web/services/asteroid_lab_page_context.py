@@ -222,7 +222,10 @@ def lab_page_context(*, project_id: int | None = None, project_slug: str = "") -
 
     if mode == "inline":
         with perf_span("build_lab_replay_frames_for_project_ms"):
-            frames_json, track_metrics = build_lab_replay_frames_for_project(pid)
+            frames_json, track_metrics = build_lab_replay_frames_for_project(
+                pid,
+                solver_run_id=solver_run_id,
+            )
         ctx["replay_track_metrics"] = track_metrics
         if frames_json:
             first = frames_json[0]

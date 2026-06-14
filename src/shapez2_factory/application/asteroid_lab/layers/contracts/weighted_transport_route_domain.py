@@ -20,7 +20,7 @@ class WeightedTransportRouteDomain:
     field_cost_cells: frozenset[Coord]
 
     def step_cost(self, coord: Coord) -> int | None:
-        if coord not in self.walkable_cells:
+        if coord in self.blocked_cells or coord not in self.walkable_cells:
             return None
         if coord in self.field_cost_cells:
             return FIELD_ROUTE_COST

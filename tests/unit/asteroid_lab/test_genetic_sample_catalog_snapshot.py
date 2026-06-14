@@ -162,11 +162,7 @@ def test_exhaustive_path_only_when_no_miner_seed_v2_rows(
     assert len(payload["entries"]) == 2
 
 
-def test_l3_skeleton_accepts_miner_seed_v2_snapshot() -> None:
-    from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
-        Layer03SkipReason,
-    )
-
+def test_l3_accepts_miner_seed_v2_snapshot() -> None:
     call_command("seed_miner_patterns", verbosity=0)
     payload = build_genetic_sample_seed_snapshot(_miner_seed_queryset())
     snapshot = GeneticSampleSeedSnapshot.from_payload(payload)
@@ -177,16 +173,12 @@ def test_l3_skeleton_accepts_miner_seed_v2_snapshot() -> None:
         budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
         genetic_sample_seeds=snapshot,
     )
-    assert result.metrics.layer_skip_reason == Layer03SkipReason.ALGORITHM_RESET.value
-    assert result.metrics.committed_placement_count == 0
-    assert result.committed_placements == ()
+    assert result.metrics.layer_skip_reason is None
+    assert result.metrics.committed_placement_count >= 1
+    assert result.committed_placements
 
 
-def test_l3_skeleton_accepts_fluid_map_and_catalog() -> None:
-    from shapez2_factory.application.asteroid_lab.layers.contracts.candidates import (
-        Layer03SkipReason,
-    )
-
+def test_l3_accepts_fluid_map_and_catalog() -> None:
     call_command("seed_miner_patterns", verbosity=0)
     payload = build_genetic_sample_seed_snapshot(_miner_seed_queryset())
     snapshot = GeneticSampleSeedSnapshot.from_payload(payload)
@@ -197,9 +189,9 @@ def test_l3_skeleton_accepts_fluid_map_and_catalog() -> None:
         budget_ctx=LayerBudgetContext.from_budget_ms(60_000, now_fn=lambda: 0.0),
         genetic_sample_seeds=snapshot,
     )
-    assert result.metrics.layer_skip_reason == Layer03SkipReason.ALGORITHM_RESET.value
-    assert result.metrics.committed_placement_count == 0
-    assert result.committed_placements == ()
+    assert result.metrics.layer_skip_reason is None
+    assert result.metrics.committed_placement_count >= 1
+    assert result.committed_placements
 
 
 def test_build_genetic_sample_seed_snapshot_entries_sorted_by_gene_id(

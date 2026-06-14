@@ -95,6 +95,18 @@ def test_lab_l3_candidate_observation_overlay_contract() -> None:
     assert "sortL3CandidateOverlayCellsForPaint" in js
 
 
+def test_lab_exterior_connector_edge_picker_contract() -> None:
+    template = TEMPLATE.read_text(encoding="utf-8")
+    js = (
+        REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
+    assert 'id="lab-exterior-connector-edges"' in template
+    assert "lab-exterior-connector-edge" in template
+    assert "Connector edges" in template
+    assert "exterior_connector_edges" in js
+    assert "lab-exterior-connector-edge:checked" in js
+
+
 def test_lab_exterior_connector_overlay_contract() -> None:
     js = (
         REPO / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"

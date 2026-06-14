@@ -121,12 +121,7 @@ class GameDataImporter:
             name = str(filename)
             fpath = self._path(name)
             is_incomplete = name in incomplete_sections
-            if fpath.is_file():
-                import_status = "ok"
-            elif is_incomplete:
-                import_status = "ok"
-            else:
-                import_status = "mismatch"
+            import_status = "ok" if fpath.is_file() or is_incomplete else "mismatch"
             ArtifactChecksum.objects.create(
                 import_batch=batch,
                 artifact_filename=name,
@@ -140,8 +135,6 @@ class GameDataImporter:
         ExportIncompleteSection.objects.filter(import_batch=batch).delete()
         for section in data.get("incomplete_sections") or []:
             ExportIncompleteSection.objects.create(import_batch=batch, section_code=str(section))
-        if self.ctx:
-            self.ctx.bump("import_batch")
         return batch
 
     def _source_object(
@@ -709,13 +702,11 @@ class GameDataImporter:
 
     def _import_space_transport_layouts(self) -> None:
         assert self.ctx is not None
-        manifest = self._path("manifest.json")
-        manifest_data = load_json(manifest)
         import_space_transport_layouts(
             self.ctx,
             research_unlocks_path=self._path("research_unlocks.json"),
             simulation_systems_path=self._path("simulation_systems.json"),
-            game_version=str(manifest_data.get("game_version", "")),
+            game_version=str(self.bundle.manifest.get("game_version", "")),
         )
 
     def _import_transport_registry(self) -> None:

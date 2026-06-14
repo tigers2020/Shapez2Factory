@@ -5,44 +5,77 @@
 **Kanban:** `.devtool/features/codebase-architecture-review-2026-06-14.md`  
 **Grill decisions:** Q1=A, Q2=1, Q3=A, Q4=1, Q5=1
 
+## Implementation status (as-built 2026-06-14)
+
+**Branch:** `work/game-data-bundle-gate` · **Kanban:** `.devtool/features/codebase-architecture-review-2026-06-14.md`
+
+| Item | As-built |
+|------|----------|
+| Bundle gate | `django_apps/game_data/services/bundle_gate.py` — `resolve_game_data_source_dir()`, `validate_game_data_bundle()` → `GameDataBundle` |
+| Path candidates | `GAME_DATA_SOURCE_CANDIDATES`: `documents/game_data`, then `documents/knowledge/raw/game_data` |
+| CLI `--source` | Optional (`None` → auto-resolve via gate) |
+| Import flow | `assert_import_preconditions()` → `validate_game_data_bundle()` → `GameDataImporter(bundle).run()` → `run_post_import_guards()` |
+| Verify flow | `validate_game_data_bundle()` → DB manifest hash + `ArtifactChecksum` mismatch count |
+| Importer ctor | `GameDataImporter(bundle: GameDataBundle, ...)` — uses `bundle.manifest` / `bundle.manifest_hash` |
+| Checksum rows | Post-gate: present or `incomplete_sections` missing → `import_status="ok"`; mismatch impossible at import |
+| Tests | `tests/unit/game_data/test_bundle_gate.py`; `dump_paths.resolve_game_data_source_dir` delegates to production |
+
+```text
+CLI (no --source)
+  → resolve_game_data_source_dir() / validate_game_data_bundle()   [fail-closed disk integrity]
+  → assert_import_preconditions()                                  [migrations]
+  → GameDataImporter(bundle)._load_manifest()                      [persist batch; all ok]
+  → _import_* phases
+  → run_post_import_guards()
+
+CLI --verify
+  → validate_game_data_bundle()
+  → verify_game_data_source()                                      [DB reconcile]
+```
+
+Sections below retain the **pre-implementation** analysis that motivated the slice.
+
 ## Scope
 
 Game data JSON bundle ingest boundary: CLI `import_game_data`, `GameDataImporter`, `import_guards`, `import_verify`, and test path resolution (`dump_paths.py`). **Not in scope:** `shapez_core` basedata IVVD pipeline, snapshot export modules (`game_data_snapshot_export`, `snapshots/builder`), importer phase decomposition.
 
-## Repository State
+## Repository State (at review time)
 
-Dirty worktree (unrelated deletes, `uv.lock`, staged `documents/knowledge/raw/game_data/*`). `graphify-out/graph.json` present (2026-06-14). Review-only — no production edits in this session.
+Dirty worktree (unrelated deletes, `uv.lock`, staged `documents/knowledge/raw/game_data/*`). `graphify-out/graph.json` present (2026-06-14). Review-only — no production edits in that session.
 
-On disk: only `documents/knowledge/raw/game_data/manifest.json` (+ artifacts). CLI default `--source documents/game_data` does not resolve today without explicit path or test fallback.
+On disk at review time: only `documents/knowledge/raw/game_data/manifest.json` (+ artifacts). CLI default `--source documents/game_data` did not resolve without explicit path or test fallback. **Resolved by as-built gate auto-resolve** (see Implementation status above).
 
 ## Current Architecture Map
 
 | Item | Finding |
 |------|---------|
 | Domain | Runtime-reflection JSON dump → normalized `game_data` ORM |
-| CLI entry | `manage.py import_game_data` (`--source`, `--batch-name`, `--verify`) |
-| Import entry | `GameDataImporter(source_dir).run()` — ~760 LOC monolith + 4 extracted importers |
+| CLI entry | `manage.py import_game_data` (`--source` optional, `--batch-name`, `--verify`) |
+| Disk gate | `validate_game_data_bundle()` — fail-closed hash + missing-file policy |
+| Import entry | `GameDataImporter(bundle).run()` — consumes pre-validated `GameDataBundle` |
 | Pre-DB guards | `assert_import_preconditions()` — migrations only |
 | Post-DB guards | `run_post_import_guards()` — `assert_no_domain_json_fields()` only |
-| Manifest load | `GameDataImporter._load_manifest()` — records `ArtifactChecksum` with `ok`/`mismatch`; **does not abort** on mismatch |
-| Verify path | `verify_game_data_source()` — disk manifest hash vs latest `ImportBatch` + DB mismatch count |
-| Path resolution | **Tests only:** `tests/unit/game_data/dump_paths.py` tries `documents/game_data` then `documents/knowledge/raw/game_data` |
+| Manifest load | `_load_manifest()` records `ArtifactChecksum` with `ok` only (mismatch impossible post-gate) |
+| Verify path | `verify_game_data_source()` — gate disk validate + DB batch reconcile |
+| Path resolution | Production `bundle_gate.resolve_game_data_source_dir`; tests delegate via `dump_paths.py` |
 | Hash helpers | `importers/source_loader.py` — `load_json`, `sha256_file` |
 | Snapshot exports (out of scope) | `game_data_snapshot_export` (solver EVTC), `snapshots/builder` (web building bundle) |
-| Tests | Strong fixtures via loaddata + `resolve_game_data_dump_path`; `test_import_guards`, `test_dump_paths` |
+| Tests | `test_bundle_gate.py`, loaddata fixtures + `resolve_game_data_dump_path` |
 
 ```text
-CLI --source (default documents/game_data, often missing)
+CLI import (no --source)
   → assert_import_preconditions()          [migrations]
-  → GameDataImporter._load_manifest()      [checksum rows; mismatch tolerated]
+  → validate_game_data_bundle()            [fail-closed disk integrity]
+  → GameDataImporter(bundle)._load_manifest()  [checksum rows; all ok]
   → _import_* phases (fixed order)
   → run_post_import_guards()               [JSONField ban]
 
 CLI --verify
-  → verify_game_data_source()              [manifest hash + DB mismatch count]
+  → validate_game_data_bundle()            [disk]
+  → verify_game_data_source()              [ImportBatch hash + DB mismatch count]
 ```
 
-## Complexity Symptoms and Red Flags
+## Complexity Symptoms and Red Flags (pre-implementation — resolved by gate)
 
 | Symptom / Red Flag | Evidence | Impact | Refactor Pressure |
 |---|---|---|---|
@@ -61,17 +94,17 @@ CLI --verify
 | What is implicit? | `incomplete_sections` allows missing files; mismatch is non-fatal today |
 | Non-obvious dependency | Test fixtures use loaddata (Tier B dump), not live import — import path less exercised in CI |
 | Organized by execution order? | Yes — validate-after-import via verify; should be validate-before-import |
-| Module that should own bundle integrity? | New `GameDataBundleGate` (proposed) |
+| Module that should own bundle integrity? | `bundle_gate.py` (implemented) |
 
-## Scattered Knowledge Found
+## Scattered Knowledge Found (pre-implementation — consolidated in gate)
 
-| Shared Knowledge | Files / Areas | Current Risk |
+| Shared Knowledge | Files / Areas | Status after PR 1 |
 |---|---|---|
-| Bundle source path candidates | `import_game_data.py` default, `dump_paths.py` | CLI broken on current tree layout |
-| Manifest + per-file sha256 contract | `importer._load_manifest`, `import_verify`, `source_loader` | Mismatch policy inconsistent (record vs fail) |
-| `incomplete_sections` missing-file policy | `importer._load_manifest` only | Must move to gate; not documented at CLI |
-| Migration preflight | `import_guards` | Correctly isolated (DB, not bundle) |
-| Canonical id uniqueness check | `validators.assert_canonical_ids_unique` | Exists but **unwired** to import — defer unless import failures observed |
+| Bundle source path candidates | `bundle_gate.GAME_DATA_SOURCE_CANDIDATES`, CLI, `dump_paths` | Production SoT; tests delegate |
+| Manifest + per-file sha256 contract | `bundle_gate`, `importer._load_manifest`, `import_verify` | Fail-closed at gate; import records `ok` only |
+| `incomplete_sections` missing-file policy | `bundle_gate.validate_game_data_bundle` | Enforced before import |
+| Migration preflight | `import_guards` | Unchanged (DB, not bundle) |
+| Canonical id uniqueness check | `validators.assert_canonical_ids_unique` | Unwired — defer |
 
 ## Better Together / Better Apart Decision
 
@@ -91,13 +124,13 @@ CLI --verify
 - Snapshot exports — different consumers, different payload shapes
 - `shapez_core.basedata_import_service` — separate IVVD pipeline
 
-**Chosen boundary:** `django_apps/game_data/services/bundle_gate.py` (name TBD)
+**Chosen boundary:** `django_apps/game_data/services/bundle_gate.py`
 
 **Reason:** Callers need one operation — "give me a validated bundle or raise" — before any DB mutation. Importer should not know path candidates or permissive checksum policy.
 
 ## Deep Module Candidate
 
-**Proposed module:** `GameDataBundleGate` (`bundle_gate.py`)
+**Implemented module:** `bundle_gate.py` (`django_apps/game_data/services/`)
 
 **Owns:**
 
@@ -185,7 +218,7 @@ manifest hash to the latest ImportBatch (DB reconcile — separate step).
 
 ### Option A (recommended — grill Q2=1)
 
-- **Summary:** Single `GameDataBundleGate` module; production path SoT; fail-closed; verify reuses disk validate.
+- **Summary:** `bundle_gate` module; production path SoT; fail-closed; verify reuses disk validate.
 - **Interface:** `validate_game_data_bundle(source?) -> GameDataBundle`
 - **Common case:** `call_command("import_game_data")` with no args on current tree → resolves `knowledge/raw/game_data`, validates, imports.
 - **Rare case:** `import_game_data --source /custom/bundle` skips candidate walk.
@@ -215,7 +248,7 @@ manifest hash to the latest ImportBatch (DB reconcile — separate step).
 
 ## Recommendation
 
-Implement **Option A — `GameDataBundleGate`** with grill-locked decisions:
+Implement **Option A — `bundle_gate` module** with grill-locked decisions:
 
 1. Production owns path candidates (Q3=A)
 2. Fail-closed on hash mismatch; `incomplete_sections` only for missing (Q4=1)
@@ -262,8 +295,8 @@ ruff check django_apps/game_data/
 - Parity tests require duplicate candidate list → tests must import production helper (Q3=A)
 - Importer refactor touches >5 import phases → stop; gate-only PR without phase moves
 
-## Open Questions
+## Open Questions (resolved in PR 1)
 
-- **Importer ctor migration:** Accept `GameDataBundle` only vs `(Path | GameDataBundle)` shim for one release? Recommend bundle-only if all call sites updated in same PR (grep shows CLI + tests only).
-- **Aggregate vs fail-fast errors:** Report first mismatch only (simplest) vs collect all mismatches in one error message? Recommend collect-all for developer UX (one fix cycle).
-- **Docs path:** Update `documents/knowledge/raw/game_data/README.md` and django manual to say auto-resolve? Defer to implementation PR DOX pass.
+- **Importer ctor:** `GameDataBundle` only — all call sites updated in same PR.
+- **Aggregate vs fail-fast errors:** Collect-all mismatches in one `GameDataBundleInvalid` message.
+- **Docs path:** `documents/knowledge/raw/game_data/README.md` documents auto-resolve; architecture spec/report updated in docs-sync pass.

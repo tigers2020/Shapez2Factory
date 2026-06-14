@@ -23,8 +23,6 @@ def resolve_game_data_dump_path() -> Path | None:
 def resolve_game_data_source_dir() -> Path | None:
     from django_apps.game_data.services.bundle_gate import (
         GameDataBundleInvalid,
-    )
-    from django_apps.game_data.services.bundle_gate import (
         resolve_game_data_source_dir as _resolve_source_dir,
     )
 

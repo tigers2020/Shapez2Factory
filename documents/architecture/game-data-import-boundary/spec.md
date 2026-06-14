@@ -5,7 +5,7 @@
 
 ## Scope
 
-Introduce `GameDataBundleGate` for path resolution and fail-closed manifest/file hash validation before any ORM import. Wire CLI `import_game_data`, `verify_game_data_source`, and test path helpers.
+Introduce `django_apps/game_data/services/bundle_gate` for path resolution and fail-closed manifest/file hash validation before any ORM import. Wire CLI `import_game_data`, `verify_game_data_source`, and test path helpers (`dump_paths.py` delegates to production resolver).
 
 ## Non-goals
 

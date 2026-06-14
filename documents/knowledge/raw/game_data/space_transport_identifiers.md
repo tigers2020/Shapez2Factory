@@ -1,4 +1,4 @@
-# Space Belt / Space Pipe identifiers (`documents/game_data`)
+# Space Belt / Space Pipe identifiers (game data JSON bundle)
 
 Canonical index of **island** space transport names found in the game-data JSON dump beside this file.  
 Dump provenance: `manifest.json` (`game_version`: `unknown+1.0.3-rc3`, `dump_schema_version`: `1.0.0`).
@@ -7,11 +7,11 @@ Dump provenance: `manifest.json` (`game_version`: `unknown+1.0.3-rc3`, `dump_sch
 
 | In scope | Out of scope |
 | -------- | ------------ |
-| `SpaceBelt_*`, `SpacePipe_*`, `SpaceBeltsGroup`, `SpacePipesGroup`, related CLR/wiki keys in `documents/game_data/*.json` | Factory-floor belts/pipes in `belts_pipes_transport.json` (`ForwardBelt`, `PipeForward`, …) — see [`documents/game_data_analysis/belts_pipes_transport/`](../game_data_analysis/belts_pipes_transport/00_summary.md) |
+| `SpaceBelt_*`, `SpacePipe_*`, `SpaceBeltsGroup`, `SpacePipesGroup`, related CLR/wiki keys in bundle `*.json` (see [`README.md`](README.md) for paths) | Factory-floor belts/pipes in `belts_pipes_transport.json` (`ForwardBelt`, `PipeForward`, …) — see [`documents/game_data_analysis/belts_pipes_transport/`](../game_data_analysis/belts_pipes_transport/00_summary.md) |
 | Blueprint copy field `T` (island layout type) | Project solver `cell_kind` (`space_belt`, `space_pipe`) — defined in code/canonical manuals, not in this JSON |
 | Strings embedded in reflection dumps inside building JSON | Live DB rows (`django_apps/game_data`) |
 
-**Note:** There is **no** literal `space_belt` / `space_pipe` snake_case string anywhere under `documents/game_data/`. Those names are **project domain** labels; see [Lab classification](#lab-classification-project).
+**Note:** There is **no** literal `space_belt` / `space_pipe` snake_case string in the on-disk bundle JSON. Those names are **project domain** labels; see [Lab classification](#lab-classification-project).
 
 ---
 
@@ -206,7 +206,9 @@ Re-scan after dump refresh:
 
 ```bash
 # Keys whose names contain SpaceBelt / SpacePipe (representative files)
-rg -l 'SpaceBelt|SpacePipe' documents/game_data/*.json
+rg -l 'SpaceBelt|SpacePipe' documents/knowledge/raw/game_data/*.json
+# Or, if bundle is staged at documents/game_data:
+# rg -l 'SpaceBelt|SpacePipe' documents/knowledge/raw/game_data/*.json
 ```
 
 Expect **54** layout ids, **2** group ids, **3** wiki entry ids, plus CLR/port strings listed above.

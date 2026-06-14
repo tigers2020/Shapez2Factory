@@ -73,8 +73,8 @@ Django-first project: runtime ownership is `config/`, `manage.py`, and `django_a
 ### `django_apps/game_data/`
 
 - `models/`: canonical game dump ORM (concrete fields, relations, constraints; no domain `JSONField`).
-- `importers/`: deterministic `GameDataImporter` and section importers.
-- `services/`: classifiers, identifiers, `validators`, import guards.
+- `importers/`: deterministic `GameDataImporter` (accepts validated `GameDataBundle`) and section importers.
+- `services/`: classifiers, identifiers, `validators`, import guards, `import_verify`, `bundle_gate` (path resolve + fail-closed disk integrity before import).
 - `browse/`: staff browse dashboard (`registry.py`, thin `views.py`, `urls.py`).
 - `admin.py`: aggregate-root `ModelAdmin` and inlines aligned with `browse/registry.py` specs.
 - Tests: `tests/unit/game_data/`.

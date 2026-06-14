@@ -19,7 +19,7 @@ from django_apps.game_data.services.import_verify import (
 
 
 class Command(BaseCommand):
-    help = "Import documents/game_data JSON into normalized game_data models."
+    help = "Import game_data JSON bundle into normalized models (auto-resolve via bundle_gate)."
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(

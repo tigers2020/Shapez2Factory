@@ -20,4 +20,4 @@
 
 ## Validation evidence
 
-Record in kanban Progress after verify step.
+Recorded in kanban Progress (`.devtool/features/codebase-architecture-review-2026-06-14.md`). As-built map: [report.md](./report.md) § Implementation status.

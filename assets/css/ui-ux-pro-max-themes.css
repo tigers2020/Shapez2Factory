@@ -1,0 +1,103 @@
+/* UI UX Pro Max — project-adapted components (DESIGN.md canon).
+ * Imported from assets/css/input.css. Lab-specific styles remain in input.css (#lab-root). */
+
+@layer components {
+  :root {
+    --pro-max-bg: #020617;
+    --pro-max-surface: #0f172a;
+    --pro-max-surface-raised: #1e293b;
+    --pro-max-border: rgb(51 65 85 / 0.85);
+    --pro-max-text: #f1f5f9;
+    --pro-max-text-muted: #94a3b8;
+    --pro-max-accent: #22d3ee;
+    --pro-max-accent-soft: #06b6d4;
+    --pro-max-success: #34d399;
+    --pro-max-warning: #f59e0b;
+    --pro-max-error: #fb7185;
+  }
+
+  .pro-max-dark-card {
+    border: 1px solid var(--pro-max-border);
+    border-radius: 0.5rem;
+    background: linear-gradient(
+      165deg,
+      rgb(15 23 42 / 0.92),
+      rgb(2 6 23 / 0.78)
+    );
+    box-shadow: 0 4px 24px rgb(2 6 23 / 0.45);
+    color: var(--pro-max-text);
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease;
+  }
+
+  .pro-max-dark-card:hover {
+    border-color: rgb(34 211 238 / 0.22);
+  }
+
+  .pro-max-accent-btn {
+    cursor: pointer;
+    border-radius: 0.375rem;
+    background-color: var(--pro-max-accent-soft);
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: #020617;
+    transition:
+      background-color 200ms ease,
+      box-shadow 200ms ease;
+  }
+
+  .pro-max-accent-btn:hover {
+    background-color: var(--pro-max-accent);
+    box-shadow: 0 0 20px rgb(34 211 238 / 0.35);
+  }
+
+  .pro-max-accent-btn:focus-visible {
+    outline: 2px solid rgb(34 211 238 / 0.55);
+    outline-offset: 2px;
+  }
+
+  .pro-max-ghost-btn {
+    cursor: pointer;
+    border: 1px solid var(--pro-max-border);
+    border-radius: 0.375rem;
+    background-color: rgb(15 23 42 / 0.65);
+    padding: 0.5rem 1rem;
+    color: var(--pro-max-text);
+    transition:
+      color 200ms ease,
+      background-color 200ms ease,
+      border-color 200ms ease;
+  }
+
+  .pro-max-ghost-btn:hover {
+    border-color: rgb(34 211 238 / 0.25);
+    background-color: rgb(30 41 59 / 0.75);
+  }
+
+  .pro-max-muted-text {
+    color: var(--pro-max-text-muted);
+  }
+
+  .pro-max-stat-tile {
+    border: 1px solid rgb(51 65 85 / 0.65);
+    border-radius: 0.375rem;
+    background: rgb(15 23 42 / 0.75);
+    transition: border-color 200ms ease;
+  }
+
+  .pro-max-stat-tile:hover {
+    border-color: rgb(34 211 238 / 0.25);
+  }
+
+  .pro-max-page-shell {
+    min-height: 100vh;
+    background-color: var(--pro-max-bg);
+    color: var(--pro-max-text);
+    font-family: "Google Sans Code", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .pro-max-code {
+    font-family: "Fira Code", ui-monospace, monospace;
+  }
+}

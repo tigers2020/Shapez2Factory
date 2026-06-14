@@ -27,7 +27,7 @@ Read `DESIGN.md` first; run skill `--design-system` before implementing.
    python .cursor/skills/ui-ux-pro-max/scripts/search.py "<feature> dark OLED factory dashboard" --design-system --stack html-tailwind -p "shapez2 Factory Planner"
    ```
 3. Map skill output to project tokens — **never replace** canon hex/fonts.
-4. Tailwind in templates or `@layer components` in `assets/css/input.css`.
+4. Tailwind in templates or `@layer components` in `input.css` / `pro-max-*` in `ui-ux-pro-max-themes.css`.
 5. Verify: `npm run build:css`; visible UI → `/playwright` when practical.
 
 ## Project tokens (override skill defaults)

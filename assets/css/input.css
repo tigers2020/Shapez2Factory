@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&display=swap");
 
 @import "tailwindcss";
+@import "./ui-ux-pro-max-themes.css";
 @import "flowbite/src/themes/mono";
 
 @plugin "flowbite/plugin";

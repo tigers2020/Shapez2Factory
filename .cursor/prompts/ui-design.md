@@ -11,6 +11,8 @@ Use with `/ui-ux-pro-max` skill and `.cursor/rules/ui-ux-pro-max-skill.mdc`.
 python .cursor/skills/ui-ux-pro-max/scripts/search.py "<page or feature> dark OLED factory dashboard developer tools" --design-system --stack html-tailwind -p "shapez2 Factory Planner"
 ```
 
+Persisted overlay (reference): `design-system/shapez2-factory-planner/MASTER.md` — **DESIGN.md overrides** per § Project overrides in that file.
+
 3. Optional domain supplements:
 
 ```bash
@@ -44,7 +46,7 @@ python .cursor/skills/ui-ux-pro-max/scripts/search.py "dashboard data grid" --st
 
 1. **Canon wins** — skill palette/style suggestions must map to `DESIGN.md`; do not invent new brand colors.
 2. **Dark only** — reject light-mode-first skill styles unless explicitly scoped.
-3. **Tailwind utilities** in templates; shared patterns in `@layer components` inside `input.css`.
+3. **Tailwind utilities** in templates; shared patterns in `@layer components` inside `input.css` or `pro-max-*` in `assets/css/ui-ux-pro-max-themes.css`.
 4. **`lab-*` prefix** — preserve existing asteroid lab classes; extend, do not rename in place.
 5. **No emoji icons** — SVG (Heroicons/Lucide). `cursor-pointer` on clickables; 150–300ms transitions.
 6. **No layout shift** on hover — color/opacity/shadow only.

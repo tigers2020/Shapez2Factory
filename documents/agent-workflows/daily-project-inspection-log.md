@@ -321,3 +321,117 @@ Pick one authority policy and apply consistently: (a) restore thin active symlin
 - Linear API search unavailable (401)
 
 **Next recommended target:** CI / scripts / automation (`scripts/test_fast.ps1` cross-platform gap SHA-46; `check_governance.ps1` CI gap SHA-41) — or performance / large-fixture behavior (`tests/golden/`, golden harness SHA-30)
+
+---
+
+## 2026-06-20 Daily Inspection (13:01 UTC cron)
+
+**Target:** CI / scripts / automation — `ci.yml` validate matrix, `scripts/test_fast.{sh,ps1}`, `check_governance.ps1`, master CI health vs `rttp-lab-macro-smoke.yml`
+
+**Commands run:**
+- `git status`, `git branch --show-current`, `git log --oneline -10`
+- `python3 manage.py check` (pass)
+- `ruff check .` (fail — 3× E501)
+- `black --check .` (fail — 2 migration files)
+- `python3 -m mypy src django_apps/asteroid_lab/replay` (pass — CI typecheck scope)
+- `bash scripts/test_fast.sh -q --collect-only` (fail — `python: not found`)
+- `python3 -m pytest -m "unit and not slow" --collect-only -q` (collection error: `test_simulation_path_coverage.py`)
+- `gh run list --branch master --workflow=ci.yml --limit 5`
+- `gh run view 27496884863 --log-failed` (master push 2026-06-14)
+- `gh pr checks 289` (open `work/game-data-bundle-gate`)
+- `curl https://api.linear.app/graphql` (401 — no `LINEAR_API_KEY`)
+
+**Files/areas reviewed:**
+- `.github/workflows/ci.yml`, `.github/workflows/rttp-lab-macro-smoke.yml`
+- `scripts/test_fast.sh`, `scripts/test_fast.ps1`, `scripts/check_governance.ps1`
+- `AGENTS.md` § Validation, `documents/agent-workflows/validation-routine.md`
+- `django_apps/game_data/migrations/0027_exterior_transport_capacity_tier1.py`, `0029_evtc_tier1_shapez2_miner_belt_rates.py`
+- `src/shapez2_factory/adapters/asteroid_lab/complete_map_serializer.py`
+- `tests/unit/game_data/fixtures.py`, `tests/support/game_data_layout_seed.py`, `tests/unit/game_data/dump_paths.py`
+- `tests/unit/game_data/test_simulation_path_coverage.py`, `tests/support/repo_doc_paths.py`
+- Open PR #289 (`GameDataBundleGate`, game_data bundle + audit TSV)
+
+**Findings filed:**
+
+> **Linear MCP blocked:** `https://api.linear.app/graphql` returned 401 (no `LINEAR_API_KEY`). Draft cards below were **not** created in Linear.
+
+### Draft — SHA-71 (proposed)
+
+**Title:** `[infra] Master CI lint/format blocked: E501 and black on paths lengthened by docs→documents merge`
+
+**Description:**
+
+## Problem
+Since push `5bc37a55` (2026-06-14), the `ci.yml` **lint** and **format** matrix jobs fail on `master`. Canonical spec path strings moved from `docs/…` to `documents/…`, pushing three lines to 102 characters (ruff E501 limit 100) and two migration files out of black compliance. **typecheck** still passes; **test-fast** / **test-integration** also fail (separate root causes — see skips). Merge gate has been red for six days (`gh run 27496884863`).
+
+## Evidence
+- `gh run list --branch master --workflow=ci.yml` — failures on 2026-06-14 pushes (`27496884863`, `27485614491`)
+- `ruff check .` → 3× E501:
+  - `django_apps/game_data/migrations/0027_exterior_transport_capacity_tier1.py:9`
+  - `django_apps/game_data/migrations/0029_evtc_tier1_shapez2_miner_belt_rates.py:9`
+  - `src/shapez2_factory/adapters/asteroid_lab/complete_map_serializer.py:4`
+- `black --check .` → would reformat the two migration files above
+- CI log `27496884863` jobs `validate (lint)` / `validate (format)` — same output
+- Introduced by longer `EVTC_SPEC` / docstring paths under `documents/superpowers/specs/…`
+
+## Impact
+**Urgent:** `master` cannot pass GitHub CI validate workflow; blocks merges and erodes trust in the hygiene track. Agents running tier-4 validation (`AGENTS.md`) hit the same ruff/black failures locally.
+
+## Suggested Fix
+Wrap the three overlong strings (parenthesized continuation or shortened alias constant). Run `black` on the two migrations. Land as a tiny hygiene PR independent of game_data bundle work.
+
+## Acceptance Criteria
+- `ruff check .` exit 0 on `master`
+- `black --check .` exit 0 on `master`
+- `ci.yml` lint + format jobs green on a push to `master`
+
+**Labels:** infra, automation | **Priority:** Urgent
+
+---
+
+### Draft — SHA-72 (proposed)
+
+**Title:** `[infra] scripts/test_fast.sh invokes python not python3; fails on Linux without python symlink`
+
+**Description:**
+
+## Problem
+`scripts/test_fast.sh` exists (partial answer to SHA-46) but ends with `exec python -m pytest …`. On Linux cloud agents and many CI/dev images only `python3` is on PATH — the script exits 127 immediately. `AGENTS.md` § Validation still documents only `powershell -File scripts/test_fast.ps1`; `check_governance.ps1` asserts the PowerShell path in `AGENTS.md`, not the bash wrapper.
+
+## Evidence
+- `scripts/test_fast.sh` line 5: `exec python -m pytest -m "unit and not slow" -n auto --dist loadscope "$@"`
+- `bash scripts/test_fast.sh -q --collect-only` → `exec: python: not found` (exit 127)
+- Contrast: `scripts/render_start.sh` resolves `PYTHON="python3"` when `python` is absent
+- `AGENTS.md` lines 39–40 list `python manage.py check` + `powershell -File scripts/test_fast.ps1` only
+- `scripts/check_governance.ps1` validates presence of `scripts/test_fast.ps1` string in `AGENTS.md`
+
+## Impact
+Linux/macOS contributors and cloud automations cannot use the bash fast gate despite the script being present; agents follow `AGENTS.md` and miss the portable path or hit false failures.
+
+## Suggested Fix
+Resolve interpreter like `render_start.sh` (`command -v python3` / `python`). Document `bash scripts/test_fast.sh` alongside the PowerShell entry in `AGENTS.md` and `validation-routine.md` tier 4. Optionally extend `check_governance.ps1` to accept either command string.
+
+## Acceptance Criteria
+- `bash scripts/test_fast.sh -q --collect-only` succeeds on Ubuntu with only `python3` installed
+- `AGENTS.md` documents the bash fast gate
+- No regression for Windows `test_fast.ps1` users
+
+**Labels:** infra, automation, docs | **Priority:** Medium
+
+**Findings skipped (duplicate or weak):**
+- **test-fast / test-integration game_data bundle missing** — open PR [#289](https://github.com/tigers2020/Shapez2Factory/pull/289) (`GameDataBundleGate`, adds `documents/knowledge/raw/game_data*` + dump); same CI run shows 252 unit errors / 57 integration errors with `SpaceTransportLayoutRegistry short and Tier A game_data bundle not found`
+- **test_simulation_path_coverage collection assert** — missing `_nested_path_audit_priority.tsv` on `master`; PR #289 adds `documents/knowledge/raw/analysis/simulation_systems/_nested_path_audit_priority.tsv` — symptom of same bundle/artifact gap, not filed separately
+- `manage.py check` absent from `ci.yml` — **SHA-19**
+- `check_governance.ps1` not in CI — **SHA-41**
+- Node `build:css` / recipe-graph-editor / graph-layout not in CI — **SHA-35**, **SHA-40**, **SHA-44**
+- `pytest.ini` vs `pyproject.toml` drift — **SHA-45** draft
+- `rttp-lab-macro-smoke.yml` green while `ci.yml` validate red — expected (narrow smoke scope); observed only
+- PR #289 latest run `27511660704` still red on all validate jobs (including new L2 typecheck errors) — tracked on PR, not a separate card
+
+**Duplicate checks:**
+- `.agent-loop/reviewed-areas.md` (SHA-18–SHA-20, SHA-35, SHA-40–SHA-44 CI gaps)
+- `documents/agent-workflows/daily-project-inspection-log.md` (SHA-45–70 drafts; SHA-46 bash script partial)
+- `gh pr list` — PR #289 open for game_data CI wiring
+- Linear API search unavailable (401)
+
+**Next recommended target:** performance / scalability / large-fixture behavior (`tests/golden/`, layer budget hotspots SHA-14/SHA-31) — or dead code / duplication (`solver_timeline/` SHA-53 area, fallow on `frontend/`)

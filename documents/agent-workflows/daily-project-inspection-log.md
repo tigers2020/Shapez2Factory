@@ -321,3 +321,83 @@ Pick one authority policy and apply consistently: (a) restore thin active symlin
 - Linear API search unavailable (401)
 
 **Next recommended target:** CI / scripts / automation (`scripts/test_fast.ps1` cross-platform gap SHA-46; `check_governance.ps1` CI gap SHA-41) — or performance / large-fixture behavior (`tests/golden/`, golden harness SHA-30)
+
+---
+
+## 2026-06-21 Daily Inspection (13:00 UTC cron)
+
+**Target:** performance / scalability / large-fixture behavior — `tests/golden/`, golden harness post-reset state (`6822b420`), slow exhaustive gene fixtures, lab perf trace contracts
+
+**Commands run:**
+- `git status`, `git branch --show-current`, `git log --oneline -10`
+- `python3 manage.py check` (pass)
+- `python3 -m pytest tests/unit/asteroid_lab/test_lab_perf_trace.py tests/unit/asteroid_lab/test_lab_replay_compose_perf_spans.py -q` (8 passed)
+- `python3 -m pytest tests/unit/asteroid_lab/test_sample_gene_exhaustive.py -m "not slow" -q` (20 deselected; fast slice clean)
+- `python3 -m pytest tests/unit/asteroid_lab/test_sample_gene_exhaustive.py::test_exhaustive_generator_extension_count_0_to_3 -q` (1 passed, ~6s — `slow` marker + `conftest` `_SLOW_FIXTURE_NAMES` exclusion verified)
+- `python3 -m pytest tests/unit/architecture/test_repo_map_governance.py -q` (1 failed: `test_structure_md_top_level_paths_exist`)
+- `ls harness/validators/`, `git log --oneline -3 -- harness/validators/ tests/golden/`
+- `rg candidate_selector_trunk_split compare_golden run_golden_loop` (repo-wide)
+- `gh pr view 290`, `gh pr list --state open` (duplicate prevention vs 2026-06-20 CI inspection)
+- `curl https://api.linear.app/graphql` (400 without body — no `LINEAR_API_KEY`)
+
+**Files/areas reviewed:**
+- `tests/golden/README.md`, `tests/golden/candidate_selector_trunk_split_{input,expected}.json`
+- `harness/validators/__init__.py` (golden comparators removed)
+- `structure.md` § Top-level layout (`compare_golden.py`, `documents/knowledge/raw/ai/templates/`)
+- `tests/conftest.py` (`_SLOW_FIXTURE_NAMES`, autouse layout seed)
+- `tests/unit/asteroid_lab/conftest.py` (`exhaustive_genes_ext3` module scope)
+- `django_apps/asteroid_lab/observability/lab_perf_trace.py`
+- `.devtool/features/done/outer-rim-golden-reset-l1-only-2026-06-13.md`
+- Commit `6822b420` (golden harness removal)
+- Open PR #290 (`SHA-71`/`SHA-72` drafts, 2026-06-20 CI pass)
+
+**Findings filed:**
+
+> **Linear MCP blocked:** no `LINEAR_API_KEY`; GraphQL endpoint returned 400. Draft card below was **not** created in Linear.
+
+### Draft — SHA-73 (proposed)
+
+**Title:** `[test] Reconcile orphaned tests/golden fixtures and docs after golden harness removal`
+
+**Description:**
+
+## Problem
+Commit `6822b420` (2026-06-13) removed `harness/validators/compare_golden.py`, `scripts/run_golden_loop.py`, and the `golden-fixture-optimization-loop` skill as part of the L2–L6 algorithm reset. `harness/validators/__init__.py` now states golden comparators were removed. However `tests/golden/candidate_selector_trunk_split_{input,expected}.json` remain with zero pytest references, `tests/golden/README.md` still defers wiring until `compare_golden.py` exists, and `structure.md` still lists `compare_golden.py` under `harness/validators/`. Open **SHA-30** assumed the comparator existed and only needed pytest/CI wiring — that fix direction is obsolete.
+
+## Evidence
+- `harness/validators/__init__.py`: `"""golden comparators removed."""`
+- `git show 6822b420 --stat`: deletes `compare_golden.py`, `run_golden_loop.py`, golden-loop skill
+- `rg candidate_selector_trunk_split tests/` → no matches
+- `tests/golden/README.md` §활성화 조건: still references future `compare_golden.py`
+- `structure.md` line 36: `Golden comparators (e.g. compare_golden.py)`
+- `python3 -m pytest tests/unit/asteroid_lab/test_lab_perf_trace.py …` — 8 passed (perf trace contracts intact)
+
+## Impact
+Agents and automations following SHA-30 or `structure.md` hunt a deleted harness; orphaned golden JSON misrepresents regression coverage; future golden work lacks a declared baseline (L1-only post-reset vs revive comparator).
+
+## Suggested Fix
+Pick one policy: (a) delete `tests/golden/` fixtures + update `structure.md` / README to document L1-only regression until phase2, superseding SHA-30; or (b) restore a minimal `compare_golden.py` smoke for the trunk-split scenario only. In either case, align `.agent-loop/reviewed-areas.md` SHA-30 notes with post-`6822b420` reality.
+
+## Acceptance Criteria
+- No repo doc references nonexistent `compare_golden.py` / `run_golden_loop.py` as active harness
+- `tests/golden/` either wired to pytest or removed with rationale in README
+- SHA-30 closed or superseded with correct post-reset contract
+
+**Labels:** test, docs, refactor | **Priority:** Medium
+
+**Findings skipped (duplicate or weak):**
+- Master CI lint/format red — **SHA-71** draft on open PR [#290](https://github.com/tigers2020/Shapez2Factory/pull/290) (2026-06-20 inspection; not merged to `master` log yet)
+- `test_fast.sh` `python` vs `python3` — **SHA-72** draft on PR #290
+- game_data bundle / simulation audit TSV CI failures — open PR [#289](https://github.com/tigers2020/Shapez2Factory/pull/289)
+- `structure.md` `documents/knowledge/raw/ai/templates/` missing (templates at `documents/ai/templates/`); `documents/README.md` absent — **SHA-70** (docs authority drift; `test_structure_md_top_level_paths_exist` fails)
+- L3 budget ignored during probe expansion — **SHA-31**; layer_post_summary mtime flake — **SHA-48** draft
+- Lab compose latency — GitHub issue #176 (investigation; no new perf guard in tree)
+- `exhaustive_genes_ext3` ~6s/module — correctly `slow` + excluded from `test_fast` via `conftest._SLOW_FIXTURE_NAMES`; not filed
+
+**Duplicate checks:**
+- `.agent-loop/reviewed-areas.md` (SHA-30 filed 2026-06-10 for wiring compare_golden — status inverted by `6822b420`)
+- `documents/agent-workflows/daily-project-inspection-log.md` (SHA-45–70; SHA-71/72 on PR #290 only)
+- `gh pr list` — #290 open (2026-06-20 CI/scripts), #289 open (game_data)
+- Linear API unavailable (no key)
+
+**Next recommended target:** dead code / duplication / complexity hotspots (`solver_timeline/` per 2026-06-20 log) — or re-run docs/contracts pass after `documents/` merge stabilizes (SHA-70)

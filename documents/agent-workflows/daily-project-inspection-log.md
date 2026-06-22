@@ -321,3 +321,88 @@ Pick one authority policy and apply consistently: (a) restore thin active symlin
 - Linear API search unavailable (401)
 
 **Next recommended target:** CI / scripts / automation (`scripts/test_fast.ps1` cross-platform gap SHA-46; `check_governance.ps1` CI gap SHA-41) — or performance / large-fixture behavior (`tests/golden/`, golden harness SHA-30)
+
+---
+
+## 2026-06-22 Daily Inspection (13:02 UTC cron)
+
+**Target:** core runtime / solver / domain logic — post-skeleton-reset stack semantics (`RunStackUseCase`, `stack_runner.py`, L2/L5 layer stubs, `solver_summary` contract)
+
+**Commands run:**
+- `git status`, `git branch --show-current`, `git log --oneline -10`
+- `python3 manage.py check` (pass)
+- `python3 -m pytest tests/unit/asteroid_lab/layers/ tests/unit/asteroid_lab/test_solver_subprocess_runner.py tests/unit/shapez2_factory/ -q` (182 passed, 2 failed)
+- `python3 -m pytest tests/unit/asteroid_lab/layers/test_placement_stack_token_policy.py tests/unit/test_repo_doc_paths.py -v` (repo_doc_paths failures reproduced)
+- `python3 -m pytest tests/unit/asteroid_lab/test_solver_subprocess_runner.py tests/unit/asteroid_lab/test_run_solver_management_command.py tests/unit/architecture/test_reconstruction_decontamination_gates.py -q` (12 passed)
+- `python3 -m pytest tests/unit/shapez2_factory/ -q` (98 passed)
+- Inline `RunStackUseCase` probe on `reconstruction_required_.txt` + `game_data_snapshot_min.json` (layer metrics / success flags)
+- `gh pr list`, `gh pr view 289/290/291`, `gh run list --workflow=ci.yml --limit 8`
+- `curl https://api.linear.app/graphql` (401 — no `LINEAR_API_KEY`)
+
+**Files/areas reviewed:**
+- `src/shapez2_factory/application/asteroid_lab/run_stack.py` (`validation_passed = run_ok`)
+- `src/shapez2_factory/application/asteroid_lab/stack_runner.py` (layer COMPLETED without inspecting plan failures)
+- `src/shapez2_factory/application/asteroid_lab/layers/layer_02_exterior_transport/run.py` (returns `None` skeleton)
+- `src/shapez2_factory/application/asteroid_lab/layers/layer_04_transport_routing/run.py` (L5 `MISSING_L2_EXTERIOR_PLAN` path)
+- `src/shapez2_factory/application/asteroid_lab/layers/observability/layer04_post_summary_metrics.py`
+- `django_apps/asteroid_lab/services/solver_run_lab_summary.py` (surfaces `failure_reasons` in Lab UI)
+- `tests/unit/shapez2_factory/test_cli_run_artifact.py` (asserts `run_success` / `validation_passed` True)
+- `tests/support/repo_doc_paths.py`, `tests/unit/test_repo_doc_paths.py` (missing files — in-flight PR #289)
+- `.agent-loop/reviewed-areas.md`, open PRs #289–#291
+
+**Findings filed:**
+
+> **Linear MCP blocked:** `https://api.linear.app/graphql` returned 401 (no `LINEAR_API_KEY`). Draft card below was **not** created in Linear.
+
+### Draft — SHA-74 (proposed)
+
+**Title:** `[bug] Skeleton stack reports run_success=True while L5 records missing_l2_exterior_plan failure`
+
+**Description:**
+
+## Problem
+After the L2–L6 algorithm-reset skeleton (`6822b420`), `run_layer_02_exterior_transport` returns `None`. `run_layer_05_transport_routing` detects the missing exterior plan and returns a `Layer05RoutePlan` with `failures` containing `missing_l2_exterior_plan`. `stack_runner.run_layers_02_to_06` still marks L5 `outcome=completed`, sets `StackRunStatus.SUCCESS`, and leaves `failed_layer_slug=None`. `RunStackUseCase` then sets `run_success=True` and `validation_passed=True`. Lab UI shows L5 failure reasons in observability, but the run card and CLI artifact report overall success — contradictory signals for operators and agents.
+
+## Evidence
+- `layer_02_exterior_transport/run.py` `run_layer_02_exterior_transport` returns `None` (skeleton)
+- `layer_04_transport_routing/run.py` lines 54–69: `exterior_plan is None` → `Layer04Failure(reason=MISSING_L2_EXTERIOR_PLAN)`
+- `stack_runner.py` lines 236–252: appends `LayerPostSummaryOutcome.COMPLETED` without checking `plan.failures`
+- `run_stack.py` lines 232–235: `validation_passed = run_ok` where `run_ok = failed_layer_slug is None`
+- Live probe on `tests/fixtures/asteroid_lab/reconstruction_required_.txt`:
+  - L5 metrics: `failure_reasons: ['missing_l2_exterior_plan']`, outcome `completed`
+  - Top-level: `run_success True`, `validation_passed True`, stack `status: success`
+- `test_cli_run_artifact.py` asserts `solver_summary["run_success"] is True` and `validation_passed is True` on current skeleton path
+- `solver_run_lab_summary.py` merges L5 `failure_reasons` into Lab highlights but does not downgrade run status
+
+## Impact
+Post-reset CLI runs and Lab ingests look successful while L5 explicitly records a structural precondition failure. Agents following `run_success` / `validation_passed` miss skeleton/degraded mode; replay/timeline may present a green stack inconsistent with transport failure diagnostics. Increases risk of treating reconstruction-only output as a routed layout.
+
+## Suggested Fix
+Pick one contract and apply consistently: (a) during algorithm reset, L2 returns an empty `ExteriorConnectionPlan` stub (not `None`) so L5 takes the benign empty-route path; (b) `stack_runner` treats non-empty `plan.failures` on L5 as `failed_layer_slug` / non-success stack status; or (c) add top-level `solver_summary.algorithm_reset` (or `stack_mode`) and set `run_success=False` / `validation_passed=False` when any layer records `algorithm_reset` or `missing_l2_exterior_plan`. Add regression test asserting stack status aligns with L5 `failure_reasons`.
+
+## Acceptance Criteria
+- Skeleton/reset runs expose a single coherent success/failure signal across `stack_result`, `solver_summary`, and Lab summary
+- L5 `missing_l2_exterior_plan` either fails the stack or is impossible on the intentional skeleton path
+- `test_cli_run_artifact` (or dedicated stack contract test) documents the chosen semantics
+- No contradiction between `run_success=True` and non-empty L5 `failure_reasons` unless explicitly documented as degraded-complete
+
+**Labels:** bug, test, automation | **Priority:** Medium
+
+**Findings skipped (duplicate or weak):**
+- `layer_post_summary_log` retention flake under xdist — **SHA-48** (reproduced; same root cause)
+- `repo_doc_paths` / `current_plan.md` / simulation audit TSV missing — **in-flight PR #289** (`d6df0266` restores paths on `work/game-data-bundle-gate`)
+- Master CI lint/format red — **SHA-71** draft (open PR #290)
+- `test_fast.sh` `python` vs `python3` — **SHA-72** draft (open PR #290)
+- Orphaned golden fixtures — **SHA-73** draft (open PR #291)
+- `validation_passed` tied to stack success with L6 no-op — **SHA-15** (related; L6 stub semantics, not L5 failure propagation)
+- Subprocess exit-20 ingest gap — **SHA-47** draft
+- Macro-only Lab checkbox — **SHA-69**
+
+**Duplicate checks:**
+- `.agent-loop/reviewed-areas.md` (SHA-7–SHA-56; L6 validation SHA-15)
+- `documents/agent-workflows/daily-project-inspection-log.md` prior entries (SHA-45–73 drafts)
+- Open PRs #289–#291 bodies (repo_doc_paths, CI lint/format, golden — not SHA-74)
+- `plans/` / `gh issue list` grep: no existing SHA-74 or `missing_l2_exterior_plan` stack-success card
+- Linear API search unavailable (401)
+
+**Next recommended target:** dead code / duplication / complexity hotspots (`solver_timeline/` SHA-53, deprecated layer slug aliases) — or UI / frontend replay timeline consumption of skeleton `failure_reasons`
